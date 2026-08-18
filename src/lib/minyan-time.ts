@@ -89,11 +89,7 @@ export const RELATIVE_LABELS: Record<SolarEvent, string> = {
   tzeit: "צאת הכוכבים",
 };
 
-export function resolveDay(
-  minyanim: Minyan[],
-  dayType: DayType,
-  zmanim: Zmanim,
-): ResolvedMinyan[] {
+export function resolveDay(minyanim: Minyan[], dayType: DayType, zmanim: Zmanim): ResolvedMinyan[] {
   return minyanim
     .filter((m) => m.active && m.day_type === dayType)
     .map((m) => resolveMinyan(m, zmanim))

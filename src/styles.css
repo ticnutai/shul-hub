@@ -12,8 +12,8 @@
  */
 
 @theme inline {
-  --font-sans: "Heebo", "Assistant", system-ui, sans-serif;
-  --font-display: "Frank Ruhl Libre", "Heebo", serif;
+  --font-sans: var(--app-font-family, "Heebo", "Assistant", system-ui, sans-serif);
+  --font-display: var(--app-heading-font-family, "Noto Serif Hebrew", "Frank Ruhl Libre", serif);
 
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -59,39 +59,39 @@
 
 :root,
 .theme-navy {
-  --radius: 0.75rem;
-  --background: oklch(0.985 0.006 95);
-  --foreground: oklch(0.24 0.06 258);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.24 0.06 258);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.24 0.06 258);
-  --primary: oklch(0.31 0.088 259);
-  --primary-foreground: oklch(0.98 0.01 95);
-  --secondary: oklch(0.945 0.015 250);
-  --secondary-foreground: oklch(0.31 0.088 259);
-  --muted: oklch(0.955 0.01 250);
-  --muted-foreground: oklch(0.5 0.03 255);
-  --accent: oklch(0.93 0.035 250);
-  --accent-foreground: oklch(0.28 0.08 259);
-  --gold: oklch(0.76 0.12 85);
-  --gold-foreground: oklch(0.22 0.05 258);
-  --destructive: oklch(0.55 0.2 27);
-  --destructive-foreground: oklch(0.98 0.01 95);
-  --border: oklch(0.9 0.015 250);
-  --input: oklch(0.9 0.015 250);
-  --ring: oklch(0.76 0.12 85);
-  --shadow-color: oklch(0.31 0.088 259 / 35%);
-  --hero-from: oklch(0.28 0.085 259);
-  --hero-to: oklch(0.42 0.09 245);
-  --sidebar: oklch(0.98 0.008 250);
-  --sidebar-foreground: oklch(0.24 0.06 258);
-  --sidebar-primary: oklch(0.31 0.088 259);
-  --sidebar-primary-foreground: oklch(0.98 0.01 95);
-  --sidebar-accent: oklch(0.93 0.035 250);
-  --sidebar-accent-foreground: oklch(0.28 0.08 259);
-  --sidebar-border: oklch(0.9 0.015 250);
-  --sidebar-ring: oklch(0.76 0.12 85);
+  --radius: 0.875rem;
+  --background: hsl(40 20% 97%);
+  --foreground: hsl(220 55% 14%);
+  --card: hsl(40 24% 99%);
+  --card-foreground: hsl(220 55% 14%);
+  --popover: hsl(40 24% 99%);
+  --popover-foreground: hsl(220 55% 14%);
+  --primary: hsl(220 60% 20%);
+  --primary-foreground: hsl(40 80% 95%);
+  --secondary: hsl(40 24% 93%);
+  --secondary-foreground: hsl(220 60% 20%);
+  --muted: hsl(40 16% 93%);
+  --muted-foreground: hsl(220 18% 42%);
+  --accent: hsl(45 90% 55%);
+  --accent-foreground: hsl(220 60% 20%);
+  --gold: hsl(45 90% 55%);
+  --gold-foreground: hsl(220 60% 16%);
+  --destructive: hsl(0 70% 48%);
+  --destructive-foreground: hsl(40 80% 95%);
+  --border: hsl(40 20% 84%);
+  --input: hsl(40 20% 84%);
+  --ring: hsl(45 90% 55%);
+  --shadow-color: hsl(220 60% 14% / 18%);
+  --hero-from: hsl(220 60% 20%);
+  --hero-to: hsl(220 55% 25%);
+  --sidebar: hsl(220 55% 18%);
+  --sidebar-foreground: hsl(40 80% 95%);
+  --sidebar-primary: hsl(45 90% 55%);
+  --sidebar-primary-foreground: hsl(220 60% 20%);
+  --sidebar-accent: hsl(220 50% 24%);
+  --sidebar-accent-foreground: hsl(45 90% 55%);
+  --sidebar-border: hsl(45 90% 55% / 30%);
+  --sidebar-ring: hsl(45 90% 55%);
 }
 
 .theme-jerusalem {
@@ -229,30 +229,46 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
-    font-family: var(--font-sans);
+    font-family: var(--app-font-family, "Heebo", "Assistant", sans-serif);
+    font-size: var(--app-font-size, 16px);
+    font-weight: var(--app-font-weight, 400);
+    line-height: var(--app-line-height, 1.65);
+    letter-spacing: var(--app-letter-spacing, 0);
+    direction: rtl;
+    text-align: var(--app-text-align, right);
     -webkit-font-smoothing: antialiased;
   }
 
   h1,
   h2,
   h3 {
-    font-family: var(--font-display);
+    font-family: var(--app-heading-font-family, "Noto Serif Hebrew", "Frank Ruhl Libre", serif);
     letter-spacing: -0.01em;
+  }
+
+  h1 {
+    font-size: calc(1em * var(--app-heading-scale, 1));
+  }
+  h2,
+  h3 {
+    font-size: calc(1em * var(--app-heading-scale, 1));
+  }
+
+  button,
+  input,
+  textarea,
+  select {
+    font-family: inherit;
   }
 }
 
 @utility hero-surface {
-  background-image: linear-gradient(135deg, var(--hero-from), var(--hero-to));
+  background-image: linear-gradient(180deg, var(--hero-from), var(--hero-to));
   color: oklch(0.98 0.01 95);
 }
 
 @utility gold-rule {
-  background-image: linear-gradient(
-    90deg,
-    transparent,
-    var(--gold),
-    transparent
-  );
+  background-image: linear-gradient(90deg, transparent, var(--gold), transparent);
 }
 
 @utility card-elev {
@@ -260,5 +276,11 @@
   color: var(--card-foreground);
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-soft);
+  box-shadow: 0 8px 24px -16px var(--shadow-color);
+}
+
+@media (max-width: 640px) {
+  .card-elev {
+    border-radius: 1.25rem;
+  }
 }

@@ -15,8 +15,7 @@ export function AnnouncementCard({ announcement }: { announcement: Announcement 
         ? Flower2
         : Megaphone;
 
-  const kindLabel =
-    ANNOUNCEMENT_KINDS.find((k) => k.id === announcement.kind)?.label ?? "הודעה";
+  const kindLabel = ANNOUNCEMENT_KINDS.find((k) => k.id === announcement.kind)?.label ?? "הודעה";
 
   return (
     <article className="card-elev p-4">

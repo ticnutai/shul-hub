@@ -121,9 +121,7 @@ function AuthPage() {
               className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             >
-              {mode === "signin"
-                ? "אין עדיין חשבון? יצירת חשבון גבאי"
-                : "כבר יש חשבון? כניסה"}
+              {mode === "signin" ? "אין עדיין חשבון? יצירת חשבון גבאי" : "כבר יש חשבון? כניסה"}
             </button>
           </form>
         )}

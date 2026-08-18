@@ -62,19 +62,13 @@ export function AnnouncementsAdmin() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button
-          onClick={() =>
-            setDraft({ kind: "mazal_tov", title: "", body: "", pinned: false })
-          }
-        >
+        <Button onClick={() => setDraft({ kind: "mazal_tov", title: "", body: "", pinned: false })}>
           <Plus className="size-4" /> מודעה חדשה
         </Button>
       </div>
 
       <div className="card-elev divide-y divide-border">
-        {data.length === 0 && (
-          <p className="p-6 text-center text-muted-foreground">אין מודעות.</p>
-        )}
+        {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין מודעות.</p>}
         {data.map((a) => (
           <RowShell
             key={a.id}
@@ -195,9 +189,7 @@ export function ShiurimAdmin() {
       </div>
 
       <div className="card-elev divide-y divide-border">
-        {data.length === 0 && (
-          <p className="p-6 text-center text-muted-foreground">אין שיעורים.</p>
-        )}
+        {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין שיעורים.</p>}
         {data.map((s) => (
           <RowShell
             key={s.id}
@@ -272,9 +264,7 @@ export function ShiurimAdmin() {
                 type="number"
                 dir="ltr"
                 value={draft.sort_order ?? 0}
-                onChange={(e) =>
-                  setDraft({ ...draft, sort_order: Number(e.target.value) })
-                }
+                onChange={(e) => setDraft({ ...draft, sort_order: Number(e.target.value) })}
               />
             </div>
           </div>
@@ -335,9 +325,7 @@ export function ChavrutotAdmin() {
       </div>
 
       <div className="card-elev divide-y divide-border">
-        {data.length === 0 && (
-          <p className="p-6 text-center text-muted-foreground">אין חברותות.</p>
-        )}
+        {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין חברותות.</p>}
         {data.map((c) => (
           <RowShell
             key={c.id}

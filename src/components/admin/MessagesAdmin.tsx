@@ -32,9 +32,7 @@ export function MessagesAdmin() {
 
   return (
     <div className="card-elev divide-y divide-border">
-      {data.length === 0 && (
-        <p className="p-6 text-center text-muted-foreground">אין הודעות.</p>
-      )}
+      {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין הודעות.</p>}
       {data.map((m) => (
         <div key={m.id} className="flex items-start gap-3 px-4 py-4">
           <div className="min-w-0 flex-1">
@@ -46,9 +44,7 @@ export function MessagesAdmin() {
                 </span>
               )}
             </p>
-            <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
-              {m.body}
-            </p>
+            <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{m.body}</p>
             <p className="mt-2 text-xs text-muted-foreground">
               {m.sender_name || "אנונימי"}
               {m.phone ? ` · ${m.phone}` : ""} ·{" "}

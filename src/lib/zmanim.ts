@@ -39,12 +39,9 @@ function solarTime(
   const jStar = 2451545.0 + 0.0009 + -lng / 360 + n;
   const M = (357.5291 + 0.98560028 * (jStar - 2451545)) % 360;
   const C =
-    1.9148 * Math.sin(M * DEG) +
-    0.02 * Math.sin(2 * M * DEG) +
-    0.0003 * Math.sin(3 * M * DEG);
+    1.9148 * Math.sin(M * DEG) + 0.02 * Math.sin(2 * M * DEG) + 0.0003 * Math.sin(3 * M * DEG);
   const lambda = (M + C + 180 + 102.9372) % 360;
-  const jTransit =
-    jStar + 0.0053 * Math.sin(M * DEG) - 0.0069 * Math.sin(2 * lambda * DEG);
+  const jTransit = jStar + 0.0053 * Math.sin(M * DEG) - 0.0069 * Math.sin(2 * lambda * DEG);
   const delta = Math.asin(Math.sin(lambda * DEG) * Math.sin(23.44 * DEG));
   const cosOmega =
     (Math.sin(-angle * DEG) - Math.sin(lat * DEG) * Math.sin(delta)) /
@@ -61,13 +58,9 @@ function solarNoon(date: Date, lng: number): Date {
   const jStar = 2451545.0 + 0.0009 + -lng / 360 + n;
   const M = (357.5291 + 0.98560028 * (jStar - 2451545)) % 360;
   const C =
-    1.9148 * Math.sin(M * DEG) +
-    0.02 * Math.sin(2 * M * DEG) +
-    0.0003 * Math.sin(3 * M * DEG);
+    1.9148 * Math.sin(M * DEG) + 0.02 * Math.sin(2 * M * DEG) + 0.0003 * Math.sin(3 * M * DEG);
   const lambda = (M + C + 180 + 102.9372) % 360;
-  return fromJulian(
-    jStar + 0.0053 * Math.sin(M * DEG) - 0.0069 * Math.sin(2 * lambda * DEG),
-  );
+  return fromJulian(jStar + 0.0053 * Math.sin(M * DEG) - 0.0069 * Math.sin(2 * lambda * DEG));
 }
 
 export interface ZmanimOptions {

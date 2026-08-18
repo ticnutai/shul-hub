@@ -44,10 +44,7 @@ export function useMinyanim() {
   return useQuery({
     queryKey: ["minyanim"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("minyanim")
-        .select("*")
-        .order("sort_order");
+      const { data, error } = await supabase.from("minyanim").select("*").order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -73,10 +70,7 @@ export function useShiurim() {
   return useQuery({
     queryKey: ["shiurim"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("shiurim")
-        .select("*")
-        .order("sort_order");
+      const { data, error } = await supabase.from("shiurim").select("*").order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -87,10 +81,7 @@ export function useChavrutot() {
   return useQuery({
     queryKey: ["chavrutot"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("chavrutot")
-        .select("*")
-        .order("sort_order");
+      const { data, error } = await supabase.from("chavrutot").select("*").order("sort_order");
       if (error) throw error;
       return data ?? [];
     },

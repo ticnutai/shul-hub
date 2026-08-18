@@ -6,13 +6,7 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { useAnnouncements, useMinyanim, useSettings } from "@/lib/data";
-import {
-  DAY_TYPE_LABEL,
-  dayTypeFor,
-  resolveDay,
-  zmanimFor,
-  type DayType,
-} from "@/lib/minyan-time";
+import { DAY_TYPE_LABEL, dayTypeFor, resolveDay, zmanimFor, type DayType } from "@/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@/lib/zmanim";
 
 export const Route = createFileRoute("/")({
@@ -57,10 +51,7 @@ function HomePage() {
   const [dayType, setDayType] = useState<DayType>(() => dayTypeFor(new Date()));
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
-  const rows = useMemo(
-    () => resolveDay(minyanim, dayType, zmanim),
-    [minyanim, dayType, zmanim],
-  );
+  const rows = useMemo(() => resolveDay(minyanim, dayType, zmanim), [minyanim, dayType, zmanim]);
 
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
@@ -77,9 +68,11 @@ function HomePage() {
       <SiteHeader />
 
       <section className="hero-surface">
-        <div className="mx-auto max-w-5xl px-4 py-12 text-center">
-          <p className="text-sm opacity-80">{settings?.subtitle || "קהילה, תורה ותפילה"}</p>
-          <h1 className="mt-2 text-3xl font-bold sm:text-4xl">
+        <div className="mx-auto max-w-5xl px-4 py-14 text-center sm:py-16">
+          <p className="text-sm text-gold sm:text-base">
+            {settings?.subtitle || "קהילה, תורה ותפילה"}
+          </p>
+          <h1 className="mt-3 text-4xl font-bold text-primary-foreground sm:text-5xl">
             {settings?.name ?? "בית הכנסת"}
           </h1>
           <div className="gold-rule mx-auto mt-4 h-px w-40" />
@@ -98,7 +91,7 @@ function HomePage() {
         </div>
       </section>
 
-      <main className="mx-auto max-w-5xl px-4 py-10">
+      <main className="mx-auto max-w-5xl px-4 py-10 text-right sm:py-12">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold">זמני התפילות</h2>
           <div className="flex gap-1 rounded-lg bg-muted p-1">

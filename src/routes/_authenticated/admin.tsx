@@ -5,11 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MinyanimAdmin } from "@/components/admin/MinyanimAdmin";
-import {
-  AnnouncementsAdmin,
-  ChavrutotAdmin,
-  ShiurimAdmin,
-} from "@/components/admin/ContentAdmin";
+import { AnnouncementsAdmin, ChavrutotAdmin, ShiurimAdmin } from "@/components/admin/ContentAdmin";
 import { MessagesAdmin } from "@/components/admin/MessagesAdmin";
 import { SettingsAdmin } from "@/components/admin/SettingsAdmin";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,9 +76,7 @@ function AdminPage() {
               <TabsTrigger value="announcements">מודעות</TabsTrigger>
               <TabsTrigger value="shiurim">שיעורים</TabsTrigger>
               <TabsTrigger value="chavrutot">חברותות</TabsTrigger>
-              <TabsTrigger value="messages">
-                הודעות{unread > 0 ? ` (${unread})` : ""}
-              </TabsTrigger>
+              <TabsTrigger value="messages">הודעות{unread > 0 ? ` (${unread})` : ""}</TabsTrigger>
               <TabsTrigger value="settings">הגדרות</TabsTrigger>
             </TabsList>
 

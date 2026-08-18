@@ -62,9 +62,7 @@ export function MinyanimAdmin() {
               onClick={() => setDayType(d.id)}
               className={
                 "rounded-md px-3 py-1.5 text-sm " +
-                (dayType === d.id
-                  ? "bg-card font-medium shadow-soft"
-                  : "text-muted-foreground")
+                (dayType === d.id ? "bg-card font-medium shadow-soft" : "text-muted-foreground")
               }
             >
               {d.label}
@@ -87,9 +85,7 @@ export function MinyanimAdmin() {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-medium">
                   {m.label}
-                  {!m.active && (
-                    <span className="mr-2 text-xs text-muted-foreground">(מוסתר)</span>
-                  )}
+                  {!m.active && <span className="mr-2 text-xs text-muted-foreground">(מוסתר)</span>}
                 </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {resolved?.source} {m.room ? `· ${m.room}` : ""}
@@ -116,9 +112,7 @@ export function MinyanimAdmin() {
 
       {draft && (
         <form onSubmit={submit} className="card-elev space-y-4 p-5">
-          <h3 className="text-lg font-semibold">
-            {draft.id ? "עריכת מניין" : "מניין חדש"}
-          </h3>
+          <h3 className="text-lg font-semibold">{draft.id ? "עריכת מניין" : "מניין חדש"}</h3>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
@@ -218,9 +212,7 @@ export function MinyanimAdmin() {
                     type="number"
                     dir="ltr"
                     value={draft.offset_minutes ?? 0}
-                    onChange={(e) =>
-                      setDraft({ ...draft, offset_minutes: Number(e.target.value) })
-                    }
+                    onChange={(e) => setDraft({ ...draft, offset_minutes: Number(e.target.value) })}
                   />
                 </div>
               </>
@@ -248,9 +240,7 @@ export function MinyanimAdmin() {
                 type="number"
                 dir="ltr"
                 value={draft.sort_order ?? 0}
-                onChange={(e) =>
-                  setDraft({ ...draft, sort_order: Number(e.target.value) })
-                }
+                onChange={(e) => setDraft({ ...draft, sort_order: Number(e.target.value) })}
               />
             </div>
             <div className="flex items-center gap-3 pt-6">

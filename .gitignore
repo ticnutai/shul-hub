@@ -16,6 +16,14 @@ dist-ssr
 .nitro
 *.local
 
+# Playwright QA artifacts
+playwright-report/
+test-results/
+shul-hub-home.png
+*-reference-*.png
+shul-before-*.png
+shul-after-*.png
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars

@@ -16,11 +16,7 @@ export function SettingsAdmin() {
 
   if (!data) return <p className="text-muted-foreground">טוען…</p>;
 
-  const field = (
-    key: keyof Settings,
-    label: string,
-    type: "text" | "number" = "text",
-  ) => (
+  const field = (key: keyof Settings, label: string, type: "text" | "number" = "text") => (
     <div className="space-y-2">
       <Label>{label}</Label>
       <Input
@@ -56,8 +52,7 @@ export function SettingsAdmin() {
         {field("tzeit_offset_minutes", "צאת הכוכבים — דקות אחרי השקיעה", "number")}
       </div>
       <p className="text-xs text-muted-foreground">
-        קווי האורך והרוחב קובעים את חישוב זמני היום. ברירת המחדל היא בני ברק
-        (32.0853, 34.8338).
+        קווי האורך והרוחב קובעים את חישוב זמני היום. ברירת המחדל היא בני ברק (32.0853, 34.8338).
       </p>
       <Button type="submit" disabled={save.isPending}>
         שמירת הגדרות
