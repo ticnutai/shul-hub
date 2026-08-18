@@ -196,7 +196,7 @@ CREATE POLICY "admin deletes messages" ON public.admin_messages FOR DELETE TO au
 
 -- Initial content. Remove this section before running if a blank database is preferred.
 INSERT INTO public.settings (name, subtitle, address, city, phone, theme)
-SELECT 'בית הכנסת אושר של יהודי', 'קהילה, תורה ותפילה', 'רחוב רבי עקיבא, בני ברק', 'בני ברק', '', 'navy'
+SELECT 'בית הכנסת אושר של יהודי', 'קהילה, תורה ותפילה', 'מצדה 9, בסר 3, קומה 34, בני ברק', 'בני ברק', '', 'navy'
 WHERE NOT EXISTS (SELECT 1 FROM public.settings);
 
 INSERT INTO public.minyanim (prayer, label, day_type, time_mode, fixed_time, relative_to, offset_minutes, room, sort_order)

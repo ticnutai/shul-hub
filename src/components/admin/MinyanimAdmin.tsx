@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ export function MinyanimAdmin() {
   const [dayType, setDayType] = useState<string>("weekday");
   const [prayer, setPrayer] = useState<string>("shacharit");
   const [draft, setDraft] = useState<Draft | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const zmanim = zmanimFor(new Date(), settings);
   const prayerTabs =
@@ -57,6 +58,15 @@ export function MinyanimAdmin() {
     if (draft.time_mode === "fixed") row["relative_to"] = null;
     else row["fixed_time"] = null;
     save.mutate(row, { onSuccess: () => setDraft(null) });
+  }
+
+  function openDraft(nextDraft: Draft) {
+    setDraft(nextDraft);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() =>
+        formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    });
   }
 
   return (
@@ -79,7 +89,7 @@ export function MinyanimAdmin() {
             </button>
           ))}
         </div>
-        <Button onClick={() => setDraft(emptyDraft(dayType))}>
+        <Button onClick={() => openDraft(emptyDraft(dayType))}>
           <Plus className="size-4" /> מניין חדש
         </Button>
       </div>
@@ -122,7 +132,12 @@ export function MinyanimAdmin() {
               <span className="font-display text-lg tabular-nums text-primary">
                 {resolved?.time ?? "—"}
               </span>
-              <Button size="icon" variant="ghost" onClick={() => setDraft(m)}>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={`עריכת ${m.label}`}
+                onClick={() => openDraft(m)}
+              >
                 <Pencil className="size-4" />
               </Button>
               <Button
@@ -139,7 +154,7 @@ export function MinyanimAdmin() {
       </div>
 
       {draft && (
-        <form onSubmit={submit} className="card-elev space-y-4 p-5">
+        <form ref={formRef} onSubmit={submit} className="card-elev scroll-mt-24 space-y-4 p-5">
           <h3 className="text-lg font-semibold">{draft.id ? "עריכת מניין" : "מניין חדש"}</h3>
 
           <div className="grid gap-4 sm:grid-cols-2">

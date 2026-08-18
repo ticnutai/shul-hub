@@ -32,10 +32,10 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-center gap-2 px-4 py-2.5 sm:flex-nowrap sm:justify-start sm:gap-3">
         <Link
           to="/"
-          className="flex min-w-0 basis-full items-center justify-center gap-3 sm:basis-auto sm:justify-start sm:flex-1"
+          className="flex min-w-0 basis-full items-center justify-center gap-2 sm:basis-auto sm:justify-start sm:flex-1"
         >
-          <span className="grid size-11 shrink-0 place-items-center rounded-xl border border-gold/60 bg-sidebar-accent text-gold shadow-soft">
-            <span className="text-lg font-semibold">ב״ה</span>
+          <span className="grid size-7 shrink-0 place-items-center rounded-md border border-gold/50 bg-sidebar-accent/70 text-gold">
+            <span className="text-[10px] font-semibold leading-none">ב״ה</span>
           </span>
           <span className="min-w-0">
             <span className="block truncate text-base font-semibold text-sidebar-foreground">
