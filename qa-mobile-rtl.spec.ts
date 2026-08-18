@@ -111,6 +111,54 @@ test.describe("mobile interactive states", () => {
     expect(390 - (markBox!.x + markBox!.width)).toBeLessThanOrEqual(20);
   });
 
+  test("theme presets can be updated or duplicated on mobile", async ({ page }) => {
+    await page.goto(`${baseUrl}/`);
+    await page.getByRole("button", { name: "ערכת נושא" }).click();
+    await page.getByRole("menuitem", { name: "עריכת הערכה הנוכחית" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "עריכת ערכת נושא" });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("תצוגה מקדימה לערכת הנושא")).toBeVisible();
+    const dialogBox = await dialog.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    expect(dialogBox!.width).toBeLessThanOrEqual(390);
+    expect(dialogBox!.height).toBeLessThanOrEqual(844 * 0.86);
+
+    await dialog.getByLabel("שם הערכה").fill("ערכת מובייל");
+    await dialog.getByLabel("צבע ראשי").fill("#4a225f");
+    await dialog.getByRole("button", { name: "שכפל ושמור" }).click();
+
+    await page.getByRole("button", { name: "ערכת נושא" }).click();
+    await expect(page.getByRole("menuitem", { name: /ערכת מובייל/ })).toBeVisible();
+    await page.getByRole("menuitem", { name: /ערכת מובייל/ }).click();
+    await expect(page.locator("html")).toHaveCSS("--primary", "#4a225f");
+
+    await page.getByRole("button", { name: "ערכת נושא" }).click();
+    await page.getByRole("menuitem", { name: "עריכת הערכה הנוכחית" }).click();
+    await page
+      .getByRole("dialog", { name: "עריכת ערכת נושא" })
+      .getByLabel("שם הערכה")
+      .fill("ערכת מובייל מעודכנת");
+    await page
+      .getByRole("dialog", { name: "עריכת ערכת נושא" })
+      .getByRole("button", { name: "עדכן ושמור" })
+      .click();
+    await page.getByRole("button", { name: "ערכת נושא" }).click();
+    await expect(page.getByRole("menuitem", { name: /ערכת מובייל מעודכנת/ })).toBeVisible();
+  });
+
+  test("live design editor leaves the page visible on mobile", async ({ page }) => {
+    await page.goto(`${baseUrl}/?designMode=1`);
+    const editor = page.getByRole("dialog", { name: "עורך עיצוב חי" });
+    await expect(editor).toBeVisible();
+    const editorBox = await editor.boundingBox();
+    expect(editorBox).not.toBeNull();
+    expect(editorBox!.height).toBeLessThanOrEqual(844 * 0.45);
+    expect(editorBox!.y).toBeGreaterThan(844 * 0.45);
+    await expect(page.getByRole("heading", { name: "זמני התפילות" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "יציאה ממצב עיצוב" })).toBeVisible();
+  });
+
   test("all themes and text settings fit mobile", async ({ page }) => {
     await page.goto(`${baseUrl}/`);
     const themes = [

@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const THEMES = [
@@ -10,10 +18,27 @@ export const THEMES = [
   { id: "night", name: "מצב לילה", swatch: ["#0e1626", "#e8c469", "#26314a"] },
 ] as const;
 
-export type ThemeId = (typeof THEMES)[number]["id"];
+export type ThemeId = string;
+export type ThemeColors = {
+  primary: string;
+  gold: string;
+  background: string;
+  foreground: string;
+  card: string;
+  sidebar: string;
+};
+export type ThemeOption = {
+  id: ThemeId;
+  name: string;
+  swatch: readonly string[];
+  baseId: (typeof THEMES)[number]["id"];
+  colors?: ThemeColors;
+  custom?: boolean;
+};
 
 const STORAGE_KEY = "beit-knesset-theme";
 const SNAPSHOT_KEY = "beit-knesset-ui-preferences";
+const CUSTOM_THEMES_KEY = "beit-knesset-custom-themes-v1";
 
 type PreferenceSnapshot = {
   theme: ThemeId;
@@ -21,7 +46,21 @@ type PreferenceSnapshot = {
 };
 
 function isThemeId(value: unknown): value is ThemeId {
-  return typeof value === "string" && THEMES.some((theme) => theme.id === value);
+  return typeof value === "string" && value.length > 0;
+}
+
+function readCustomThemes(): ThemeOption[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const value = JSON.parse(localStorage.getItem(CUSTOM_THEMES_KEY) ?? "[]") as ThemeOption[];
+    return Array.isArray(value) ? value.filter((item) => item?.custom && item.id && item.name) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeCustomThemes(themes: ThemeOption[]) {
+  localStorage.setItem(CUSTOM_THEMES_KEY, JSON.stringify(themes));
 }
 
 function readLocalSnapshot(): PreferenceSnapshot {
@@ -50,17 +89,39 @@ function writeLocalSnapshot(snapshot: PreferenceSnapshot) {
 
 const ThemeContext = createContext<{
   theme: ThemeId;
+  themes: ThemeOption[];
   setTheme: (t: ThemeId) => void;
-}>({ theme: "navy", setTheme: () => {} });
+  updateTheme: (id: ThemeId, name: string, colors: ThemeColors) => void;
+  duplicateTheme: (id: ThemeId, name: string, colors: ThemeColors) => ThemeId;
+}>({
+  theme: "navy",
+  themes: THEMES.map((item) => ({ ...item, baseId: item.id })),
+  setTheme: () => {},
+  updateTheme: () => {},
+  duplicateTheme: () => "navy",
+});
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeId>("navy");
+  const [customThemes, setCustomThemes] = useState<ThemeOption[]>([]);
   const [userId, setUserId] = useState<string | null>(null);
   const uploadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    setCustomThemes(readCustomThemes());
     setThemeState(readLocalSnapshot().theme);
   }, []);
+
+  const themes = useMemo<ThemeOption[]>(() => {
+    const builtIns = THEMES.map(
+      (item) =>
+        customThemes.find((custom) => custom.id === item.id) ?? { ...item, baseId: item.id },
+    );
+    return [
+      ...builtIns,
+      ...customThemes.filter((custom) => !THEMES.some((item) => item.id === custom.id)),
+    ];
+  }, [customThemes]);
 
   useEffect(() => {
     let cancelled = false;
@@ -125,8 +186,38 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     THEMES.forEach((t) => root.classList.remove(`theme-${t.id}`));
-    root.classList.add(`theme-${theme}`);
-  }, [theme]);
+    const selected = themes.find((item) => item.id === theme) ?? themes[0];
+    root.classList.add(`theme-${selected.baseId}`);
+    const variables: Array<keyof ThemeColors> = [
+      "primary",
+      "gold",
+      "background",
+      "foreground",
+      "card",
+      "sidebar",
+    ];
+    variables.forEach((name) => {
+      if (selected.colors?.[name]) root.style.setProperty(`--${name}`, selected.colors[name]);
+      else root.style.removeProperty(`--${name}`);
+    });
+    if (selected.colors) {
+      root.style.setProperty("--card-foreground", selected.colors.foreground);
+      root.style.setProperty("--popover", selected.colors.card);
+      root.style.setProperty("--popover-foreground", selected.colors.foreground);
+      root.style.setProperty("--sidebar-foreground", selected.colors.background);
+      root.style.setProperty("--hero-from", selected.colors.sidebar);
+      root.style.setProperty("--hero-to", selected.colors.primary);
+    } else {
+      [
+        "--card-foreground",
+        "--popover",
+        "--popover-foreground",
+        "--sidebar-foreground",
+        "--hero-from",
+        "--hero-to",
+      ].forEach((name) => root.style.removeProperty(name));
+    }
+  }, [theme, themes]);
 
   const setTheme = (t: ThemeId) => {
     const updatedAt = new Date().toISOString();
@@ -149,7 +240,45 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  return <ThemeContext.Provider value={{ theme, setTheme }}>{children}</ThemeContext.Provider>;
+  const updateTheme = (id: ThemeId, name: string, colors: ThemeColors) => {
+    const existing = themes.find((item) => item.id === id);
+    if (!existing) return;
+    const replacement: ThemeOption = {
+      ...existing,
+      name: name.trim() || existing.name,
+      swatch: [colors.primary, colors.gold, colors.background],
+      colors,
+      custom: true,
+    };
+    const next = [...customThemes.filter((item) => item.id !== id), replacement];
+    setCustomThemes(next);
+    writeCustomThemes(next);
+    setTheme(id);
+  };
+
+  const duplicateTheme = (id: ThemeId, name: string, colors: ThemeColors) => {
+    const source = themes.find((item) => item.id === id) ?? themes[0];
+    const nextId = `custom-${Date.now().toString(36)}`;
+    const copy: ThemeOption = {
+      id: nextId,
+      name: name.trim() || `${source.name} — עותק`,
+      swatch: [colors.primary, colors.gold, colors.background],
+      baseId: source.baseId,
+      colors,
+      custom: true,
+    };
+    const next = [...customThemes, copy];
+    setCustomThemes(next);
+    writeCustomThemes(next);
+    setTheme(nextId);
+    return nextId;
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, themes, setTheme, updateTheme, duplicateTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
 }
 
 export const useTheme = () => useContext(ThemeContext);

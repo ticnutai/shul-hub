@@ -464,7 +464,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
             role="dialog"
             aria-label="עורך עיצוב חי"
             dir="rtl"
-            className="fixed z-[100] flex min-h-[300px] min-w-[min(480px,calc(100vw-16px))] resize overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl"
+            className="fixed z-[100] flex min-h-[300px] min-w-[min(480px,calc(100vw-16px))] resize overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl max-sm:!inset-x-2 max-sm:!bottom-20 max-sm:!top-auto max-sm:!h-[42dvh] max-sm:!w-auto max-sm:!min-w-0 max-sm:!resize-none"
             style={
               {
                 left: layout.x,
@@ -487,7 +487,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
           >
             <div className="flex min-h-0 flex-1 flex-col">
               <div
-                className="flex cursor-move items-center gap-2 border-b bg-muted px-3 py-2"
+                className="flex cursor-move items-center gap-1 border-b bg-muted px-2 py-2 sm:gap-2 sm:px-3"
                 onPointerDown={startDrag}
                 onPointerMove={dragMove}
                 onPointerUp={() => {

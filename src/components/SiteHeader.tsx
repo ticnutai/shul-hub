@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Palette, Settings, Check, WandSparkles } from "lucide-react";
-import { useState } from "react";
+import { Menu, Palette, Settings, Check, WandSparkles, Copy, Save } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextSettingsDialog } from "@/components/TextSettingsDialog";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -13,8 +13,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSettings } from "@/lib/data";
-import { THEMES, useTheme } from "@/lib/theme";
+import { type ThemeColors, type ThemeOption, useTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const NAV = [
   { to: "/", label: "זמני תפילות" },
@@ -152,48 +162,178 @@ function LiveDesignButton() {
 }
 
 function ThemeMenu() {
-  const { theme, setTheme } = useTheme();
+  const { theme, themes, setTheme } = useTheme();
+  const [editorOpen, setEditorOpen] = useState(false);
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="ערכת נושא"
-          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-gold"
-        >
-          <Palette className="size-5" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-52">
-        <DropdownMenuLabel>ערכת נושא</DropdownMenuLabel>
-        {THEMES.map((t) => (
-          <DropdownMenuItem
-            key={t.id}
-            onSelect={() => setTheme(t.id)}
-            className="flex items-center gap-2"
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="ערכת נושא"
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-gold"
           >
-            <span className="flex gap-1">
-              {t.swatch.map((c) => (
-                <span
-                  key={c}
-                  className="size-3.5 rounded-full border border-border"
-                  style={{ backgroundColor: c }}
-                />
-              ))}
-            </span>
-            <span className="flex-1">{t.name}</span>
-            <Check className={cn("size-4", theme === t.id ? "opacity-100" : "opacity-0")} />
+            <Palette className="size-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="max-h-[70dvh] w-56 overflow-y-auto">
+          <DropdownMenuLabel>ערכת נושא</DropdownMenuLabel>
+          {themes.map((t) => (
+            <DropdownMenuItem
+              key={t.id}
+              onSelect={() => setTheme(t.id)}
+              className="flex items-center gap-2"
+            >
+              <span className="flex gap-1">
+                {t.swatch.map((c) => (
+                  <span
+                    key={c}
+                    className="size-3.5 rounded-full border border-border"
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </span>
+              <span className="flex-1">{t.name}</span>
+              <Check className={cn("size-4", theme === t.id ? "opacity-100" : "opacity-0")} />
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onSelect={() => setEditorOpen(true)} className="font-medium">
+            <Palette className="size-4" /> עריכת הערכה הנוכחית
           </DropdownMenuItem>
-        ))}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <a href="?designMode=1" className="flex items-center gap-2 font-medium">
-            <WandSparkles className="size-4" />
-            עריכת עיצוב בתצוגה חיה
-          </a>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem asChild>
+            <a href="?designMode=1" className="flex items-center gap-2 font-medium">
+              <WandSparkles className="size-4" />
+              עריכת עיצוב בתצוגה חיה
+            </a>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ThemeEditorDialog open={editorOpen} onOpenChange={setEditorOpen} />
+    </>
+  );
+}
+
+function colorsFor(theme: ThemeOption): ThemeColors {
+  return (
+    theme.colors ?? {
+      primary: theme.swatch[0],
+      gold: theme.swatch[1],
+      background: theme.swatch[2],
+      foreground: theme.swatch[0],
+      card: theme.swatch[2],
+      sidebar: theme.swatch[0],
+    }
+  );
+}
+
+function ThemeEditorDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const { theme, themes, updateTheme, duplicateTheme } = useTheme();
+  const current = themes.find((item) => item.id === theme) ?? themes[0];
+  const [name, setName] = useState(current.name);
+  const [colors, setColors] = useState<ThemeColors>(() => colorsFor(current));
+
+  useEffect(() => {
+    if (!open) return;
+    setName(current.name);
+    setColors(colorsFor(current));
+  }, [current, open]);
+
+  const setColor = (key: keyof ThemeColors, value: string) =>
+    setColors((previous) => ({ ...previous, [key]: value }));
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent
+        dir="rtl"
+        className="max-h-[85dvh] w-[calc(100vw-1rem)] max-w-xl overflow-y-auto rounded-2xl p-4 sm:p-6"
+      >
+        <DialogHeader className="text-right sm:text-right">
+          <DialogTitle>עריכת ערכת נושא</DialogTitle>
+          <DialogDescription>
+            אפשר לעדכן את הערכה הנוכחית או לשמור עותק חדש בלי לפגוע במקור.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="theme-name">שם הערכה</Label>
+            <Input id="theme-name" value={name} onChange={(event) => setName(event.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {(
+              [
+                ["primary", "צבע ראשי"],
+                ["gold", "צבע הדגשה"],
+                ["background", "רקע העמוד"],
+                ["foreground", "צבע טקסט"],
+                ["card", "רקע כרטיסים"],
+                ["sidebar", "רקע הכותרת"],
+              ] as const
+            ).map(([key, label]) => (
+              <label key={key} className="space-y-1.5 text-sm font-medium">
+                <span>{label}</span>
+                <Input
+                  aria-label={label}
+                  type="color"
+                  className="h-11 w-full cursor-pointer p-1"
+                  value={colors[key]}
+                  onChange={(event) => setColor(key, event.target.value)}
+                />
+              </label>
+            ))}
+          </div>
+          <div
+            aria-label="תצוגה מקדימה לערכת הנושא"
+            className="rounded-xl border p-4"
+            style={{ background: colors.background, color: colors.foreground }}
+          >
+            <div
+              className="mb-3 rounded-lg px-3 py-2 font-semibold"
+              style={{ background: colors.sidebar, color: colors.background }}
+            >
+              בית הכנסת — תצוגה מקדימה
+            </div>
+            <div className="rounded-lg p-3" style={{ background: colors.card }}>
+              טקסט לדוגמה
+              <span
+                className="ms-2 inline-block rounded-md px-2 py-1 text-xs"
+                style={{ background: colors.primary, color: colors.background }}
+              >
+                כפתור
+              </span>
+              <span className="ms-2 font-bold" style={{ color: colors.gold }}>
+                הדגשה
+              </span>
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:space-x-0">
+          <Button
+            variant="outline"
+            onClick={() => {
+              duplicateTheme(theme, name === current.name ? `${name} — עותק` : name, colors);
+              onOpenChange(false);
+            }}
+          >
+            <Copy className="size-4" /> שכפל ושמור
+          </Button>
+          <Button
+            onClick={() => {
+              updateTheme(theme, name, colors);
+              onOpenChange(false);
+            }}
+          >
+            <Save className="size-4" /> עדכן ושמור
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
