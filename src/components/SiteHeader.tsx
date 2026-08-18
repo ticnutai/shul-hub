@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Menu, Palette, Settings, Check } from "lucide-react";
+import { Menu, Palette, Settings, Check, WandSparkles } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextSettingsDialog } from "@/components/TextSettingsDialog";
@@ -9,6 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useSettings } from "@/lib/data";
@@ -69,6 +70,8 @@ export function SiteHeader() {
 
         <NotificationCenter />
 
+        <LiveDesignButton />
+
         <Button
           asChild
           variant="ghost"
@@ -112,6 +115,20 @@ export function SiteHeader() {
   );
 }
 
+function LiveDesignButton() {
+  return (
+    <Button asChild variant="ghost" size="icon">
+      <a
+        href="?designMode=1"
+        aria-label="עריכת עיצוב חיה"
+        className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-gold"
+      >
+        <WandSparkles className="size-5" />
+      </a>
+    </Button>
+  );
+}
+
 function ThemeMenu() {
   const { theme, setTheme } = useTheme();
   return (
@@ -147,6 +164,13 @@ function ThemeMenu() {
             <Check className={cn("size-4", theme === t.id ? "opacity-100" : "opacity-0")} />
           </DropdownMenuItem>
         ))}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <a href="?designMode=1" className="flex items-center gap-2 font-medium">
+            <WandSparkles className="size-4" />
+            עריכת עיצוב בתצוגה חיה
+          </a>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
