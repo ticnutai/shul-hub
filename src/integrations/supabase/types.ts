@@ -14,16 +14,289 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      admin_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          phone: string
+          sender_name: string
+          subject: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          phone?: string
+          sender_name?: string
+          subject?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          phone?: string
+          sender_name?: string
+          subject?: string
+        }
+        Relationships: []
+      }
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          expires_at: string | null
+          id: string
+          kind: string
+          pinned: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          kind?: string
+          pinned?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          kind?: string
+          pinned?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chavrutot: {
+        Row: {
+          active: boolean
+          contact: string
+          created_at: string
+          id: string
+          looking_for_partner: boolean
+          partners: string
+          sort_order: number
+          time_text: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact?: string
+          created_at?: string
+          id?: string
+          looking_for_partner?: boolean
+          partners?: string
+          sort_order?: number
+          time_text?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact?: string
+          created_at?: string
+          id?: string
+          looking_for_partner?: boolean
+          partners?: string
+          sort_order?: number
+          time_text?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      minyanim: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_type: string
+          fixed_time: string | null
+          id: string
+          label: string
+          note: string
+          offset_minutes: number
+          prayer: string
+          relative_to: string | null
+          room: string
+          sort_order: number
+          time_mode: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_type?: string
+          fixed_time?: string | null
+          id?: string
+          label?: string
+          note?: string
+          offset_minutes?: number
+          prayer?: string
+          relative_to?: string | null
+          room?: string
+          sort_order?: number
+          time_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_type?: string
+          fixed_time?: string | null
+          id?: string
+          label?: string
+          note?: string
+          offset_minutes?: number
+          prayer?: string
+          relative_to?: string | null
+          room?: string
+          sort_order?: number
+          time_mode?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          address: string
+          candle_offset_minutes: number
+          city: string
+          created_at: string
+          elevation: number
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          phone: string
+          subtitle: string
+          theme: string
+          tzeit_offset_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          candle_offset_minutes?: number
+          city?: string
+          created_at?: string
+          elevation?: number
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          phone?: string
+          subtitle?: string
+          theme?: string
+          tzeit_offset_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          candle_offset_minutes?: number
+          city?: string
+          created_at?: string
+          elevation?: number
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          phone?: string
+          subtitle?: string
+          theme?: string
+          tzeit_offset_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shiurim: {
+        Row: {
+          active: boolean
+          created_at: string
+          day_of_week: number
+          description: string
+          id: string
+          location: string
+          sort_order: number
+          teacher: string
+          time_text: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          day_of_week?: number
+          description?: string
+          id?: string
+          location?: string
+          sort_order?: number
+          teacher?: string
+          time_text?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          day_of_week?: number
+          description?: string
+          id?: string
+          location?: string
+          sort_order?: number
+          teacher?: string
+          time_text?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "gabbai" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +423,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "gabbai", "user"],
+    },
   },
 } as const
