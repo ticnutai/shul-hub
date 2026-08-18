@@ -14,6 +14,7 @@ import { Eye, EyeOff, Pause, Play, Redo2, RotateCcw, Save, Undo2, X } from "luci
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { VisualColorPicker } from "@/components/VisualColorPicker";
 
 type Scope = "element" | "component" | "global";
 type Override = {
@@ -715,26 +716,7 @@ function ColorField({
   value: string;
   onChange: (value: string) => void;
 }) {
-  const color = /^#[0-9a-f]{6}$/i.test(value) ? value : "#000000";
-  return (
-    <div className="space-y-1">
-      <Label>{label}</Label>
-      <div className="flex gap-2">
-        <Input
-          className="w-12 p-1"
-          type="color"
-          value={color}
-          onChange={(event) => onChange(event.target.value)}
-        />
-        <Input
-          aria-label={label}
-          dir="ltr"
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-        />
-      </div>
-    </div>
-  );
+  return <VisualColorPicker label={label} value={value} onChange={onChange} />;
 }
 
 // eslint-disable-next-line react-refresh/only-export-components

@@ -113,6 +113,8 @@ test.describe("mobile interactive states", () => {
 
   test("theme presets can be updated or duplicated on mobile", async ({ page }) => {
     await page.goto(`${baseUrl}/`);
+    await expect(page.getByRole("heading", { name: "זמני התפילות" })).toBeVisible();
+    await page.waitForTimeout(500);
     await page.getByRole("button", { name: "ערכת נושא" }).click();
     await page.getByRole("menuitem", { name: "עריכת הערכה הנוכחית" }).click();
 
@@ -125,7 +127,12 @@ test.describe("mobile interactive states", () => {
     expect(dialogBox!.height).toBeLessThanOrEqual(844 * 0.86);
 
     await dialog.getByLabel("שם הערכה").fill("ערכת מובייל");
-    await dialog.getByLabel("צבע ראשי").fill("#4a225f");
+    await dialog.getByRole("button", { name: "בחירת צבע ראשי" }).click();
+    await page.getByLabel("לוח צבעים מלא עבור צבע ראשי").fill("#4a225f");
+    await page.getByRole("button", { name: "שמירת הצבע" }).click();
+    await expect(page.getByText("הצבעים השמורים שלי")).toBeVisible();
+    await expect(page.getByRole("button", { name: "בחירת הצבע #4a225f" })).toBeVisible();
+    await page.keyboard.press("Escape");
     await dialog.getByRole("button", { name: "שכפל ושמור" }).click();
 
     await page.getByRole("button", { name: "ערכת נושא" }).click();

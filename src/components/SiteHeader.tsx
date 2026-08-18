@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { VisualColorPicker } from "@/components/VisualColorPicker";
 
 const NAV = [
   { to: "/", label: "זמני תפילות" },
@@ -277,16 +278,12 @@ function ThemeEditorDialog({
                 ["sidebar", "רקע הכותרת"],
               ] as const
             ).map(([key, label]) => (
-              <label key={key} className="space-y-1.5 text-sm font-medium">
-                <span>{label}</span>
-                <Input
-                  aria-label={label}
-                  type="color"
-                  className="h-11 w-full cursor-pointer p-1"
-                  value={colors[key]}
-                  onChange={(event) => setColor(key, event.target.value)}
-                />
-              </label>
+              <VisualColorPicker
+                key={key}
+                label={label}
+                value={colors[key]}
+                onChange={(value) => setColor(key, value)}
+              />
             ))}
           </div>
           <div
