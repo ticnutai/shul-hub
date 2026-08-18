@@ -23,6 +23,7 @@ shul-hub-home.png
 *-reference-*.png
 shul-before-*.png
 shul-after-*.png
+shul-mobile-*.png
 
 # Wrangler / Cloudflare
 .wrangler/
