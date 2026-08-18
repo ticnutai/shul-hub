@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Bell } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -45,6 +46,14 @@ function loadPreferences(): Preferences {
   }
 }
 
+function deliverNotification(title: string, body: string) {
+  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+    new Notification(title, { body, icon: "/favicon.ico", dir: "rtl", lang: "he" });
+    return;
+  }
+  toast(title, { description: body, duration: 8000 });
+}
+
 export function NotificationCenter() {
   const { data: minyanim = [] } = useMinyanim();
   const { data: shiurim = [] } = useShiurim();
@@ -58,12 +67,7 @@ export function NotificationCenter() {
   useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences)), [preferences]);
 
   useEffect(() => {
-    if (
-      !preferences.enabled ||
-      typeof Notification === "undefined" ||
-      Notification.permission !== "granted"
-    )
-      return;
+    if (!preferences.enabled) return;
     const showNew = (
       type: string,
       enabled: boolean,
@@ -74,15 +78,7 @@ export function NotificationCenter() {
       if (known.size > 0 && enabled) {
         items
           .filter((item) => !known.has(item.id))
-          .forEach(
-            (item) =>
-              new Notification(item.title, {
-                body: item.body,
-                icon: "/favicon.ico",
-                dir: "rtl",
-                lang: "he",
-              }),
-          );
+          .forEach((item) => deliverNotification(item.title, item.body));
       }
       localStorage.setItem(key, JSON.stringify(items.map((item) => item.id)));
     };
@@ -114,12 +110,7 @@ export function NotificationCenter() {
   );
 
   useEffect(() => {
-    if (
-      !preferences.enabled ||
-      typeof Notification === "undefined" ||
-      Notification.permission !== "granted"
-    )
-      return;
+    if (!preferences.enabled) return;
     const check = () => {
       const now = new Date();
       const today = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
@@ -127,7 +118,7 @@ export function NotificationCenter() {
         const storageKey = `shul-notified-${today}-${key}`;
         if (sessionStorage.getItem(storageKey)) return;
         sessionStorage.setItem(storageKey, "1");
-        new Notification(title, { body, icon: "/favicon.ico", dir: "rtl", lang: "he" });
+        deliverNotification(title, body);
       };
       const due = (time: string, minutes: number) => {
         const match = time.match(/^(\d{1,2}):(\d{2})/);
@@ -179,11 +170,40 @@ export function NotificationCenter() {
   }, [preferences, schedule]);
 
   async function toggleEnabled(enabled: boolean) {
-    if (enabled && typeof Notification !== "undefined" && Notification.permission !== "granted") {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") return;
-    }
     setPreferences((current) => ({ ...current, enabled }));
+    if (!enabled) return;
+
+    if (typeof Notification === "undefined") {
+      toast.info("התזכורות הופעלו בתוך האתר", {
+        description: "הדפדפן אינו תומך בהתראות מערכת, לכן הן יוצגו כל עוד האתר פתוח.",
+      });
+      return;
+    }
+
+    if (Notification.permission === "granted") {
+      toast.success("ההתראות הופעלו");
+      return;
+    }
+
+    if (Notification.permission === "denied") {
+      toast.info("התזכורות הופעלו בתוך האתר", {
+        description: "התראות מערכת חסומות בדפדפן. ניתן לאפשר אותן בהגדרות האתר.",
+      });
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") toast.success("התראות המערכת הופעלו");
+      else
+        toast.info("התזכורות הופעלו בתוך האתר", {
+          description: "לא ניתנה הרשאת מערכת, לכן הן יוצגו כל עוד האתר פתוח.",
+        });
+    } catch {
+      toast.info("התזכורות הופעלו בתוך האתר", {
+        description: "לא ניתן לפתוח הרשאת מערכת בדפדפן הזה.",
+      });
+    }
   }
 
   const toggleId = (field: "selectedMinyanIds" | "selectedShiurIds", id: string) =>
