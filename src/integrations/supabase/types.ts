@@ -393,6 +393,34 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      admin_create_user: {
+        Args: {
+          p_email: string;
+          p_name?: string;
+          p_password: string;
+          p_role?: Database["public"]["Enums"]["app_role"];
+        };
+        Returns: string;
+      };
+      admin_delete_user: { Args: { p_user_id: string }; Returns: boolean };
+      admin_list_users: {
+        Args: never;
+        Returns: {
+          created_at: string;
+          email: string;
+          id: string;
+          last_sign_in_at: string | null;
+          name: string;
+          role: string;
+        }[];
+      };
+      admin_update_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"];
+          p_user_id: string;
+        };
+        Returns: boolean;
+      };
       claim_admin: { Args: never; Returns: boolean };
       has_role: {
         Args: {
