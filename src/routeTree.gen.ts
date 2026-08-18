@@ -10,19 +10,31 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AnnouncementsRouteImport } from './routes/announcements'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ChavrutotRouteImport } from './routes/chavrutot'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ShiurimRouteImport } from './routes/shiurim'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnnouncementsRoute = AnnouncementsRouteImport.update({
   id: '/announcements',
   path: '/announcements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChavrutotRoute = ChavrutotRouteImport.update({
@@ -40,41 +52,77 @@ const ShiurimRoute = ShiurimRouteImport.update({
   path: '/shiurim',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/announcements': typeof AnnouncementsRoute
+  '/auth': typeof AuthRoute
   '/chavrutot': typeof ChavrutotRoute
   '/contact': typeof ContactRoute
   '/shiurim': typeof ShiurimRoute
+  '/admin': typeof AuthenticatedAdminRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/announcements': typeof AnnouncementsRoute
+  '/auth': typeof AuthRoute
   '/chavrutot': typeof ChavrutotRoute
   '/contact': typeof ContactRoute
   '/shiurim': typeof ShiurimRoute
+  '/admin': typeof AuthenticatedAdminRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/announcements': typeof AnnouncementsRoute
+  '/auth': typeof AuthRoute
   '/chavrutot': typeof ChavrutotRoute
   '/contact': typeof ContactRoute
   '/shiurim': typeof ShiurimRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/announcements' | '/chavrutot' | '/contact' | '/shiurim'
+  fullPaths:
+    | '/'
+    | '/announcements'
+    | '/auth'
+    | '/chavrutot'
+    | '/contact'
+    | '/shiurim'
+    | '/admin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/announcements' | '/chavrutot' | '/contact' | '/shiurim'
+  to:
+    | '/'
+    | '/announcements'
+    | '/auth'
+    | '/chavrutot'
+    | '/contact'
+    | '/shiurim'
+    | '/admin'
   id:
-    '__root__' | '/' | '/announcements' | '/chavrutot' | '/contact' | '/shiurim'
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/announcements'
+    | '/auth'
+    | '/chavrutot'
+    | '/contact'
+    | '/shiurim'
+    | '/_authenticated/admin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AnnouncementsRoute: typeof AnnouncementsRoute
+  AuthRoute: typeof AuthRoute
   ChavrutotRoute: typeof ChavrutotRoute
   ContactRoute: typeof ContactRoute
   ShiurimRoute: typeof ShiurimRoute
@@ -89,11 +137,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/announcements': {
       id: '/announcements'
       path: '/announcements'
       fullPath: '/announcements'
       preLoaderRoute: typeof AnnouncementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/chavrutot': {
@@ -117,12 +179,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShiurimRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AnnouncementsRoute: AnnouncementsRoute,
+  AuthRoute: AuthRoute,
   ChavrutotRoute: ChavrutotRoute,
   ContactRoute: ContactRoute,
   ShiurimRoute: ShiurimRoute,
