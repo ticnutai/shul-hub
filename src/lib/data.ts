@@ -12,8 +12,7 @@ export type AdminMessage = Tables<"admin_messages">;
 
 export const DAY_TYPES = [
   { id: "weekday", label: "ימות החול" },
-  { id: "friday", label: "ערב שבת" },
-  { id: "shabbat", label: "שבת" },
+  { id: "friday", label: "יום שישי" },
 ] as const;
 
 export const PRAYERS = [

@@ -49,9 +49,14 @@ function HomePage() {
 
   const today = useMemo(() => new Date(), []);
   const [dayType, setDayType] = useState<DayType>(() => dayTypeFor(new Date()));
+  const [prayer, setPrayer] = useState("shacharit");
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
-  const rows = useMemo(() => resolveDay(minyanim, dayType, zmanim), [minyanim, dayType, zmanim]);
+  const rows = useMemo(
+    () => resolveDay(minyanim, dayType, zmanim).filter((row) => row.minyan.prayer === prayer),
+    [minyanim, dayType, prayer, zmanim],
+  );
+  const prayerTabs = dayType === "friday" ? PRAYER_TABS.slice(0, 1) : PRAYER_TABS;
 
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
@@ -95,10 +100,13 @@ function HomePage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold">זמני התפילות</h2>
           <div className="flex gap-1 rounded-lg bg-muted p-1">
-            {(["weekday", "friday", "shabbat"] as DayType[]).map((d) => (
+            {(["weekday", "friday"] as DayType[]).map((d) => (
               <button
                 key={d}
-                onClick={() => setDayType(d)}
+                onClick={() => {
+                  setDayType(d);
+                  if (d === "friday") setPrayer("shacharit");
+                }}
                 className={
                   "rounded-md px-3 py-1.5 text-sm transition-colors " +
                   (dayType === d
@@ -110,6 +118,23 @@ function HomePage() {
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="mt-3 flex gap-1 rounded-lg bg-secondary p-1" aria-label="סוג תפילה">
+          {prayerTabs.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setPrayer(item.id)}
+              className={
+                "flex-1 rounded-md px-3 py-2 text-sm transition-colors " +
+                (prayer === item.id
+                  ? "bg-primary font-medium text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:text-foreground")
+              }
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
 
         <div className="card-elev mt-4 divide-y divide-border overflow-hidden">
@@ -171,3 +196,9 @@ function HomePage() {
     </div>
   );
 }
+
+const PRAYER_TABS = [
+  { id: "shacharit", label: "שחרית" },
+  { id: "mincha", label: "מנחה" },
+  { id: "arvit", label: "ערבית" },
+] as const;

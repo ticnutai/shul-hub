@@ -110,4 +110,26 @@ test.describe("mobile interactive states", () => {
     await expectRtlWithoutHorizontalOverflow(page);
     await page.getByRole("button", { name: "ביטול" }).click();
   });
+
+  test("prayer tabs match the synagogue weekly schedule", async ({ page }) => {
+    await page.goto(`${baseUrl}/`);
+
+    const prayerTabs = page.locator('[aria-label="סוג תפילה"]');
+    await expect(page.getByRole("button", { name: "שבת קודש", exact: true })).toHaveCount(0);
+    await expect(prayerTabs.getByRole("button", { name: "שחרית", exact: true })).toBeVisible();
+    await expect(prayerTabs.getByRole("button", { name: "מנחה", exact: true })).toBeVisible();
+    await expect(prayerTabs.getByRole("button", { name: "ערבית", exact: true })).toBeVisible();
+
+    await prayerTabs.getByRole("button", { name: "מנחה", exact: true }).click();
+    await expect(page.getByText("13:30", { exact: true })).toBeVisible();
+    await prayerTabs.getByRole("button", { name: "ערבית", exact: true }).click();
+    await expect(page.getByText("22:30", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "יום שישי", exact: true }).click();
+    await expect(prayerTabs.getByRole("button", { name: "שחרית", exact: true })).toBeVisible();
+    await expect(prayerTabs.getByRole("button", { name: "מנחה", exact: true })).toHaveCount(0);
+    await expect(prayerTabs.getByRole("button", { name: "ערבית", exact: true })).toHaveCount(0);
+    await expect(page.getByText("08:30", { exact: true })).toBeVisible();
+    await expectRtlWithoutHorizontalOverflow(page);
+  });
 });

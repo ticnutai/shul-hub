@@ -40,10 +40,15 @@ export function MinyanimAdmin() {
   const save = useSaveRow("minyanim", "minyanim");
   const remove = useDeleteRow("minyanim", "minyanim");
   const [dayType, setDayType] = useState<string>("weekday");
+  const [prayer, setPrayer] = useState<string>("shacharit");
   const [draft, setDraft] = useState<Draft | null>(null);
 
   const zmanim = zmanimFor(new Date(), settings);
-  const rows = minyanim.filter((m) => m.day_type === dayType);
+  const prayerTabs =
+    dayType === "friday"
+      ? PRAYERS.filter((item) => item.id === "shacharit")
+      : PRAYERS.filter((item) => item.id !== "other");
+  const rows = minyanim.filter((m) => m.day_type === dayType && m.prayer === prayer);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +66,10 @@ export function MinyanimAdmin() {
           {DAY_TYPES.map((d) => (
             <button
               key={d.id}
-              onClick={() => setDayType(d.id)}
+              onClick={() => {
+                setDayType(d.id);
+                if (d.id === "friday") setPrayer("shacharit");
+              }}
               className={
                 "rounded-md px-3 py-1.5 text-sm " +
                 (dayType === d.id ? "bg-card font-medium shadow-soft" : "text-muted-foreground")
@@ -74,6 +82,24 @@ export function MinyanimAdmin() {
         <Button onClick={() => setDraft(emptyDraft(dayType))}>
           <Plus className="size-4" /> מניין חדש
         </Button>
+      </div>
+
+      <div className="flex gap-1 rounded-lg bg-secondary p-1" aria-label="סוג תפילה">
+        {prayerTabs.map((item) => (
+          <button
+            type="button"
+            key={item.id}
+            onClick={() => setPrayer(item.id)}
+            className={
+              "flex-1 rounded-md px-3 py-2 text-sm " +
+              (prayer === item.id
+                ? "bg-primary font-medium text-primary-foreground shadow-soft"
+                : "text-muted-foreground")
+            }
+          >
+            {item.label}
+          </button>
+        ))}
       </div>
 
       <div className="card-elev divide-y divide-border">

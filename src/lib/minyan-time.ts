@@ -1,7 +1,7 @@
 import type { Minyan, Settings } from "./data";
 import { calcZmanim, formatTime, type SolarEvent, type Zmanim } from "./zmanim";
 
-export type DayType = "weekday" | "friday" | "shabbat";
+export type DayType = "weekday" | "friday";
 
 /** מספר היום בשבוע לפי שעון ישראל (0 = ראשון) */
 export function jerusalemWeekday(date: Date): number {
@@ -14,15 +14,13 @@ export function jerusalemWeekday(date: Date): number {
 
 export function dayTypeFor(date: Date): DayType {
   const d = jerusalemWeekday(date);
-  if (d === 6) return "shabbat";
   if (d === 5) return "friday";
   return "weekday";
 }
 
 export const DAY_TYPE_LABEL: Record<DayType, string> = {
   weekday: "ימות החול",
-  friday: "ערב שבת",
-  shabbat: "שבת קודש",
+  friday: "יום שישי",
 };
 
 export function zmanimFor(date: Date, settings: Settings | null | undefined): Zmanim {
