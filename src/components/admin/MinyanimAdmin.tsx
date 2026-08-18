@@ -30,6 +30,8 @@ const emptyDraft = (day_type: string): Draft => ({
   note: "",
   sort_order: 100,
   active: true,
+  notification_enabled: false,
+  reminder_minutes: 15,
 });
 
 export function MinyanimAdmin() {
@@ -250,6 +252,28 @@ export function MinyanimAdmin() {
                 id="active"
               />
               <Label htmlFor="active">מוצג באתר</Label>
+            </div>
+            <div className="flex items-center gap-3 pt-6">
+              <Switch
+                checked={draft.notification_enabled ?? false}
+                onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
+                id="minyan-notification"
+              />
+              <Label htmlFor="minyan-notification">לאפשר תזכורת למניין</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>כמה דקות לפני</Label>
+              <Input
+                type="number"
+                dir="ltr"
+                min={0}
+                max={10080}
+                disabled={!draft.notification_enabled}
+                value={draft.reminder_minutes ?? 15}
+                onChange={(event) =>
+                  setDraft({ ...draft, reminder_minutes: Number(event.target.value) })
+                }
+              />
             </div>
           </div>
 

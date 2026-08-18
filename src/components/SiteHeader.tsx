@@ -3,6 +3,7 @@ import { Menu, Palette, Settings, Check } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextSettingsDialog } from "@/components/TextSettingsDialog";
+import { NotificationCenter } from "@/components/NotificationCenter";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -65,6 +66,8 @@ export function SiteHeader() {
         <ThemeMenu />
 
         <TextSettingsDialog />
+
+        <NotificationCenter />
 
         <Button
           asChild

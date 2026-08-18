@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
-type TableName = "minyanim" | "announcements" | "shiurim" | "chavrutot" | "settings";
+type TableName =
+  "minyanim" | "announcements" | "shiurim" | "shiur_categories" | "chavrutot" | "settings";
 
 export function useSaveRow(table: TableName, queryKey: string) {
   const qc = useQueryClient();

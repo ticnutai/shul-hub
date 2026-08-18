@@ -6,6 +6,7 @@ export type Settings = Tables<"settings">;
 export type Minyan = Tables<"minyanim">;
 export type Announcement = Tables<"announcements">;
 export type Shiur = Tables<"shiurim">;
+export type ShiurCategory = Tables<"shiur_categories">;
 export type Chavruta = Tables<"chavrutot">;
 export type AdminMessage = Tables<"admin_messages">;
 
@@ -71,6 +72,21 @@ export function useShiurim() {
     queryKey: ["shiurim"],
     queryFn: async () => {
       const { data, error } = await supabase.from("shiurim").select("*").order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useShiurCategories() {
+  return useQuery({
+    queryKey: ["shiur_categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("shiur_categories")
+        .select("*")
+        .order("sort_order")
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },

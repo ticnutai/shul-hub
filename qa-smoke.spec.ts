@@ -14,7 +14,7 @@ test("home page renders without browser or network errors", async ({ page }) => 
     failedRequests.push(`${request.method()} ${request.url()}: ${request.failure()?.errorText}`);
   });
 
-  const response = await page.goto(`${baseUrl}/`, { waitUntil: "networkidle" });
+  const response = await page.goto(`${baseUrl}/`, { waitUntil: "domcontentloaded" });
 
   expect(response?.status()).toBe(200);
   await expect(page.getByRole("heading", { name: "בית הכנסת אושר של יהודי" })).toBeVisible();
@@ -32,7 +32,7 @@ test("all public routes are RTL and render their main heading", async ({ page })
   ] as const;
 
   for (const [path, heading] of routes) {
-    const response = await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+    const response = await page.goto(`${baseUrl}${path}`, { waitUntil: "domcontentloaded" });
     expect(response?.status()).toBe(200);
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();

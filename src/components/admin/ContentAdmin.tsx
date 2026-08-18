@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { FolderPlus, GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,11 +20,13 @@ import {
   useAnnouncements,
   useChavrutot,
   useShiurim,
+  useShiurCategories,
   type Announcement,
   type Chavruta,
   type Shiur,
 } from "@/lib/data";
 import { useDeleteRow, useSaveRow } from "@/lib/admin";
+import { supabase } from "@/integrations/supabase/client";
 
 function RowShell({
   title,
@@ -62,7 +66,17 @@ export function AnnouncementsAdmin() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setDraft({ kind: "mazal_tov", title: "", body: "", pinned: false })}>
+        <Button
+          onClick={() =>
+            setDraft({
+              kind: "mazal_tov",
+              title: "",
+              body: "",
+              pinned: false,
+              notification_enabled: false,
+            })
+          }
+        >
           <Plus className="size-4" /> מודעה חדשה
         </Button>
       </div>
@@ -147,6 +161,14 @@ export function AnnouncementsAdmin() {
             />
             <Label htmlFor="pinned">להצמיד לראש הרשימה</Label>
           </div>
+          <div className="flex items-center gap-3">
+            <Switch
+              id="announcement-notification"
+              checked={draft.notification_enabled ?? false}
+              onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
+            />
+            <Label htmlFor="announcement-notification">לשלוח התראה למשתמשים שבחרו מודעות</Label>
+          </div>
           <div className="flex gap-2">
             <Button type="submit">שמירה</Button>
             <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
@@ -163,13 +185,64 @@ export function AnnouncementsAdmin() {
 
 export function ShiurimAdmin() {
   const { data = [] } = useShiurim();
+  const { data: categories = [] } = useShiurCategories();
+  const qc = useQueryClient();
   const save = useSaveRow("shiurim", "shiurim");
+  const saveCategory = useSaveRow("shiur_categories", "shiur_categories");
   const remove = useDeleteRow("shiurim", "shiurim");
   const [draft, setDraft] = useState<Partial<Shiur> | null>(null);
+  const [categoryName, setCategoryName] = useState("");
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+
+  async function moveShiur(targetId: string) {
+    if (!draggedId || draggedId === targetId) return;
+    const ordered = [...data];
+    const from = ordered.findIndex((item) => item.id === draggedId);
+    const to = ordered.findIndex((item) => item.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = ordered.splice(from, 1);
+    ordered.splice(to, 0, moved);
+    const results = await Promise.all(
+      ordered.map((item, index) =>
+        supabase
+          .from("shiurim")
+          .update({ sort_order: (index + 1) * 10 })
+          .eq("id", item.id),
+      ),
+    );
+    setDraggedId(null);
+    const failure = results.find((result) => result.error)?.error;
+    if (failure) toast.error("שמירת סדר השיעורים נכשלה");
+    else {
+      await qc.invalidateQueries({ queryKey: ["shiurim"] });
+      toast.success("סדר השיעורים נשמר");
+    }
+  }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-2">
+        <form
+          className="flex min-w-64 flex-1 gap-2 sm:max-w-md"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!categoryName.trim()) return;
+            saveCategory.mutate(
+              { name: categoryName.trim(), sort_order: categories.length * 10 },
+              { onSuccess: () => setCategoryName("") },
+            );
+          }}
+        >
+          <Input
+            aria-label="שם קטגוריה חדשה"
+            value={categoryName}
+            onChange={(event) => setCategoryName(event.target.value)}
+            placeholder="קטגוריה חדשה, למשל דף יומי"
+          />
+          <Button type="submit" variant="outline" disabled={!categoryName.trim()}>
+            <FolderPlus className="size-4" /> הוספה
+          </Button>
+        </form>
         <Button
           onClick={() =>
             setDraft({
@@ -179,8 +252,12 @@ export function ShiurimAdmin() {
               time_text: "",
               location: "",
               description: "",
+              category_id: null,
+              schedule_type: "weekly",
               sort_order: 100,
               active: true,
+              notification_enabled: false,
+              reminder_minutes: 15,
             })
           }
         >
@@ -191,13 +268,45 @@ export function ShiurimAdmin() {
       <div className="card-elev divide-y divide-border">
         {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין שיעורים.</p>}
         {data.map((s) => (
-          <RowShell
+          <div
             key={s.id}
-            title={s.title}
-            subtitle={`יום ${DAYS_HE[s.day_of_week]} · ${s.time_text} · ${s.teacher}`}
-            onEdit={() => setDraft(s)}
-            onDelete={() => remove.mutate(s.id)}
-          />
+            draggable
+            data-testid={`shiur-row-${s.id}`}
+            onDragStart={() => setDraggedId(s.id)}
+            onDragEnd={() => setDraggedId(null)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={() => moveShiur(s.id)}
+            className={
+              "flex items-center gap-2 px-3 py-3 " + (draggedId === s.id ? "opacity-50" : "")
+            }
+          >
+            <button
+              type="button"
+              className="cursor-grab touch-none p-2 text-muted-foreground"
+              aria-label={`גרירת ${s.title}`}
+            >
+              <GripVertical className="size-5" />
+            </button>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{s.title}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {categories.find((category) => category.id === s.category_id)?.name ??
+                  "ללא קטגוריה"}
+                {` · ${s.schedule_type === "daily" ? "בכל יום" : `יום ${DAYS_HE[s.day_of_week]}`} · ${s.time_text} · ${s.teacher}`}
+              </p>
+            </div>
+            <Button size="icon" variant="ghost" onClick={() => setDraft(s)} aria-label="עריכה">
+              <Pencil className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => remove.mutate(s.id)}
+              aria-label="מחיקה"
+            >
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </div>
         ))}
       </div>
 
@@ -226,8 +335,45 @@ export function ShiurimAdmin() {
               />
             </div>
             <div className="space-y-2">
+              <Label>קטגוריה</Label>
+              <Select
+                value={draft.category_id ?? "none"}
+                onValueChange={(value) =>
+                  setDraft({ ...draft, category_id: value === "none" ? null : value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">ללא קטגוריה</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>תדירות</Label>
+              <Select
+                value={draft.schedule_type ?? "weekly"}
+                onValueChange={(value) => setDraft({ ...draft, schedule_type: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">בכל יום</SelectItem>
+                  <SelectItem value="weekly">יום קבוע בשבוע</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>יום</Label>
               <Select
+                disabled={draft.schedule_type === "daily"}
                 value={String(draft.day_of_week ?? 0)}
                 onValueChange={(v) => setDraft({ ...draft, day_of_week: Number(v) })}
               >
@@ -284,6 +430,30 @@ export function ShiurimAdmin() {
             />
             <Label htmlFor="shiur-active">מוצג באתר</Label>
           </div>
+          <div className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="shiur-notification"
+                checked={draft.notification_enabled ?? false}
+                onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
+              />
+              <Label htmlFor="shiur-notification">לאפשר למשתמשים לקבל תזכורת</Label>
+            </div>
+            <div className="space-y-2">
+              <Label>כמה דקות לפני</Label>
+              <Input
+                type="number"
+                dir="ltr"
+                min={0}
+                max={10080}
+                disabled={!draft.notification_enabled}
+                value={draft.reminder_minutes ?? 15}
+                onChange={(event) =>
+                  setDraft({ ...draft, reminder_minutes: Number(event.target.value) })
+                }
+              />
+            </div>
+          </div>
           <div className="flex gap-2">
             <Button type="submit">שמירה</Button>
             <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
@@ -315,6 +485,7 @@ export function ChavrutotAdmin() {
               time_text: "",
               contact: "",
               looking_for_partner: false,
+              notification_enabled: false,
               sort_order: 100,
               active: true,
             })
@@ -394,6 +565,14 @@ export function ChavrutotAdmin() {
                 onCheckedChange={(v) => setDraft({ ...draft, active: v })}
               />
               <Label htmlFor="chav-active">מוצג באתר</Label>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                id="chav-notification"
+                checked={draft.notification_enabled ?? false}
+                onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
+              />
+              <Label htmlFor="chav-notification">לשלוח התראה למשתמשים שבחרו חברותות</Label>
             </div>
           </div>
           <div className="flex gap-2">

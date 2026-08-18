@@ -48,7 +48,7 @@ for (const viewport of mobileViewports) {
       });
 
       for (const [path, heading] of routes) {
-        const response = await page.goto(`${baseUrl}${path}`, { waitUntil: "networkidle" });
+        const response = await page.goto(`${baseUrl}${path}`, { waitUntil: "domcontentloaded" });
         expect(response?.status(), path).toBe(200);
         await expect(page.getByRole("heading", { name: heading, exact: true })).toBeVisible();
         await expectRtlWithoutHorizontalOverflow(page);

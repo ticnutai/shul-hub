@@ -45,6 +45,7 @@ export type Database = {
           expires_at: string | null;
           id: string;
           kind: string;
+          notification_enabled: boolean;
           pinned: boolean;
           title: string;
           updated_at: string;
@@ -55,6 +56,7 @@ export type Database = {
           expires_at?: string | null;
           id?: string;
           kind?: string;
+          notification_enabled?: boolean;
           pinned?: boolean;
           title: string;
           updated_at?: string;
@@ -65,6 +67,7 @@ export type Database = {
           expires_at?: string | null;
           id?: string;
           kind?: string;
+          notification_enabled?: boolean;
           pinned?: boolean;
           title?: string;
           updated_at?: string;
@@ -78,6 +81,7 @@ export type Database = {
           created_at: string;
           id: string;
           looking_for_partner: boolean;
+          notification_enabled: boolean;
           partners: string;
           sort_order: number;
           time_text: string;
@@ -90,6 +94,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           looking_for_partner?: boolean;
+          notification_enabled?: boolean;
           partners?: string;
           sort_order?: number;
           time_text?: string;
@@ -102,6 +107,7 @@ export type Database = {
           created_at?: string;
           id?: string;
           looking_for_partner?: boolean;
+          notification_enabled?: boolean;
           partners?: string;
           sort_order?: number;
           time_text?: string;
@@ -119,8 +125,11 @@ export type Database = {
           id: string;
           label: string;
           note: string;
+          notification_enabled: boolean;
           offset_minutes: number;
           prayer: string;
+          reminder_minutes: number;
+          schedule_type: string;
           relative_to: string | null;
           room: string;
           sort_order: number;
@@ -135,8 +144,11 @@ export type Database = {
           id?: string;
           label?: string;
           note?: string;
+          notification_enabled?: boolean;
           offset_minutes?: number;
           prayer?: string;
+          reminder_minutes?: number;
+          schedule_type?: string;
           relative_to?: string | null;
           room?: string;
           sort_order?: number;
@@ -151,8 +163,11 @@ export type Database = {
           id?: string;
           label?: string;
           note?: string;
+          notification_enabled?: boolean;
           offset_minutes?: number;
           prayer?: string;
+          reminder_minutes?: number;
+          schedule_type?: string;
           relative_to?: string | null;
           room?: string;
           sort_order?: number;
@@ -215,11 +230,14 @@ export type Database = {
       shiurim: {
         Row: {
           active: boolean;
+          category_id: string | null;
           created_at: string;
           day_of_week: number;
           description: string;
           id: string;
           location: string;
+          notification_enabled: boolean;
+          reminder_minutes: number;
           sort_order: number;
           teacher: string;
           time_text: string;
@@ -228,11 +246,14 @@ export type Database = {
         };
         Insert: {
           active?: boolean;
+          category_id?: string | null;
           created_at?: string;
           day_of_week?: number;
           description?: string;
           id?: string;
           location?: string;
+          notification_enabled?: boolean;
+          reminder_minutes?: number;
           sort_order?: number;
           teacher?: string;
           time_text?: string;
@@ -241,15 +262,86 @@ export type Database = {
         };
         Update: {
           active?: boolean;
+          category_id?: string | null;
           created_at?: string;
           day_of_week?: number;
           description?: string;
           id?: string;
           location?: string;
+          notification_enabled?: boolean;
+          reminder_minutes?: number;
           sort_order?: number;
           teacher?: string;
           time_text?: string;
           title?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      shiur_categories: {
+        Row: {
+          id: string;
+          name: string;
+          description: string;
+          sort_order: number;
+          active: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string;
+          sort_order?: number;
+          active?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      notification_preferences: {
+        Row: {
+          user_id: string;
+          enabled: boolean;
+          browser_enabled: boolean;
+          minyanim_enabled: boolean;
+          shiurim_enabled: boolean;
+          announcements_enabled: boolean;
+          chavrutot_enabled: boolean;
+          selected_minyan_ids: string[];
+          selected_shiur_ids: string[];
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          enabled?: boolean;
+          browser_enabled?: boolean;
+          minyanim_enabled?: boolean;
+          shiurim_enabled?: boolean;
+          announcements_enabled?: boolean;
+          chavrutot_enabled?: boolean;
+          selected_minyan_ids?: string[];
+          selected_shiur_ids?: string[];
+          updated_at?: string;
+        };
+        Update: {
+          enabled?: boolean;
+          browser_enabled?: boolean;
+          minyanim_enabled?: boolean;
+          shiurim_enabled?: boolean;
+          announcements_enabled?: boolean;
+          chavrutot_enabled?: boolean;
+          selected_minyan_ids?: string[];
+          selected_shiur_ids?: string[];
           updated_at?: string;
         };
         Relationships: [];

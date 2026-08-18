@@ -8,6 +8,7 @@ import { MinyanimAdmin } from "@/components/admin/MinyanimAdmin";
 import { AnnouncementsAdmin, ChavrutotAdmin, ShiurimAdmin } from "@/components/admin/ContentAdmin";
 import { MessagesAdmin } from "@/components/admin/MessagesAdmin";
 import { SettingsAdmin } from "@/components/admin/SettingsAdmin";
+import { UsersAdmin } from "@/components/admin/UsersAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { useAdminMessages } from "@/lib/data";
@@ -78,6 +79,7 @@ function AdminPage() {
               <TabsTrigger value="chavrutot">חברותות</TabsTrigger>
               <TabsTrigger value="messages">הודעות{unread > 0 ? ` (${unread})` : ""}</TabsTrigger>
               <TabsTrigger value="settings">הגדרות</TabsTrigger>
+              <TabsTrigger value="users">משתמשים</TabsTrigger>
             </TabsList>
 
             <TabsContent value="minyanim" className="mt-6">
@@ -97,6 +99,9 @@ function AdminPage() {
             </TabsContent>
             <TabsContent value="settings" className="mt-6">
               <SettingsAdmin />
+            </TabsContent>
+            <TabsContent value="users" className="mt-6">
+              <UsersAdmin />
             </TabsContent>
           </Tabs>
         )}
