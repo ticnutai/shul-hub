@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">בית כנסת בסר 3</string>
+    <string name="title_activity_main">בית כנסת בסר 3</string>
+    <string name="package_name">com.ticnutai.bsr3synagogue</string>
+    <string name="custom_url_scheme">com.ticnutai.bsr3synagogue</string>
+</resources>

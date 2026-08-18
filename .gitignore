@@ -16,6 +16,11 @@ dist-ssr
 .nitro
 *.local
 
+# Android release credentials (machine-local only)
+android/app/*.keystore
+android/app/signing.properties
+scripts/google-play-service-account.json
+
 # Playwright QA artifacts
 playwright-report/
 test-results/

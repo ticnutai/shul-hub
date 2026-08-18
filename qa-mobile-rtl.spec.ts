@@ -62,24 +62,53 @@ for (const viewport of mobileViewports) {
 test.describe("mobile interactive states", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-  test("menu opens in RTL and every public link navigates", async ({ page }) => {
+  test("primary mobile tabs stay visible and secondary links remain in the menu", async ({
+    page,
+  }) => {
     await page.goto(`${baseUrl}/`);
 
+    const quickNav = page.getByRole("navigation", { name: "ניווט מהיר" });
     for (const [path, label] of [
+      ["/", "זמני תפילות"],
       ["/announcements", "מודעות"],
       ["/shiurim", "שיעורים"],
-      ["/chavrutot", "חברותות"],
-      ["/contact", "הודעה למנהל"],
-      ["/", "זמני תפילות"],
     ] as const) {
-      await page.getByRole("button", { name: "תפריט" }).click();
-      const nav = page.locator("header nav").last();
-      await expect(nav).toBeVisible();
-      await expect(nav).toHaveCSS("direction", "rtl");
-      await nav.getByRole("link", { name: label, exact: true }).click();
+      await expect(quickNav.getByRole("link", { name: label, exact: true })).toBeVisible();
+      await quickNav.getByRole("link", { name: label, exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`${path === "/" ? "/$" : `${path}$`}`));
       await expectRtlWithoutHorizontalOverflow(page);
     }
+
+    await page.getByRole("button", { name: "תפריט" }).click();
+    const menu = page.locator("header nav").last();
+    await expect(menu).toBeVisible();
+    await expect(menu).toHaveCSS("direction", "rtl");
+    for (const primaryLabel of ["זמני תפילות", "מודעות", "שיעורים"]) {
+      await expect(menu.getByRole("link", { name: primaryLabel, exact: true })).toHaveCount(0);
+    }
+
+    for (const [path, label] of [
+      ["/chavrutot", "חברותות"],
+      ["/contact", "הודעה למנהל"],
+    ] as const) {
+      await menu.getByRole("link", { name: label, exact: true }).click();
+      await expect(page).toHaveURL(new RegExp(`${path === "/" ? "/$" : `${path}$`}`));
+      await expectRtlWithoutHorizontalOverflow(page);
+      if (path !== "/contact") {
+        await page.getByRole("button", { name: "תפריט" }).click();
+      }
+    }
+  });
+
+  test("the BH mark is unframed and aligned to the right edge", async ({ page }) => {
+    await page.goto(`${baseUrl}/`);
+    const mark = page.getByLabel("ב״ה");
+    await expect(mark).toBeVisible();
+    await expect(mark).toHaveCSS("border-top-width", "0px");
+    await expect(mark).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    const markBox = await mark.boundingBox();
+    expect(markBox).not.toBeNull();
+    expect(390 - (markBox!.x + markBox!.width)).toBeLessThanOrEqual(20);
   });
 
   test("all themes and text settings fit mobile", async ({ page }) => {

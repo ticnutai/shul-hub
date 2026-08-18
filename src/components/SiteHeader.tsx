@@ -24,6 +24,9 @@ const NAV = [
   { to: "/contact", label: "הודעה למנהל" },
 ] as const;
 
+const MOBILE_PRIMARY_NAV = NAV.slice(0, 3);
+const MOBILE_MENU_NAV = NAV.slice(3);
+
 export function SiteHeader() {
   const { data: settings } = useSettings();
   const [open, setOpen] = useState(false);
@@ -33,10 +36,10 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-center gap-2 px-4 py-2.5 sm:flex-nowrap sm:justify-start sm:gap-3">
         <Link
           to="/"
-          className="flex min-w-0 basis-full items-center justify-center gap-2 sm:basis-auto sm:justify-start sm:flex-1"
+          className="flex min-w-0 basis-full items-center justify-start gap-2 sm:basis-auto sm:flex-1"
         >
-          <span className="grid size-7 shrink-0 place-items-center rounded-md border border-gold/50 bg-sidebar-accent/70 text-gold">
-            <span className="text-[10px] font-semibold leading-none">ב״ה</span>
+          <span className="shrink-0 self-start pt-0.5 text-gold" aria-label="ב״ה">
+            <span className="text-[11px] font-semibold leading-none">ב״ה</span>
           </span>
           <span className="min-w-0">
             <span className="block truncate text-base font-semibold text-sidebar-foreground">
@@ -95,9 +98,28 @@ export function SiteHeader() {
         </Button>
       </div>
 
+      <nav
+        aria-label="ניווט מהיר"
+        className="grid grid-cols-3 gap-1.5 border-t border-gold/25 bg-sidebar px-3 py-2 md:hidden"
+      >
+        {MOBILE_PRIMARY_NAV.map((item) => (
+          <Link
+            key={item.to}
+            to={item.to}
+            className="rounded-lg border border-gold/20 bg-sidebar-accent/45 px-2 py-1.5 text-center text-xs font-medium text-sidebar-foreground/85 transition-colors hover:border-gold/45 hover:text-gold"
+            activeProps={{
+              className: "border-gold/55 bg-sidebar-accent text-gold shadow-soft",
+            }}
+            activeOptions={{ exact: item.to === "/" }}
+          >
+            {item.label}
+          </Link>
+        ))}
+      </nav>
+
       {open && (
         <nav className="grid gap-1 border-t border-gold/25 bg-sidebar px-4 pb-3 pt-2 md:hidden">
-          {NAV.map((item) => (
+          {MOBILE_MENU_NAV.map((item) => (
             <Link
               key={item.to}
               to={item.to}
