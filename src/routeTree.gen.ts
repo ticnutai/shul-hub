@@ -10,33 +10,74 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AnnouncementsRouteImport } from './routes/announcements'
+import { Route as ChavrutotRouteImport } from './routes/chavrutot'
+import { Route as ContactRouteImport } from './routes/contact'
+import { Route as ShiurimRouteImport } from './routes/shiurim'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnnouncementsRoute = AnnouncementsRouteImport.update({
+  id: '/announcements',
+  path: '/announcements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChavrutotRoute = ChavrutotRouteImport.update({
+  id: '/chavrutot',
+  path: '/chavrutot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactRoute = ContactRouteImport.update({
+  id: '/contact',
+  path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShiurimRoute = ShiurimRouteImport.update({
+  id: '/shiurim',
+  path: '/shiurim',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/announcements': typeof AnnouncementsRoute
+  '/chavrutot': typeof ChavrutotRoute
+  '/contact': typeof ContactRoute
+  '/shiurim': typeof ShiurimRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/announcements': typeof AnnouncementsRoute
+  '/chavrutot': typeof ChavrutotRoute
+  '/contact': typeof ContactRoute
+  '/shiurim': typeof ShiurimRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/announcements': typeof AnnouncementsRoute
+  '/chavrutot': typeof ChavrutotRoute
+  '/contact': typeof ContactRoute
+  '/shiurim': typeof ShiurimRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/announcements' | '/chavrutot' | '/contact' | '/shiurim'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/announcements' | '/chavrutot' | '/contact' | '/shiurim'
+  id:
+    '__root__' | '/' | '/announcements' | '/chavrutot' | '/contact' | '/shiurim'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnnouncementsRoute: typeof AnnouncementsRoute
+  ChavrutotRoute: typeof ChavrutotRoute
+  ContactRoute: typeof ContactRoute
+  ShiurimRoute: typeof ShiurimRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +89,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/announcements': {
+      id: '/announcements'
+      path: '/announcements'
+      fullPath: '/announcements'
+      preLoaderRoute: typeof AnnouncementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chavrutot': {
+      id: '/chavrutot'
+      path: '/chavrutot'
+      fullPath: '/chavrutot'
+      preLoaderRoute: typeof ChavrutotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contact': {
+      id: '/contact'
+      path: '/contact'
+      fullPath: '/contact'
+      preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shiurim': {
+      id: '/shiurim'
+      path: '/shiurim'
+      fullPath: '/shiurim'
+      preLoaderRoute: typeof ShiurimRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnnouncementsRoute: AnnouncementsRoute,
+  ChavrutotRoute: ChavrutotRoute,
+  ContactRoute: ContactRoute,
+  ShiurimRoute: ShiurimRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
