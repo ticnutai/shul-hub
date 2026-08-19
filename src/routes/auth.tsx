@@ -11,13 +11,13 @@ export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "כניסת גבאי — בית הכנסת אושר של יהודי" },
+      { title: "כניסה לאתר — בית הכנסת אושר של יהודי" },
       {
         name: "description",
-        content: "אזור כניסה לגבאי בית הכנסת לניהול זמני התפילות, המודעות והשיעורים.",
+        content: "כניסה או הרשמה לחשבון מתפלל באתר בית הכנסת אושר של יהודי.",
       },
-      { property: "og:title", content: "כניסת גבאי — בית הכנסת אושר של יהודי" },
-      { property: "og:description", content: "כניסה לפאנל הניהול של בית הכנסת." },
+      { property: "og:title", content: "כניסה לאתר — בית הכנסת אושר של יהודי" },
+      { property: "og:description", content: "כניסה או הרשמה לחשבון מתפלל." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "robots", content: "noindex" },
@@ -36,9 +36,27 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/admin", replace: true });
+      if (data.session) navigate({ to: "/", replace: true });
     });
   }, [navigate]);
+
+  async function goHome() {
+    const { data } = await supabase.auth.getUser();
+    const uid = data.user?.id;
+    if (uid) {
+      const { data: roleRow } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", uid)
+        .eq("role", "admin")
+        .maybeSingle();
+      if (roleRow) {
+        navigate({ to: "/admin", replace: true });
+        return;
+      }
+    }
+    navigate({ to: "/", replace: true });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,12 +69,12 @@ function AuthPage() {
         return;
       }
       await supabase.rpc("claim_admin");
-      navigate({ to: "/admin", replace: true });
+      await goHome();
     } else {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { emailRedirectTo: `${window.location.origin}/admin` },
+        options: { emailRedirectTo: `${window.location.origin}/` },
       });
       setBusy(false);
       if (error) {
@@ -67,8 +85,7 @@ function AuthPage() {
         setPendingConfirm(true);
         return;
       }
-      await supabase.rpc("claim_admin");
-      navigate({ to: "/admin", replace: true });
+      await goHome();
     }
   }
 
@@ -76,9 +93,13 @@ function AuthPage() {
     <div className="min-h-screen">
       <SiteHeader />
       <main className="mx-auto max-w-md px-4 py-12">
-        <h1 className="text-center text-2xl font-bold">כניסת גבאי</h1>
+        <h1 className="text-center text-2xl font-bold">
+          {mode === "signin" ? "כניסה לחשבון" : "הרשמה למתפללים"}
+        </h1>
         <p className="mt-2 text-center text-sm text-muted-foreground">
-          אזור ניהול זמני התפילות והתכנים.
+          {mode === "signin"
+            ? "כניסה עם החשבון האישי שלך."
+            : "ההרשמה פותחת חשבון מתפלל רגיל. הרשאות ניהול ניתנות על ידי הגבאי בלבד."}
         </p>
 
         {pendingConfirm ? (
@@ -114,14 +135,14 @@ function AuthPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={busy}>
-              {busy ? "רגע…" : mode === "signin" ? "כניסה" : "יצירת חשבון גבאי"}
+              {busy ? "רגע…" : mode === "signin" ? "כניסה" : "הרשמה"}
             </Button>
             <button
               type="button"
               className="w-full text-sm text-muted-foreground underline-offset-4 hover:underline"
               onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
             >
-              {mode === "signin" ? "אין עדיין חשבון? יצירת חשבון גבאי" : "כבר יש חשבון? כניסה"}
+              {mode === "signin" ? "אין עדיין חשבון? הרשמה" : "כבר יש חשבון? כניסה"}
             </button>
           </form>
         )}
