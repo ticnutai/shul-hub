@@ -174,6 +174,27 @@ async function execute(name, sql) {
   console.log("Migration completed successfully");
 }
 
+async function history() {
+  const accessToken = await loginAdmin();
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/get_migration_history`, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: "{}",
+    signal: AbortSignal.timeout(30_000),
+  });
+  const body = await response.json().catch(() => []);
+  if (!response.ok) throw new Error(body.message || `Supabase returned HTTP ${response.status}`);
+  for (const item of body) {
+    console.log(
+      `${item.name}\t${item.success ? "success" : "failed"}\t${item.statements_count}\t${item.executed_at}`,
+    );
+  }
+}
+
 function migrationFile(relativePath) {
   const full = path.resolve(root, relativePath);
   const migrationsRoot = path.resolve(root, "supabase", "migrations") + path.sep;
@@ -185,8 +206,11 @@ function migrationFile(relativePath) {
 
 async function main() {
   const [command, value] = process.argv.slice(2);
+  if (command === "history") return history();
   if (command !== "file" || !value)
-    throw new Error("Usage: node scripts/direct-run.mjs file <supabase/migrations/file.sql>");
+    throw new Error(
+      "Usage: node scripts/direct-run.mjs history | file <supabase/migrations/file.sql>",
+    );
   const full = migrationFile(value);
   await execute(path.basename(full, ".sql"), fs.readFileSync(full, "utf8"));
 }

@@ -8,6 +8,8 @@ export type Announcement = Tables<"announcements">;
 export type Shiur = Tables<"shiurim">;
 export type ShiurCategory = Tables<"shiur_categories">;
 export type Chavruta = Tables<"chavrutot">;
+export type ChavrutaRequest = Tables<"chavruta_requests">;
+export type ApprovedChavrutaRequest = Omit<ChavrutaRequest, "share_contact" | "status">;
 export type AdminMessage = Tables<"admin_messages">;
 
 export const DAY_TYPES = [
@@ -97,6 +99,31 @@ export function useChavrutot() {
     queryKey: ["chavrutot"],
     queryFn: async () => {
       const { data, error } = await supabase.from("chavrutot").select("*").order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useApprovedChavrutaRequests() {
+  return useQuery({
+    queryKey: ["approved_chavruta_requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc("list_approved_chavruta_requests");
+      if (error) throw error;
+      return (data ?? []) as ApprovedChavrutaRequest[];
+    },
+  });
+}
+
+export function useAdminChavrutaRequests() {
+  return useQuery({
+    queryKey: ["admin_chavruta_requests"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("chavruta_requests")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },

@@ -9,6 +9,7 @@ import { AnnouncementsAdmin, ChavrutotAdmin, ShiurimAdmin } from "@/components/a
 import { MessagesAdmin } from "@/components/admin/MessagesAdmin";
 import { SettingsAdmin } from "@/components/admin/SettingsAdmin";
 import { UsersAdmin } from "@/components/admin/UsersAdmin";
+import { ChavrutaRequestsAdmin } from "@/components/admin/ChavrutaRequestsAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
 import { useAdminMessages } from "@/lib/data";
@@ -77,6 +78,7 @@ function AdminPage() {
               <TabsTrigger value="announcements">מודעות</TabsTrigger>
               <TabsTrigger value="shiurim">שיעורים</TabsTrigger>
               <TabsTrigger value="chavrutot">חברותות</TabsTrigger>
+              <TabsTrigger value="chavruta-requests">בקשות חברותא</TabsTrigger>
               <TabsTrigger value="messages">הודעות{unread > 0 ? ` (${unread})` : ""}</TabsTrigger>
               <TabsTrigger value="settings">הגדרות</TabsTrigger>
               <TabsTrigger value="users">משתמשים</TabsTrigger>
@@ -93,6 +95,9 @@ function AdminPage() {
             </TabsContent>
             <TabsContent value="chavrutot" className="mt-6">
               <ChavrutotAdmin />
+            </TabsContent>
+            <TabsContent value="chavruta-requests" className="mt-6">
+              <ChavrutaRequestsAdmin />
             </TabsContent>
             <TabsContent value="messages" className="mt-6">
               <MessagesAdmin />
