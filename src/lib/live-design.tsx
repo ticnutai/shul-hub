@@ -127,7 +127,7 @@ function escapeCss(value: string) {
 
 function exactSelector(element: HTMLElement) {
   if (element.id) return `#${escapeCss(element.id)}`;
-  const testId = element.dataset.testid;
+  const testId = element.dataset["testid"];
   if (testId) return `[data-testid="${testId.replace(/"/g, '\\"')}"]`;
   const parts: string[] = [];
   let current: HTMLElement | null = element;

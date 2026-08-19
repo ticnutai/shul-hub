@@ -138,7 +138,7 @@ export function TextSettingsDialog() {
               max={24}
               step={1}
               value={[draft.bodySize]}
-              onValueChange={([value]) => update({ bodySize: value })}
+              onValueChange={([value]) => update({ bodySize: value! })}
             />
           </Setting>
           <Setting label={`גודל כותרות — ${Math.round(draft.headingScale * 100)}%`}>
@@ -148,7 +148,7 @@ export function TextSettingsDialog() {
               max={1.4}
               step={0.05}
               value={[draft.headingScale]}
-              onValueChange={([value]) => update({ headingScale: value })}
+              onValueChange={([value]) => update({ headingScale: value! })}
             />
           </Setting>
           <Setting label={`ריווח שורות — ${draft.lineHeight.toFixed(2)}`}>
@@ -158,7 +158,7 @@ export function TextSettingsDialog() {
               max={2.2}
               step={0.05}
               value={[draft.lineHeight]}
-              onValueChange={([value]) => update({ lineHeight: value })}
+              onValueChange={([value]) => update({ lineHeight: value! })}
             />
           </Setting>
           <Setting label={`ריווח אותיות — ${draft.letterSpacing.toFixed(2)}`}>
@@ -168,7 +168,7 @@ export function TextSettingsDialog() {
               max={0.08}
               step={0.01}
               value={[draft.letterSpacing]}
-              onValueChange={([value]) => update({ letterSpacing: value })}
+              onValueChange={([value]) => update({ letterSpacing: value! })}
             />
           </Setting>
         </div>

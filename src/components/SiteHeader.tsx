@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextSettingsDialog } from "@/components/TextSettingsDialog";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { AccountButton } from "@/components/AccountButton";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,7 +86,10 @@ export function SiteHeader() {
 
         <NotificationCenter />
 
+        <AccountButton />
+
         <LiveDesignButton />
+
 
         <Button
           asChild
@@ -219,12 +224,12 @@ function ThemeMenu() {
 function colorsFor(theme: ThemeOption): ThemeColors {
   return (
     theme.colors ?? {
-      primary: theme.swatch[0],
-      gold: theme.swatch[1],
-      background: theme.swatch[2],
-      foreground: theme.swatch[0],
-      card: theme.swatch[2],
-      sidebar: theme.swatch[0],
+      primary: theme.swatch[0]!,
+      gold: theme.swatch[1]!,
+      background: theme.swatch[2]!,
+      foreground: theme.swatch[0]!,
+      card: theme.swatch[2]!,
+      sidebar: theme.swatch[0]!,
     }
   );
 }
@@ -237,7 +242,7 @@ function ThemeEditorDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { theme, themes, updateTheme, duplicateTheme } = useTheme();
-  const current = themes.find((item) => item.id === theme) ?? themes[0];
+  const current = themes.find((item) => item.id === theme) ?? themes[0]!;
   const [name, setName] = useState(current.name);
   const [colors, setColors] = useState<ThemeColors>(() => colorsFor(current));
 
