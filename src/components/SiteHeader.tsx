@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextSettingsDialog } from "@/components/TextSettingsDialog";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { AccountButton } from "@/components/AccountButton";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,7 +86,10 @@ export function SiteHeader() {
 
         <NotificationCenter />
 
+        <AccountButton />
+
         <LiveDesignButton />
+
 
         <Button
           asChild
