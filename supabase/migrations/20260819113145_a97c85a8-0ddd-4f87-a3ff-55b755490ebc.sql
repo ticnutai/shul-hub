@@ -1,4 +1,4 @@
-CREATE TABLE public.chavruta_requests (
+CREATE TABLE IF NOT EXISTS public.chavruta_requests (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name text NOT NULL,
   phone text NOT NULL DEFAULT '',
@@ -26,26 +26,32 @@ GRANT ALL ON public.chavruta_requests TO service_role;
 
 ALTER TABLE public.chavruta_requests ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "anyone can submit chavruta request" ON public.chavruta_requests;
 CREATE POLICY "anyone can submit chavruta request"
   ON public.chavruta_requests FOR INSERT TO anon, authenticated
   WITH CHECK (status = 'pending');
 
+DROP POLICY IF EXISTS "public reads approved chavruta requests" ON public.chavruta_requests;
 CREATE POLICY "public reads approved chavruta requests"
   ON public.chavruta_requests FOR SELECT TO anon, authenticated
   USING (status = 'approved');
 
+DROP POLICY IF EXISTS "admin reads all chavruta requests" ON public.chavruta_requests;
 CREATE POLICY "admin reads all chavruta requests"
   ON public.chavruta_requests FOR SELECT TO authenticated
   USING (public.is_admin());
 
+DROP POLICY IF EXISTS "admin updates chavruta requests" ON public.chavruta_requests;
 CREATE POLICY "admin updates chavruta requests"
   ON public.chavruta_requests FOR UPDATE TO authenticated
   USING (public.is_admin()) WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "admin deletes chavruta requests" ON public.chavruta_requests;
 CREATE POLICY "admin deletes chavruta requests"
   ON public.chavruta_requests FOR DELETE TO authenticated
   USING (public.is_admin());
 
+DROP TRIGGER IF EXISTS chavruta_requests_updated ON public.chavruta_requests;
 CREATE TRIGGER chavruta_requests_updated
   BEFORE UPDATE ON public.chavruta_requests
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();

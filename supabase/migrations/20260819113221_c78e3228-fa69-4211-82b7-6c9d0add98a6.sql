@@ -1,4 +1,4 @@
-DROP POLICY "public reads approved chavruta requests" ON public.chavruta_requests;
+DROP POLICY IF EXISTS "public reads approved chavruta requests" ON public.chavruta_requests;
 REVOKE SELECT ON public.chavruta_requests FROM anon;
 
 CREATE OR REPLACE FUNCTION public.list_approved_chavruta_requests()
