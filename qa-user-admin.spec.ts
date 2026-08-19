@@ -57,7 +57,9 @@ test("admin creates a regular user that can sign in, while anonymous creation is
       data: {},
     });
     expect(usersResponse.ok()).toBeTruthy();
-    const created = (await usersResponse.json()).find((user: { email: string }) => user.email === testEmail);
+    const created = (await usersResponse.json()).find(
+      (user: { email: string }) => user.email === testEmail,
+    );
     expect(created?.role).toBe("user");
     testUserId = created.id;
 
