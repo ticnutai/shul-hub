@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TextSettingsDialog } from "@/components/TextSettingsDialog";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { AccountButton } from "@/components/AccountButton";
+import { MigrationCredentialsDialog } from "@/components/MigrationCredentialsDialog";
 
 import {
   DropdownMenu,
@@ -87,6 +88,8 @@ export function SiteHeader() {
         <NotificationCenter />
 
         <AccountButton />
+
+        <MigrationCredentialsDialog />
 
         <LiveDesignButton />
 
