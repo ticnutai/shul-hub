@@ -541,6 +541,22 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: never; Returns: boolean }
+      list_approved_chavruta_requests: {
+        Args: never
+        Returns: {
+          availability: string
+          created_at: string
+          email: string
+          id: string
+          intent: string
+          level: string
+          name: string
+          notes: string
+          phone: string
+          study_format: string
+          topic: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "gabbai" | "user"
