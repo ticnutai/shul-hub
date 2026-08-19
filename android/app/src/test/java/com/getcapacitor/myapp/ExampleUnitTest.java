@@ -1,4 +1,4 @@
-package com.getcapacitor.myapp;
+package com.ticnutai.bsr3synagogue;
 
 import static org.junit.Assert.*;
 
