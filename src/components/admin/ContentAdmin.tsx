@@ -201,7 +201,7 @@ export function ShiurimAdmin() {
     const to = ordered.findIndex((item) => item.id === targetId);
     if (from < 0 || to < 0) return;
     const [moved] = ordered.splice(from, 1);
-    ordered.splice(to, 0, moved);
+    ordered.splice(to, 0, moved!);
     const results = await Promise.all(
       ordered.map((item, index) =>
         supabase
