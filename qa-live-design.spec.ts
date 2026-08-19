@@ -121,3 +121,48 @@ test("large editor position and outer size survive reload", async ({ page }) => 
   expect(restored!.x).toBeGreaterThan(initial!.x + 50);
   expect(restored!.y).toBeGreaterThan(initial!.y + 20);
 });
+
+test("mobile color picker stays above the live editor and inside the viewport", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseUrl}/`);
+  await enable(page);
+
+  const target = page.locator("header").getByText("בית הכנסת אושר של יהודי", { exact: true });
+  await target.click();
+
+  const editor = page.getByTestId("live-design-editor");
+  const editorBox = await editor.boundingBox();
+  expect(editorBox).not.toBeNull();
+  expect(editorBox!.x).toBeGreaterThanOrEqual(0);
+  expect(editorBox!.x + editorBox!.width).toBeLessThanOrEqual(390);
+  expect(editorBox!.y + editorBox!.height).toBeLessThanOrEqual(844);
+  expect(editorBox!.height).toBeGreaterThanOrEqual(360);
+
+  await editor.getByRole("button", { name: "בחירת צבע טקסט" }).click();
+  const picker = page.getByTestId("visual-color-picker");
+  await expect(picker).toBeVisible();
+
+  const pickerBox = await picker.boundingBox();
+  expect(pickerBox).not.toBeNull();
+  expect(pickerBox!.x).toBeGreaterThanOrEqual(0);
+  expect(pickerBox!.y).toBeGreaterThanOrEqual(0);
+  expect(pickerBox!.x + pickerBox!.width).toBeLessThanOrEqual(390);
+  expect(pickerBox!.y + pickerBox!.height).toBeLessThanOrEqual(844);
+
+  const layers = await page.evaluate(() => ({
+    editor: Number(
+      getComputedStyle(document.querySelector('[data-testid="live-design-editor"]')!).zIndex,
+    ),
+    picker: Number(
+      getComputedStyle(document.querySelector('[data-testid="visual-color-picker"]')!).zIndex,
+    ),
+  }));
+  expect(layers.picker).toBeGreaterThan(layers.editor);
+
+  await picker.getByRole("button", { name: "בחירת הצבע #dc2626" }).click();
+  await expect
+    .poll(() => target.evaluate((node) => getComputedStyle(node).color))
+    .toBe("rgb(220, 38, 38)");
+});

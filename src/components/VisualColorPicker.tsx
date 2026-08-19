@@ -90,7 +90,7 @@ export function VisualColorPicker({
   return (
     <div className="space-y-1.5">
       <span className="text-sm font-medium">{label}</span>
-      <Popover>
+      <Popover modal>
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -108,9 +108,12 @@ export function VisualColorPicker({
         </PopoverTrigger>
         <PopoverContent
           data-design-mode-ui
+          data-testid="visual-color-picker"
           dir="rtl"
           align="start"
-          className="max-h-[70dvh] w-[min(22rem,calc(100vw-1rem))] space-y-4 overflow-y-auto rounded-2xl"
+          sideOffset={8}
+          collisionPadding={8}
+          className="z-[220] max-h-[min(70dvh,34rem)] w-[min(22rem,calc(100vw-1rem))] space-y-4 overflow-y-auto overscroll-contain rounded-2xl shadow-2xl max-sm:max-h-[52dvh] max-sm:p-3"
         >
           <div className="flex items-center gap-3">
             <label className="grid cursor-pointer place-items-center gap-1 text-xs font-medium">
