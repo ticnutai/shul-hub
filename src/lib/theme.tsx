@@ -152,7 +152,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           ? data.preferences["theme"]
           : null;
 
-      if (cloudTheme && data.preferences_updated_at > local.updatedAt) {
+      if (cloudTheme && data && data.preferences_updated_at > local.updatedAt) {
         const snapshot = { theme: cloudTheme, updatedAt: data.preferences_updated_at };
         writeLocalSnapshot(snapshot);
         setThemeState(cloudTheme);
@@ -186,7 +186,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const root = document.documentElement;
     THEMES.forEach((t) => root.classList.remove(`theme-${t.id}`));
-    const selected = themes.find((item) => item.id === theme) ?? themes[0];
+    const selected = themes.find((item) => item.id === theme) ?? themes[0]!;
     root.classList.add(`theme-${selected.baseId}`);
     const variables: Array<keyof ThemeColors> = [
       "primary",
@@ -197,7 +197,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       "sidebar",
     ];
     variables.forEach((name) => {
-      if (selected.colors?.[name]) root.style.setProperty(`--${name}`, selected.colors[name]);
+      if (selected.colors?.[name]) root.style.setProperty(`--${name}`, selected.colors[name]!);
       else root.style.removeProperty(`--${name}`);
     });
     if (selected.colors) {
@@ -257,7 +257,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   const duplicateTheme = (id: ThemeId, name: string, colors: ThemeColors) => {
-    const source = themes.find((item) => item.id === id) ?? themes[0];
+    const source = themes.find((item) => item.id === id) ?? themes[0]!;
     const nextId = `custom-${Date.now().toString(36)}`;
     const copy: ThemeOption = {
       id: nextId,
