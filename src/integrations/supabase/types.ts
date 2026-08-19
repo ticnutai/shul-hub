@@ -80,6 +80,57 @@ export type Database = {
         }
         Relationships: []
       }
+      chavruta_requests: {
+        Row: {
+          availability: string
+          created_at: string
+          email: string
+          id: string
+          intent: string
+          level: string
+          name: string
+          notes: string
+          phone: string
+          share_contact: boolean
+          status: string
+          study_format: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          availability?: string
+          created_at?: string
+          email?: string
+          id?: string
+          intent?: string
+          level?: string
+          name: string
+          notes?: string
+          phone?: string
+          share_contact?: boolean
+          status?: string
+          study_format?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          availability?: string
+          created_at?: string
+          email?: string
+          id?: string
+          intent?: string
+          level?: string
+          name?: string
+          notes?: string
+          phone?: string
+          share_contact?: boolean
+          status?: string
+          study_format?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chavrutot: {
         Row: {
           active: boolean
