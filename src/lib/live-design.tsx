@@ -693,21 +693,6 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                         </select>
                       </div>
                     </div>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
-                      <select
-                        aria-label="היקף שמירה"
-                        className="h-9 rounded-md border bg-background px-3 text-sm"
-                        value={scope}
-                        onChange={(event) => setScope(event.target.value as Scope)}
-                      >
-                        <option value="element">רכיב מדויק</option>
-                        <option value="component">רכיבים תואמים</option>
-                        <option value="global">סוג גלובלי</option>
-                      </select>
-                      <Button onClick={save}>
-                        <Save className="size-4" /> שמירה
-                      </Button>
-                    </div>
                   </>
                 )}
                 <div className="mt-5 flex items-center justify-between border-t pt-4">
