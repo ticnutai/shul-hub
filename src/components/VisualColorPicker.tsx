@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { BookmarkPlus, Check, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const SAVED_COLORS_KEY = "shul-saved-colors-v1";
 const PRESET_COLORS = [
@@ -53,10 +53,12 @@ export function VisualColorPicker({
   label,
   value,
   onChange,
+  onConfirm,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onConfirm?: (() => void) | undefined;
 }) {
   const selected = toHex(value);
   const [savedColors, setSavedColors] = useState(readSavedColors);
@@ -144,6 +146,11 @@ export function VisualColorPicker({
               </p>
             )}
           </div>
+          <PopoverClose asChild>
+            <Button type="button" className="w-full" onClick={() => onConfirm?.()}>
+              <Check className="size-4" /> אישור
+            </Button>
+          </PopoverClose>
         </PopoverContent>
       </Popover>
     </div>
