@@ -58,10 +58,12 @@ export function VisualColorPicker({
   label,
   value,
   onChange,
+  onConfirm,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onConfirm?: () => void;
 }) {
   const selected = toHex(value);
   const [savedColors, setSavedColors] = useState(readSavedColors);
@@ -150,7 +152,7 @@ export function VisualColorPicker({
             )}
           </div>
           <PopoverClose asChild>
-            <Button type="button" className="w-full">
+            <Button type="button" className="w-full" onClick={() => onConfirm?.()}>
               <Check className="size-4" /> אישור
             </Button>
           </PopoverClose>
