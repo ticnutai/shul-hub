@@ -600,16 +600,19 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                         label="צבע טקסט"
                         value={draft.color}
                         onChange={(value) => setDraft({ ...draft, color: value })}
+                        onConfirm={save}
                       />
                       <ColorField
                         label="רקע"
                         value={draft.backgroundColor}
                         onChange={(value) => setDraft({ ...draft, backgroundColor: value })}
+                        onConfirm={save}
                       />
                       <ColorField
                         label="צבע מסגרת"
                         value={draft.borderColor}
                         onChange={(value) => setDraft({ ...draft, borderColor: value })}
+                        onConfirm={save}
                       />
                       <Field
                         label="משפחת גופן"
@@ -743,12 +746,16 @@ function ColorField({
   label,
   value,
   onChange,
+  onConfirm,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onConfirm?: () => void;
 }) {
-  return <VisualColorPicker label={label} value={value} onChange={onChange} />;
+  return (
+    <VisualColorPicker label={label} value={value} onChange={onChange} onConfirm={onConfirm} />
+  );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
