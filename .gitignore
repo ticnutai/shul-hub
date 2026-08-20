@@ -44,3 +44,5 @@ shul-mobile-*.png
 *.njsproj
 *.sln
 *.sw?
+play-store-assets/*-raw.png
+play-store-assets/*-1080x1920.png
