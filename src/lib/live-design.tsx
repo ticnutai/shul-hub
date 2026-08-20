@@ -106,14 +106,17 @@ function loadLayout(): Layout {
 }
 
 function cssText(css: Record<string, string>) {
-  return Object.entries(css)
-    .filter(([, value]) => value.trim())
+  const entries = Object.entries(css).filter(([, value]) => value.trim());
+  // A solid background must cover the whole element, so any inherited gradient/image is cleared.
+  if (entries.some(([key]) => key === "backgroundColor")) entries.push(["backgroundImage", "none"]);
+  return entries
     .map(
       ([key, value]) =>
         `${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}:${value} !important`,
     )
     .join(";");
 }
+
 
 function persistedRules(overrides: Override[]) {
   return overrides.map((item) => `${item.selector}{${cssText(item.css)}}`).join("\n");
