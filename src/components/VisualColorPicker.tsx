@@ -144,6 +144,11 @@ export function VisualColorPicker({
               </p>
             )}
           </div>
+          <PopoverClose asChild>
+            <Button type="button" className="w-full">
+              <Check className="size-4" /> אישור
+            </Button>
+          </PopoverClose>
         </PopoverContent>
       </Popover>
     </div>
