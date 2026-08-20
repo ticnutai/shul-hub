@@ -106,14 +106,17 @@ function loadLayout(): Layout {
 }
 
 function cssText(css: Record<string, string>) {
-  return Object.entries(css)
-    .filter(([, value]) => value.trim())
+  const entries = Object.entries(css).filter(([, value]) => value.trim());
+  // A solid background must cover the whole element, so any inherited gradient/image is cleared.
+  if (entries.some(([key]) => key === "backgroundColor")) entries.push(["backgroundImage", "none"]);
+  return entries
     .map(
       ([key, value]) =>
         `${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}:${value} !important`,
     )
     .join(";");
 }
+
 
 function persistedRules(overrides: Override[]) {
   return overrides.map((item) => `${item.selector}{${cssText(item.css)}}`).join("\n");
@@ -531,11 +534,55 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                   <X className="size-4" />
                 </Button>
               </div>
+              <div className="flex flex-wrap items-center gap-2 border-b bg-background px-3 py-2">
+                <div
+                  role="tablist"
+                  aria-label="היקף שמירה"
+                  className="flex flex-1 gap-1 rounded-lg bg-muted p-1"
+                >
+                  {(
+                    [
+                      ["element", "רכיב מדויק"],
+                      ["component", "רכיבים תואמים"],
+                      ["global", "סוג גלובלי"],
+                    ] as [Scope, string][]
+                  ).map(([id, text]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="tab"
+                      aria-selected={scope === id}
+                      onClick={() => setScope(id)}
+                      className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                        scope === id
+                          ? "bg-card text-card-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {text}
+                    </button>
+                  ))}
+                </div>
+                <select
+                  aria-label="היקף שמירה"
+                  className="sr-only"
+                  value={scope}
+                  onChange={(event) => setScope(event.target.value as Scope)}
+                >
+                  <option value="element">רכיב מדויק</option>
+                  <option value="component">רכיבים תואמים</option>
+                  <option value="global">סוג גלובלי</option>
+                </select>
+                <Button size="sm" disabled={!selected} onClick={save}>
+                  <Save className="size-4" /> שמירה
+                </Button>
+              </div>
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
                 <p className="mb-3 text-xs text-muted-foreground">
                   לחץ על רכיב בעמוד כדי לערוך. השהיה משחררת ניווט רגיל; Alt+לחיצה מפעילה רכיב פעם
                   אחת.
                 </p>
+
                 {!selected ? (
                   <div className="grid min-h-40 place-items-center rounded-xl border border-dashed text-center text-sm text-muted-foreground">
                     {paused ? "העורך מושהה — לחץ המשך בחירה" : "בחר רכיב כלשהו בעמוד"}
@@ -553,16 +600,19 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                         label="צבע טקסט"
                         value={draft.color}
                         onChange={(value) => setDraft({ ...draft, color: value })}
+                        onConfirm={save}
                       />
                       <ColorField
                         label="רקע"
                         value={draft.backgroundColor}
                         onChange={(value) => setDraft({ ...draft, backgroundColor: value })}
+                        onConfirm={save}
                       />
                       <ColorField
                         label="צבע מסגרת"
                         value={draft.borderColor}
                         onChange={(value) => setDraft({ ...draft, borderColor: value })}
+                        onConfirm={save}
                       />
                       <Field
                         label="משפחת גופן"
@@ -646,21 +696,6 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                         </select>
                       </div>
                     </div>
-                    <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
-                      <select
-                        aria-label="היקף שמירה"
-                        className="h-9 rounded-md border bg-background px-3 text-sm"
-                        value={scope}
-                        onChange={(event) => setScope(event.target.value as Scope)}
-                      >
-                        <option value="element">רכיב מדויק</option>
-                        <option value="component">רכיבים תואמים</option>
-                        <option value="global">סוג גלובלי</option>
-                      </select>
-                      <Button onClick={save}>
-                        <Save className="size-4" /> שמירה
-                      </Button>
-                    </div>
                   </>
                 )}
                 <div className="mt-5 flex items-center justify-between border-t pt-4">
@@ -711,12 +746,16 @@ function ColorField({
   label,
   value,
   onChange,
+  onConfirm,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onConfirm?: (() => void) | undefined;
 }) {
-  return <VisualColorPicker label={label} value={value} onChange={onChange} />;
+  return (
+    <VisualColorPicker label={label} value={value} onChange={onChange} onConfirm={onConfirm} />
+  );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
