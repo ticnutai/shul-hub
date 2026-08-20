@@ -8,6 +8,8 @@ import { AnnouncementCard } from "@/components/AnnouncementCard";
 import { useAnnouncements, useMinyanim, useSettings } from "@/lib/data";
 import { DAY_TYPE_LABEL, dayTypeFor, resolveDay, zmanimFor, type DayType } from "@/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@/lib/zmanim";
+import { InlineEdit } from "@/components/InlineEdit";
+import { QuickAddButton } from "@/components/QuickAddButton";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -75,10 +77,32 @@ function HomePage() {
       <section className="hero-surface">
         <div className="mx-auto max-w-5xl px-4 py-14 text-center sm:py-16">
           <p className="text-sm text-gold sm:text-base">
-            {settings?.subtitle || "קהילה, תורה ותפילה"}
+            {settings?.id ? (
+              <InlineEdit
+                table="settings"
+                id={settings.id}
+                field="subtitle"
+                value={settings.subtitle}
+                queryKey="settings"
+                display={settings.subtitle || "קהילה, תורה ותפילה"}
+              />
+            ) : (
+              settings?.subtitle || "קהילה, תורה ותפילה"
+            )}
           </p>
           <h1 className="mt-3 text-4xl font-bold text-primary-foreground sm:text-5xl">
-            {settings?.name ?? "בית הכנסת"}
+            {settings?.id ? (
+              <InlineEdit
+                table="settings"
+                id={settings.id}
+                field="name"
+                value={settings.name}
+                queryKey="settings"
+                display={settings.name || "בית הכנסת"}
+              />
+            ) : (
+              (settings?.name ?? "בית הכנסת")
+            )}
           </h1>
           <div className="gold-rule mx-auto mt-4 h-px w-40" />
           <p className="mt-4 flex items-center justify-center gap-2 text-sm opacity-90">
@@ -147,7 +171,15 @@ function HomePage() {
           {rows.map(({ minyan, time, source }) => (
             <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{minyan.label}</p>
+                <p className="truncate font-medium">
+                  <InlineEdit
+                    table="minyanim"
+                    id={minyan.id}
+                    field="label"
+                    value={minyan.label}
+                    queryKey="minyanim"
+                  />
+                </p>
                 <p className="truncate text-xs text-muted-foreground">
                   {source}
                   {minyan.room ? ` · ${minyan.room}` : ""}
@@ -155,7 +187,20 @@ function HomePage() {
                 </p>
               </div>
               <span className="font-display text-2xl font-semibold tabular-nums text-primary">
-                {time}
+                {minyan.time_mode === "fixed" ? (
+                  <InlineEdit
+                    table="minyanim"
+                    id={minyan.id}
+                    field="fixed_time"
+                    value={minyan.fixed_time ? minyan.fixed_time.slice(0, 5) : ""}
+                    as="time"
+                    display={time}
+                    queryKey="minyanim"
+                    inputClassName="text-2xl"
+                  />
+                ) : (
+                  time
+                )}
               </span>
             </div>
           ))}
@@ -193,6 +238,7 @@ function HomePage() {
       </main>
 
       <SiteFooter />
+      <QuickAddButton />
     </div>
   );
 }

@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { ThemeProvider } from "../lib/theme";
 import { TextSettingsProvider } from "../lib/text-settings";
 import { LiveDesignProvider } from "../lib/live-design";
+import { EditModeProvider } from "../lib/edit-mode";
+import { EditModeToggle } from "../components/InlineEdit";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
@@ -133,9 +135,12 @@ function RootComponent() {
       <ThemeProvider>
         <LiveDesignProvider>
           <TextSettingsProvider>
-            {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-            <Outlet />
-            <Toaster position="top-center" richColors />
+            <EditModeProvider>
+              {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+              <Outlet />
+              <EditModeToggle />
+              <Toaster position="top-center" richColors />
+            </EditModeProvider>
           </TextSettingsProvider>
         </LiveDesignProvider>
       </ThemeProvider>

@@ -77,6 +77,11 @@ test("request dialog fits a mobile RTL viewport", async ({ page }) => {
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog).toHaveAttribute("dir", "rtl");
+  await dialog.evaluate((element) =>
+    element.getAnimations().length
+      ? Promise.all(element.getAnimations().map((animation) => animation.finished))
+      : Promise.resolve(),
+  );
   const box = await dialog.boundingBox();
   expect(box).not.toBeNull();
   expect(box!.x).toBeGreaterThanOrEqual(0);

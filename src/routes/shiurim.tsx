@@ -3,6 +3,8 @@ import { BookOpen, Clock, MapPin, User } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { DAYS_HE, useShiurCategories, useShiurim } from "@/lib/data";
+import { InlineEdit } from "@/components/InlineEdit";
+import { useEditMode } from "@/lib/edit-mode";
 
 export const Route = createFileRoute("/shiurim")({
   head: () => ({
@@ -26,6 +28,7 @@ export const Route = createFileRoute("/shiurim")({
 });
 
 function ShiurimPage() {
+  const { editMode } = useEditMode();
   const { data = [], isLoading } = useShiurim();
   const { data: categories = [] } = useShiurCategories();
   const active = data.filter((s) => s.active);
@@ -76,28 +79,69 @@ function ShiurimPage() {
                         ? "בכל יום"
                         : `יום ${DAYS_HE[s.day_of_week] ?? ""}`}
                     </div>
-                    <h2 className="mt-2 text-lg font-semibold">{s.title}</h2>
+                    <h2 className="mt-2 text-lg font-semibold">
+                      <InlineEdit
+                        table="shiurim"
+                        id={s.id}
+                        field="title"
+                        value={s.title}
+                        queryKey="shiurim"
+                      />
+                    </h2>
                     <dl className="mt-2 space-y-1 text-sm text-muted-foreground">
-                      {s.teacher && (
+                      {(s.teacher || editMode) && (
                         <div className="flex items-center gap-2">
                           <User className="size-4" />
-                          {s.teacher}
+                          <InlineEdit
+                            table="shiurim"
+                            id={s.id}
+                            field="teacher"
+                            value={s.teacher}
+                            queryKey="shiurim"
+                            placeholder="שם המגיד"
+                          />
                         </div>
                       )}
-                      {s.time_text && (
+                      {(s.time_text || editMode) && (
                         <div className="flex items-center gap-2">
                           <Clock className="size-4" />
-                          {s.time_text}
+                          <InlineEdit
+                            table="shiurim"
+                            id={s.id}
+                            field="time_text"
+                            value={s.time_text}
+                            queryKey="shiurim"
+                            placeholder="שעה"
+                          />
                         </div>
                       )}
-                      {s.location && (
+                      {(s.location || editMode) && (
                         <div className="flex items-center gap-2">
                           <MapPin className="size-4" />
-                          {s.location}
+                          <InlineEdit
+                            table="shiurim"
+                            id={s.id}
+                            field="location"
+                            value={s.location}
+                            queryKey="shiurim"
+                            placeholder="מיקום"
+                          />
                         </div>
                       )}
                     </dl>
-                    {s.description && <p className="mt-3 text-sm">{s.description}</p>}
+                    {(s.description || editMode) && (
+                      <p className="mt-3 text-sm">
+                        <InlineEdit
+                          table="shiurim"
+                          id={s.id}
+                          field="description"
+                          value={s.description}
+                          as="textarea"
+                          queryKey="shiurim"
+                          placeholder="תיאור"
+                        />
+                      </p>
+                    )}
                   </article>
                 ))}
               </div>

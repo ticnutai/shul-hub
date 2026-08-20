@@ -4,6 +4,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ChavrutaRequestDialog } from "@/components/ChavrutaRequestDialog";
 import { useApprovedChavrutaRequests, useChavrutot } from "@/lib/data";
+import { InlineEdit } from "@/components/InlineEdit";
+import { useEditMode } from "@/lib/edit-mode";
 
 export const Route = createFileRoute("/chavrutot")({
   head: () => ({
@@ -27,6 +29,7 @@ export const Route = createFileRoute("/chavrutot")({
 });
 
 function ChavrutotPage() {
+  const { editMode } = useEditMode();
   const { data = [], isLoading } = useChavrutot();
   const { data: requests = [], isLoading: requestsLoading } = useApprovedChavrutaRequests();
   const active = data.filter((c) => c.active);
@@ -51,7 +54,15 @@ function ChavrutotPage() {
           {active.map((c) => (
             <article key={c.id} className="card-elev p-4">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">{c.topic}</h2>
+                <h2 className="text-lg font-semibold">
+                  <InlineEdit
+                    table="chavrutot"
+                    id={c.id}
+                    field="topic"
+                    value={c.topic}
+                    queryKey="chavrutot"
+                  />
+                </h2>
                 {c.looking_for_partner && (
                   <span className="rounded-full bg-gold px-2 py-0.5 text-[11px] font-medium text-gold-foreground">
                     מחפשים חברותא
@@ -59,22 +70,43 @@ function ChavrutotPage() {
                 )}
               </div>
               <dl className="mt-2 space-y-1 text-sm text-muted-foreground">
-                {c.partners && (
+                {(c.partners || editMode) && (
                   <div className="flex items-center gap-2">
                     <Users className="size-4" />
-                    {c.partners}
+                    <InlineEdit
+                      table="chavrutot"
+                      id={c.id}
+                      field="partners"
+                      value={c.partners}
+                      queryKey="chavrutot"
+                      placeholder="שמות הלומדים"
+                    />
                   </div>
                 )}
-                {c.time_text && (
+                {(c.time_text || editMode) && (
                   <div className="flex items-center gap-2">
                     <Clock className="size-4" />
-                    {c.time_text}
+                    <InlineEdit
+                      table="chavrutot"
+                      id={c.id}
+                      field="time_text"
+                      value={c.time_text}
+                      queryKey="chavrutot"
+                      placeholder="זמן הלימוד"
+                    />
                   </div>
                 )}
-                {c.contact && (
+                {(c.contact || editMode) && (
                   <div className="flex items-center gap-2">
                     <Phone className="size-4" />
-                    {c.contact}
+                    <InlineEdit
+                      table="chavrutot"
+                      id={c.id}
+                      field="contact"
+                      value={c.contact}
+                      queryKey="chavrutot"
+                      placeholder="טלפון / איש קשר"
+                    />
                   </div>
                 )}
               </dl>

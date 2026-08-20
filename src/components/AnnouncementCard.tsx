@@ -1,5 +1,7 @@
 import { PartyPopper, Megaphone, Flower2 } from "lucide-react";
 import type { Announcement } from "@/lib/data";
+import { InlineEdit } from "@/components/InlineEdit";
+import { useEditMode } from "@/lib/edit-mode";
 
 export const ANNOUNCEMENT_KINDS = [
   { id: "mazal_tov", label: "מזל טוב" },
@@ -8,6 +10,7 @@ export const ANNOUNCEMENT_KINDS = [
 ] as const;
 
 export function AnnouncementCard({ announcement }: { announcement: Announcement }) {
+  const { editMode } = useEditMode();
   const Icon =
     announcement.kind === "mazal_tov"
       ? PartyPopper
@@ -30,10 +33,26 @@ export function AnnouncementCard({ announcement }: { announcement: Announcement 
           </span>
         )}
       </div>
-      <h3 className="mt-3 text-lg font-semibold">{announcement.title}</h3>
-      {announcement.body && (
+      <h3 className="mt-3 text-lg font-semibold">
+        <InlineEdit
+          table="announcements"
+          id={announcement.id}
+          field="title"
+          value={announcement.title}
+          queryKey="announcements"
+        />
+      </h3>
+      {(announcement.body || editMode) && (
         <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
-          {announcement.body}
+          <InlineEdit
+            table="announcements"
+            id={announcement.id}
+            field="body"
+            value={announcement.body}
+            as="textarea"
+            queryKey="announcements"
+            placeholder="לחץ להוספת תוכן"
+          />
         </p>
       )}
     </article>

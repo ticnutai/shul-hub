@@ -187,6 +187,11 @@ test.describe("mobile interactive states", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog).toHaveCSS("direction", "rtl");
+    await dialog.evaluate((element) =>
+      element.getAnimations().length
+        ? Promise.all(element.getAnimations().map((animation) => animation.finished))
+        : Promise.resolve(),
+    );
     const dialogBox = await dialog.boundingBox();
     expect(dialogBox).not.toBeNull();
     expect(dialogBox!.x).toBeGreaterThanOrEqual(0);

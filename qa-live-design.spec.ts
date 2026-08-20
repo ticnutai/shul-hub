@@ -61,7 +61,7 @@ test("live preview, all save scopes, undo, redo and clear persist correctly", as
   for (const scope of ["element", "component", "global"] as const) {
     await heading.click();
     await page.getByLabel("גודל גופן").fill("31px");
-    await page.getByLabel("היקף שמירה").selectOption(scope);
+    await page.getByRole("combobox", { name: "היקף שמירה" }).selectOption(scope);
     await page.getByRole("button", { name: "שמירה", exact: true }).click();
   }
   const savedScopes = await page.evaluate(() =>
