@@ -751,7 +751,7 @@ function ColorField({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  onConfirm?: () => void;
+  onConfirm?: (() => void) | undefined;
 }) {
   return (
     <VisualColorPicker label={label} value={value} onChange={onChange} onConfirm={onConfirm} />

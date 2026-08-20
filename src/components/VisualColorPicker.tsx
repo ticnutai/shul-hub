@@ -63,7 +63,7 @@ export function VisualColorPicker({
   label: string;
   value: string;
   onChange: (value: string) => void;
-  onConfirm?: () => void;
+  onConfirm?: (() => void) | undefined;
 }) {
   const selected = toHex(value);
   const [savedColors, setSavedColors] = useState(readSavedColors);
