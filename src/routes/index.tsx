@@ -49,10 +49,27 @@ function HomePage() {
   const { data: minyanim = [], isLoading } = useMinyanim();
   const { data: minyanCategories = [], isLoading: categoriesLoading } = useMinyanCategories();
   const { data: announcements = [] } = useAnnouncements();
+  const { data: widgets = [] } = useHomeWidgets();
+
+  const sectionOrder = useMemo<string[]>(() => {
+    const sections = widgets.filter((w) => w.kind === "section");
+    if (sections.length === 0) return ["minyanim", "zmanim", "announcements"];
+    return sections.filter((w) => w.visible).map((w) => w.key);
+  }, [widgets]);
+
+  const shownZmanim = useMemo<SolarEvent[]>(() => {
+    const items = widgets.filter((w) => w.kind === "zman");
+    if (items.length === 0) return SHOWN_ZMANIM;
+    return items
+      .filter((w) => w.visible)
+      .map((w) => w.key.replace(/^zman_/, "") as SolarEvent)
+      .filter((z) => SHOWN_ZMANIM.includes(z));
+  }, [widgets]);
 
   const today = useMemo(() => new Date(), []);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [prayer, setPrayer] = useState("shacharit");
+
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
   const todayKey = new Intl.DateTimeFormat("en-CA", {
