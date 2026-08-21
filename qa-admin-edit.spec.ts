@@ -82,3 +82,58 @@ test("public schedule renders database-driven minyan categories", async ({ page 
   await expect(categories.getByRole("button", { name: "ימות החול" })).toBeVisible();
   await expect(page.getByRole("group", { name: "סוג תפילה" })).toBeVisible();
 });
+
+test("manager can drag minyan rows and category tabs and persist their order", async ({ page }) => {
+  test.skip(!email || !password, "Admin credentials are required");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto(`${baseUrl}/auth`);
+  await page.getByLabel("אימייל").fill(email!);
+  await page.getByLabel("סיסמה").fill(password!);
+  await page.getByRole("button", { name: "כניסה", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+
+  const rows = page.locator('[data-reorder-kind="minyan"]');
+  await expect(rows).toHaveCount(4);
+  const firstRowId = await rows.nth(0).getAttribute("data-reorder-id");
+  const secondRowId = await rows.nth(1).getAttribute("data-reorder-id");
+  async function pointerDrag(
+    handle: import("@playwright/test").Locator,
+    target: import("@playwright/test").Locator,
+  ) {
+    const handleBox = await handle.boundingBox();
+    const targetBox = await target.boundingBox();
+    await page.mouse.move(
+      handleBox!.x + handleBox!.width / 2,
+      handleBox!.y + handleBox!.height / 2,
+    );
+    await page.mouse.down();
+    await page.mouse.move(
+      targetBox!.x + targetBox!.width / 2,
+      targetBox!.y + targetBox!.height / 2,
+      { steps: 8 },
+    );
+    await page.mouse.up();
+  }
+
+  await pointerDrag(rows.nth(0).getByRole("button", { name: /^גרירת המניין / }), rows.nth(1));
+  await expect(page.getByText("סדר המניינים נשמר")).toBeVisible();
+  await expect(rows.nth(0)).toHaveAttribute("data-reorder-id", secondRowId!);
+  await pointerDrag(rows.nth(0).getByRole("button", { name: /^גרירת המניין / }), rows.nth(1));
+  await expect(rows.nth(0)).toHaveAttribute("data-reorder-id", firstRowId!);
+
+  const categories = page.locator('[data-reorder-kind="category"]');
+  await expect(categories).toHaveCount(2);
+  const firstCategoryId = await categories.nth(0).getAttribute("data-reorder-id");
+  const secondCategoryId = await categories.nth(1).getAttribute("data-reorder-id");
+  await pointerDrag(
+    categories.nth(0).getByRole("button", { name: /^גרירת הטאב / }),
+    categories.nth(1),
+  );
+  await expect(page.getByText("סדר הטאבים נשמר")).toBeVisible();
+  await expect(categories.nth(0)).toHaveAttribute("data-reorder-id", secondCategoryId!);
+  await pointerDrag(
+    categories.nth(0).getByRole("button", { name: /^גרירת הטאב / }),
+    categories.nth(1),
+  );
+  await expect(categories.nth(0)).toHaveAttribute("data-reorder-id", firstCategoryId!);
+});

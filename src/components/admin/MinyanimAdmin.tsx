@@ -1,5 +1,7 @@
-import { useRef, useState } from "react";
-import { CalendarRange, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { CalendarRange, GripVertical, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +25,7 @@ import { useDeleteRow, useSaveRow } from "@/lib/admin";
 import { RELATIVE_LABELS, resolveMinyan, zmanimFor } from "@/lib/minyan-time";
 import { RELATIVE_OPTIONS } from "@/lib/zmanim";
 import { InlineEdit } from "@/components/InlineEdit";
+import { supabase } from "@/integrations/supabase/client";
 
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
@@ -51,6 +54,7 @@ export function MinyanimAdmin() {
   const { data: minyanim = [] } = useMinyanim();
   const { data: categories = [] } = useMinyanCategories();
   const { data: settings } = useSettings();
+  const queryClient = useQueryClient();
   const save = useSaveRow("minyanim", "minyanim");
   const remove = useDeleteRow("minyanim", "minyanim");
   const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
@@ -58,6 +62,10 @@ export function MinyanimAdmin() {
   const [prayer, setPrayer] = useState<string>("shacharit");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(null);
+  const [draggedMinyanId, setDraggedMinyanId] = useState<string | null>(null);
+  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const draggedMinyanRef = useRef<string | null>(null);
+  const draggedCategoryRef = useRef<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const selectedCategory =
@@ -111,6 +119,70 @@ export function MinyanimAdmin() {
     });
   }
 
+  async function persistOrder(
+    table: "minyanim" | "minyan_categories",
+    queryKey: "minyanim" | "minyan_categories",
+    items: { id: string }[],
+    draggedId: string | null,
+    targetId: string,
+    successMessage: string,
+  ) {
+    if (!draggedId || draggedId === targetId) return;
+    const ordered = [...items];
+    const from = ordered.findIndex((item) => item.id === draggedId);
+    const to = ordered.findIndex((item) => item.id === targetId);
+    if (from < 0 || to < 0) return;
+    const [moved] = ordered.splice(from, 1);
+    ordered.splice(to, 0, moved!);
+    const results = await Promise.all(
+      ordered.map((item, index) =>
+        supabase
+          .from(table)
+          .update({ sort_order: (index + 1) * 10 })
+          .eq("id", item.id),
+      ),
+    );
+    const failure = results.find((result) => result.error)?.error;
+    if (failure) toast.error("שמירת סדר התצוגה נכשלה");
+    else {
+      await queryClient.invalidateQueries({ queryKey: [queryKey] });
+      toast.success(successMessage);
+    }
+  }
+
+  const moveMinyan = (targetId: string) =>
+    persistOrder(
+      "minyanim",
+      "minyanim",
+      rows,
+      draggedMinyanRef.current,
+      targetId,
+      "סדר המניינים נשמר",
+    );
+
+  const moveCategory = (targetId: string) =>
+    persistOrder(
+      "minyan_categories",
+      "minyan_categories",
+      categories,
+      draggedCategoryRef.current,
+      targetId,
+      "סדר הטאבים נשמר",
+    );
+
+  function finishPointerDrag(
+    event: ReactPointerEvent,
+    selector: string,
+    move: (targetId: string) => Promise<void>,
+    clear: () => void,
+  ) {
+    const target = document
+      .elementFromPoint(event.clientX, event.clientY)
+      ?.closest<HTMLElement>(selector);
+    if (target?.dataset["reorderId"]) void move(target.dataset["reorderId"]);
+    clear();
+  }
+
   return (
     <div dir="rtl" className="space-y-4 text-right">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -121,23 +193,54 @@ export function MinyanimAdmin() {
           aria-label="קטגוריות מניינים"
         >
           {categories.map((category) => (
-            <button
-              type="button"
+            <div
               key={category.id}
-              onClick={() => {
-                setCategoryId(category.id);
-                if (category.system_key === "friday") setPrayer("shacharit");
-              }}
+              data-reorder-id={category.id}
+              data-reorder-kind="category"
+              data-testid={`minyan-category-${category.id}`}
               className={
-                "rounded-md px-3 py-1.5 text-sm " +
+                "flex items-center rounded-md text-sm " +
                 (selectedCategoryId === category.id
                   ? "bg-card font-medium shadow-soft"
-                  : "text-muted-foreground")
+                  : "text-muted-foreground") +
+                (draggedCategoryId === category.id ? " opacity-50" : "")
               }
             >
-              {category.name}
-              {!category.active && <span className="mr-1 text-xs">(מוסתר)</span>}
-            </button>
+              <button
+                type="button"
+                aria-label={`גרירת הטאב ${category.name}`}
+                title="גרור לשינוי סדר הטאבים"
+                className="cursor-grab touch-none p-1.5 active:cursor-grabbing"
+                onPointerDown={(event) => {
+                  draggedCategoryRef.current = category.id;
+                  setDraggedCategoryId(category.id);
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerUp={(event) =>
+                  finishPointerDrag(event, '[data-reorder-kind="category"]', moveCategory, () => {
+                    draggedCategoryRef.current = null;
+                    setDraggedCategoryId(null);
+                  })
+                }
+                onPointerCancel={() => {
+                  draggedCategoryRef.current = null;
+                  setDraggedCategoryId(null);
+                }}
+              >
+                <GripVertical className="size-4" />
+              </button>
+              <button
+                type="button"
+                className="px-2 py-1.5"
+                onClick={() => {
+                  setCategoryId(category.id);
+                  if (category.system_key === "friday") setPrayer("shacharit");
+                }}
+              >
+                {category.name}
+                {!category.active && <span className="mr-1 text-xs">(מוסתר)</span>}
+              </button>
+            </div>
           ))}
           <button
             type="button"
@@ -196,7 +299,7 @@ export function MinyanimAdmin() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="minyan-category-order">סדר תצוגה</Label>
+              <Label htmlFor="minyan-category-order">סדר תצוגה (מתקדם)</Label>
               <Input
                 id="minyan-category-order"
                 type="number"
@@ -206,6 +309,9 @@ export function MinyanimAdmin() {
                   setCategoryDraft({ ...categoryDraft, sort_order: Number(event.target.value) })
                 }
               />
+              <p className="text-xs text-muted-foreground">
+                מספר קטן מופיע קודם. בדרך כלל פשוט גוררים את הטאבים למיקום הרצוי.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="minyan-category-from">הצגה מתאריך (רשות)</Label>
@@ -281,7 +387,39 @@ export function MinyanimAdmin() {
         {rows.map((m) => {
           const resolved = resolveMinyan(m, zmanim);
           return (
-            <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+            <div
+              key={m.id}
+              data-reorder-id={m.id}
+              data-reorder-kind="minyan"
+              data-testid={`minyan-row-${m.id}`}
+              className={
+                "flex items-center gap-3 px-4 py-3 " +
+                (draggedMinyanId === m.id ? "opacity-50" : "")
+              }
+            >
+              <button
+                type="button"
+                aria-label={`גרירת המניין ${m.label}`}
+                title="גרור לשינוי סדר המניינים"
+                className="cursor-grab touch-none p-2 text-muted-foreground active:cursor-grabbing"
+                onPointerDown={(event) => {
+                  draggedMinyanRef.current = m.id;
+                  setDraggedMinyanId(m.id);
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                }}
+                onPointerUp={(event) =>
+                  finishPointerDrag(event, '[data-reorder-kind="minyan"]', moveMinyan, () => {
+                    draggedMinyanRef.current = null;
+                    setDraggedMinyanId(null);
+                  })
+                }
+                onPointerCancel={() => {
+                  draggedMinyanRef.current = null;
+                  setDraggedMinyanId(null);
+                }}
+              >
+                <GripVertical className="size-5" />
+              </button>
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-2 font-medium">
                   <InlineEdit
