@@ -155,131 +155,153 @@ function HomePage() {
       </section>
 
       <main className="mx-auto max-w-5xl px-4 py-10 text-right sm:py-12">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-semibold">זמני התפילות</h2>
-          <div
-            role="group"
-            className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1"
-            aria-label="קטגוריות מניינים"
-          >
-            {visibleCategories.map((category) => (
-              <button
-                key={category.id}
-                onClick={() => {
-                  setCategoryId(category.id);
-                  if (category.system_key === "friday") setPrayer("shacharit");
-                }}
-                className={
-                  "rounded-md px-3 py-1.5 text-sm transition-colors " +
-                  (selectedCategory?.id === category.id
-                    ? "bg-card font-medium text-foreground shadow-soft"
-                    : "text-muted-foreground hover:text-foreground")
-                }
-              >
-                {category.name}
-              </button>
-            ))}
-          </div>
-        </div>
+        {sectionOrder.map((key, index) => {
+          const spacing = index === 0 ? "" : "mt-12";
+          if (key === "minyanim") {
+            return (
+              <section key={key} className={spacing}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <h2 className="text-2xl font-semibold">זמני התפילות</h2>
+                  <div
+                    role="group"
+                    className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1"
+                    aria-label="קטגוריות מניינים"
+                  >
+                    {visibleCategories.map((category) => (
+                      <button
+                        key={category.id}
+                        onClick={() => {
+                          setCategoryId(category.id);
+                          if (category.system_key === "friday") setPrayer("shacharit");
+                        }}
+                        className={
+                          "rounded-md px-3 py-1.5 text-sm transition-colors " +
+                          (selectedCategory?.id === category.id
+                            ? "bg-card font-medium text-foreground shadow-soft"
+                            : "text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        {category.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-        <div
-          role="group"
-          className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
-          aria-label="סוג תפילה"
-        >
-          {prayerTabs.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setPrayer(item.id)}
-              className={
-                "flex-1 rounded-md px-3 py-2 text-sm transition-colors " +
-                (prayer === item.id
-                  ? "bg-primary font-medium text-primary-foreground shadow-soft"
-                  : "text-muted-foreground hover:text-foreground")
-              }
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
+                <div
+                  role="group"
+                  className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
+                  aria-label="סוג תפילה"
+                >
+                  {prayerTabs.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => setPrayer(item.id)}
+                      className={
+                        "flex-1 rounded-md px-3 py-2 text-sm transition-colors " +
+                        (prayer === item.id
+                          ? "bg-primary font-medium text-primary-foreground shadow-soft"
+                          : "text-muted-foreground hover:text-foreground")
+                      }
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
 
-        <div className="card-elev mt-4 divide-y divide-border overflow-hidden">
-          {(isLoading || categoriesLoading) && (
-            <p className="p-6 text-center text-muted-foreground">טוען…</p>
-          )}
-          {!isLoading && !categoriesLoading && rows.length === 0 && (
-            <p className="p-6 text-center text-muted-foreground">
-              עדיין לא הוגדרו מניינים ליום זה.
-            </p>
-          )}
-          {rows.map(({ minyan, time, source }) => (
-            <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">
-                  <InlineEdit
-                    table="minyanim"
-                    id={minyan.id}
-                    field="label"
-                    value={minyan.label}
-                    queryKey="minyanim"
-                  />
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {source}
-                  {minyan.room ? ` · ${minyan.room}` : ""}
-                  {minyan.note ? ` · ${minyan.note}` : ""}
-                </p>
-              </div>
-              <span className="font-display text-2xl font-semibold tabular-nums text-primary">
-                {minyan.time_mode === "fixed" ? (
-                  <InlineEdit
-                    table="minyanim"
-                    id={minyan.id}
-                    field="fixed_time"
-                    value={minyan.fixed_time ? minyan.fixed_time.slice(0, 5) : ""}
-                    as="time"
-                    display={time}
-                    queryKey="minyanim"
-                    inputClassName="text-2xl"
-                  />
-                ) : (
-                  time
-                )}
-              </span>
-            </div>
-          ))}
-        </div>
+                <div className="card-elev mt-4 divide-y divide-border overflow-hidden">
+                  {(isLoading || categoriesLoading) && (
+                    <p className="p-6 text-center text-muted-foreground">טוען…</p>
+                  )}
+                  {!isLoading && !categoriesLoading && rows.length === 0 && (
+                    <p className="p-6 text-center text-muted-foreground">
+                      עדיין לא הוגדרו מניינים ליום זה.
+                    </p>
+                  )}
+                  {rows.map(({ minyan, time, source }) => (
+                    <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-medium">
+                          <InlineEdit
+                            table="minyanim"
+                            id={minyan.id}
+                            field="label"
+                            value={minyan.label}
+                            queryKey="minyanim"
+                          />
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {source}
+                          {minyan.room ? ` · ${minyan.room}` : ""}
+                          {minyan.note ? ` · ${minyan.note}` : ""}
+                        </p>
+                      </div>
+                      <span className="font-display text-2xl font-semibold tabular-nums text-primary">
+                        {minyan.time_mode === "fixed" ? (
+                          <InlineEdit
+                            table="minyanim"
+                            id={minyan.id}
+                            field="fixed_time"
+                            value={minyan.fixed_time ? minyan.fixed_time.slice(0, 5) : ""}
+                            as="time"
+                            display={time}
+                            queryKey="minyanim"
+                            inputClassName="text-2xl"
+                          />
+                        ) : (
+                          time
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          }
 
-        <h2 className="mt-12 text-2xl font-semibold">זמני היום</h2>
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {SHOWN_ZMANIM.map((z) => (
-            <div key={z} className="card-elev px-4 py-3">
-              <p className="text-xs text-muted-foreground">{ZMAN_LABELS[z]}</p>
-              <p className="font-display text-xl font-semibold tabular-nums">
-                {formatTime(zmanim[z])}
-              </p>
-            </div>
-          ))}
-        </div>
+          if (key === "zmanim") {
+            if (shownZmanim.length === 0) return null;
+            return (
+              <section key={key} className={spacing}>
+                <h2 className="text-2xl font-semibold">זמני היום</h2>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {shownZmanim.map((z) => (
+                    <div key={z} className="card-elev px-4 py-3">
+                      <p className="text-xs text-muted-foreground">{ZMAN_LABELS[z]}</p>
+                      <p className="font-display text-xl font-semibold tabular-nums">
+                        {formatTime(zmanim[z])}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            );
+          }
 
-        {topAnnouncements.length > 0 && (
-          <>
-            <div className="mt-12 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">מודעות לציבור</h2>
-              <Button asChild variant="ghost" size="sm">
-                <Link to="/announcements">
-                  כל המודעות <ChevronLeft className="size-4" />
-                </Link>
-              </Button>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {topAnnouncements.map((a) => (
-                <AnnouncementCard key={a.id} announcement={a} />
-              ))}
-            </div>
-          </>
-        )}
+          if (key === "announcements") {
+            if (topAnnouncements.length === 0) return null;
+            return (
+              <section key={key} className={spacing}>
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-semibold">מודעות לציבור</h2>
+                  <Button asChild variant="ghost" size="sm">
+                    <Link to="/announcements">
+                      כל המודעות <ChevronLeft className="size-4" />
+                    </Link>
+                  </Button>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {topAnnouncements.map((a) => (
+                    <AnnouncementCard key={a.id} announcement={a} />
+                  ))}
+                </div>
+              </section>
+            );
+          }
+
+          return null;
+        })}
       </main>
+
 
       <SiteFooter />
       <QuickAddButton />
