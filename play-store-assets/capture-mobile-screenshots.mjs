@@ -33,7 +33,9 @@ for (const [name, url] of pages) {
       container.style.setProperty("display", "none", "important");
     });
   }
-  await page.screenshot({ path: new URL(`./${name}-mobile-raw.png`, import.meta.url).pathname.slice(1) });
+  await page.screenshot({
+    path: new URL(`./${name}-mobile-raw.png`, import.meta.url).pathname.slice(1),
+  });
   await page.close();
 }
 

@@ -76,7 +76,6 @@ function HomePage() {
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [prayer, setPrayer] = useState("shacharit");
 
-
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
   const todayKey = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jerusalem",
@@ -324,7 +323,6 @@ function HomePage() {
           return null;
         })}
       </main>
-
 
       <SiteFooter />
       <QuickAddButton />

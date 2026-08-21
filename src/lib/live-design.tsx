@@ -72,26 +72,34 @@ function readJson<T>(key: string, fallback: T): T {
 function defaultLayout(): Layout {
   if (typeof window === "undefined") return { x: 16, y: 80, width: 560, height: 720 };
   const width = Math.min(560, Math.max(300, window.innerWidth - 32));
+  const mobile = window.innerWidth < 640;
+  const height = mobile
+    ? Math.min(360, Math.max(300, Math.floor(window.innerHeight * 0.42)))
+    : Math.min(820, Math.max(300, window.innerHeight - 105));
   return {
-    x: 16,
-    y: Math.min(80, Math.max(8, window.innerHeight - 320)),
+    x: mobile ? Math.max(8, Math.floor((window.innerWidth - width) / 2)) : 16,
+    y: mobile ? Math.max(8, window.innerHeight - height - 8) : 80,
     width,
-    height: Math.min(820, Math.max(300, window.innerHeight - 105)),
+    height,
   };
 }
 
 function loadLayout(): Layout {
   const fallback = defaultLayout();
   const saved = readJson<Partial<Layout>>(LAYOUT_KEY, {});
+  const mobile = typeof window !== "undefined" && window.innerWidth < 640;
   const maxWidth = typeof window === "undefined" ? 560 : Math.max(300, window.innerWidth - 16);
   const width = Math.min(
     maxWidth,
     Math.max(Math.min(480, maxWidth), Number(saved.width) || fallback.width),
   );
-  const height = Math.min(
-    typeof window === "undefined" ? 820 : window.innerHeight - 16,
-    Math.max(300, Number(saved.height) || fallback.height),
-  );
+  const maxHeight =
+    typeof window === "undefined"
+      ? 820
+      : mobile
+        ? Math.min(360, Math.floor(window.innerHeight * 0.42))
+        : window.innerHeight - 16;
+  const height = Math.min(maxHeight, Math.max(300, Number(saved.height) || fallback.height));
   return {
     x: Math.max(8, Math.min(Number(saved.x) || fallback.x, maxWidth - width + 8)),
     y: Math.max(

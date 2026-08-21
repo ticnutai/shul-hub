@@ -80,7 +80,7 @@ test.describe("mobile interactive states", () => {
     }
 
     await page.getByRole("button", { name: "תפריט" }).click();
-    const menu = page.locator("header nav").last();
+    const menu = page.getByRole("navigation", { name: "תפריט ניווט נוסף" });
     await expect(menu).toBeVisible();
     await expect(menu).toHaveCSS("direction", "rtl");
     for (const primaryLabel of ["זמני תפילות", "מודעות", "שיעורים"]) {
@@ -205,6 +205,7 @@ test.describe("mobile interactive states", () => {
 
     const prayerTabs = page.locator('[aria-label="סוג תפילה"]');
     await expect(page.getByRole("button", { name: "שבת קודש", exact: true })).toHaveCount(0);
+    await page.getByRole("button", { name: "ימות החול", exact: true }).click();
     await expect(prayerTabs.getByRole("button", { name: "שחרית", exact: true })).toBeVisible();
     await expect(prayerTabs.getByRole("button", { name: "מנחה", exact: true })).toBeVisible();
     await expect(prayerTabs.getByRole("button", { name: "ערבית", exact: true })).toBeVisible();

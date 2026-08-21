@@ -136,7 +136,10 @@ export function SiteHeader() {
       </nav>
 
       {open && (
-        <nav className="grid gap-1 border-t border-gold/25 bg-sidebar px-4 pb-3 pt-2 md:hidden">
+        <nav
+          aria-label="תפריט ניווט נוסף"
+          className="grid gap-1 border-t border-gold/25 bg-sidebar px-4 pb-3 pt-2 md:hidden"
+        >
           {MOBILE_MENU_NAV.map((item) => (
             <Link
               key={item.to}
