@@ -5,7 +5,13 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
-import { useAnnouncements, useMinyanCategories, useMinyanim, useSettings } from "@/lib/data";
+import {
+  useAnnouncements,
+  useHomeWidgets,
+  useMinyanCategories,
+  useMinyanim,
+  useSettings,
+} from "@/lib/data";
 import { dayTypeFor, resolveMinyan, zmanimFor } from "@/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@/lib/zmanim";
 import { InlineEdit } from "@/components/InlineEdit";
