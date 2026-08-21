@@ -293,7 +293,7 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
 
   async function save() {
     if (!label.trim() || !time.trim()) return;
-    const [hours, minutes] = time.split(":").map(Number);
+    const [hours = NaN, minutes = NaN] = time.split(":").map(Number);
     if (
       !/^\d{2}:\d{2}$/.test(time) ||
       Number.isNaN(hours) ||
