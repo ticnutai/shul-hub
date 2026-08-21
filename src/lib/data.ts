@@ -159,3 +159,19 @@ export function useAdminMessages() {
     },
   });
 }
+
+export type HomeWidget = Tables<"home_widgets">;
+
+export function useHomeWidgets() {
+  return useQuery({
+    queryKey: ["home_widgets"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("home_widgets")
+        .select("*")
+        .order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}

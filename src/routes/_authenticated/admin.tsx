@@ -8,6 +8,7 @@ import { MinyanimAdmin } from "@/components/admin/MinyanimAdmin";
 import { AnnouncementsAdmin, ChavrutotAdmin, ShiurimAdmin } from "@/components/admin/ContentAdmin";
 import { MessagesAdmin } from "@/components/admin/MessagesAdmin";
 import { SettingsAdmin } from "@/components/admin/SettingsAdmin";
+import { WidgetsAdmin } from "@/components/admin/WidgetsAdmin";
 import { UsersAdmin } from "@/components/admin/UsersAdmin";
 import { ChavrutaRequestsAdmin } from "@/components/admin/ChavrutaRequestsAdmin";
 import { DataExportImportAdmin } from "@/components/admin/DataExportImportAdmin";
@@ -82,6 +83,7 @@ function AdminPage() {
               <TabsTrigger value="chavrutot">חברותות</TabsTrigger>
               <TabsTrigger value="chavruta-requests">בקשות חברותא</TabsTrigger>
               <TabsTrigger value="messages">הודעות{unread > 0 ? ` (${unread})` : ""}</TabsTrigger>
+              <TabsTrigger value="widgets">ווידג'טים</TabsTrigger>
               <TabsTrigger value="settings">הגדרות</TabsTrigger>
               <TabsTrigger value="users">משתמשים</TabsTrigger>
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
@@ -104,6 +106,9 @@ function AdminPage() {
             </TabsContent>
             <TabsContent value="messages" className="mt-6">
               <MessagesAdmin />
+            </TabsContent>
+            <TabsContent value="widgets" className="mt-6">
+              <WidgetsAdmin />
             </TabsContent>
             <TabsContent value="settings" className="mt-6">
               <SettingsAdmin />
