@@ -23,6 +23,19 @@ test("home page renders without browser or network errors", async ({ page }) => 
   expect(failedRequests).toEqual([]);
 });
 
+test("the injected Lovable badge stays hidden", async ({ page }) => {
+  await page.goto(`${baseUrl}/`);
+  await page.evaluate(() => {
+    const badge = document.createElement("aside");
+    badge.id = "lovable-badge";
+    badge.textContent = "Edit with Lovable";
+    document.body.appendChild(badge);
+  });
+
+  await expect(page.locator("#lovable-badge")).toBeHidden();
+  await expect(page.locator("#lovable-badge")).toHaveCSS("display", "none");
+});
+
 test("all public routes are RTL and render their main heading", async ({ page }) => {
   const routes = [
     ["/announcements", "מודעות לציבור"],

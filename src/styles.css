@@ -284,3 +284,8 @@
     border-radius: 1.25rem;
   }
 }
+
+/* Lovable injects this promotional badge into hosted pages after the app loads. */
+#lovable-badge {
+  display: none !important;
+}
