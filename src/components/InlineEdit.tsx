@@ -24,6 +24,9 @@ type InlineEditProps = {
   placeholder?: string;
   className?: string;
   inputClassName?: string;
+  /** Enable direct editing even when the public-site edit mode is off (for admin lists). */
+  alwaysEditable?: boolean;
+  ariaLabel?: string;
 };
 
 /**
@@ -42,6 +45,8 @@ export function InlineEdit({
   placeholder = "לחץ להוספה",
   className,
   inputClassName,
+  alwaysEditable = false,
+  ariaLabel,
 }: InlineEditProps) {
   const { editMode } = useEditMode();
   const qc = useQueryClient();
@@ -59,7 +64,7 @@ export function InlineEdit({
 
   const shown: ReactNode = display ?? (value === null || value === "" ? null : String(value));
 
-  if (!editMode) return <>{shown}</>;
+  if (!editMode && !alwaysEditable) return <>{shown}</>;
 
   function begin() {
     setDraft(value === null || value === undefined ? "" : String(value));
@@ -119,6 +124,7 @@ export function InlineEdit({
       <input
         ref={ref as React.RefObject<HTMLInputElement>}
         type={as === "time" ? "time" : as === "number" ? "number" : "text"}
+        aria-label={ariaLabel}
         {...shared}
       />
     );
@@ -129,6 +135,8 @@ export function InlineEdit({
       type="button"
       onClick={begin}
       disabled={saving}
+      aria-label={ariaLabel}
+      title="לחץ לעריכה"
       className={cn(
         "group/inline inline-flex max-w-full items-center gap-1 rounded-md -mx-1 px-1 text-start align-baseline ring-1 ring-dashed ring-primary/40 transition-colors hover:bg-primary/5 hover:ring-primary",
         className,

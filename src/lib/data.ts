@@ -4,6 +4,7 @@ import type { Tables } from "@/integrations/supabase/types";
 
 export type Settings = Tables<"settings">;
 export type Minyan = Tables<"minyanim">;
+export type MinyanCategory = Tables<"minyan_categories">;
 export type Announcement = Tables<"announcements">;
 export type Shiur = Tables<"shiurim">;
 export type ShiurCategory = Tables<"shiur_categories">;
@@ -47,6 +48,21 @@ export function useMinyanim() {
     queryKey: ["minyanim"],
     queryFn: async () => {
       const { data, error } = await supabase.from("minyanim").select("*").order("sort_order");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useMinyanCategories() {
+  return useQuery({
+    queryKey: ["minyan_categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("minyan_categories")
+        .select("*")
+        .order("sort_order")
+        .order("name");
       if (error) throw error;
       return data ?? [];
     },

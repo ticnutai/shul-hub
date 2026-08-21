@@ -52,7 +52,7 @@ function AdminPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main className="mx-auto max-w-5xl px-4 py-8">
+      <main dir="rtl" className="mx-auto max-w-5xl px-4 py-8 text-right">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-bold">ניהול האתר</h1>
@@ -74,8 +74,8 @@ function AdminPage() {
             </div>
           </div>
         ) : (
-          <Tabs defaultValue="minyanim" className="mt-6">
-            <TabsList className="flex h-auto flex-wrap justify-start">
+          <Tabs dir="rtl" defaultValue="minyanim" className="mt-6 text-right">
+            <TabsList dir="rtl" className="flex h-auto w-full flex-wrap justify-start text-right">
               <TabsTrigger value="minyanim">מניינים</TabsTrigger>
               <TabsTrigger value="announcements">מודעות</TabsTrigger>
               <TabsTrigger value="shiurim">שיעורים</TabsTrigger>

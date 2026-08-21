@@ -3,7 +3,13 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 type TableName =
-  "minyanim" | "announcements" | "shiurim" | "shiur_categories" | "chavrutot" | "settings";
+  | "minyanim"
+  | "minyan_categories"
+  | "announcements"
+  | "shiurim"
+  | "shiur_categories"
+  | "chavrutot"
+  | "settings";
 
 export function useSaveRow(table: TableName, queryKey: string) {
   const qc = useQueryClient();

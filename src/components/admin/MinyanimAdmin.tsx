@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarRange, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,15 +11,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DAY_TYPES, PRAYERS, useMinyanim, useSettings, type Minyan } from "@/lib/data";
+import {
+  PRAYERS,
+  useMinyanCategories,
+  useMinyanim,
+  useSettings,
+  type Minyan,
+  type MinyanCategory,
+} from "@/lib/data";
 import { useDeleteRow, useSaveRow } from "@/lib/admin";
 import { RELATIVE_LABELS, resolveMinyan, zmanimFor } from "@/lib/minyan-time";
 import { RELATIVE_OPTIONS } from "@/lib/zmanim";
+import { InlineEdit } from "@/components/InlineEdit";
 
-type Draft = Partial<Minyan> & { day_type: string };
+type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
+type CategoryDraft = Pick<
+  MinyanCategory,
+  "name" | "active" | "sort_order" | "visible_from" | "visible_until"
+> & { id?: string };
 
-const emptyDraft = (day_type: string): Draft => ({
-  day_type,
+const emptyDraft = (category: MinyanCategory): Draft => ({
+  day_type: category.system_key ?? "custom",
+  category_id: category.id,
   prayer: "shacharit",
   label: "",
   time_mode: "fixed",
@@ -36,20 +49,31 @@ const emptyDraft = (day_type: string): Draft => ({
 
 export function MinyanimAdmin() {
   const { data: minyanim = [] } = useMinyanim();
+  const { data: categories = [] } = useMinyanCategories();
   const { data: settings } = useSettings();
   const save = useSaveRow("minyanim", "minyanim");
   const remove = useDeleteRow("minyanim", "minyanim");
-  const [dayType, setDayType] = useState<string>("weekday");
+  const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [prayer, setPrayer] = useState<string>("shacharit");
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  const selectedCategory =
+    categories.find((category) => category.id === categoryId) ?? categories[0];
+  const selectedCategoryId = selectedCategory?.id ?? null;
   const zmanim = zmanimFor(new Date(), settings);
   const prayerTabs =
-    dayType === "friday"
+    selectedCategory?.system_key === "friday"
       ? PRAYERS.filter((item) => item.id === "shacharit")
       : PRAYERS.filter((item) => item.id !== "other");
-  const rows = minyanim.filter((m) => m.day_type === dayType && m.prayer === prayer);
+  const rows = minyanim.filter(
+    (m) =>
+      (m.category_id === selectedCategoryId ||
+        (!m.category_id && m.day_type === selectedCategory?.system_key)) &&
+      m.prayer === prayer,
+  );
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,6 +82,24 @@ export function MinyanimAdmin() {
     if (draft.time_mode === "fixed") row["relative_to"] = null;
     else row["fixed_time"] = null;
     save.mutate(row, { onSuccess: () => setDraft(null) });
+  }
+
+  function submitCategory(e: React.FormEvent) {
+    e.preventDefault();
+    if (!categoryDraft?.name.trim()) return;
+    saveCategory.mutate(
+      {
+        ...categoryDraft,
+        name: categoryDraft.name.trim(),
+        visible_from: categoryDraft.visible_from || null,
+        visible_until: categoryDraft.visible_until || null,
+      },
+      {
+        onSuccess: () => {
+          setCategoryDraft(null);
+        },
+      },
+    );
   }
 
   function openDraft(nextDraft: Draft) {
@@ -70,31 +112,151 @@ export function MinyanimAdmin() {
   }
 
   return (
-    <div className="space-y-4">
+    <div dir="rtl" className="space-y-4 text-right">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-1 rounded-lg bg-muted p-1">
-          {DAY_TYPES.map((d) => (
+        <div
+          role="group"
+          dir="rtl"
+          className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1"
+          aria-label="קטגוריות מניינים"
+        >
+          {categories.map((category) => (
             <button
-              key={d.id}
+              type="button"
+              key={category.id}
               onClick={() => {
-                setDayType(d.id);
-                if (d.id === "friday") setPrayer("shacharit");
+                setCategoryId(category.id);
+                if (category.system_key === "friday") setPrayer("shacharit");
               }}
               className={
                 "rounded-md px-3 py-1.5 text-sm " +
-                (dayType === d.id ? "bg-card font-medium shadow-soft" : "text-muted-foreground")
+                (selectedCategoryId === category.id
+                  ? "bg-card font-medium shadow-soft"
+                  : "text-muted-foreground")
               }
             >
-              {d.label}
+              {category.name}
+              {!category.active && <span className="mr-1 text-xs">(מוסתר)</span>}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() =>
+              setCategoryDraft({
+                name: "",
+                active: true,
+                sort_order: (categories.at(-1)?.sort_order ?? 0) + 10,
+                visible_from: null,
+                visible_until: null,
+              })
+            }
+            className="rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-card"
+          >
+            <Plus className="ml-1 inline size-3.5" /> קטגוריה חדשה
+          </button>
         </div>
-        <Button onClick={() => openDraft(emptyDraft(dayType))}>
-          <Plus className="size-4" /> מניין חדש
-        </Button>
+        <div className="flex gap-2">
+          {selectedCategory && (
+            <Button
+              variant="outline"
+              onClick={() => setCategoryDraft({ ...selectedCategory })}
+              aria-label={`ניהול הקטגוריה ${selectedCategory.name}`}
+            >
+              <Settings2 className="size-4" /> ניהול הטאב
+            </Button>
+          )}
+          <Button
+            disabled={!selectedCategory}
+            onClick={() => selectedCategory && openDraft(emptyDraft(selectedCategory))}
+          >
+            <Plus className="size-4" /> מניין חדש
+          </Button>
+        </div>
       </div>
 
-      <div className="flex gap-1 rounded-lg bg-secondary p-1" aria-label="סוג תפילה">
+      {categoryDraft && (
+        <form onSubmit={submitCategory} className="card-elev space-y-4 p-5">
+          <div className="flex items-center gap-2">
+            <CalendarRange className="size-5 text-primary" />
+            <h3 className="text-lg font-semibold">
+              {categoryDraft.id ? "עריכת קטגוריית מניינים" : "קטגוריית מניינים חדשה"}
+            </h3>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-2">
+              <Label htmlFor="minyan-category-name">שם הטאב</Label>
+              <Input
+                id="minyan-category-name"
+                value={categoryDraft.name}
+                onChange={(event) =>
+                  setCategoryDraft({ ...categoryDraft, name: event.target.value })
+                }
+                placeholder="לדוגמה: סליחות"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="minyan-category-order">סדר תצוגה</Label>
+              <Input
+                id="minyan-category-order"
+                type="number"
+                dir="ltr"
+                value={categoryDraft.sort_order}
+                onChange={(event) =>
+                  setCategoryDraft({ ...categoryDraft, sort_order: Number(event.target.value) })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="minyan-category-from">הצגה מתאריך (רשות)</Label>
+              <Input
+                id="minyan-category-from"
+                type="date"
+                dir="ltr"
+                value={categoryDraft.visible_from ?? ""}
+                onChange={(event) =>
+                  setCategoryDraft({ ...categoryDraft, visible_from: event.target.value || null })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="minyan-category-until">עד תאריך (רשות)</Label>
+              <Input
+                id="minyan-category-until"
+                type="date"
+                dir="ltr"
+                value={categoryDraft.visible_until ?? ""}
+                onChange={(event) =>
+                  setCategoryDraft({ ...categoryDraft, visible_until: event.target.value || null })
+                }
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Switch
+              id="minyan-category-active"
+              checked={categoryDraft.active}
+              onCheckedChange={(active) => setCategoryDraft({ ...categoryDraft, active })}
+            />
+            <Label htmlFor="minyan-category-active">הטאב מוצג באתר</Label>
+            <div className="mr-auto flex gap-2">
+              <Button type="submit" disabled={saveCategory.isPending}>
+                שמירת קטגוריה
+              </Button>
+              <Button type="button" variant="ghost" onClick={() => setCategoryDraft(null)}>
+                ביטול
+              </Button>
+            </div>
+          </div>
+        </form>
+      )}
+
+      <div
+        role="group"
+        dir="rtl"
+        className="flex gap-1 rounded-lg bg-secondary p-1 text-right"
+        aria-label="סוג תפילה"
+      >
         {prayerTabs.map((item) => (
           <button
             type="button"
@@ -121,21 +283,80 @@ export function MinyanimAdmin() {
           return (
             <div key={m.id} className="flex items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">
-                  {m.label}
+                <div className="flex min-w-0 items-center gap-2 font-medium">
+                  <InlineEdit
+                    table="minyanim"
+                    id={m.id}
+                    field="label"
+                    value={m.label}
+                    queryKey="minyanim"
+                    alwaysEditable
+                    ariaLabel={`עריכת שם המניין ${m.label}`}
+                    className="min-w-0"
+                    inputClassName="w-full min-w-40"
+                    display={<span className="truncate">{m.label}</span>}
+                  />
                   {!m.active && <span className="mr-2 text-xs text-muted-foreground">(מוסתר)</span>}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {resolved?.source} {m.room ? `· ${m.room}` : ""}
-                </p>
+                </div>
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground">
+                  <span>{resolved?.source}</span>
+                  <span aria-hidden="true">·</span>
+                  <InlineEdit
+                    table="minyanim"
+                    id={m.id}
+                    field="room"
+                    value={m.room}
+                    queryKey="minyanim"
+                    alwaysEditable
+                    ariaLabel={`עריכת מיקום ${m.label}`}
+                    placeholder="הוסף מיקום"
+                    className="min-w-0"
+                    inputClassName="w-36"
+                  />
+                  <span aria-hidden="true">·</span>
+                  <InlineEdit
+                    table="minyanim"
+                    id={m.id}
+                    field="note"
+                    value={m.note}
+                    queryKey="minyanim"
+                    alwaysEditable
+                    ariaLabel={`עריכת הערה ${m.label}`}
+                    placeholder="הוסף הערה"
+                    className="min-w-0"
+                    inputClassName="w-44"
+                  />
+                </div>
               </div>
-              <span className="font-display text-lg tabular-nums text-primary">
-                {resolved?.time ?? "—"}
-              </span>
+              {m.time_mode === "fixed" ? (
+                <InlineEdit
+                  table="minyanim"
+                  id={m.id}
+                  field="fixed_time"
+                  value={m.fixed_time ? m.fixed_time.slice(0, 5) : ""}
+                  queryKey="minyanim"
+                  as="time"
+                  alwaysEditable
+                  ariaLabel={`עריכת שעה ${m.label}`}
+                  className="font-display text-lg tabular-nums text-primary"
+                  inputClassName="w-28"
+                  display={resolved?.time ?? "—"}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className="rounded-md px-1 font-display text-lg tabular-nums text-primary ring-1 ring-dashed ring-primary/40 hover:bg-primary/5"
+                  onClick={() => openDraft(m)}
+                  aria-label={`עריכת זמן יחסי ${m.label}`}
+                  title="הזמן מחושב — לחץ לעריכת הכלל"
+                >
+                  {resolved?.time ?? "—"}
+                </button>
+              )}
               <Button
                 size="icon"
                 variant="ghost"
-                aria-label={`עריכת ${m.label}`}
+                aria-label={`פתיחת עריכת ${m.label}`}
                 onClick={() => openDraft(m)}
               >
                 <Pencil className="size-4" />
@@ -186,18 +407,25 @@ export function MinyanimAdmin() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>סוג יום</Label>
+              <Label>קטגוריית מניינים</Label>
               <Select
-                value={draft.day_type}
-                onValueChange={(v) => setDraft({ ...draft, day_type: v })}
+                value={draft.category_id ?? ""}
+                onValueChange={(value) => {
+                  const category = categories.find((item) => item.id === value);
+                  setDraft({
+                    ...draft,
+                    category_id: value,
+                    day_type: category?.system_key ?? "custom",
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DAY_TYPES.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {d.label}
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

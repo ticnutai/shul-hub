@@ -5,8 +5,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { Button } from "@/components/ui/button";
 import { AnnouncementCard } from "@/components/AnnouncementCard";
-import { useAnnouncements, useMinyanim, useSettings } from "@/lib/data";
-import { DAY_TYPE_LABEL, dayTypeFor, resolveDay, zmanimFor, type DayType } from "@/lib/minyan-time";
+import { useAnnouncements, useMinyanCategories, useMinyanim, useSettings } from "@/lib/data";
+import { dayTypeFor, resolveMinyan, zmanimFor } from "@/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@/lib/zmanim";
 import { InlineEdit } from "@/components/InlineEdit";
 import { QuickAddButton } from "@/components/QuickAddButton";
@@ -47,18 +47,52 @@ const SHOWN_ZMANIM: SolarEvent[] = [
 function HomePage() {
   const { data: settings } = useSettings();
   const { data: minyanim = [], isLoading } = useMinyanim();
+  const { data: minyanCategories = [], isLoading: categoriesLoading } = useMinyanCategories();
   const { data: announcements = [] } = useAnnouncements();
 
   const today = useMemo(() => new Date(), []);
-  const [dayType, setDayType] = useState<DayType>(() => dayTypeFor(new Date()));
+  const [categoryId, setCategoryId] = useState<string | null>(null);
   const [prayer, setPrayer] = useState("shacharit");
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
-  const rows = useMemo(
-    () => resolveDay(minyanim, dayType, zmanim).filter((row) => row.minyan.prayer === prayer),
-    [minyanim, dayType, prayer, zmanim],
+  const todayKey = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(today);
+  const visibleCategories = useMemo(
+    () =>
+      minyanCategories.filter(
+        (category) =>
+          category.active &&
+          (!category.visible_from || category.visible_from <= todayKey) &&
+          (!category.visible_until || category.visible_until >= todayKey),
+      ),
+    [minyanCategories, todayKey],
   );
-  const prayerTabs = dayType === "friday" ? PRAYER_TABS.slice(0, 1) : PRAYER_TABS;
+  const preferredSystemKey = dayTypeFor(today);
+  const selectedCategory =
+    visibleCategories.find((category) => category.id === categoryId) ??
+    visibleCategories.find((category) => category.system_key === preferredSystemKey) ??
+    visibleCategories[0];
+  const rows = useMemo(
+    () =>
+      minyanim
+        .filter(
+          (minyan) =>
+            minyan.active &&
+            minyan.prayer === prayer &&
+            (minyan.category_id === selectedCategory?.id ||
+              (!minyan.category_id && minyan.day_type === selectedCategory?.system_key)),
+        )
+        .map((minyan) => resolveMinyan(minyan, zmanim))
+        .filter((row): row is NonNullable<typeof row> => row !== null)
+        .sort((a, b) => a.minutes - b.minutes),
+    [minyanim, prayer, selectedCategory, zmanim],
+  );
+  const prayerTabs =
+    selectedCategory?.system_key === "friday" ? PRAYER_TABS.slice(0, 1) : PRAYER_TABS;
 
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
@@ -123,28 +157,36 @@ function HomePage() {
       <main className="mx-auto max-w-5xl px-4 py-10 text-right sm:py-12">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-2xl font-semibold">זמני התפילות</h2>
-          <div className="flex gap-1 rounded-lg bg-muted p-1">
-            {(["weekday", "friday"] as DayType[]).map((d) => (
+          <div
+            role="group"
+            className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1"
+            aria-label="קטגוריות מניינים"
+          >
+            {visibleCategories.map((category) => (
               <button
-                key={d}
+                key={category.id}
                 onClick={() => {
-                  setDayType(d);
-                  if (d === "friday") setPrayer("shacharit");
+                  setCategoryId(category.id);
+                  if (category.system_key === "friday") setPrayer("shacharit");
                 }}
                 className={
                   "rounded-md px-3 py-1.5 text-sm transition-colors " +
-                  (dayType === d
+                  (selectedCategory?.id === category.id
                     ? "bg-card font-medium text-foreground shadow-soft"
                     : "text-muted-foreground hover:text-foreground")
                 }
               >
-                {DAY_TYPE_LABEL[d]}
+                {category.name}
               </button>
             ))}
           </div>
         </div>
 
-        <div className="mt-3 flex gap-1 rounded-lg bg-secondary p-1" aria-label="סוג תפילה">
+        <div
+          role="group"
+          className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
+          aria-label="סוג תפילה"
+        >
           {prayerTabs.map((item) => (
             <button
               key={item.id}
@@ -162,8 +204,10 @@ function HomePage() {
         </div>
 
         <div className="card-elev mt-4 divide-y divide-border overflow-hidden">
-          {isLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
-          {!isLoading && rows.length === 0 && (
+          {(isLoading || categoriesLoading) && (
+            <p className="p-6 text-center text-muted-foreground">טוען…</p>
+          )}
+          {!isLoading && !categoriesLoading && rows.length === 0 && (
             <p className="p-6 text-center text-muted-foreground">
               עדיין לא הוגדרו מניינים ליום זה.
             </p>
