@@ -26,6 +26,7 @@ type Override = {
   createdAt: string;
 };
 type Layout = { x: number; y: number; width: number; height: number };
+type ResizeEdge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 const OVERRIDES_KEY = "shul-live-design-overrides-v1";
 const LAYOUT_KEY = "shul-live-design-layout-v1";
@@ -211,6 +212,12 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
   const [layout, setLayout] = useState<Layout>(loadLayout);
   const bypass = useRef(false);
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const resize = useRef<{
+    edge: ResizeEdge;
+    startX: number;
+    startY: number;
+    layout: Layout;
+  } | null>(null);
   const editorRef = useRef<HTMLDivElement>(null);
 
   const disable = useCallback(() => {
@@ -411,6 +418,53 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const startResize = (edge: ResizeEdge, event: ReactPointerEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    resize.current = {
+      edge,
+      startX: event.clientX,
+      startY: event.clientY,
+      layout: { ...layout },
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const resizeMove = (event: ReactPointerEvent) => {
+    const operation = resize.current;
+    if (!operation) return;
+    const dx = event.clientX - operation.startX;
+    const dy = event.clientY - operation.startY;
+    const minWidth = Math.min(480, window.innerWidth - 16);
+    const minHeight = Math.min(300, window.innerHeight - 16);
+    const maxWidth = window.innerWidth - 16;
+    const maxHeight = window.innerHeight - 16;
+    let { x, y, width, height } = operation.layout;
+
+    if (operation.edge.includes("e")) width = operation.layout.width + dx;
+    if (operation.edge.includes("s")) height = operation.layout.height + dy;
+    if (operation.edge.includes("w")) {
+      width = operation.layout.width - dx;
+      x = operation.layout.x + dx;
+    }
+    if (operation.edge.includes("n")) {
+      height = operation.layout.height - dy;
+      y = operation.layout.y + dy;
+    }
+
+    width = Math.max(minWidth, Math.min(maxWidth, width));
+    height = Math.max(minHeight, Math.min(maxHeight, height));
+    if (operation.edge.includes("w")) x = operation.layout.x + operation.layout.width - width;
+    if (operation.edge.includes("n")) y = operation.layout.y + operation.layout.height - height;
+    x = Math.max(8, Math.min(x, window.innerWidth - width - 8));
+    y = Math.max(8, Math.min(y, window.innerHeight - height - 8));
+    setLayout({ x, y, width, height });
+  };
+
+  const endResize = () => {
+    resize.current = null;
+  };
+
   const highlight = paused ? null : (selected ?? hovered);
   const rect = highlight?.getBoundingClientRect();
   const value = useMemo(
@@ -467,7 +521,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
             role="dialog"
             aria-label="עורך עיצוב חי"
             dir="rtl"
-            className="fixed z-[100] flex min-h-[300px] min-w-[min(480px,calc(100vw-16px))] resize overflow-hidden rounded-2xl border bg-card text-card-foreground shadow-2xl max-sm:!inset-x-2 max-sm:!bottom-20 max-sm:!top-auto max-sm:!h-[44dvh] max-sm:!max-h-[calc(100dvh-6rem)] max-sm:!w-auto max-sm:!min-w-0 max-sm:!resize-none"
+            className="fixed z-[100] flex min-h-[min(300px,calc(100dvh-16px))] min-w-[min(480px,calc(100vw-16px))] overflow-visible rounded-2xl border bg-card text-card-foreground shadow-2xl"
             style={
               {
                 left: layout.x,
@@ -488,7 +542,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                 });
             }}
           >
-            <div className="flex min-h-0 flex-1 flex-col">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[inherit]">
               <div
                 className="flex cursor-move items-center gap-1 border-b bg-muted px-2 py-2 sm:gap-2 sm:px-3"
                 onPointerDown={startDrag}
@@ -527,8 +581,8 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                 <Button
                   size="icon"
                   variant="ghost"
-                  aria-label="סגירת בחירה"
-                  onClick={() => setSelected(null)}
+                  aria-label="סגירת עורך העיצוב"
+                  onClick={value.disable}
                 >
                   <X className="size-4" />
                 </Button>
@@ -712,6 +766,29 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                 </div>
               </div>
             </div>
+            {(["n", "s", "e", "w", "ne", "nw", "se", "sw"] as ResizeEdge[]).map((edge) => (
+              <button
+                key={edge}
+                type="button"
+                data-testid={`live-design-resize-${edge}`}
+                aria-label={`שינוי גודל העורך ${edge}`}
+                onPointerDown={(event) => startResize(edge, event)}
+                onPointerMove={resizeMove}
+                onPointerUp={endResize}
+                onPointerCancel={endResize}
+                className={
+                  "absolute z-20 touch-none bg-transparent " +
+                  (edge === "n" ? "-top-1 left-4 right-4 h-3 cursor-n-resize" : "") +
+                  (edge === "s" ? "-bottom-1 left-4 right-4 h-3 cursor-s-resize" : "") +
+                  (edge === "e" ? "-right-1 bottom-4 top-4 w-3 cursor-e-resize" : "") +
+                  (edge === "w" ? "-left-1 bottom-4 top-4 w-3 cursor-w-resize" : "") +
+                  (edge === "ne" ? "-right-1 -top-1 size-5 cursor-ne-resize" : "") +
+                  (edge === "nw" ? "-left-1 -top-1 size-5 cursor-nw-resize" : "") +
+                  (edge === "se" ? "-bottom-1 -right-1 size-5 cursor-se-resize" : "") +
+                  (edge === "sw" ? "-bottom-1 -left-1 size-5 cursor-sw-resize" : "")
+                }
+              />
+            ))}
           </div>
         </>
       )}

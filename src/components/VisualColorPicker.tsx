@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { BookmarkPlus, Check, Palette } from "lucide-react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { BookmarkPlus, Check, GripHorizontal, Palette, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
@@ -62,6 +62,23 @@ export function VisualColorPicker({
 }) {
   const selected = toHex(value);
   const [savedColors, setSavedColors] = useState(readSavedColors);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ x: number; y: number } | null>(null);
+
+  const startDrag = (event: ReactPointerEvent) => {
+    if ((event.target as Element).closest("button")) return;
+    drag.current = { x: event.clientX - offset.x, y: event.clientY - offset.y };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveDrag = (event: ReactPointerEvent) => {
+    if (!drag.current) return;
+    setOffset({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y });
+  };
+
+  const endDrag = () => {
+    drag.current = null;
+  };
 
   const saveColor = () => {
     if (savedColors.includes(selected)) return;
@@ -115,8 +132,27 @@ export function VisualColorPicker({
           align="start"
           sideOffset={8}
           collisionPadding={8}
-          className="z-[220] max-h-[min(70dvh,34rem)] w-[min(22rem,calc(100vw-1rem))] space-y-4 overflow-y-auto overscroll-contain rounded-2xl shadow-2xl max-sm:max-h-[52dvh] max-sm:p-3"
+          style={{ translate: `${offset.x}px ${offset.y}px` }}
+          className="z-[220] max-h-[min(70dvh,34rem)] w-[min(22rem,calc(100vw-1rem))] space-y-4 overflow-y-auto overscroll-contain rounded-2xl pt-3 shadow-2xl max-sm:max-h-[52dvh] max-sm:p-3"
         >
+          <div
+            data-testid="visual-color-picker-drag-handle"
+            aria-label="גרירת חלון בחירת הצבע"
+            onPointerDown={startDrag}
+            onPointerMove={moveDrag}
+            onPointerUp={endDrag}
+            onPointerCancel={endDrag}
+            onDoubleClick={() => setOffset({ x: 0, y: 0 })}
+            className="sticky -top-3 z-10 -mx-4 -mt-3 flex h-9 cursor-grab touch-none items-center justify-between border-b bg-popover px-3 active:cursor-grabbing max-sm:-mx-3"
+          >
+            <GripHorizontal className="size-4 text-muted-foreground" />
+            <span className="text-xs font-medium">בחירת {label} — ניתן לגרור</span>
+            <PopoverClose asChild>
+              <Button type="button" size="icon" variant="ghost" aria-label="סגירת בחירת הצבע">
+                <X className="size-4" />
+              </Button>
+            </PopoverClose>
+          </div>
           <div className="flex items-center gap-3">
             <label className="grid cursor-pointer place-items-center gap-1 text-xs font-medium">
               <input

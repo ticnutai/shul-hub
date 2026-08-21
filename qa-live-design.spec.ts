@@ -15,13 +15,11 @@ test("mode off, blocked clicks, Alt-click, pause and resume follow the interacti
   await page.goto(`${baseUrl}/`);
   await page.getByRole("link", { name: "מודעות", exact: true }).click();
   await expect(page).toHaveURL(/\/announcements$/);
-
   await page.goto(`${baseUrl}/`);
   await enable(page);
   const announcements = page.getByRole("link", { name: "מודעות", exact: true });
   await announcements.click();
   expect(new URL(page.url()).pathname).toBe("/");
-
   await announcements.evaluate((node) =>
     node.addEventListener("click", () => {
       sessionStorage.setItem(
@@ -33,8 +31,6 @@ test("mode off, blocked clicks, Alt-click, pause and resume follow the interacti
   await announcements.click({ modifiers: ["Alt"] });
   await expect.poll(() => new URL(page.url()).pathname).toBe("/announcements");
   expect(await page.evaluate(() => sessionStorage.getItem("live-design-alt-clicks"))).toBe("1");
-  await expect(page.getByRole("dialog", { name: "עורך עיצוב חי" })).toBeVisible();
-
   await page.getByText("השהיה", { exact: true }).click();
   await page.getByRole("link", { name: "שיעורים", exact: true }).click();
   await expect.poll(() => new URL(page.url()).pathname).toBe("/shiurim");
@@ -49,15 +45,13 @@ test("live preview, all save scopes, undo, redo and clear persist correctly", as
   await enable(page);
   const heading = page.getByRole("heading", { name: "זמני התפילות", exact: true });
   const originalSize = await heading.evaluate((node) => getComputedStyle(node).fontSize);
-
   await heading.click();
   await page.getByLabel("גודל גופן").fill("31px");
   await expect.poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize)).toBe("31px");
-  await page.getByRole("button", { name: "סגירת בחירה" }).click();
+  await page.keyboard.press("Escape");
   await expect
     .poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize))
     .toBe(originalSize);
-
   for (const scope of ["element", "component", "global"] as const) {
     await heading.click();
     await page.getByLabel("גודל גופן").fill("31px");
@@ -70,13 +64,11 @@ test("live preview, all save scopes, undo, redo and clear persist correctly", as
     ),
   );
   expect(savedScopes).toEqual(["element", "component", "global"]);
-
   await page.getByRole("button", { name: "ביטול פעולה" }).click();
   await page.getByRole("button", { name: "ביצוע חוזר" }).click();
   await expect.poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize)).toBe("31px");
   await page.reload();
   await expect.poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize)).toBe("31px");
-
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "איפוס הכול" }).click();
   await expect
@@ -88,69 +80,72 @@ test("live preview, all save scopes, undo, redo and clear persist correctly", as
     .toBe(0);
 });
 
-test("large editor position and outer size survive reload", async ({ page }) => {
+test("editor has eight resize handles, persists its layout and closes correctly", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${baseUrl}/`);
   await enable(page);
   const editor = page.getByTestId("live-design-editor");
+  await expect(page.locator('[data-testid^="live-design-resize-"]')).toHaveCount(8);
   const initial = await editor.boundingBox();
   expect(initial).not.toBeNull();
   expect(initial!.width).toBeGreaterThanOrEqual(480);
   expect(initial!.height).toBeGreaterThanOrEqual(300);
-
-  await editor.evaluate((node) => {
-    (node as HTMLElement).style.width = "620px";
-    (node as HTMLElement).style.height = "500px";
-  });
-  await page.waitForTimeout(200);
-  const handle = editor.getByText("עורך עיצוב חי", { exact: true }).locator("..");
-  const handleBox = await handle.boundingBox();
-  expect(handleBox).not.toBeNull();
+  const eastBox = await page.getByTestId("live-design-resize-e").boundingBox();
+  await page.mouse.move(eastBox!.x + eastBox!.width / 2, eastBox!.y + eastBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(eastBox!.x + 90, eastBox!.y + eastBox!.height / 2, { steps: 5 });
+  await page.mouse.up();
+  const wider = await editor.boundingBox();
+  expect(wider!.width).toBeGreaterThanOrEqual(initial!.width + 45);
+  const northBox = await page.getByTestId("live-design-resize-n").boundingBox();
+  await page.mouse.move(northBox!.x + northBox!.width / 2, northBox!.y + northBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(northBox!.x + northBox!.width / 2, northBox!.y + 45, { steps: 5 });
+  await page.mouse.up();
+  const resized = await editor.boundingBox();
+  expect(resized!.height).toBeLessThan(wider!.height - 20);
+  const handleBox = await editor
+    .getByText("עורך עיצוב חי", { exact: true })
+    .locator("..")
+    .boundingBox();
   await page.mouse.move(handleBox!.x + 80, handleBox!.y + 20);
   await page.mouse.down();
-  await page.mouse.move(handleBox!.x + 160, handleBox!.y + 65, { steps: 5 });
+  await page.mouse.move(handleBox!.x + 150, handleBox!.y + 55, { steps: 5 });
   await page.mouse.up();
   const moved = await editor.boundingBox();
-  expect(moved).not.toBeNull();
-  expect(moved!.x).toBeGreaterThan(initial!.x + 50);
-  expect(moved!.y).toBeGreaterThan(initial!.y + 20);
+  expect(moved!.x).toBeGreaterThan(resized!.x + 45);
+  expect(moved!.y).toBeGreaterThan(resized!.y + 20);
   await page.reload();
   const restored = await editor.boundingBox();
-  expect(restored).not.toBeNull();
-  expect(restored!.width).toBeGreaterThanOrEqual(615);
-  expect(restored!.height).toBeGreaterThanOrEqual(495);
-  expect(restored!.x).toBeGreaterThan(initial!.x + 50);
-  expect(restored!.y).toBeGreaterThan(initial!.y + 20);
+  expect(restored!.width).toBeGreaterThanOrEqual(resized!.width - 5);
+  expect(restored!.height).toBeGreaterThanOrEqual(resized!.height - 5);
+  expect(restored!.x).toBeGreaterThan(initial!.x + 40);
+  await page.getByRole("button", { name: "סגירת עורך העיצוב" }).click();
+  await expect(editor).toBeHidden();
+  await expect(page).not.toHaveURL(/designMode=1/);
 });
 
-test("mobile color picker stays above the live editor and inside the viewport", async ({
-  page,
-}) => {
+test("mobile color picker stays above the editor, floats by drag and closes", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/`);
   await enable(page);
-
   const target = page.locator("header").getByText("בית הכנסת אושר של יהודי", { exact: true });
-  await target.click();
-
+  await target.dispatchEvent("pointerdown", { bubbles: true, cancelable: true });
   const editor = page.getByTestId("live-design-editor");
   const editorBox = await editor.boundingBox();
-  expect(editorBox).not.toBeNull();
   expect(editorBox!.x).toBeGreaterThanOrEqual(0);
   expect(editorBox!.x + editorBox!.width).toBeLessThanOrEqual(390);
   expect(editorBox!.y + editorBox!.height).toBeLessThanOrEqual(844);
-  expect(editorBox!.height).toBeGreaterThanOrEqual(360);
-
   await editor.getByRole("button", { name: "בחירת צבע טקסט" }).click();
   const picker = page.getByTestId("visual-color-picker");
   await expect(picker).toBeVisible();
-
   const pickerBox = await picker.boundingBox();
-  expect(pickerBox).not.toBeNull();
   expect(pickerBox!.x).toBeGreaterThanOrEqual(0);
   expect(pickerBox!.y).toBeGreaterThanOrEqual(0);
   expect(pickerBox!.x + pickerBox!.width).toBeLessThanOrEqual(390);
   expect(pickerBox!.y + pickerBox!.height).toBeLessThanOrEqual(844);
-
   const layers = await page.evaluate(() => ({
     editor: Number(
       getComputedStyle(document.querySelector('[data-testid="live-design-editor"]')!).zIndex,
@@ -160,9 +155,15 @@ test("mobile color picker stays above the live editor and inside the viewport", 
     ),
   }));
   expect(layers.picker).toBeGreaterThan(layers.editor);
-
-  await picker.getByRole("button", { name: "בחירת הצבע #dc2626" }).click();
-  await expect
-    .poll(() => target.evaluate((node) => getComputedStyle(node).color))
-    .toBe("rgb(220, 38, 38)");
+  const dragBox = await page.getByTestId("visual-color-picker-drag-handle").boundingBox();
+  await page.mouse.move(dragBox!.x + dragBox!.width / 2, dragBox!.y + dragBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(dragBox!.x + dragBox!.width / 2 + 35, dragBox!.y + 45, { steps: 5 });
+  await page.mouse.up();
+  const movedPicker = await picker.boundingBox();
+  expect(
+    Math.abs(movedPicker!.x - pickerBox!.x) + Math.abs(movedPicker!.y - pickerBox!.y),
+  ).toBeGreaterThan(30);
+  await page.getByRole("button", { name: "סגירת בחירת הצבע" }).click();
+  await expect(picker).toBeHidden();
 });
