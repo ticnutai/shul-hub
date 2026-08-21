@@ -173,6 +173,39 @@ export type Database = {
         }
         Relationships: []
       }
+      home_widgets: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          kind: string
+          label: string
+          sort_order: number
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          kind?: string
+          label: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          kind?: string
+          label?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Relationships: []
+      }
       migration_logs: {
         Row: {
           error: string | null
