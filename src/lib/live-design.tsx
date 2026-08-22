@@ -418,12 +418,11 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
     event.currentTarget.setPointerCapture(event.pointerId);
   };
   const dragMove = (event: ReactPointerEvent) => {
-    if (!drag.current) return;
-    setLayout((current) => ({
-      ...current,
-      x: Math.max(8, Math.min(event.clientX - drag.current!.dx, window.innerWidth - 80)),
-      y: Math.max(8, Math.min(event.clientY - drag.current!.dy, window.innerHeight - 56)),
-    }));
+    const origin = drag.current;
+    if (!origin) return;
+    const nextX = Math.max(8, Math.min(event.clientX - origin.dx, window.innerWidth - 80));
+    const nextY = Math.max(8, Math.min(event.clientY - origin.dy, window.innerHeight - 56));
+    setLayout((current) => ({ ...current, x: nextX, y: nextY }));
   };
 
   const startResize = (edge: ResizeEdge, event: ReactPointerEvent) => {
