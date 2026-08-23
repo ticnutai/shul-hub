@@ -56,6 +56,20 @@ for (const viewport of mobileViewports) {
 
       expect(errors).toEqual([]);
     });
+
+    test("mobile header title is centered while the BH mark stays at the right edge", async ({
+      page,
+    }) => {
+      await page.goto(`${baseUrl}/`);
+      const titleBox = await page.getByTestId("site-header-title").boundingBox();
+      const markBox = await page.getByLabel("ב״ה").boundingBox();
+      expect(titleBox).not.toBeNull();
+      expect(markBox).not.toBeNull();
+      expect(Math.abs(titleBox!.x + titleBox!.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(
+        2,
+      );
+      expect(viewport.width - (markBox!.x + markBox!.width)).toBeLessThanOrEqual(20);
+    });
   });
 }
 
@@ -141,6 +155,21 @@ test.describe("mobile interactive states", () => {
     const markBox = await mark.boundingBox();
     expect(markBox).not.toBeNull();
     expect(390 - (markBox!.x + markBox!.width)).toBeLessThanOrEqual(20);
+  });
+
+  test("the Hebrew date appears before the Gregorian date", async ({ page }) => {
+    await page.goto(`${baseUrl}/`);
+    const hebrewDate = page.getByTestId("hebrew-date");
+    const gregorianDate = page.getByTestId("gregorian-date");
+    await expect(hebrewDate).toContainText(
+      /(תשרי|חשוון|כסלו|טבת|שבט|אדר|ניסן|אייר|סיוון|תמוז|אב|אלול)/,
+    );
+    await expect(hebrewDate).not.toContainText(/[0-9]/);
+    await expect(hebrewDate).toContainText(/[׳״]/);
+    await expect(gregorianDate).toBeVisible();
+    const hebrewBox = await hebrewDate.boundingBox();
+    const gregorianBox = await gregorianDate.boundingBox();
+    expect(hebrewBox!.y).toBeLessThan(gregorianBox!.y);
   });
 
   test("theme presets can be updated or duplicated on mobile", async ({ page }) => {

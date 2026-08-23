@@ -50,12 +50,16 @@ export function SiteHeader() {
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-center gap-2 px-4 py-2.5 sm:flex-nowrap sm:justify-start sm:gap-3">
         <Link
           to="/"
-          className="flex min-w-0 basis-full items-center justify-start gap-2 sm:basis-auto sm:flex-1"
+          data-testid="site-header-brand"
+          className="relative flex min-w-0 basis-full items-center justify-center gap-2 sm:basis-auto sm:flex-1 sm:justify-start"
         >
-          <span className="shrink-0 self-start pt-0.5 text-sidebar-primary" aria-label="ב״ה">
+          <span
+            className="absolute right-0 top-0.5 shrink-0 text-sidebar-primary sm:static sm:self-start sm:pt-0.5"
+            aria-label="ב״ה"
+          >
             <span className="text-[11px] font-semibold leading-none">ב״ה</span>
           </span>
-          <span className="min-w-0">
+          <span className="min-w-0 text-center sm:text-right" data-testid="site-header-title">
             <span className="block truncate text-base font-semibold text-sidebar-foreground">
               {settings?.name ?? "בית הכנסת"}
             </span>

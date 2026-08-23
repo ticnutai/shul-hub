@@ -50,6 +50,68 @@ const SHOWN_ZMANIM: SolarEvent[] = [
   "tzeit",
 ];
 
+function hebrewNumeral(value: number) {
+  let remaining = value % 1000;
+  const letters: string[] = [];
+  const values: Array<[number, string]> = [
+    [400, "ת"],
+    [300, "ש"],
+    [200, "ר"],
+    [100, "ק"],
+    [90, "צ"],
+    [80, "פ"],
+    [70, "ע"],
+    [60, "ס"],
+    [50, "נ"],
+    [40, "מ"],
+    [30, "ל"],
+    [20, "כ"],
+    [10, "י"],
+    [9, "ט"],
+    [8, "ח"],
+    [7, "ז"],
+    [6, "ו"],
+    [5, "ה"],
+    [4, "ד"],
+    [3, "ג"],
+    [2, "ב"],
+    [1, "א"],
+  ];
+
+  for (const [amount, letter] of values.slice(0, 4)) {
+    while (remaining >= amount) {
+      letters.push(letter);
+      remaining -= amount;
+    }
+  }
+  if (remaining === 15 || remaining === 16) {
+    letters.push("ט", remaining === 15 ? "ו" : "ז");
+    remaining = 0;
+  }
+  for (const [amount, letter] of values.slice(4)) {
+    while (remaining >= amount) {
+      letters.push(letter);
+      remaining -= amount;
+    }
+  }
+
+  if (letters.length === 1) return `${letters[0]}׳`;
+  return `${letters.slice(0, -1).join("")}״${letters.at(-1)}`;
+}
+
+function formatHebrewDate(date: Date) {
+  const parts = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Jerusalem",
+  }).formatToParts(date);
+  const day = parts.find((part) => part.type === "day")?.value ?? "";
+  const month = parts.find((part) => part.type === "month")?.value ?? "";
+  const year = parts.find((part) => part.type === "year")?.value ?? "";
+  return `${hebrewNumeral(Number(day))} ${month} ${hebrewNumeral(Number(year))}`;
+}
+
 function HomePage() {
   const { data: settings } = useSettings();
   const { data: minyanim = [], isLoading } = useMinyanim();
@@ -120,6 +182,7 @@ function HomePage() {
     selectedCategory?.system_key === "friday" ? PRAYER_TABS.slice(0, 1) : PRAYER_TABS;
   const isListView = selectedCategory?.display_mode === "list";
 
+  const hebrewDateLabel = formatHebrewDate(today);
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
     day: "numeric",
@@ -165,10 +228,15 @@ function HomePage() {
             )}
           </h1>
           <div className="gold-rule mx-auto mt-4 h-px w-40" />
-          <p className="mt-4 flex items-center justify-center gap-2 text-sm opacity-90">
-            <CalendarDays className="size-4" />
-            {dateLabel}
-          </p>
+          <div className="mt-4 flex items-start justify-center gap-2 text-sm opacity-90">
+            <CalendarDays className="mt-0.5 size-4 shrink-0" />
+            <div className="text-center">
+              <p data-testid="hebrew-date">{hebrewDateLabel}</p>
+              <p className="mt-0.5 text-xs opacity-80" data-testid="gregorian-date">
+                {dateLabel}
+              </p>
+            </div>
+          </div>
           <div className="mt-6 flex items-center justify-center gap-6 text-sm">
             <span className="flex items-center gap-2">
               <Sunrise className="size-4" /> נץ {formatTime(zmanim.sunrise)}
