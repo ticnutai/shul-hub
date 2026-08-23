@@ -64,48 +64,33 @@ test.describe("mobile interactive states", () => {
 
   test("horizontal swipe gestures navigate between public pages in RTL order", async ({ page }) => {
     await page.goto(`${baseUrl}/`);
-    const swipe = async (
-      from: { x: number; y: number },
-      to: { x: number; y: number },
-      pointerId: number,
-    ) => {
-      await page
-        .locator("main")
-        .first()
-        .evaluate(
-          (element, gesture) => {
-            const options = {
-              bubbles: true,
-              pointerType: "touch",
-              pointerId: gesture.pointerId,
-              isPrimary: true,
-            };
-            element.dispatchEvent(
-              new PointerEvent("pointerdown", {
-                ...options,
-                clientX: gesture.from.x,
-                clientY: gesture.from.y,
-              }),
-            );
-            element.dispatchEvent(
-              new PointerEvent("pointerup", {
-                ...options,
-                clientX: gesture.to.x,
-                clientY: gesture.to.y,
-              }),
-            );
-          },
-          { from, to, pointerId },
-        );
+    const cdp = await page.context().newCDPSession(page);
+    const swipe = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchStart",
+        touchPoints: [{ x: from.x, y: from.y }],
+      });
+      for (let step = 1; step <= 8; step += 1) {
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [
+            {
+              x: from.x + ((to.x - from.x) * step) / 8,
+              y: from.y + ((to.y - from.y) * step) / 8,
+            },
+          ],
+        });
+      }
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     };
 
-    await swipe({ x: 330, y: 420 }, { x: 80, y: 425 }, 1);
+    await swipe({ x: 330, y: 420 }, { x: 80, y: 425 });
     await expect(page).toHaveURL(/\/announcements$/);
 
-    await swipe({ x: 80, y: 420 }, { x: 330, y: 425 }, 2);
+    await swipe({ x: 80, y: 420 }, { x: 330, y: 425 });
     await expect(page).toHaveURL(/\/$/);
 
-    await swipe({ x: 210, y: 180 }, { x: 190, y: 650 }, 3);
+    await swipe({ x: 210, y: 180 }, { x: 190, y: 650 });
     await expect(page).toHaveURL(/\/$/);
   });
 

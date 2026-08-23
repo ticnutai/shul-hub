@@ -1,4 +1,4 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarRange, GripVertical, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -66,6 +66,7 @@ export function MinyanimAdmin() {
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
   const draggedMinyanRef = useRef<string | null>(null);
   const draggedCategoryRef = useRef<string | null>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   const selectedCategory =
@@ -170,17 +171,46 @@ export function MinyanimAdmin() {
       "סדר הטאבים נשמר",
     );
 
-  function finishPointerDrag(
-    event: ReactPointerEvent,
+  useEffect(() => () => dragCleanupRef.current?.(), []);
+
+  function beginPointerDrag(
+    event: ReactPointerEvent<HTMLButtonElement>,
+    draggedId: string,
     selector: string,
     move: (targetId: string) => Promise<void>,
+    start: () => void,
     clear: () => void,
   ) {
-    const target = document
-      .elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>(selector);
-    if (target?.dataset["reorderId"]) void move(target.dataset["reorderId"]);
-    clear();
+    if (!event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    dragCleanupRef.current?.();
+    start();
+
+    const ownerDocument = event.currentTarget.ownerDocument;
+    const pointerId = event.pointerId;
+    const finish = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointerId) return;
+      const target = ownerDocument
+        .elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)
+        ?.closest<HTMLElement>(selector);
+      if (target?.dataset["reorderId"] && target.dataset["reorderId"] !== draggedId) {
+        void move(target.dataset["reorderId"]);
+      }
+      cleanup();
+    };
+    const cancel = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId === pointerId) cleanup();
+    };
+    const cleanup = () => {
+      ownerDocument.removeEventListener("pointerup", finish, true);
+      ownerDocument.removeEventListener("pointercancel", cancel, true);
+      dragCleanupRef.current = null;
+      clear();
+    };
+
+    ownerDocument.addEventListener("pointerup", finish, true);
+    ownerDocument.addEventListener("pointercancel", cancel, true);
+    dragCleanupRef.current = cleanup;
   }
 
   return (
@@ -212,19 +242,20 @@ export function MinyanimAdmin() {
                 title="גרור לשינוי סדר הטאבים"
                 className="cursor-grab touch-none p-1.5 active:cursor-grabbing"
                 onPointerDown={(event) => {
-                  draggedCategoryRef.current = category.id;
-                  setDraggedCategoryId(category.id);
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                }}
-                onPointerUp={(event) =>
-                  finishPointerDrag(event, '[data-reorder-kind="category"]', moveCategory, () => {
-                    draggedCategoryRef.current = null;
-                    setDraggedCategoryId(null);
-                  })
-                }
-                onPointerCancel={() => {
-                  draggedCategoryRef.current = null;
-                  setDraggedCategoryId(null);
+                  beginPointerDrag(
+                    event,
+                    category.id,
+                    '[data-reorder-kind="category"]',
+                    moveCategory,
+                    () => {
+                      draggedCategoryRef.current = category.id;
+                      setDraggedCategoryId(category.id);
+                    },
+                    () => {
+                      draggedCategoryRef.current = null;
+                      setDraggedCategoryId(null);
+                    },
+                  );
                 }}
               >
                 <GripVertical className="size-4" />
@@ -403,19 +434,20 @@ export function MinyanimAdmin() {
                 title="גרור לשינוי סדר המניינים"
                 className="cursor-grab touch-none p-2 text-muted-foreground active:cursor-grabbing"
                 onPointerDown={(event) => {
-                  draggedMinyanRef.current = m.id;
-                  setDraggedMinyanId(m.id);
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                }}
-                onPointerUp={(event) =>
-                  finishPointerDrag(event, '[data-reorder-kind="minyan"]', moveMinyan, () => {
-                    draggedMinyanRef.current = null;
-                    setDraggedMinyanId(null);
-                  })
-                }
-                onPointerCancel={() => {
-                  draggedMinyanRef.current = null;
-                  setDraggedMinyanId(null);
+                  beginPointerDrag(
+                    event,
+                    m.id,
+                    '[data-reorder-kind="minyan"]',
+                    moveMinyan,
+                    () => {
+                      draggedMinyanRef.current = m.id;
+                      setDraggedMinyanId(m.id);
+                    },
+                    () => {
+                      draggedMinyanRef.current = null;
+                      setDraggedMinyanId(null);
+                    },
+                  );
                 }}
               >
                 <GripVertical className="size-5" />

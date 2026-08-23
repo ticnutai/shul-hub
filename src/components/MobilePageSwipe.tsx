@@ -11,8 +11,8 @@ function shouldIgnoreGesture(target: EventTarget | null) {
 
   return Boolean(
     target.closest(
-      "a, button, input, textarea, select, [role='button'], [role='slider'], " +
-        "[contenteditable='true'], [draggable='true'], [data-no-page-swipe]",
+      "input, textarea, select, [role='slider'], [contenteditable='true'], " +
+        "[draggable='true'], [data-no-page-swipe]",
     ) || document.querySelector("[role='dialog']"),
   );
 }
@@ -29,6 +29,9 @@ export function MobilePageSwipe() {
     let startX = 0;
     let startY = 0;
     let startTime = 0;
+    let suppressClickUntil = 0;
+    const previousTouchAction = document.body.style.touchAction;
+    document.body.style.touchAction = "pan-y pinch-zoom";
 
     const reset = () => {
       pointerId = null;
@@ -69,17 +72,30 @@ export function MobilePageSwipe() {
       // In RTL, swiping right-to-left advances through the visible navigation order.
       const nextIndex = deltaX < 0 ? currentIndex + 1 : currentIndex - 1;
       const nextPath = PAGE_ORDER[nextIndex];
-      if (nextPath) void navigate({ to: nextPath });
+      if (nextPath) {
+        suppressClickUntil = performance.now() + 500;
+        void navigate({ to: nextPath });
+      }
+    };
+
+    const onClick = (event: MouseEvent) => {
+      if (performance.now() < suppressClickUntil) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
     };
 
     document.addEventListener("pointerdown", onPointerDown, { passive: true });
     document.addEventListener("pointerup", onPointerUp, { passive: true });
     document.addEventListener("pointercancel", reset, { passive: true });
+    document.addEventListener("click", onClick, true);
 
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("pointerup", onPointerUp);
       document.removeEventListener("pointercancel", reset);
+      document.removeEventListener("click", onClick, true);
+      document.body.style.touchAction = previousTouchAction;
     };
   }, [navigate, pathname]);
 
