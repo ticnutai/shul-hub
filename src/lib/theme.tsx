@@ -205,6 +205,15 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       root.style.setProperty("--popover", selected.colors.card);
       root.style.setProperty("--popover-foreground", selected.colors.foreground);
       root.style.setProperty("--sidebar-foreground", selected.colors.background);
+      root.style.setProperty("--sidebar-primary", selected.colors.gold);
+      root.style.setProperty(
+        "--sidebar-accent",
+        `color-mix(in oklch, ${selected.colors.sidebar} 84%, ${selected.colors.gold})`,
+      );
+      root.style.setProperty(
+        "--sidebar-border",
+        `color-mix(in oklch, ${selected.colors.gold} 35%, transparent)`,
+      );
       root.style.setProperty("--hero-from", selected.colors.sidebar);
       root.style.setProperty("--hero-to", selected.colors.primary);
     } else {
@@ -213,6 +222,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         "--popover",
         "--popover-foreground",
         "--sidebar-foreground",
+        "--sidebar-primary",
+        "--sidebar-accent",
+        "--sidebar-border",
         "--hero-from",
         "--hero-to",
       ].forEach((name) => root.style.removeProperty(name));

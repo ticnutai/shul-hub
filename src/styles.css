@@ -117,6 +117,14 @@
   --shadow-color: oklch(0.42 0.07 70 / 30%);
   --hero-from: oklch(0.4 0.07 70);
   --hero-to: oklch(0.55 0.09 80);
+  --sidebar: var(--primary);
+  --sidebar-foreground: var(--primary-foreground);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--gold-foreground);
+  --sidebar-accent: color-mix(in oklch, var(--primary) 84%, var(--gold));
+  --sidebar-accent-foreground: var(--gold);
+  --sidebar-border: color-mix(in oklch, var(--gold) 35%, transparent);
+  --sidebar-ring: var(--gold);
 }
 
 .theme-bordeaux {
@@ -142,6 +150,14 @@
   --shadow-color: oklch(0.36 0.11 18 / 30%);
   --hero-from: oklch(0.33 0.11 18);
   --hero-to: oklch(0.47 0.12 25);
+  --sidebar: var(--primary);
+  --sidebar-foreground: var(--primary-foreground);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--gold-foreground);
+  --sidebar-accent: color-mix(in oklch, var(--primary) 84%, var(--gold));
+  --sidebar-accent-foreground: var(--gold);
+  --sidebar-border: color-mix(in oklch, var(--gold) 35%, transparent);
+  --sidebar-ring: var(--gold);
 }
 
 .theme-forest {
@@ -167,6 +183,14 @@
   --shadow-color: oklch(0.36 0.075 160 / 30%);
   --hero-from: oklch(0.32 0.07 160);
   --hero-to: oklch(0.45 0.08 170);
+  --sidebar: var(--primary);
+  --sidebar-foreground: var(--primary-foreground);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--gold-foreground);
+  --sidebar-accent: color-mix(in oklch, var(--primary) 84%, var(--gold));
+  --sidebar-accent-foreground: var(--gold);
+  --sidebar-border: color-mix(in oklch, var(--gold) 35%, transparent);
+  --sidebar-ring: var(--gold);
 }
 
 .theme-sand {
@@ -192,6 +216,14 @@
   --shadow-color: oklch(0.52 0.13 245 / 28%);
   --hero-from: oklch(0.48 0.13 245);
   --hero-to: oklch(0.65 0.11 225);
+  --sidebar: var(--primary);
+  --sidebar-foreground: var(--primary-foreground);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--gold-foreground);
+  --sidebar-accent: color-mix(in oklch, var(--primary) 84%, var(--gold));
+  --sidebar-accent-foreground: var(--gold);
+  --sidebar-border: color-mix(in oklch, var(--gold) 35%, transparent);
+  --sidebar-ring: var(--gold);
 }
 
 .theme-night {
@@ -219,6 +251,14 @@
   --shadow-color: oklch(0.08 0.02 258 / 70%);
   --hero-from: oklch(0.24 0.05 258);
   --hero-to: oklch(0.3 0.06 250);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--gold-foreground);
+  --sidebar-accent: color-mix(in oklch, var(--background) 82%, var(--gold));
+  --sidebar-accent-foreground: var(--gold);
+  --sidebar-border: color-mix(in oklch, var(--gold) 35%, transparent);
+  --sidebar-ring: var(--gold);
 }
 
 @layer base {
