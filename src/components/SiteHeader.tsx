@@ -92,8 +92,6 @@ export function SiteHeader() {
 
         <MigrationCredentialsDialog />
 
-        <LiveDesignButton />
-
         <Button
           asChild
           variant="ghost"
@@ -157,20 +155,6 @@ export function SiteHeader() {
         </nav>
       )}
     </header>
-  );
-}
-
-function LiveDesignButton() {
-  return (
-    <Button asChild variant="ghost" size="icon">
-      <a
-        href="?designMode=1"
-        aria-label="עריכת עיצוב חיה"
-        className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary"
-      >
-        <WandSparkles className="size-5" />
-      </a>
-    </Button>
   );
 }
 

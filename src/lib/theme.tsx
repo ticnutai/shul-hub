@@ -282,6 +282,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const next = [...customThemes, copy];
     setCustomThemes(next);
     writeCustomThemes(next);
+    window.dispatchEvent(
+      new CustomEvent("shul-theme-duplicated", {
+        detail: { sourceId: id, targetId: nextId },
+      }),
+    );
     setTheme(nextId);
     return nextId;
   };

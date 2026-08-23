@@ -9,6 +9,16 @@ async function enable(page: Page) {
   await expect(page.getByRole("dialog", { name: "עורך עיצוב חי" })).toBeVisible();
 }
 
+async function currentThemeOverrides(page: Page) {
+  return page.evaluate(() => {
+    const theme = localStorage.getItem("beit-knesset-theme") ?? "navy";
+    const all = JSON.parse(
+      localStorage.getItem("shul-live-design-overrides-by-theme-v2") ?? "{}",
+    ) as Record<string, { scope: string }[]>;
+    return all[theme] ?? [];
+  });
+}
+
 test("mode off, blocked clicks, Alt-click, pause and resume follow the interaction contract", async ({
   page,
 }) => {
@@ -58,11 +68,7 @@ test("live preview, all save scopes, undo, redo and clear persist correctly", as
     await page.getByRole("combobox", { name: "היקף שמירה" }).selectOption(scope);
     await page.getByRole("button", { name: "שמירה", exact: true }).click();
   }
-  const savedScopes = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("shul-live-design-overrides-v1") ?? "[]").map(
-      (item: { scope: string }) => item.scope,
-    ),
-  );
+  const savedScopes = (await currentThemeOverrides(page)).map((item) => item.scope);
   expect(savedScopes).toEqual(["element", "component", "global"]);
   await page.getByRole("button", { name: "ביטול פעולה" }).click();
   await page.getByRole("button", { name: "ביצוע חוזר" }).click();
@@ -71,13 +77,35 @@ test("live preview, all save scopes, undo, redo and clear persist correctly", as
   await expect.poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize)).toBe("31px");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "איפוס הכול" }).click();
+  await expect.poll(() => currentThemeOverrides(page).then((items) => items.length)).toBe(0);
+});
+
+test("the live-design entry appears once and overrides stay isolated per theme", async ({
+  page,
+}) => {
+  await page.goto(`${baseUrl}/`);
+  await expect(page.getByRole("link", { name: "עריכת עיצוב חיה" })).toHaveCount(0);
+  await page.getByRole("button", { name: "ערכת נושא" }).click();
+  await expect(page.getByRole("menuitem", { name: "עריכת עיצוב בתצוגה חיה" })).toHaveCount(1);
+  await page.getByRole("menuitem", { name: "עריכת עיצוב בתצוגה חיה" }).click();
+  await expect(page.getByRole("dialog", { name: "עורך עיצוב חי" })).toBeVisible();
+
+  const heading = page.getByRole("heading", { name: "זמני התפילות", exact: true });
+  await heading.click();
+  await page.getByLabel("גודל גופן").fill("31px");
+  await page.getByRole("button", { name: "שמירה", exact: true }).click();
+  await page.getByRole("button", { name: "יציאה ממצב עיצוב" }).click();
+  await expect.poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize)).toBe("31px");
+
+  await page.getByRole("button", { name: "ערכת נושא" }).click();
+  await page.getByRole("menuitem", { name: "אבן ירושלמית" }).click();
   await expect
-    .poll(() =>
-      page.evaluate(
-        () => JSON.parse(localStorage.getItem("shul-live-design-overrides-v1") ?? "[]").length,
-      ),
-    )
-    .toBe(0);
+    .poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize))
+    .not.toBe("31px");
+
+  await page.getByRole("button", { name: "ערכת נושא" }).click();
+  await page.getByRole("menuitem", { name: "נייבי וזהב" }).click();
+  await expect.poll(() => heading.evaluate((node) => getComputedStyle(node).fontSize)).toBe("31px");
 });
 
 test("editor has eight resize handles, persists its layout and closes correctly", async ({

@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VisualColorPicker } from "@/components/VisualColorPicker";
+import { useTheme } from "@/lib/theme";
 
 type Scope = "element" | "component" | "global";
 type Override = {
@@ -29,6 +30,7 @@ type Layout = { x: number; y: number; width: number; height: number };
 type ResizeEdge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
 
 const OVERRIDES_KEY = "shul-live-design-overrides-v1";
+const THEMED_OVERRIDES_KEY = "shul-live-design-overrides-by-theme-v2";
 const LAYOUT_KEY = "shul-live-design-layout-v1";
 const emptyCss = {
   color: "",
@@ -208,13 +210,34 @@ function draftFrom(element: HTMLElement): CssDraft {
 }
 
 export function LiveDesignProvider({ children }: { children: ReactNode }) {
+  const { theme } = useTheme();
   const [enabled, setEnabled] = useState(false);
   const [paused, setPaused] = useState(false);
   const [selected, setSelected] = useState<HTMLElement | null>(null);
   const [hovered, setHovered] = useState<HTMLElement | null>(null);
   const [draft, setDraft] = useState<CssDraft>(emptyCss);
   const [scope, setScope] = useState<Scope>("element");
-  const [overrides, setOverrides] = useState<Override[]>(() => readJson(OVERRIDES_KEY, []));
+  const [overridesByTheme, setOverridesByTheme] = useState<Record<string, Override[]>>(() => {
+    const themed = readJson<Record<string, Override[]>>(THEMED_OVERRIDES_KEY, {});
+    if (Object.keys(themed).length) return themed;
+    const legacy = readJson<Override[]>(OVERRIDES_KEY, []);
+    const activeTheme =
+      typeof window === "undefined"
+        ? "navy"
+        : (localStorage.getItem("beit-knesset-theme") ?? "navy");
+    return legacy.length ? { [activeTheme]: legacy } : {};
+  });
+  const overrides = useMemo(() => overridesByTheme[theme] ?? [], [overridesByTheme, theme]);
+  const setOverrides = useCallback(
+    (next: Override[] | ((current: Override[]) => Override[])) => {
+      setOverridesByTheme((all) => {
+        const current = all[theme] ?? [];
+        const value = typeof next === "function" ? next(current) : next;
+        return { ...all, [theme]: value };
+      });
+    },
+    [theme],
+  );
   const [history, setHistory] = useState<Override[][]>([]);
   const [future, setFuture] = useState<Override[][]>([]);
   const [layout, setLayout] = useState<Layout>(loadLayout);
@@ -253,13 +276,39 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(OVERRIDES_KEY, JSON.stringify(overrides));
+    localStorage.setItem(THEMED_OVERRIDES_KEY, JSON.stringify(overridesByTheme));
+  }, [overridesByTheme]);
+
+  useEffect(() => {
     const style =
       document.getElementById("design-mode-overrides") ?? document.createElement("style");
     style.id = "design-mode-overrides";
     style.textContent = persistedRules(overrides);
     if (!style.parentNode) document.head.appendChild(style);
   }, [overrides]);
+
+  useEffect(() => {
+    setSelected(null);
+    setHovered(null);
+    setHistory([]);
+    setFuture([]);
+  }, [theme]);
+
+  useEffect(() => {
+    const copyOverrides = (event: Event) => {
+      const detail = (event as CustomEvent<{ sourceId: string; targetId: string }>).detail;
+      if (!detail?.sourceId || !detail.targetId) return;
+      setOverridesByTheme((all) => ({
+        ...all,
+        [detail.targetId]: (all[detail.sourceId] ?? []).map((item) => ({
+          ...item,
+          id: crypto.randomUUID(),
+        })),
+      }));
+    };
+    window.addEventListener("shul-theme-duplicated", copyOverrides);
+    return () => window.removeEventListener("shul-theme-duplicated", copyOverrides);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
@@ -351,7 +400,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
       setOverrides(previous);
       return items.slice(0, -1);
     });
-  }, [overrides]);
+  }, [overrides, setOverrides]);
   const redo = useCallback(() => {
     setFuture((items) => {
       const next = items[0];
@@ -360,7 +409,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
       setOverrides(next);
       return items.slice(1);
     });
-  }, [overrides]);
+  }, [overrides, setOverrides]);
 
   useEffect(() => {
     if (!enabled) return;
