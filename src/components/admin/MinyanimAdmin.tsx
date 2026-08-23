@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarRange, GripVertical, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
+import {
+  CalendarRange,
+  GripVertical,
+  LayoutList,
+  PanelsTopLeft,
+  Pencil,
+  Plus,
+  Settings2,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +39,7 @@ import { supabase } from "@/integrations/supabase/client";
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
   MinyanCategory,
-  "name" | "active" | "sort_order" | "visible_from" | "visible_until"
+  "name" | "active" | "sort_order" | "visible_from" | "visible_until" | "display_mode"
 > & { id?: string };
 
 const emptyDraft = (category: MinyanCategory): Draft => ({
@@ -271,6 +280,32 @@ export function MinyanimAdmin() {
                 {category.name}
                 {!category.active && <span className="mr-1 text-xs">(מוסתר)</span>}
               </button>
+              <button
+                type="button"
+                data-no-page-swipe
+                aria-label={`שינוי תצוגת ${category.name}. תצוגה נוכחית: ${
+                  category.display_mode === "list" ? "רשימה רציפה" : "טאבים"
+                }`}
+                title={
+                  category.display_mode === "list"
+                    ? "תצוגה רציפה — לחץ למעבר לטאבים"
+                    : "תצוגת טאבים — לחץ למעבר לרשימה רציפה"
+                }
+                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+                disabled={saveCategory.isPending}
+                onClick={() =>
+                  saveCategory.mutate({
+                    id: category.id,
+                    display_mode: category.display_mode === "list" ? "tabs" : "list",
+                  })
+                }
+              >
+                {category.display_mode === "list" ? (
+                  <LayoutList className="size-4" />
+                ) : (
+                  <PanelsTopLeft className="size-4" />
+                )}
+              </button>
             </div>
           ))}
           <button
@@ -279,6 +314,7 @@ export function MinyanimAdmin() {
               setCategoryDraft({
                 name: "",
                 active: true,
+                display_mode: "tabs",
                 sort_order: (categories.at(-1)?.sort_order ?? 0) + 10,
                 visible_from: null,
                 visible_until: null,

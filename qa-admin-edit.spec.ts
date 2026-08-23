@@ -9,7 +9,7 @@ test("minyan edit button opens and reveals the populated edit form", async ({ pa
 
   await page.goto(`${baseUrl}/auth`);
   await page.getByLabel("אימייל").fill(email!);
-  await page.getByLabel("סיסמה").fill(password!);
+  await page.getByLabel("סיסמה", { exact: true }).fill(password!);
   await page.getByRole("button", { name: "כניסה", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 
@@ -31,7 +31,7 @@ test("admin can open direct inline editors without changing saved data", async (
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/auth`);
   await page.getByLabel("אימייל").fill(email!);
-  await page.getByLabel("סיסמה").fill(password!);
+  await page.getByLabel("סיסמה", { exact: true }).fill(password!);
   await page.getByRole("button", { name: "כניסה", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 
@@ -56,7 +56,7 @@ test("manager can open dynamic minyan category editor on mobile", async ({ page 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/auth`);
   await page.getByLabel("אימייל").fill(email!);
-  await page.getByLabel("סיסמה").fill(password!);
+  await page.getByLabel("סיסמה", { exact: true }).fill(password!);
   await page.getByRole("button", { name: "כניסה", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 
@@ -88,7 +88,7 @@ test("manager can drag minyan rows and category tabs and persist their order", a
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(`${baseUrl}/auth`);
   await page.getByLabel("אימייל").fill(email!);
-  await page.getByLabel("סיסמה").fill(password!);
+  await page.getByLabel("סיסמה", { exact: true }).fill(password!);
   await page.getByRole("button", { name: "כניסה", exact: true }).click();
   await expect(page).toHaveURL(/\/admin$/);
 
@@ -136,4 +136,59 @@ test("manager can drag minyan rows and category tabs and persist their order", a
     categories.nth(1),
   );
   await expect(categories.nth(0)).toHaveAttribute("data-reorder-id", firstCategoryId!);
+});
+
+test("each minyan category keeps an independent public display mode", async ({ page }) => {
+  test.skip(!email || !password, "Admin credentials are required");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseUrl}/auth`);
+  await page.getByLabel("אימייל").fill(email!);
+  await page.getByLabel("סיסמה", { exact: true }).fill(password!);
+  await page.getByRole("button", { name: "כניסה", exact: true }).click();
+  await expect(page).toHaveURL(/\/admin$/);
+
+  const displayButtons = page.getByRole("button", { name: /^שינוי תצוגת / });
+  await expect(displayButtons.first()).toBeVisible();
+  const originalLabel = await displayButtons.first().getAttribute("aria-label");
+  const secondOriginalLabel = await displayButtons.nth(1).getAttribute("aria-label");
+  const categoryName = originalLabel!.match(/^שינוי תצוגת (.+)\. תצוגה נוכחית:/)?.[1];
+  expect(categoryName).toBeTruthy();
+
+  try {
+    await displayButtons.first().click();
+    await expect(displayButtons.first()).not.toHaveAttribute("aria-label", originalLabel!);
+    if (secondOriginalLabel) {
+      await expect(displayButtons.nth(1)).toHaveAttribute("aria-label", secondOriginalLabel);
+    }
+
+    const changedLabel = await displayButtons.first().getAttribute("aria-label");
+    const changedToList = changedLabel?.includes("רשימה רציפה") ?? false;
+    await page.goto(baseUrl);
+    await page
+      .getByRole("group", { name: "קטגוריות מניינים" })
+      .getByRole("button", { name: categoryName!, exact: true })
+      .click();
+
+    const schedule = page.locator("[data-minyan-display-mode]");
+    await expect(schedule).toHaveAttribute(
+      "data-minyan-display-mode",
+      changedToList ? "list" : "tabs",
+    );
+    if (changedToList) {
+      await expect(page.getByRole("group", { name: "סוג תפילה" })).toHaveCount(0);
+      await expect(schedule.getByRole("heading", { name: "שחרית", exact: true })).toBeVisible();
+    } else {
+      await expect(page.getByRole("group", { name: "סוג תפילה" })).toBeVisible();
+    }
+  } finally {
+    await page.goto(`${baseUrl}/admin`);
+    const restoreButton = page.getByRole("button", {
+      name: new RegExp(`^שינוי תצוגת ${categoryName}`),
+    });
+    await expect(restoreButton).toBeVisible();
+    if ((await restoreButton.getAttribute("aria-label")) !== originalLabel) {
+      await restoreButton.click();
+      await expect(restoreButton).toHaveAttribute("aria-label", originalLabel!);
+    }
+  }
 });

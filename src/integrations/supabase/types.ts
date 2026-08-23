@@ -240,6 +240,7 @@ export type Database = {
         Row: {
           active: boolean
           created_at: string
+          display_mode: string
           id: string
           name: string
           sort_order: number
@@ -251,6 +252,7 @@ export type Database = {
         Insert: {
           active?: boolean
           created_at?: string
+          display_mode?: string
           id?: string
           name: string
           sort_order?: number
@@ -262,6 +264,7 @@ export type Database = {
         Update: {
           active?: boolean
           created_at?: string
+          display_mode?: string
           id?: string
           name?: string
           sort_order?: number

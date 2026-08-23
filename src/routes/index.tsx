@@ -98,23 +98,27 @@ function HomePage() {
     visibleCategories.find((category) => category.id === categoryId) ??
     visibleCategories.find((category) => category.system_key === preferredSystemKey) ??
     visibleCategories[0];
-  const rows = useMemo(
+  const categoryRows = useMemo(
     () =>
       minyanim
         .filter(
           (minyan) =>
             minyan.active &&
-            minyan.prayer === prayer &&
             (minyan.category_id === selectedCategory?.id ||
               (!minyan.category_id && minyan.day_type === selectedCategory?.system_key)),
         )
         .map((minyan) => resolveMinyan(minyan, zmanim))
         .filter((row): row is NonNullable<typeof row> => row !== null)
         .sort((a, b) => a.minutes - b.minutes),
-    [minyanim, prayer, selectedCategory, zmanim],
+    [minyanim, selectedCategory, zmanim],
+  );
+  const rows = useMemo(
+    () => categoryRows.filter(({ minyan }) => minyan.prayer === prayer),
+    [categoryRows, prayer],
   );
   const prayerTabs =
     selectedCategory?.system_key === "friday" ? PRAYER_TABS.slice(0, 1) : PRAYER_TABS;
+  const isListView = selectedCategory?.display_mode === "list";
 
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
@@ -209,70 +213,99 @@ function HomePage() {
                   </div>
                 </div>
 
-                <div
-                  role="group"
-                  className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
-                  aria-label="סוג תפילה"
-                >
-                  {prayerTabs.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => setPrayer(item.id)}
-                      className={
-                        "flex-1 rounded-md px-3 py-2 text-sm transition-colors " +
-                        (prayer === item.id
-                          ? "bg-primary font-medium text-primary-foreground shadow-soft"
-                          : "text-muted-foreground hover:text-foreground")
-                      }
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
+                {!isListView && (
+                  <div
+                    role="group"
+                    className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
+                    aria-label="סוג תפילה"
+                  >
+                    {prayerTabs.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setPrayer(item.id)}
+                        className={
+                          "flex-1 rounded-md px-3 py-2 text-sm transition-colors " +
+                          (prayer === item.id
+                            ? "bg-primary font-medium text-primary-foreground shadow-soft"
+                            : "text-muted-foreground hover:text-foreground")
+                        }
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                <div className="card-elev mt-4 divide-y divide-border overflow-hidden">
+                <div
+                  className="card-elev mt-4 divide-y divide-border overflow-hidden"
+                  data-minyan-display-mode={isListView ? "list" : "tabs"}
+                >
                   {(isLoading || categoriesLoading) && (
                     <p className="p-6 text-center text-muted-foreground">טוען…</p>
                   )}
-                  {!isLoading && !categoriesLoading && rows.length === 0 && (
-                    <p className="p-6 text-center text-muted-foreground">
-                      עדיין לא הוגדרו מניינים ליום זה.
-                    </p>
-                  )}
-                  {rows.map(({ minyan, time, source }) => (
-                    <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate font-medium">
-                          <InlineEdit
-                            table="minyanim"
-                            id={minyan.id}
-                            field="label"
-                            value={minyan.label}
-                            queryKey="minyanim"
-                          />
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          {source}
-                          {minyan.room ? ` · ${minyan.room}` : ""}
-                          {minyan.note ? ` · ${minyan.note}` : ""}
-                        </p>
-                      </div>
-                      <span className="font-display text-2xl font-semibold tabular-nums text-primary">
-                        {minyan.time_mode === "fixed" ? (
-                          <InlineEdit
-                            table="minyanim"
-                            id={minyan.id}
-                            field="fixed_time"
-                            value={minyan.fixed_time ? minyan.fixed_time.slice(0, 5) : ""}
-                            as="time"
-                            display={time}
-                            queryKey="minyanim"
-                            inputClassName="text-2xl"
-                          />
-                        ) : (
-                          time
+                  {!isLoading &&
+                    !categoriesLoading &&
+                    (isListView ? categoryRows.length === 0 : rows.length === 0) && (
+                      <p className="p-6 text-center text-muted-foreground">
+                        עדיין לא הוגדרו מניינים ליום זה.
+                      </p>
+                    )}
+                  {(isListView
+                    ? prayerTabs.map((prayerItem) => ({
+                        prayerItem,
+                        rows: categoryRows.filter(({ minyan }) => minyan.prayer === prayerItem.id),
+                      }))
+                    : [{ prayerItem: null, rows }]
+                  ).map(({ prayerItem, rows: displayedRows }) => (
+                    <div key={prayerItem?.id ?? prayer}>
+                      {prayerItem && (
+                        <h3 className="bg-secondary px-4 py-2 text-base font-semibold text-primary">
+                          {prayerItem.label}
+                        </h3>
+                      )}
+                      <div className="divide-y divide-border">
+                        {displayedRows.length === 0 && prayerItem && (
+                          <p className="px-4 py-3 text-sm text-muted-foreground">
+                            לא הוגדרו זמני {prayerItem.label}.
+                          </p>
                         )}
-                      </span>
+                        {displayedRows.map(({ minyan, time, source }) => (
+                          <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium">
+                                <InlineEdit
+                                  table="minyanim"
+                                  id={minyan.id}
+                                  field="label"
+                                  value={minyan.label}
+                                  queryKey="minyanim"
+                                />
+                              </p>
+                              <p className="truncate text-xs text-muted-foreground">
+                                {source}
+                                {minyan.room ? ` · ${minyan.room}` : ""}
+                                {minyan.note ? ` · ${minyan.note}` : ""}
+                              </p>
+                            </div>
+                            <span className="font-display text-2xl font-semibold tabular-nums text-primary">
+                              {minyan.time_mode === "fixed" ? (
+                                <InlineEdit
+                                  table="minyanim"
+                                  id={minyan.id}
+                                  field="fixed_time"
+                                  value={minyan.fixed_time ? minyan.fixed_time.slice(0, 5) : ""}
+                                  as="time"
+                                  display={time}
+                                  queryKey="minyanim"
+                                  inputClassName="text-2xl"
+                                />
+                              ) : (
+                                time
+                              )}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
                 </div>
