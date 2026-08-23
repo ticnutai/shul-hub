@@ -62,6 +62,53 @@ for (const viewport of mobileViewports) {
 test.describe("mobile interactive states", () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
+  test("horizontal swipe gestures navigate between public pages in RTL order", async ({ page }) => {
+    await page.goto(`${baseUrl}/`);
+    const swipe = async (
+      from: { x: number; y: number },
+      to: { x: number; y: number },
+      pointerId: number,
+    ) => {
+      await page
+        .locator("main")
+        .first()
+        .evaluate(
+          (element, gesture) => {
+            const options = {
+              bubbles: true,
+              pointerType: "touch",
+              pointerId: gesture.pointerId,
+              isPrimary: true,
+            };
+            element.dispatchEvent(
+              new PointerEvent("pointerdown", {
+                ...options,
+                clientX: gesture.from.x,
+                clientY: gesture.from.y,
+              }),
+            );
+            element.dispatchEvent(
+              new PointerEvent("pointerup", {
+                ...options,
+                clientX: gesture.to.x,
+                clientY: gesture.to.y,
+              }),
+            );
+          },
+          { from, to, pointerId },
+        );
+    };
+
+    await swipe({ x: 330, y: 420 }, { x: 80, y: 425 }, 1);
+    await expect(page).toHaveURL(/\/announcements$/);
+
+    await swipe({ x: 80, y: 420 }, { x: 330, y: 425 }, 2);
+    await expect(page).toHaveURL(/\/$/);
+
+    await swipe({ x: 210, y: 180 }, { x: 190, y: 650 }, 3);
+    await expect(page).toHaveURL(/\/$/);
+  });
+
   test("primary mobile tabs stay visible and secondary links remain in the menu", async ({
     page,
   }) => {

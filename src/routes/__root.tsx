@@ -16,6 +16,7 @@ import { TextSettingsProvider } from "../lib/text-settings";
 import { LiveDesignProvider } from "../lib/live-design";
 import { EditModeProvider } from "../lib/edit-mode";
 import { EditModeToggle } from "../components/InlineEdit";
+import { MobilePageSwipe } from "../components/MobilePageSwipe";
 import { Toaster } from "../components/ui/sonner";
 
 function NotFoundComponent() {
@@ -136,6 +137,7 @@ function RootComponent() {
         <LiveDesignProvider>
           <TextSettingsProvider>
             <EditModeProvider>
+              <MobilePageSwipe />
               {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
               <Outlet />
               <EditModeToggle />
