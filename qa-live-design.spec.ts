@@ -156,6 +156,16 @@ test("editor has eight resize handles, persists its layout and closes correctly"
 });
 
 test("mobile color picker stays above the editor, floats by drag and closes", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "EyeDropper", {
+      configurable: true,
+      value: class {
+        async open() {
+          return { sRGBHex: "#123456" };
+        }
+      },
+    });
+  });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`${baseUrl}/`);
   await enable(page);
@@ -183,6 +193,11 @@ test("mobile color picker stays above the editor, floats by drag and closes", as
     ),
   }));
   expect(layers.picker).toBeGreaterThan(layers.editor);
+  const colorId = page.getByLabel("מזהה צבע עבור צבע טקסט");
+  await expect(colorId).toHaveValue(/#[0-9a-f]{6}/i);
+  await page.getByRole("button", { name: "דגימת צבע מהמסך עבור צבע טקסט" }).click();
+  await expect(colorId).toHaveValue("#123456");
+  await expect(page.getByRole("status")).toContainText("#123456");
   const dragBox = await page.getByTestId("visual-color-picker-drag-handle").boundingBox();
   await page.mouse.move(dragBox!.x + dragBox!.width / 2, dragBox!.y + dragBox!.height / 2);
   await page.mouse.down();

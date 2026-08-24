@@ -1,6 +1,7 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { BookmarkPlus, Check, GripHorizontal, Palette, X } from "lucide-react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { BookmarkPlus, Check, GripHorizontal, Palette, Pipette, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const SAVED_COLORS_KEY = "shul-saved-colors-v1";
@@ -36,6 +37,13 @@ function readSavedColors() {
 }
 
 function toHex(value: string) {
+  if (/^#[0-9a-f]{3}$/i.test(value)) {
+    return `#${value
+      .slice(1)
+      .split("")
+      .map((part) => part.repeat(2))
+      .join("")}`.toLowerCase();
+  }
   if (/^#[0-9a-f]{6}$/i.test(value)) return value.toLowerCase();
   const rgb = value.match(/rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)/i);
   if (!rgb) return "#000000";
@@ -62,8 +70,45 @@ export function VisualColorPicker({
 }) {
   const selected = toHex(value);
   const [savedColors, setSavedColors] = useState(readSavedColors);
+  const [hexDraft, setHexDraft] = useState(selected);
+  const [pickerMessage, setPickerMessage] = useState("");
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const drag = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => setHexDraft(selected), [selected]);
+
+  const applyHex = () => {
+    if (!/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(hexDraft)) {
+      setHexDraft(selected);
+      setPickerMessage("יש להזין צבע בפורמט HEX, לדוגמה #1e3a5f");
+      return;
+    }
+    const normalized = toHex(hexDraft);
+    setHexDraft(normalized);
+    setPickerMessage("");
+    onChange(normalized);
+  };
+
+  const sampleColor = async () => {
+    type EyeDropperApi = { open: () => Promise<{ sRGBHex: string }> };
+    type EyeDropperConstructor = new () => EyeDropperApi;
+    const EyeDropper = (window as typeof window & { EyeDropper?: EyeDropperConstructor })
+      .EyeDropper;
+    if (!EyeDropper) {
+      setPickerMessage("דוגם הצבעים אינו נתמך במכשיר זה; אפשר להזין את מזהה הצבע ידנית.");
+      return;
+    }
+    try {
+      const result = await new EyeDropper().open();
+      const sampled = toHex(result.sRGBHex);
+      setHexDraft(sampled);
+      setPickerMessage(`הצבע שנדגם: ${sampled}`);
+      onChange(sampled);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setPickerMessage("לא ניתן היה לדגום את הצבע. אפשר לנסות שוב או להזין מזהה ידנית.");
+    }
+  };
 
   const startDrag = (event: ReactPointerEvent) => {
     if ((event.target as Element).closest("button")) return;
@@ -167,6 +212,40 @@ export function VisualColorPicker({
             <Button type="button" variant="outline" className="flex-1" onClick={saveColor}>
               <BookmarkPlus className="size-4" /> שמירת הצבע
             </Button>
+          </div>
+          <div className="space-y-2 rounded-xl border bg-muted/25 p-3">
+            <strong className="text-sm">מזהה ודגימת צבע</strong>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                dir="ltr"
+                aria-label={`מזהה צבע עבור ${label}`}
+                value={hexDraft}
+                onChange={(event) => setHexDraft(event.target.value)}
+                onBlur={applyHex}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    applyHex();
+                  }
+                }}
+                className="font-mono uppercase"
+                placeholder="#1e3a5f"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => void sampleColor()}
+                aria-label={`דגימת צבע מהמסך עבור ${label}`}
+              >
+                <Pipette className="size-4" /> דגימה מהמסך
+              </Button>
+            </div>
+            {pickerMessage && (
+              <p className="text-xs text-muted-foreground" role="status">
+                {pickerMessage}
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <strong className="text-sm">צבעים מוכנים</strong>
