@@ -198,6 +198,8 @@ test("mobile color picker stays above the editor, floats by drag and closes", as
   await page.getByRole("button", { name: "דגימת צבע מהמסך עבור צבע טקסט" }).click();
   await expect(colorId).toHaveValue("#123456");
   await expect(page.getByRole("status")).toContainText("#123456");
+  await editor.getByRole("button", { name: "בחירת צבע טקסט" }).click();
+  await expect(picker).toBeVisible();
   const dragBox = await page.getByTestId("visual-color-picker-drag-handle").boundingBox();
   await page.mouse.move(dragBox!.x + dragBox!.width / 2, dragBox!.y + dragBox!.height / 2);
   await page.mouse.down();
@@ -209,4 +211,33 @@ test("mobile color picker stays above the editor, floats by drag and closes", as
   ).toBeGreaterThan(30);
   await page.getByRole("button", { name: "סגירת בחירת הצבע" }).click();
   await expect(picker).toBeHidden();
+});
+
+test("mobile page sampling works without opening the picker and does not block scrolling", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(window, "EyeDropper");
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto(`${baseUrl}/`);
+  await enable(page);
+  const heading = page.getByRole("heading", { name: "זמני התפילות", exact: true });
+  await heading.click();
+  const editor = page.getByTestId("live-design-editor");
+  const colorId = editor.getByLabel("מזהה צבע עבור צבע טקסט");
+  await expect(colorId).toBeVisible();
+  await expect(page.getByTestId("visual-color-picker")).toHaveCount(0);
+
+  await editor.getByRole("button", { name: "דגימת צבע מהמסך עבור צבע טקסט" }).click();
+  const samplingNotice = page.getByText("גלול וגע ברכיב כדי לדגום ממנו צבע.");
+  await expect(samplingNotice).toBeVisible();
+  await page.mouse.wheel(0, 500);
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+  await expect(samplingNotice).toBeVisible();
+
+  await page.locator("main").click({ position: { x: 20, y: 20 } });
+  await expect(samplingNotice).toBeHidden();
+  await expect(colorId).toHaveValue(/^#[0-9a-f]{6}$/i);
+  await expect(page.locator("html")).not.toHaveAttribute("data-color-sampling", "true");
 });

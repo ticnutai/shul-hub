@@ -57,6 +57,52 @@ function toHex(value: string) {
     .join("")}`;
 }
 
+function hexToHsv(hex: string) {
+  const normalized = toHex(hex);
+  const red = Number.parseInt(normalized.slice(1, 3), 16) / 255;
+  const green = Number.parseInt(normalized.slice(3, 5), 16) / 255;
+  const blue = Number.parseInt(normalized.slice(5, 7), 16) / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+  if (delta) {
+    if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+    else if (max === green) hue = 60 * ((blue - red) / delta + 2);
+    else hue = 60 * ((red - green) / delta + 4);
+  }
+  return {
+    hue: hue < 0 ? hue + 360 : hue,
+    saturation: max === 0 ? 0 : delta / max,
+    brightness: max,
+  };
+}
+
+function hsvToHex(hue: number, saturation: number, brightness: number) {
+  const chroma = brightness * saturation;
+  const part = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const offset = brightness - chroma;
+  const [red, green, blue] =
+    hue < 60
+      ? [chroma, part, 0]
+      : hue < 120
+        ? [part, chroma, 0]
+        : hue < 180
+          ? [0, chroma, part]
+          : hue < 240
+            ? [0, part, chroma]
+            : hue < 300
+              ? [part, 0, chroma]
+              : [chroma, 0, part];
+  return `#${[red, green, blue]
+    .map((channel) =>
+      Math.round((channel + offset) * 255)
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
 export function VisualColorPicker({
   label,
   value,
@@ -69,13 +115,34 @@ export function VisualColorPicker({
   onConfirm?: (() => void) | undefined;
 }) {
   const selected = toHex(value);
+  const initialHsv = hexToHsv(selected);
   const [savedColors, setSavedColors] = useState(readSavedColors);
   const [hexDraft, setHexDraft] = useState(selected);
   const [pickerMessage, setPickerMessage] = useState("");
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [open, setOpen] = useState(false);
+  const [sampling, setSampling] = useState(false);
+  const [hue, setHue] = useState(initialHsv.hue);
+  const [saturation, setSaturation] = useState(initialHsv.saturation);
+  const [brightness, setBrightness] = useState(initialHsv.brightness);
   const drag = useRef<{ x: number; y: number } | null>(null);
+  const sampleHandler = useRef<((event: MouseEvent) => void) | null>(null);
 
-  useEffect(() => setHexDraft(selected), [selected]);
+  useEffect(() => {
+    setHexDraft(selected);
+    const hsv = hexToHsv(selected);
+    setHue(hsv.hue);
+    setSaturation(hsv.saturation);
+    setBrightness(hsv.brightness);
+  }, [selected]);
+
+  useEffect(
+    () => () => {
+      delete document.documentElement.dataset.colorSampling;
+      if (sampleHandler.current) document.removeEventListener("click", sampleHandler.current, true);
+    },
+    [],
+  );
 
   const applyHex = () => {
     if (!/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(hexDraft)) {
@@ -89,13 +156,50 @@ export function VisualColorPicker({
     onChange(normalized);
   };
 
+  const stopSampling = () => {
+    setSampling(false);
+    delete document.documentElement.dataset.colorSampling;
+    if (sampleHandler.current) {
+      document.removeEventListener("click", sampleHandler.current, true);
+      sampleHandler.current = null;
+    }
+  };
+
+  const sampleFromPage = () => {
+    setOpen(false);
+    setSampling(true);
+    document.documentElement.dataset.colorSampling = "true";
+    setPickerMessage("גלול בחופשיות וגע ברכיב שממנו תרצה לדגום צבע.");
+
+    const sample = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || target.closest("[data-design-mode-ui]")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const style = getComputedStyle(target);
+      const property = label.includes("רקע")
+        ? style.backgroundColor
+        : label.includes("מסגרת")
+          ? style.borderColor
+          : style.color;
+      const sampled = toHex(property);
+      setHexDraft(sampled);
+      setPickerMessage(`הצבע שנדגם מהעמוד: ${sampled}`);
+      onChange(sampled);
+      stopSampling();
+      sampleHandler.current = null;
+    };
+    sampleHandler.current = sample;
+    document.addEventListener("click", sample, true);
+  };
+
   const sampleColor = async () => {
     type EyeDropperApi = { open: () => Promise<{ sRGBHex: string }> };
     type EyeDropperConstructor = new () => EyeDropperApi;
     const EyeDropper = (window as typeof window & { EyeDropper?: EyeDropperConstructor })
       .EyeDropper;
     if (!EyeDropper) {
-      setPickerMessage("דוגם הצבעים אינו נתמך במכשיר זה; אפשר להזין את מזהה הצבע ידנית.");
+      sampleFromPage();
       return;
     }
     try {
@@ -108,6 +212,20 @@ export function VisualColorPicker({
       if (error instanceof DOMException && error.name === "AbortError") return;
       setPickerMessage("לא ניתן היה לדגום את הצבע. אפשר לנסות שוב או להזין מזהה ידנית.");
     }
+  };
+
+  const updateSpectrum = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.type === "pointermove" && event.buttons !== 1) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const nextSaturation = Math.max(0, Math.min(1, (event.clientX - bounds.left) / bounds.width));
+    const nextBrightness = Math.max(
+      0,
+      Math.min(1, 1 - (event.clientY - bounds.top) / bounds.height),
+    );
+    setSaturation(nextSaturation);
+    setBrightness(nextBrightness);
+    onChange(hsvToHex(hue, nextSaturation, nextBrightness));
+    if (event.type === "pointerdown") event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const startDrag = (event: ReactPointerEvent) => {
@@ -154,7 +272,34 @@ export function VisualColorPicker({
   return (
     <div className="space-y-1.5">
       <span className="text-sm font-medium">{label}</span>
-      <Popover modal>
+      <div className="flex items-center gap-2">
+        <Input
+          dir="ltr"
+          aria-label={`מזהה צבע עבור ${label}`}
+          value={hexDraft}
+          onChange={(event) => setHexDraft(event.target.value)}
+          onBlur={applyHex}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              applyHex();
+            }
+          }}
+          className="min-w-0 flex-1 font-mono uppercase"
+          placeholder="#1e3a5f"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0"
+          onClick={() => void sampleColor()}
+          aria-label={`דגימת צבע מהמסך עבור ${label}`}
+        >
+          <Pipette className="size-4" />
+        </Button>
+      </div>
+      <Popover modal={false} open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             type="button"
@@ -198,54 +343,56 @@ export function VisualColorPicker({
               </Button>
             </PopoverClose>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="grid cursor-pointer place-items-center gap-1 text-xs font-medium">
-              <input
-                type="color"
-                aria-label={`לוח צבעים מלא עבור ${label}`}
-                className="h-14 w-20 cursor-pointer rounded-lg border bg-transparent p-1"
-                value={selected}
-                onChange={(event) => onChange(event.target.value)}
+          <div className="space-y-2">
+            <strong className="text-sm">בורר צבע מדויק</strong>
+            <div
+              role="slider"
+              tabIndex={0}
+              aria-label={`בורר רוויה ובהירות עבור ${label}`}
+              aria-valuetext={selected}
+              onPointerDown={updateSpectrum}
+              onPointerMove={updateSpectrum}
+              className="relative h-32 w-full cursor-crosshair touch-none overflow-hidden rounded-xl border shadow-inner"
+              style={{
+                backgroundColor: `hsl(${hue} 100% 50%)`,
+                backgroundImage:
+                  "linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent)",
+              }}
+            >
+              <span
+                className="pointer-events-none absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow"
+                style={{ left: `${saturation * 100}%`, top: `${(1 - brightness) * 100}%` }}
               />
-              לוח צבעים מלא
+            </div>
+            <label className="block text-xs font-medium">
+              גוון
+              <input
+                type="range"
+                min="0"
+                max="359"
+                value={Math.round(hue)}
+                aria-label={`גוון עבור ${label}`}
+                onChange={(event) => {
+                  const nextHue = Number(event.target.value);
+                  setHue(nextHue);
+                  onChange(hsvToHex(nextHue, saturation, brightness));
+                }}
+                className="mt-1 h-5 w-full cursor-pointer appearance-none rounded-full border"
+                style={{
+                  background: "linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)",
+                }}
+              />
             </label>
+          </div>
+          <div className="flex items-center gap-3">
+            <span
+              className="size-14 shrink-0 rounded-xl border shadow-inner"
+              style={{ backgroundColor: selected }}
+              aria-label={`תצוגת הצבע ${selected}`}
+            />
             <Button type="button" variant="outline" className="flex-1" onClick={saveColor}>
               <BookmarkPlus className="size-4" /> שמירת הצבע
             </Button>
-          </div>
-          <div className="space-y-2 rounded-xl border bg-muted/25 p-3">
-            <strong className="text-sm">מזהה ודגימת צבע</strong>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input
-                dir="ltr"
-                aria-label={`מזהה צבע עבור ${label}`}
-                value={hexDraft}
-                onChange={(event) => setHexDraft(event.target.value)}
-                onBlur={applyHex}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    event.preventDefault();
-                    applyHex();
-                  }
-                }}
-                className="font-mono uppercase"
-                placeholder="#1e3a5f"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="shrink-0"
-                onClick={() => void sampleColor()}
-                aria-label={`דגימת צבע מהמסך עבור ${label}`}
-              >
-                <Pipette className="size-4" /> דגימה מהמסך
-              </Button>
-            </div>
-            {pickerMessage && (
-              <p className="text-xs text-muted-foreground" role="status">
-                {pickerMessage}
-              </p>
-            )}
           </div>
           <div className="space-y-2">
             <strong className="text-sm">צבעים מוכנים</strong>
@@ -268,6 +415,23 @@ export function VisualColorPicker({
           </PopoverClose>
         </PopoverContent>
       </Popover>
+      {sampling && (
+        <div
+          data-design-mode-ui
+          className="fixed inset-x-3 top-3 z-[260] flex items-center justify-between gap-3 rounded-xl bg-primary p-3 text-primary-foreground shadow-2xl"
+          role="status"
+        >
+          <span className="text-sm">גלול וגע ברכיב כדי לדגום ממנו צבע.</span>
+          <Button type="button" size="sm" variant="secondary" onClick={stopSampling}>
+            ביטול
+          </Button>
+        </div>
+      )}
+      {!sampling && pickerMessage && (
+        <p className="text-xs text-muted-foreground" role="status">
+          {pickerMessage}
+        </p>
+      )}
     </div>
   );
 }

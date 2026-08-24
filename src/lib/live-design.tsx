@@ -348,13 +348,15 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!enabled) return;
+    const isColorSampling = () => document.documentElement.dataset.colorSampling === "true";
     const isUi = (target: EventTarget | null) =>
       target instanceof Element && !!target.closest("[data-design-mode-ui]");
     const move = (event: MouseEvent) => {
-      if (!paused && !isUi(event.target)) setHovered(event.target as HTMLElement);
+      if (!paused && !isColorSampling() && !isUi(event.target))
+        setHovered(event.target as HTMLElement);
     };
     const down = (event: PointerEvent) => {
-      if (paused || isUi(event.target)) return;
+      if (paused || isColorSampling() || isUi(event.target)) return;
       if (event.altKey) return;
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -364,7 +366,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
       setHovered(element);
     };
     const click = (event: MouseEvent) => {
-      if (paused || isUi(event.target)) return;
+      if (paused || isColorSampling() || isUi(event.target)) return;
       if (bypass.current) {
         bypass.current = false;
         return;

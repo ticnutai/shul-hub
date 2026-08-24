@@ -194,8 +194,9 @@ test.describe("mobile interactive states", () => {
     expect(dialogBox!.height).toBeLessThanOrEqual(844 * 0.86);
 
     await dialog.getByLabel("שם הערכה").fill("ערכת מובייל");
+    await page.getByLabel("מזהה צבע עבור צבע ראשי").fill("#4a225f");
+    await page.getByLabel("מזהה צבע עבור צבע ראשי").press("Enter");
     await dialog.getByRole("button", { name: "בחירת צבע ראשי" }).click();
-    await page.getByLabel("לוח צבעים מלא עבור צבע ראשי").fill("#4a225f");
     await page.getByRole("button", { name: "שמירת הצבע" }).click();
     await expect(page.getByText("הצבעים השמורים שלי")).toBeVisible();
     await expect(page.getByRole("button", { name: "בחירת הצבע #4a225f" })).toBeVisible();
