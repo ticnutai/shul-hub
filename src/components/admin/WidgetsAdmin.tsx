@@ -109,13 +109,14 @@ function WidgetList({
 }
 
 export function WidgetsAdmin() {
-  const { data = [], isLoading } = useHomeWidgets();
+  const { data, isLoading } = useHomeWidgets();
   const qc = useQueryClient();
   const [sections, setSections] = useState<HomeWidget[]>([]);
   const [zmanim, setZmanim] = useState<HomeWidget[]>([]);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!data) return;
     setSections(data.filter((w) => w.kind === "section"));
     setZmanim(data.filter((w) => w.kind === "zman"));
   }, [data]);
