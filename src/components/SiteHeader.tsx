@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, Palette, Settings, Check, WandSparkles, Copy, Save } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -44,9 +44,17 @@ const MOBILE_MENU_NAV = NAV.slice(3);
 export function SiteHeader() {
   const { data: settings } = useSettings();
   const [open, setOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+
+  useEffect(() => setHydrated(true), []);
+  useEffect(() => setOpen(false), [pathname]);
 
   return (
-    <header className="sticky top-0 z-40 border-b border-sidebar-border/40 bg-sidebar text-sidebar-foreground shadow-lg">
+    <header
+      data-app-hydrated={hydrated ? "true" : "false"}
+      className="sticky top-0 z-40 border-b border-sidebar-border/40 bg-sidebar text-sidebar-foreground shadow-lg"
+    >
       <div className="mx-auto flex min-h-16 max-w-7xl flex-wrap items-center justify-center gap-2 px-4 py-2.5 sm:flex-nowrap sm:justify-start sm:gap-3">
         <Link
           to="/"
@@ -86,37 +94,40 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <ThemeMenu />
+        <fieldset disabled={!hydrated} className="contents">
+          <ThemeMenu />
 
-        <TextSettingsDialog />
+          <TextSettingsDialog />
 
-        <NotificationCenter />
+          <NotificationCenter />
 
-        <AccountButton />
+          <AccountButton />
 
-        <MigrationCredentialsDialog />
+          <MigrationCredentialsDialog />
 
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          aria-label="הגדרות ניהול"
-          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary"
-        >
-          <Link to="/admin">
-            <Settings className="size-5" />
-          </Link>
-        </Button>
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            aria-label="הגדרות ניהול"
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary"
+          >
+            <Link to="/admin">
+              <Settings className="size-5" />
+            </Link>
+          </Button>
 
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary md:hidden"
-          aria-label="תפריט"
-          onClick={() => setOpen((v) => !v)}
-        >
-          <Menu className="size-5" />
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary md:hidden"
+            aria-label="תפריט"
+            disabled={!hydrated}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <Menu className="size-5" />
+          </Button>
+        </fieldset>
       </div>
 
       <nav
@@ -148,7 +159,6 @@ export function SiteHeader() {
             <Link
               key={item.to}
               to={item.to}
-              onClick={() => setOpen(false)}
               className="rounded-md px-3 py-2 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-primary"
               activeProps={{ className: "bg-sidebar-accent text-sidebar-primary font-medium" }}
               activeOptions={{ exact: item.to === "/" }}
@@ -165,6 +175,8 @@ export function SiteHeader() {
 function ThemeMenu() {
   const { theme, themes, setTheme } = useTheme();
   const [editorOpen, setEditorOpen] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => setHydrated(true), []);
   return (
     <>
       <DropdownMenu>
@@ -173,6 +185,7 @@ function ThemeMenu() {
             variant="ghost"
             size="icon"
             aria-label="ערכת נושא"
+            disabled={!hydrated}
             className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary"
           >
             <Palette className="size-5" />

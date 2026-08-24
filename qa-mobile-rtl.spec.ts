@@ -32,6 +32,10 @@ async function expectRtlWithoutHorizontalOverflow(page: Page) {
   expect(layout.bodyWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
 }
 
+async function waitForInteractiveHeader(page: Page) {
+  await expect(page.locator("header[data-app-hydrated='true']")).toBeVisible();
+}
+
 for (const viewport of mobileViewports) {
   test.describe(viewport.name, () => {
     test.use({
@@ -78,6 +82,7 @@ test.describe("mobile interactive states", () => {
 
   test("horizontal swipe gestures navigate between public pages in RTL order", async ({ page }) => {
     await page.goto(`${baseUrl}/`);
+    await waitForInteractiveHeader(page);
     const cdp = await page.context().newCDPSession(page);
     const swipe = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
       await cdp.send("Input.dispatchTouchEvent", {
@@ -112,6 +117,7 @@ test.describe("mobile interactive states", () => {
     page,
   }) => {
     await page.goto(`${baseUrl}/`);
+    await waitForInteractiveHeader(page);
 
     const quickNav = page.getByRole("navigation", { name: "ניווט מהיר" });
     for (const [path, label] of [
@@ -229,6 +235,7 @@ test.describe("mobile interactive states", () => {
 
   test("all themes and text settings fit mobile", async ({ page }) => {
     await page.goto(`${baseUrl}/`);
+    await waitForInteractiveHeader(page);
     const themes = [
       "נייבי וזהב",
       "אבן ירושלמית",

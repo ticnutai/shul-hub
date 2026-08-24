@@ -26,6 +26,7 @@ export function MobilePageSwipe() {
     if (currentIndex < 0) return;
 
     let pointerId: number | null = null;
+    let gestureSource: "pointer" | "touch" | null = null;
     let startX = 0;
     let startY = 0;
     let startTime = 0;
@@ -35,29 +36,21 @@ export function MobilePageSwipe() {
 
     const reset = () => {
       pointerId = null;
+      gestureSource = null;
     };
 
-    const onPointerDown = (event: PointerEvent) => {
-      if (
-        window.innerWidth >= 768 ||
-        event.pointerType !== "touch" ||
-        !event.isPrimary ||
-        shouldIgnoreGesture(event.target)
-      ) {
-        return;
-      }
-
-      pointerId = event.pointerId;
-      startX = event.clientX;
-      startY = event.clientY;
+    const startGesture = (x: number, y: number, source: "pointer" | "touch") => {
+      if (gestureSource) return;
+      gestureSource = source;
+      startX = x;
+      startY = y;
       startTime = performance.now();
     };
 
-    const onPointerUp = (event: PointerEvent) => {
-      if (pointerId !== event.pointerId) return;
-
-      const deltaX = event.clientX - startX;
-      const deltaY = event.clientY - startY;
+    const finishGesture = (x: number, y: number, source: "pointer" | "touch") => {
+      if (gestureSource !== source) return;
+      const deltaX = x - startX;
+      const deltaY = y - startY;
       const duration = performance.now() - startTime;
       reset();
 
@@ -78,6 +71,45 @@ export function MobilePageSwipe() {
       }
     };
 
+    const onPointerDown = (event: PointerEvent) => {
+      if (
+        window.innerWidth >= 768 ||
+        event.pointerType !== "touch" ||
+        !event.isPrimary ||
+        shouldIgnoreGesture(event.target)
+      ) {
+        return;
+      }
+
+      pointerId = event.pointerId;
+      startGesture(event.clientX, event.clientY, "pointer");
+    };
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (pointerId !== event.pointerId) return;
+
+      finishGesture(event.clientX, event.clientY, "pointer");
+    };
+
+    const onTouchStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      if (
+        !touch ||
+        window.innerWidth >= 768 ||
+        event.touches.length !== 1 ||
+        shouldIgnoreGesture(event.target)
+      ) {
+        return;
+      }
+      startGesture(touch.clientX, touch.clientY, "touch");
+    };
+
+    const onTouchEnd = (event: TouchEvent) => {
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+      finishGesture(touch.clientX, touch.clientY, "touch");
+    };
+
     const onClick = (event: MouseEvent) => {
       if (performance.now() < suppressClickUntil) {
         event.preventDefault();
@@ -88,12 +120,18 @@ export function MobilePageSwipe() {
     document.addEventListener("pointerdown", onPointerDown, { passive: true });
     document.addEventListener("pointerup", onPointerUp, { passive: true });
     document.addEventListener("pointercancel", reset, { passive: true });
+    document.addEventListener("touchstart", onTouchStart, { passive: true });
+    document.addEventListener("touchend", onTouchEnd, { passive: true });
+    document.addEventListener("touchcancel", reset, { passive: true });
     document.addEventListener("click", onClick, true);
 
     return () => {
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("pointerup", onPointerUp);
       document.removeEventListener("pointercancel", reset);
+      document.removeEventListener("touchstart", onTouchStart);
+      document.removeEventListener("touchend", onTouchEnd);
+      document.removeEventListener("touchcancel", reset);
       document.removeEventListener("click", onClick, true);
       document.body.style.touchAction = previousTouchAction;
     };
