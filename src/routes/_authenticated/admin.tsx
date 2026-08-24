@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, LogOut, ShieldAlert } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -84,7 +84,9 @@ function AdminPage() {
               <TabsTrigger value="chavrutot">חברותות</TabsTrigger>
               <TabsTrigger value="chavruta-requests">בקשות חברותא</TabsTrigger>
               <TabsTrigger value="messages">הודעות{unread > 0 ? ` (${unread})` : ""}</TabsTrigger>
-              <TabsTrigger value="widgets">ווידג'טים</TabsTrigger>
+              <TabsTrigger value="widgets">
+                <LayoutDashboard className="size-4" /> תצוגת דף הבית
+              </TabsTrigger>
               <TabsTrigger value="settings">הגדרות</TabsTrigger>
               <TabsTrigger value="users">משתמשים</TabsTrigger>
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>

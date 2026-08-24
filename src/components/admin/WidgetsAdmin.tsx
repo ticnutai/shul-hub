@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { GripVertical, Eye, EyeOff } from "lucide-react";
+import { GripVertical, Eye, EyeOff, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -27,6 +27,41 @@ function WidgetList({
   onChange: (items: HomeWidget[]) => void;
 }) {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const dragIndexRef = useRef<number | null>(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+
+  function beginPointerDrag(index: number, pointerId: number) {
+    dragIndexRef.current = index;
+    setDragIndex(index);
+
+    const move = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      const target = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>("[data-widget-index]");
+      const nextIndex = Number(target?.dataset.widgetIndex);
+      const currentIndex = dragIndexRef.current;
+      if (!Number.isInteger(nextIndex) || currentIndex === null || nextIndex === currentIndex)
+        return;
+      onChange(reorder(itemsRef.current, currentIndex, nextIndex));
+      dragIndexRef.current = nextIndex;
+      setDragIndex(nextIndex);
+    };
+
+    const end = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      dragIndexRef.current = null;
+      setDragIndex(null);
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", end);
+      document.removeEventListener("pointercancel", end);
+    };
+
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", end);
+    document.addEventListener("pointercancel", end);
+  }
 
   return (
     <div className="card-elev p-5">
@@ -36,21 +71,23 @@ function WidgetList({
         {items.map((item, index) => (
           <li
             key={item.id}
-            draggable
-            onDragStart={() => setDragIndex(index)}
-            onDragOver={(e) => {
-              e.preventDefault();
-              if (dragIndex === null || dragIndex === index) return;
-              onChange(reorder(items, dragIndex, index));
-              setDragIndex(index);
-            }}
-            onDragEnd={() => setDragIndex(null)}
+            data-widget-index={index}
             className={
-              "flex cursor-grab items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-opacity " +
+              "flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-opacity " +
               (dragIndex === index ? "opacity-60" : "")
             }
           >
-            <GripVertical className="size-4 shrink-0 text-muted-foreground" />
+            <button
+              type="button"
+              className="touch-none cursor-grab rounded-md p-2 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+              onPointerDown={(event) => {
+                event.preventDefault();
+                beginPointerDrag(index, event.pointerId);
+              }}
+              aria-label={`גרירת ${item.label}`}
+            >
+              <GripVertical className="size-5" />
+            </button>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.label}</span>
             {item.visible ? (
               <Eye className="size-4 text-muted-foreground" />
@@ -109,7 +146,7 @@ export function WidgetsAdmin() {
     <div className="space-y-4">
       <WidgetList
         title="מקטעי דף הבית"
-        hint="גררו כדי לשנות סדר, וכבו כדי להסתיר מכל המתפללים."
+        hint="גררו מהידית כדי לשנות סדר, וכבו כדי להסתיר מכל המתפללים."
         items={sections}
         onChange={setSections}
       />
@@ -120,7 +157,7 @@ export function WidgetsAdmin() {
         onChange={setZmanim}
       />
       <Button onClick={save} disabled={saving}>
-        שמירת התצוגה
+        <Smartphone className="size-4" /> שמירת תצוגת דף הבית
       </Button>
     </div>
   );
