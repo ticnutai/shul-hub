@@ -12,6 +12,7 @@ import { WidgetsAdmin } from "@/components/admin/WidgetsAdmin";
 import { UsersAdmin } from "@/components/admin/UsersAdmin";
 import { ChavrutaRequestsAdmin } from "@/components/admin/ChavrutaRequestsAdmin";
 import { DataExportImportAdmin } from "@/components/admin/DataExportImportAdmin";
+import { QrCodesAdmin } from "@/components/admin/QrCodesAdmin";
 import { QuickAddButton } from "@/components/QuickAddButton";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/use-auth";
@@ -87,6 +88,7 @@ function AdminPage() {
               <TabsTrigger value="settings">הגדרות</TabsTrigger>
               <TabsTrigger value="users">משתמשים</TabsTrigger>
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
+              <TabsTrigger value="qr">קודי QR</TabsTrigger>
             </TabsList>
 
             <TabsContent value="minyanim" className="mt-6">
@@ -118,6 +120,9 @@ function AdminPage() {
             </TabsContent>
             <TabsContent value="data" className="mt-6">
               <DataExportImportAdmin />
+            </TabsContent>
+            <TabsContent value="qr" className="mt-6">
+              <QrCodesAdmin />
             </TabsContent>
           </Tabs>
         )}

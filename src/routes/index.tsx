@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, Sunrise, Sunset } from "lucide-react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -11,6 +11,7 @@ import {
   useMinyanCategories,
   useMinyanim,
   useSettings,
+  minyanSubcategories,
 } from "@/lib/data";
 import { dayTypeFor, resolveMinyan, zmanimFor } from "@/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@/lib/zmanim";
@@ -174,13 +175,22 @@ function HomePage() {
         .sort((a, b) => a.minutes - b.minutes),
     [minyanim, selectedCategory, zmanim],
   );
+  const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
+  const hasSubcategories = prayerTabs.length > 0;
   const rows = useMemo(
-    () => categoryRows.filter(({ minyan }) => minyan.prayer === prayer),
-    [categoryRows, prayer],
+    () =>
+      hasSubcategories
+        ? categoryRows.filter(({ minyan }) => minyan.prayer === prayer)
+        : categoryRows,
+    [categoryRows, hasSubcategories, prayer],
   );
-  const prayerTabs =
-    selectedCategory?.system_key === "friday" ? PRAYER_TABS.slice(0, 1) : PRAYER_TABS;
   const isListView = selectedCategory?.display_mode === "list";
+
+  useEffect(() => {
+    if (prayerTabs.length > 0 && !prayerTabs.some((item) => item.id === prayer)) {
+      setPrayer(prayerTabs[0]!.id);
+    }
+  }, [prayer, prayerTabs]);
 
   const hebrewDateLabel = formatHebrewDate(today);
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
@@ -266,7 +276,8 @@ function HomePage() {
                         key={category.id}
                         onClick={() => {
                           setCategoryId(category.id);
-                          if (category.system_key === "friday") setPrayer("shacharit");
+                          const first = minyanSubcategories(category)[0];
+                          if (first) setPrayer(first.id);
                         }}
                         className={
                           "rounded-md px-3 py-1.5 text-sm transition-colors " +
@@ -281,7 +292,7 @@ function HomePage() {
                   </div>
                 </div>
 
-                {!isListView && (
+                {!isListView && hasSubcategories && (
                   <div
                     role="group"
                     className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
@@ -318,7 +329,7 @@ function HomePage() {
                         עדיין לא הוגדרו מניינים ליום זה.
                       </p>
                     )}
-                  {(isListView
+                  {(isListView && hasSubcategories
                     ? prayerTabs.map((prayerItem) => ({
                         prayerItem,
                         rows: categoryRows.filter(({ minyan }) => minyan.prayer === prayerItem.id),
@@ -430,9 +441,3 @@ function HomePage() {
     </div>
   );
 }
-
-const PRAYER_TABS = [
-  { id: "shacharit", label: "שחרית" },
-  { id: "mincha", label: "מנחה" },
-  { id: "arvit", label: "ערבית" },
-] as const;

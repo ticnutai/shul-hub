@@ -5,6 +5,7 @@ import type { Tables } from "@/integrations/supabase/types";
 export type Settings = Tables<"settings">;
 export type Minyan = Tables<"minyanim">;
 export type MinyanCategory = Tables<"minyan_categories">;
+export type MinyanSubcategory = { id: string; label: string };
 export type Announcement = Tables<"announcements">;
 export type Shiur = Tables<"shiurim">;
 export type ShiurCategory = Tables<"shiur_categories">;
@@ -24,6 +25,21 @@ export const PRAYERS = [
   { id: "arvit", label: "ערבית" },
   { id: "other", label: "אחר" },
 ] as const;
+
+export function minyanSubcategories(category?: MinyanCategory | null): MinyanSubcategory[] {
+  if (!category || !Array.isArray(category.subcategories)) return [];
+  return category.subcategories.filter(
+    (item): item is MinyanSubcategory =>
+      typeof item === "object" &&
+      item !== null &&
+      "id" in item &&
+      "label" in item &&
+      typeof item.id === "string" &&
+      typeof item.label === "string" &&
+      item.id.trim().length > 0 &&
+      item.label.trim().length > 0,
+  );
+}
 
 export const DAYS_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 

@@ -464,3 +464,25 @@ GRANT EXECUTE ON FUNCTION public.admin_update_user_role(uuid, public.app_role) T
 GRANT EXECUTE ON FUNCTION public.admin_delete_user(uuid) TO authenticated;
 
 COMMIT;
+
+-- Optional manager-defined subtabs for every minyan category.
+-- This block is intentionally after the bootstrap transaction because older
+-- bootstrap copies may not yet include the dynamic category table.
+ALTER TABLE IF EXISTS public.minyan_categories
+  ADD COLUMN IF NOT EXISTS subcategories jsonb NOT NULL DEFAULT '[]'::jsonb;
+
+DO $$
+BEGIN
+  IF to_regclass('public.minyan_categories') IS NOT NULL THEN
+    UPDATE public.minyan_categories
+    SET subcategories = CASE
+      WHEN system_key = 'friday' THEN
+        '[{"id":"shacharit","label":"שחרית"}]'::jsonb
+      WHEN system_key = 'weekday' THEN
+        '[{"id":"shacharit","label":"שחרית"},{"id":"mincha","label":"מנחה"},{"id":"arvit","label":"ערבית"}]'::jsonb
+      ELSE subcategories
+    END
+    WHERE subcategories = '[]'::jsonb;
+  END IF;
+END
+$$;

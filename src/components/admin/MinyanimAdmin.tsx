@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarRange,
@@ -23,12 +29,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  PRAYERS,
+  minyanSubcategories,
   useMinyanCategories,
   useMinyanim,
   useSettings,
   type Minyan,
   type MinyanCategory,
+  type MinyanSubcategory,
 } from "@/lib/data";
 import { useDeleteRow, useSaveRow } from "@/lib/admin";
 import { RELATIVE_LABELS, resolveMinyan, zmanimFor } from "@/lib/minyan-time";
@@ -40,12 +47,12 @@ type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
   MinyanCategory,
   "name" | "active" | "sort_order" | "visible_from" | "visible_until" | "display_mode"
-> & { id?: string };
+> & { id?: string; subcategories: MinyanSubcategory[] };
 
 const emptyDraft = (category: MinyanCategory): Draft => ({
   day_type: category.system_key ?? "custom",
   category_id: category.id,
-  prayer: "shacharit",
+  prayer: minyanSubcategories(category)[0]?.id ?? "other",
   label: "",
   time_mode: "fixed",
   fixed_time: "07:00",
@@ -67,10 +74,12 @@ export function MinyanimAdmin() {
   const save = useSaveRow("minyanim", "minyanim");
   const remove = useDeleteRow("minyanim", "minyanim");
   const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
+  const removeCategory = useDeleteRow("minyan_categories", "minyan_categories");
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [prayer, setPrayer] = useState<string>("shacharit");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(null);
+  const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [draggedMinyanId, setDraggedMinyanId] = useState<string | null>(null);
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
   const draggedMinyanRef = useRef<string | null>(null);
@@ -82,16 +91,20 @@ export function MinyanimAdmin() {
     categories.find((category) => category.id === categoryId) ?? categories[0];
   const selectedCategoryId = selectedCategory?.id ?? null;
   const zmanim = zmanimFor(new Date(), settings);
-  const prayerTabs =
-    selectedCategory?.system_key === "friday"
-      ? PRAYERS.filter((item) => item.id === "shacharit")
-      : PRAYERS.filter((item) => item.id !== "other");
+  const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
+  const hasSubcategories = prayerTabs.length > 0;
   const rows = minyanim.filter(
     (m) =>
       (m.category_id === selectedCategoryId ||
         (!m.category_id && m.day_type === selectedCategory?.system_key)) &&
-      m.prayer === prayer,
+      (!hasSubcategories || m.prayer === prayer),
   );
+
+  useEffect(() => {
+    if (prayerTabs.length > 0 && !prayerTabs.some((item) => item.id === prayer)) {
+      setPrayer(prayerTabs[0]!.id);
+    }
+  }, [prayer, prayerTabs]);
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -102,9 +115,25 @@ export function MinyanimAdmin() {
     save.mutate(row, { onSuccess: () => setDraft(null) });
   }
 
-  function submitCategory(e: React.FormEvent) {
+  async function submitCategory(e: React.FormEvent) {
     e.preventDefault();
     if (!categoryDraft?.name.trim()) return;
+    const previous = categories.find((category) => category.id === categoryDraft.id);
+    const previousIds = minyanSubcategories(previous).map((item) => item.id);
+    const nextIds = new Set(categoryDraft.subcategories.map((item) => item.id));
+    const removedIds = previousIds.filter((id) => !nextIds.has(id));
+    if (categoryDraft.id && removedIds.length > 0) {
+      const replacement = categoryDraft.subcategories[0]?.id ?? "other";
+      const { error } = await supabase
+        .from("minyanim")
+        .update({ prayer: replacement })
+        .eq("category_id", categoryDraft.id)
+        .in("prayer", removedIds);
+      if (error) {
+        toast.error(error.message || "עדכון המניינים בתת־הקטגוריה שנמחקה נכשל");
+        return;
+      }
+    }
     saveCategory.mutate(
       {
         ...categoryDraft,
@@ -118,6 +147,29 @@ export function MinyanimAdmin() {
         },
       },
     );
+  }
+
+  async function deleteCategory(category: MinyanCategory) {
+    const count = minyanim.filter((item) => item.category_id === category.id).length;
+    const detail = count > 0 ? ` וכל ${count} המניינים שבתוכה` : "";
+    if (!window.confirm(`למחוק את הקטגוריה „${category.name}”${detail}?`)) return;
+    removeCategory.mutate(category.id, {
+      onSuccess: () => {
+        setCategoryId(null);
+        setCategoryDraft(null);
+        void queryClient.invalidateQueries({ queryKey: ["minyanim"] });
+      },
+    });
+  }
+
+  function addSubcategory() {
+    if (!categoryDraft || !newSubcategoryName.trim()) return;
+    const id = `custom-${crypto.randomUUID()}`;
+    setCategoryDraft({
+      ...categoryDraft,
+      subcategories: [...categoryDraft.subcategories, { id, label: newSubcategoryName.trim() }],
+    });
+    setNewSubcategoryName("");
   }
 
   function openDraft(nextDraft: Draft) {
@@ -274,7 +326,8 @@ export function MinyanimAdmin() {
                 className="px-2 py-1.5"
                 onClick={() => {
                   setCategoryId(category.id);
-                  if (category.system_key === "friday") setPrayer("shacharit");
+                  const first = minyanSubcategories(category)[0];
+                  if (first) setPrayer(first.id);
                 }}
               >
                 {category.name}
@@ -318,6 +371,7 @@ export function MinyanimAdmin() {
                 sort_order: (categories.at(-1)?.sort_order ?? 0) + 10,
                 visible_from: null,
                 visible_until: null,
+                subcategories: [],
               })
             }
             className="rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-card"
@@ -329,7 +383,12 @@ export function MinyanimAdmin() {
           {selectedCategory && (
             <Button
               variant="outline"
-              onClick={() => setCategoryDraft({ ...selectedCategory })}
+              onClick={() =>
+                setCategoryDraft({
+                  ...selectedCategory,
+                  subcategories: minyanSubcategories(selectedCategory),
+                })
+              }
               aria-label={`ניהול הקטגוריה ${selectedCategory.name}`}
             >
               <Settings2 className="size-4" /> ניהול הטאב
@@ -405,6 +464,68 @@ export function MinyanimAdmin() {
               />
             </div>
           </div>
+          <div className="space-y-3 rounded-lg border border-border p-4">
+            <div>
+              <h4 className="font-medium">תתי־קטגוריות (רשות)</h4>
+              <p className="text-xs text-muted-foreground">
+                אפשר להשאיר ריק ולהוסיף מניינים ישירות לקטגוריה, או ליצור שמות חופשיים כגון שחרית,
+                מנחה, ערבית או סליחות א׳.
+              </p>
+            </div>
+            <div className="space-y-2" data-testid="minyan-subcategory-editor">
+              {categoryDraft.subcategories.map((subcategory, index) => (
+                <div key={subcategory.id} className="flex items-center gap-2">
+                  <Input
+                    aria-label={`שם תת־קטגוריה ${index + 1}`}
+                    value={subcategory.label}
+                    onChange={(event) => {
+                      const next = [...categoryDraft.subcategories];
+                      next[index] = { ...subcategory, label: event.target.value };
+                      setCategoryDraft({ ...categoryDraft, subcategories: next });
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`מחיקת תת־קטגוריה ${subcategory.label}`}
+                    onClick={() =>
+                      setCategoryDraft({
+                        ...categoryDraft,
+                        subcategories: categoryDraft.subcategories.filter(
+                          (item) => item.id !== subcategory.id,
+                        ),
+                      })
+                    }
+                  >
+                    <Trash2 className="size-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                aria-label="שם תת־קטגוריה חדשה"
+                value={newSubcategoryName}
+                onChange={(event) => setNewSubcategoryName(event.target.value)}
+                placeholder="שם תת־קטגוריה חדשה"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addSubcategory();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addSubcategory}
+                disabled={!newSubcategoryName.trim()}
+              >
+                <Plus className="size-4" /> הוספת תת־קטגוריה
+              </Button>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-3">
             <Switch
               id="minyan-category-active"
@@ -419,33 +540,45 @@ export function MinyanimAdmin() {
               <Button type="button" variant="ghost" onClick={() => setCategoryDraft(null)}>
                 ביטול
               </Button>
+              {categoryDraft.id && selectedCategory && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => void deleteCategory(selectedCategory)}
+                  disabled={removeCategory.isPending}
+                >
+                  <Trash2 className="size-4" /> מחיקת הקטגוריה
+                </Button>
+              )}
             </div>
           </div>
         </form>
       )}
 
-      <div
-        role="group"
-        dir="rtl"
-        className="flex gap-1 rounded-lg bg-secondary p-1 text-right"
-        aria-label="סוג תפילה"
-      >
-        {prayerTabs.map((item) => (
-          <button
-            type="button"
-            key={item.id}
-            onClick={() => setPrayer(item.id)}
-            className={
-              "flex-1 rounded-md px-3 py-2 text-sm " +
-              (prayer === item.id
-                ? "bg-primary font-medium text-primary-foreground shadow-soft"
-                : "text-muted-foreground")
-            }
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
+      {hasSubcategories && (
+        <div
+          role="group"
+          dir="rtl"
+          className="flex gap-1 rounded-lg bg-secondary p-1 text-right"
+          aria-label="תתי קטגוריות מניינים"
+        >
+          {prayerTabs.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              onClick={() => setPrayer(item.id)}
+              className={
+                "flex-1 rounded-md px-3 py-2 text-sm " +
+                (prayer === item.id
+                  ? "bg-primary font-medium text-primary-foreground shadow-soft"
+                  : "text-muted-foreground")
+              }
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="card-elev divide-y divide-border">
         {rows.length === 0 && (
@@ -594,34 +727,38 @@ export function MinyanimAdmin() {
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>סוג תפילה</Label>
-              <Select
-                value={draft.prayer ?? "shacharit"}
-                onValueChange={(v) => setDraft({ ...draft, prayer: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRAYERS.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {hasSubcategories && (
+              <div className="space-y-2">
+                <Label>תת־קטגוריה</Label>
+                <Select
+                  value={draft.prayer ?? "shacharit"}
+                  onValueChange={(v) => setDraft({ ...draft, prayer: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {prayerTabs.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>קטגוריית מניינים</Label>
               <Select
                 value={draft.category_id ?? ""}
                 onValueChange={(value) => {
                   const category = categories.find((item) => item.id === value);
+                  const firstSubcategory = minyanSubcategories(category)[0];
                   setDraft({
                     ...draft,
                     category_id: value,
                     day_type: category?.system_key ?? "custom",
+                    prayer: firstSubcategory?.id ?? "other",
                   });
                 }}
               >
