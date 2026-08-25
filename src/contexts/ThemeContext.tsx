@@ -4,7 +4,7 @@ import { useSyncedState } from "@/hooks/useSyncedState";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
 
-export type Theme = "classic" | "royal-gold" | "elegant-night" | "ancient-scroll" | "light" | "gold-silver" | "torah-luxury" | "custom";
+export type Theme = "classic" | "navy" | "jerusalem" | "bordeaux" | "forest" | "sand" | "night" | "royal-gold" | "elegant-night" | "ancient-scroll" | "light" | "gold-silver" | "torah-luxury" | "custom";
 
 export interface CustomAppTheme extends ThemeAppearanceSettings {
   name: string;
@@ -78,7 +78,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   });
 
   useEffect(() => {
-    document.documentElement.classList.remove("classic", "royal-gold", "elegant-night", "ancient-scroll", "light", "gold-silver", "torah-luxury", "custom");
+    document.documentElement.classList.remove("classic", "navy", "jerusalem", "bordeaux", "forest", "sand", "night", "royal-gold", "elegant-night", "ancient-scroll", "light", "gold-silver", "torah-luxury", "custom");
     document.documentElement.classList.add(theme);
     if (theme !== "custom") return;
     const root = document.documentElement;

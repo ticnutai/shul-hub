@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { LayoutDashboard, LogOut, ShieldAlert } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
@@ -22,7 +22,14 @@ export function AdminPage() {
   const { session, isAdmin, loading } = useAuth();
   const { data: messages = [] } = useAdminMessages();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
+
+  const requestedTab = searchParams.get("tab");
+  const activeTab = [
+    "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
+    "messages", "widgets", "settings", "users", "data", "qr",
+  ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
 
@@ -36,10 +43,10 @@ export function AdminPage() {
   return (
     <div className="min-h-screen">
       <CommunityHeader />
-      <main dir="rtl" className="mx-auto max-w-5xl px-4 py-8 text-right">
+      <main dir="rtl" className="mx-auto max-w-5xl px-3 py-5 text-right sm:px-4 sm:py-8">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-3xl font-bold">ניהול האתר</h1>
+            <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
             <p className="mt-1 text-sm text-muted-foreground">{session?.user.email}</p>
           </div>
           <Button variant="outline" onClick={signOut}>
@@ -58,8 +65,22 @@ export function AdminPage() {
             </div>
           </div>
         ) : (
-          <Tabs dir="rtl" defaultValue="minyanim" className="mt-6 text-right">
-            <TabsList dir="rtl" className="flex h-auto w-full flex-wrap justify-start text-right">
+          <Tabs
+            dir="rtl"
+            value={activeTab}
+            onValueChange={(tab) => {
+              const next = new URLSearchParams(searchParams);
+              next.set("tab", tab);
+              if (tab !== "settings") next.delete("settingsTab");
+              setSearchParams(next, { replace: true });
+            }}
+            className="mt-5 min-w-0 text-right sm:mt-6"
+          >
+            <TabsList
+              dir="rtl"
+              aria-label="מדורי ניהול"
+              className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
+            >
               <TabsTrigger value="minyanim">מניינים</TabsTrigger>
               <TabsTrigger value="announcements">מודעות</TabsTrigger>
               <TabsTrigger value="shiurim">שיעורים</TabsTrigger>

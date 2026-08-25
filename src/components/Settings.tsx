@@ -150,6 +150,12 @@ const AutoLoginSetting = () => {
 const themes = [
   { id: "light" as Theme, name: "בהיר", description: "נושא בהיר ונקי" },
   { id: "classic" as Theme, name: "קלאסי", description: "נושא מסורתי בגווני כחול וזהב" },
+  { id: "navy" as Theme, name: "נייבי וזהב", description: "ערכת בית הכנסת המקורית" },
+  { id: "jerusalem" as Theme, name: "אבן ירושלמית", description: "גווני אבן, עץ וזהב" },
+  { id: "bordeaux" as Theme, name: "בורדו וזהב", description: "בורדו עמוק עם הדגשות זהב" },
+  { id: "forest" as Theme, name: "ירוק זית", description: "ירוק מסורתי, שמנת וזהב" },
+  { id: "sand" as Theme, name: "תכלת ולבן", description: "ערכת תכלת בהירה ונקייה" },
+  { id: "night" as Theme, name: "מצב לילה", description: "כחול לילה וזהב לקריאה נוחה" },
   { id: "torah-luxury" as Theme, name: "פאר תורה", description: "כרטיסים בהירים, מסגרות זהב ואיקונים כחול־זהב" },
   { id: "royal-gold" as Theme, name: "זהב מלכותי", description: "נושא יוקרתי בגווני זהב ובורדו" },
   { id: "gold-silver" as Theme, name: "זהב-אפור", description: "נושא אלגנטי בגווני זהב ואפור" },
@@ -249,7 +255,7 @@ const fonts = [
   { value: "Times New Roman", label: "טיימס" },
 ];
 
-export const Settings = () => {
+export const Settings = ({ showTrigger = true }: { showTrigger?: boolean }) => {
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("calendar");
   const [themesOnly, setThemesOnly] = useState(false);
@@ -644,7 +650,7 @@ export const Settings = () => {
 
   return (
     <Dialog open={open} onOpenChange={setOpen} modal={!themesOnly}>
-      <DialogTrigger asChild>
+      {showTrigger && <DialogTrigger asChild>
         <Button 
           data-settings-trigger
           data-layout="floating-settings" data-layout-label="⚙️ הגדרות צפות"
@@ -655,19 +661,19 @@ export const Settings = () => {
         >
           <SettingsIcon className="h-5 w-5" />
         </Button>
-      </DialogTrigger>
+      </DialogTrigger>}
       <DialogContent
         hideOverlay={themesOnly}
         data-layout="dialog-settings"
         data-layout-label="📦 דיאלוג: הגדרות"
         data-theme-panel={themesOnly ? "chumash" : undefined}
         className={themesOnly
-          ? "!fixed !inset-x-0 !bottom-0 !top-auto !z-[1000] !flex !h-[50dvh] !max-h-[50dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 flex-col gap-0 overflow-hidden rounded-b-none rounded-t-2xl border-[#d5aa4547] bg-[#101b35] p-0 text-right text-slate-50 shadow-2xl sm:!inset-x-auto sm:!bottom-auto sm:!left-auto sm:!right-4 sm:!top-16 sm:!h-[min(88dvh,760px)] sm:!max-h-[calc(100dvh-5rem)] sm:!w-[628px] sm:rounded-xl [&>button]:hidden"
+          ? "!fixed !inset-0 !z-[1000] !flex !h-[100dvh] !max-h-[100dvh] !w-screen !max-w-none !translate-x-0 !translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-[#d5aa4547] bg-[#101b35] p-0 text-right text-slate-50 shadow-2xl sm:!inset-x-auto sm:!bottom-auto sm:!left-auto sm:!right-4 sm:!top-16 sm:!h-[min(88dvh,760px)] sm:!max-h-[calc(100dvh-5rem)] sm:!w-[628px] sm:rounded-xl [&>button]:hidden"
           : "w-[95vw] sm:max-w-[650px] max-h-[85vh] overflow-y-auto text-right"}
       >
         <DialogHeader>
           {themesOnly ? (
-          <div className="relative z-10 flex shrink-0 flex-col items-stretch justify-between gap-2 border-b border-[#d5aa4547] bg-[#101b35] px-3 py-2.5 sm:flex-row sm:items-center sm:px-4" dir="rtl">
+           <div className="relative z-10 flex shrink-0 flex-col items-stretch justify-between gap-2 border-b border-[#d5aa4547] bg-[#101b35] px-3 pb-2.5 pt-[max(0.625rem,var(--safe-area-inset-top,env(safe-area-inset-top,0px)))] sm:flex-row sm:items-center sm:px-4 sm:py-2.5" dir="rtl">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-[#d5aa45]" style={{ fontFamily: "'Noto Serif Hebrew', serif" }}>✦ ערכת נושא</span>
               <span className="rounded-full bg-[#d5aa4529] px-1.5 py-0.5 text-[9px] text-[#d5aa45]">תצוגה חיה בדף</span>
@@ -1140,7 +1146,7 @@ export const Settings = () => {
             <div className="min-w-0 space-y-4">
             {(!themesOnly || themeEditorTab === "presets") && (
             <>
-            <RadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)} className={themesOnly ? "grid grid-cols-3 gap-2 sm:grid-cols-4" : undefined}>
+            <RadioGroup value={theme} onValueChange={(value) => setTheme(value as Theme)} className={themesOnly ? "grid grid-cols-2 gap-2 sm:grid-cols-4" : undefined}>
               {themes.map((t) => (
                 <Card
                   key={t.id}
@@ -1168,7 +1174,7 @@ export const Settings = () => {
                       </div>
                     )}
                     <div className="flex-1 text-right">
-                      <Label htmlFor={t.id} className={themesOnly ? "cursor-pointer text-[10px] font-semibold text-slate-50" : "text-base font-semibold cursor-pointer"}>
+                      <Label htmlFor={t.id} className={themesOnly ? "cursor-pointer text-[11px] font-semibold text-slate-50 sm:text-[10px]" : "text-base font-semibold cursor-pointer"}>
                         {t.name}
                       </Label>
                       {!themesOnly && <p className="text-sm text-muted-foreground mt-1">{t.description}</p>}

@@ -110,6 +110,103 @@ All colors MUST be HSL.
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
+  /* Original synagogue theme collection, restored after the Pash integration. */
+  .navy {
+    --background: 40 20% 97%; --foreground: 220 55% 14%;
+    --card: 40 24% 99%; --card-foreground: 220 55% 14%;
+    --popover: 40 24% 99%; --popover-foreground: 220 55% 14%;
+    --primary: 220 60% 20%; --primary-foreground: 40 80% 95%;
+    --secondary: 40 24% 93%; --secondary-foreground: 220 60% 20%;
+    --muted: 40 16% 93%; --muted-foreground: 220 18% 42%;
+    --accent: 45 90% 55%; --accent-foreground: 220 60% 20%;
+    --border: 40 20% 84%; --input: 40 20% 84%; --ring: 45 90% 55%;
+    --sidebar-background: 220 55% 18%; --sidebar-foreground: 40 80% 95%;
+    --sidebar-primary: 45 90% 55%; --sidebar-primary-foreground: 220 60% 20%;
+    --sidebar-accent: 220 50% 24%; --sidebar-accent-foreground: 45 90% 55%;
+    --sidebar-border: 45 90% 55%; --sidebar-ring: 45 90% 55%;
+    --shadow-soft: 0 2px 8px hsla(220, 60%, 20%, 0.10);
+  }
+
+  .jerusalem {
+    --background: 39 48% 93%; --foreground: 32 38% 22%;
+    --card: 42 55% 98%; --card-foreground: 32 38% 22%;
+    --popover: 42 55% 98%; --popover-foreground: 32 38% 22%;
+    --primary: 34 35% 30%; --primary-foreground: 42 70% 96%;
+    --secondary: 39 37% 87%; --secondary-foreground: 34 35% 30%;
+    --muted: 39 28% 90%; --muted-foreground: 34 20% 42%;
+    --accent: 42 55% 54%; --accent-foreground: 32 38% 22%;
+    --border: 39 28% 80%; --input: 39 28% 80%; --ring: 42 55% 54%;
+    --sidebar-background: 34 35% 28%; --sidebar-foreground: 42 70% 96%;
+    --sidebar-primary: 42 55% 54%; --sidebar-primary-foreground: 32 38% 22%;
+    --sidebar-accent: 34 30% 36%; --sidebar-accent-foreground: 42 70% 96%;
+    --sidebar-border: 42 55% 54%; --sidebar-ring: 42 55% 54%;
+    --shadow-soft: 0 2px 10px hsla(34, 35%, 25%, 0.14);
+  }
+
+  .bordeaux {
+    --background: 36 42% 96%; --foreground: 350 55% 18%;
+    --card: 36 48% 99%; --card-foreground: 350 55% 18%;
+    --popover: 36 48% 99%; --popover-foreground: 350 55% 18%;
+    --primary: 350 55% 23%; --primary-foreground: 40 70% 96%;
+    --secondary: 35 32% 90%; --secondary-foreground: 350 55% 23%;
+    --muted: 35 24% 92%; --muted-foreground: 350 20% 42%;
+    --accent: 42 52% 61%; --accent-foreground: 350 55% 18%;
+    --border: 35 25% 83%; --input: 35 25% 83%; --ring: 42 52% 61%;
+    --sidebar-background: 350 55% 23%; --sidebar-foreground: 40 70% 96%;
+    --sidebar-primary: 42 52% 61%; --sidebar-primary-foreground: 350 55% 18%;
+    --sidebar-accent: 350 45% 31%; --sidebar-accent-foreground: 40 70% 96%;
+    --sidebar-border: 42 52% 61%; --sidebar-ring: 42 52% 61%;
+    --shadow-soft: 0 2px 10px hsla(350, 55%, 18%, 0.14);
+  }
+
+  .forest {
+    --background: 145 28% 96%; --foreground: 154 37% 18%;
+    --card: 145 30% 99%; --card-foreground: 154 37% 18%;
+    --popover: 145 30% 99%; --popover-foreground: 154 37% 18%;
+    --primary: 154 37% 22%; --primary-foreground: 44 70% 96%;
+    --secondary: 145 22% 89%; --secondary-foreground: 154 37% 22%;
+    --muted: 145 18% 92%; --muted-foreground: 154 18% 40%;
+    --accent: 43 58% 56%; --accent-foreground: 154 37% 18%;
+    --border: 145 20% 82%; --input: 145 20% 82%; --ring: 43 58% 56%;
+    --sidebar-background: 154 37% 22%; --sidebar-foreground: 44 70% 96%;
+    --sidebar-primary: 43 58% 56%; --sidebar-primary-foreground: 154 37% 18%;
+    --sidebar-accent: 154 32% 30%; --sidebar-accent-foreground: 44 70% 96%;
+    --sidebar-border: 43 58% 56%; --sidebar-ring: 43 58% 56%;
+    --shadow-soft: 0 2px 10px hsla(154, 37%, 18%, 0.14);
+  }
+
+  .sand {
+    --background: 205 40% 98%; --foreground: 207 60% 20%;
+    --card: 0 0% 100%; --card-foreground: 207 60% 20%;
+    --popover: 0 0% 100%; --popover-foreground: 207 60% 20%;
+    --primary: 205 72% 38%; --primary-foreground: 0 0% 100%;
+    --secondary: 202 42% 91%; --secondary-foreground: 207 60% 20%;
+    --muted: 202 30% 94%; --muted-foreground: 207 24% 45%;
+    --accent: 199 58% 56%; --accent-foreground: 207 60% 20%;
+    --border: 202 28% 84%; --input: 202 28% 84%; --ring: 199 58% 56%;
+    --sidebar-background: 205 72% 34%; --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 199 58% 64%; --sidebar-primary-foreground: 207 60% 20%;
+    --sidebar-accent: 205 60% 42%; --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 199 58% 64%; --sidebar-ring: 199 58% 64%;
+    --shadow-soft: 0 2px 10px hsla(205, 72%, 24%, 0.12);
+  }
+
+  .night {
+    --background: 220 40% 10%; --foreground: 42 38% 92%;
+    --card: 220 35% 15%; --card-foreground: 42 38% 92%;
+    --popover: 220 35% 15%; --popover-foreground: 42 38% 92%;
+    --primary: 43 62% 66%; --primary-foreground: 220 40% 12%;
+    --secondary: 220 28% 22%; --secondary-foreground: 42 38% 92%;
+    --muted: 220 25% 24%; --muted-foreground: 42 16% 70%;
+    --accent: 43 62% 66%; --accent-foreground: 220 40% 12%;
+    --border: 220 25% 28%; --input: 220 25% 28%; --ring: 43 62% 66%;
+    --sidebar-background: 220 45% 9%; --sidebar-foreground: 42 38% 92%;
+    --sidebar-primary: 43 62% 66%; --sidebar-primary-foreground: 220 40% 12%;
+    --sidebar-accent: 220 32% 18%; --sidebar-accent-foreground: 43 62% 66%;
+    --sidebar-border: 43 62% 66%; --sidebar-ring: 43 62% 66%;
+    --shadow-soft: 0 2px 12px hsla(220, 50%, 4%, 0.45);
+  }
+
   /* Royal Gold Theme */
   .royal-gold {
     --background: 25 40% 96%;
@@ -461,6 +558,40 @@ html.torah-luxury .community-nav-item[aria-current="page"] {
   box-shadow: 0 2px 10px hsl(var(--accent) / 0.14);
 }
 
+/* The community destinations are a deliberately smaller secondary strip,
+   separated from the three permanent application destinations above it. */
+.community-secondary-nav,
+html.torah-luxury .community-secondary-nav {
+  width: calc(100% - 5rem);
+  max-width: 20rem;
+  margin-top: 1.15rem;
+  margin-bottom: 0.45rem;
+  padding: 0.12rem !important;
+  border-radius: 0.85rem;
+}
+
+.community-secondary-nav .community-nav-item,
+html.torah-luxury .community-secondary-nav .community-nav-item {
+  min-height: 1.75rem;
+  padding: 0.2rem 0.3rem;
+  border-radius: 0.65rem;
+  font-size: 0.64rem;
+}
+
+@media (min-width: 640px) {
+  .community-secondary-nav,
+  html.torah-luxury .community-secondary-nav {
+    margin-top: 1.25rem;
+    padding: 0.12rem !important;
+  }
+
+  .community-secondary-nav .community-nav-item,
+  html.torah-luxury .community-secondary-nav .community-nav-item {
+    min-height: 1.85rem;
+    font-size: 0.73rem;
+  }
+}
+
 /* One compact, shared destination row for Community, Siddur and Chumash.
    Each destination is deliberately its own control; there is no enclosing
    pill, and only the selected destination receives the fine gold outline. */
@@ -510,6 +641,32 @@ html.torah-luxury .community-nav-item[aria-current="page"] {
   box-shadow: 0 2px 8px rgb(213 170 69 / 0.1);
 }
 
+/* In the optional "פאר תורה" theme every destination is an independent
+   ivory card. Keep a single precise gold border; an extra outer outline made
+   the compact mobile navigation look doubled and visually crowded. */
+html.torah-luxury .primary-destination-nav {
+  gap: 0.75rem;
+  background: transparent;
+}
+
+html.torah-luxury .primary-destination-item,
+html.torah-luxury .primary-destination-item-active {
+  position: relative;
+  isolation: isolate;
+  color: #172c57;
+  border-color: #e6b82f;
+  background: #fffdfa;
+  box-shadow: 0 3px 10px rgb(213 170 69 / 0.14);
+}
+
+html.torah-luxury .primary-destination-item:hover,
+html.torah-luxury .primary-destination-item-active {
+  color: #10264f;
+  border-color: #f0b900;
+  background: #fffdf8;
+  box-shadow: 0 4px 13px rgb(213 170 69 / 0.22);
+}
+
 @media (min-width: 640px) {
   .primary-destination-nav { gap: 0.5rem; }
   .primary-destination-item {
@@ -518,6 +675,8 @@ html.torah-luxury .community-nav-item[aria-current="page"] {
     font-size: 0.78rem;
   }
   .primary-destination-item svg { width: 1rem; height: 1rem; }
+
+  html.torah-luxury .primary-destination-nav { gap: 0.9rem; }
 }
 
 html.torah-luxury .card-elev {

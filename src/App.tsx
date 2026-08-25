@@ -28,6 +28,7 @@ import { AndroidBackNavigation } from "@/components/AndroidBackNavigation";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EditModeProvider } from "@community/lib/edit-mode";
+import { LiveDesignProvider } from "@/lib/live-design";
 
 const communityQueryClient = new QueryClient({
   defaultOptions: {
@@ -184,6 +185,7 @@ const App = () => {
       <DeviceProvider>
         <Trace id="App.Theme">
         <ThemeProvider>
+          <LiveDesignProvider>
           <Trace id="App.FontAndColor">
           <FontAndColorSettingsProvider>
             <Trace id="App.DisplayMode">
@@ -253,6 +255,7 @@ const App = () => {
             </Trace>
           </FontAndColorSettingsProvider>
           </Trace>
+          </LiveDesignProvider>
         </ThemeProvider>
         </Trace>
       </DeviceProvider>
