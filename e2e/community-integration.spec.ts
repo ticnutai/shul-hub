@@ -13,6 +13,10 @@ test("the default route opens the synagogue and exposes clear primary tabs", asy
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/");
   await expect(page).toHaveURL(/\/community$/);
+  await expect(page.getByTestId("dev-galaxy-preview-trigger")).toHaveCount(0);
+  await expect(page.getByTitle("Dev Chat – דבר עם קופיילוט")).toHaveCount(0);
+  await expect(page.getByTitle("📸 צלם מסך (Ctrl+Shift+S)")).toHaveCount(0);
+  await expect(page.getByTitle("עבור לסיידבר")).toHaveCount(0);
   const primaryNav = page.getByRole("navigation", { name: "מדורים ראשיים" });
   await expect(primaryNav.getByRole("link", { name: "בית הכנסת" })).toBeVisible();
   await expect(primaryNav.getByRole("link", { name: "סידור" })).toBeVisible();
@@ -166,6 +170,22 @@ test("the full synagogue name stays visible while management moves to the footer
   await expect(header.getByRole("link", { name: "ניהול האתר" })).toHaveCount(0);
 
   const footer = page.locator("footer");
+  const rabbiContact = footer.getByTestId("community-rabbi-contact");
+  await expect(rabbiContact).toBeVisible();
+  const topic = footer.getByTestId("community-contact-topic");
+  const rabbiName = footer.getByTestId("community-rabbi-name");
+  await expect(topic).toHaveText("לכל נושא של יהדות");
+  await expect(rabbiName).toHaveText("הרב חיים אושרי");
+  const phone = footer.getByTestId("community-phone");
+  await expect(phone).toBeVisible();
+  await expect(phone).toHaveAttribute("href", /^tel:\+?\d+$/);
+  const contactOrder = await Promise.all([
+    topic.evaluate(element => element.getBoundingClientRect().top),
+    rabbiName.evaluate(element => element.getBoundingClientRect().top),
+    phone.evaluate(element => element.getBoundingClientRect().top),
+  ]);
+  expect(contactOrder[0]).toBeLessThan(contactOrder[1]);
+  expect(contactOrder[1]).toBeLessThan(contactOrder[2]);
   const managementLink = footer.getByRole("link", { name: "ניהול האתר" });
   await managementLink.scrollIntoViewIfNeeded();
   await expect(managementLink).toBeVisible();

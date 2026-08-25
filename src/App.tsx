@@ -36,37 +36,6 @@ const communityQueryClient = new QueryClient({
   },
 });
 
-const DEV_CHAT_ENABLED_KEY = "dev-chat-widget-enabled";
-const DEV_SCREENSHOT_ENABLED_KEY = "dev-screenshot-tool-enabled";
-const DEV_FLOATING_ENABLED_KEY = "dev-floating-buttons-enabled";
-const DEV_FEATURES_EVENT = "dev-features:changed";
-
-const readDevFeatureFlag = (key: string, fallback: boolean) => {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return fallback;
-    return raw === "true";
-  } catch {
-    return fallback;
-  }
-};
-
-// Dev-only chat widget (lazy loaded, tree-shaken in production; disabled in automated tests)
-const DevChatWidget = import.meta.env.DEV && !navigator.webdriver
-  ? lazy(() => import("@/components/DevChatWidget").then(m => ({ default: m.DevChatWidget })))
-  : null;
-
-// Dev-only screenshot tool (lazy loaded, tree-shaken in production; disabled in automated tests)
-const ScreenshotTool = import.meta.env.DEV && !navigator.webdriver
-  ? lazy(() => import("@/components/ScreenshotTool").then(m => ({ default: m.ScreenshotTool })))
-  : null;
-
-// Interactive Galaxy S25 frame for the local Vite dev server only.
-// import.meta.env.DEV is replaced at build time, so the launcher is absent in production.
-const DevMobilePreview = import.meta.env.DEV
-  ? lazy(() => import("@/components/DevMobilePreview").then(m => ({ default: m.DevMobilePreview })))
-  : null;
-
 // Lazy load ALL pages for optimal initial bundle size
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth").then(m => ({ default: m.Auth })));
@@ -137,9 +106,6 @@ function Trace({ id, children }: { id: string; children: React.ReactNode }) {
 }
 
 const App = () => {
-  const [showDevFloating, setShowDevFloating] = useState(() => readDevFeatureFlag(DEV_FLOATING_ENABLED_KEY, true));
-  const [showDevChat, setShowDevChat] = useState(() => readDevFeatureFlag(DEV_CHAT_ENABLED_KEY, true));
-  const [showScreenshotTool, setShowScreenshotTool] = useState(() => readDevFeatureFlag(DEV_SCREENSHOT_ENABLED_KEY, true));
   // Defer mounting the reminder popup hook until after first paint so its
   // localStorage reads + permission checks don't run on the critical path.
   // Without this, useNotifications fired its mount effects during initial
@@ -156,22 +122,6 @@ const App = () => {
       }
     };
     idle(() => setReminderHookEnabled(true));
-  }, []);
-
-  useEffect(() => {
-    const syncDevFeatures = () => {
-      setShowDevFloating(readDevFeatureFlag(DEV_FLOATING_ENABLED_KEY, true));
-      setShowDevChat(readDevFeatureFlag(DEV_CHAT_ENABLED_KEY, true));
-      setShowScreenshotTool(readDevFeatureFlag(DEV_SCREENSHOT_ENABLED_KEY, true));
-    };
-
-    window.addEventListener("storage", syncDevFeatures);
-    window.addEventListener(DEV_FEATURES_EVENT, syncDevFeatures as EventListener);
-
-    return () => {
-      window.removeEventListener("storage", syncDevFeatures);
-      window.removeEventListener(DEV_FEATURES_EVENT, syncDevFeatures as EventListener);
-    };
   }, []);
 
   return (
@@ -204,9 +154,6 @@ const App = () => {
                       <PWAReloadPrompt />
                       <OfflineBanner />
                       {reminderHookEnabled && <DeferredReminderPopup />}
-                      {DevChatWidget && showDevFloating && showDevChat && <Suspense fallback={null}><DevChatWidget /></Suspense>}
-                      {ScreenshotTool && showDevFloating && showScreenshotTool && <Suspense fallback={null}><ScreenshotTool /></Suspense>}
-                      {DevMobilePreview && <Suspense fallback={null}><DevMobilePreview /></Suspense>}
                       <Router
                         future={{
                           v7_startTransition: true,
