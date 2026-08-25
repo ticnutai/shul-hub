@@ -244,6 +244,7 @@ test.describe("mobile interactive states", () => {
       "ירוק זית",
       "תכלת ולבן",
       "מצב לילה",
+      "תורה עם מפרשים",
     ];
 
     for (const theme of themes) {

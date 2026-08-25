@@ -120,7 +120,7 @@ function SiddurPage() {
             {sections.map((section, sectionIndex) => (
               <article key={`${section.title}-${sectionIndex}`} className="card-elev p-4 sm:p-6">
                 <h3 className="font-display text-xl font-bold text-primary">{section.title}</h3>
-                <div className="mt-3 space-y-3 font-display text-xl leading-[2.05] sm:text-2xl">
+                <div className="torah-reading-text mt-3 space-y-3 font-display text-xl leading-[2.05] sm:text-2xl">
                   {section.lines.map((line, lineIndex) => (
                     <p
                       key={lineIndex}

@@ -7,7 +7,7 @@
 /*
  * Design system — בית הכנסת אושר של יהודי
  * Multiple themes are applied as a class on <html> (theme-navy, theme-jerusalem,
- * theme-bordeaux, theme-forest, theme-night, theme-sand).
+ * theme-bordeaux, theme-forest, theme-night, theme-sand, theme-pash).
  * All colors are oklch semantic tokens. Never hardcode colors in components.
  */
 
@@ -259,6 +259,118 @@
   --sidebar-accent-foreground: var(--gold);
   --sidebar-border: color-mix(in oklch, var(--gold) 35%, transparent);
   --sidebar-ring: var(--gold);
+}
+
+/*
+ * תורה עם מפרשים — a faithful, isolated translation of pash's classic theme.
+ * Only semantic design tokens and visual layout rules are shared. No pash
+ * runtime, account, Supabase client, routing, or authentication is imported.
+ */
+.theme-pash {
+  --radius: 0.5rem;
+  --background: hsl(40 20% 97%);
+  --foreground: hsl(220 40% 12%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(220 40% 12%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(220 40% 12%);
+  --primary: hsl(220 60% 20%);
+  --primary-foreground: hsl(40 80% 95%);
+  --secondary: hsl(40 60% 88%);
+  --secondary-foreground: hsl(220 60% 20%);
+  --muted: hsl(40 30% 92%);
+  --muted-foreground: hsl(220 20% 45%);
+  --accent: hsl(45 90% 55%);
+  --accent-foreground: hsl(220 60% 20%);
+  --gold: hsl(45 90% 55%);
+  --gold-foreground: hsl(220 60% 20%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(40 80% 95%);
+  --border: hsl(40 25% 85%);
+  --input: hsl(40 25% 85%);
+  --ring: hsl(45 90% 55%);
+  --shadow-color: hsl(220 60% 20% / 18%);
+  --hero-from: hsl(40 25% 95%);
+  --hero-to: hsl(40 20% 97%);
+
+  /* pash uses a light, translucent application header in the classic layout. */
+  --sidebar: hsl(40 20% 97%);
+  --sidebar-foreground: hsl(220 40% 12%);
+  --sidebar-primary: hsl(220 60% 20%);
+  --sidebar-primary-foreground: hsl(40 80% 95%);
+  --sidebar-accent: hsl(40 30% 92%);
+  --sidebar-accent-foreground: hsl(220 60% 20%);
+  --sidebar-border: hsl(40 25% 85%);
+  --sidebar-ring: hsl(45 90% 55%);
+
+  --app-font-family: "Heebo", "Rubik", Arial, Tahoma, sans-serif;
+  --app-heading-font-family: "Heebo", "Rubik", Arial, Tahoma, sans-serif;
+  --pash-reading-font: "David Libre", "Noto Serif Hebrew", serif;
+  --pash-shadow-soft: 0 2px 8px hsl(220 60% 20% / 8%);
+  --pash-shadow-medium: 0 4px 16px hsl(220 60% 20% / 12%);
+  --pash-shadow-gold: 0 4px 20px hsl(45 90% 55% / 25%);
+}
+
+.theme-pash body {
+  background-color: var(--background);
+  background-image: linear-gradient(180deg, hsl(40 25% 95% / 72%), transparent 18rem);
+}
+
+.theme-pash header[data-app-hydrated] {
+  border-color: var(--border);
+  background-color: hsl(40 20% 97% / 95%);
+  box-shadow: var(--pash-shadow-soft);
+  backdrop-filter: blur(14px);
+}
+
+.theme-pash .hero-surface {
+  border-bottom: 1px solid var(--border);
+  background-image: linear-gradient(180deg, hsl(40 25% 95%), hsl(40 20% 97%));
+  color: var(--foreground);
+}
+
+.theme-pash .card-elev {
+  border-width: 1px;
+  border-radius: 0.5rem;
+  box-shadow: var(--pash-shadow-soft);
+  transition:
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-pash .card-elev:hover {
+  border-color: color-mix(in srgb, var(--gold) 45%, var(--border));
+  box-shadow: var(--pash-shadow-medium);
+}
+
+.theme-pash .torah-reading-text {
+  font-family: var(--pash-reading-font);
+  letter-spacing: 0.02em;
+}
+
+.theme-pash :is(input, textarea, select) {
+  border-radius: 0.5rem;
+  background-color: var(--card);
+}
+
+.theme-pash :is(button, [role="button"]) {
+  transition:
+    color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 640px) {
+  .theme-pash .card-elev {
+    border-radius: 0.5rem;
+  }
+
+  .theme-pash :is(button, a, [role="button"]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 
 @layer base {

@@ -16,6 +16,11 @@ export const THEMES = [
   { id: "forest", name: "ירוק זית", swatch: ["#234b3c", "#cfa94d", "#f2f7f4"] },
   { id: "sand", name: "תכלת ולבן", swatch: ["#1b6ca8", "#4fa3d1", "#ffffff"] },
   { id: "night", name: "מצב לילה", swatch: ["#0e1626", "#e8c469", "#26314a"] },
+  {
+    id: "pash",
+    name: "תורה עם מפרשים",
+    swatch: ["#142952", "#f2c228", "#faf9f7"],
+  },
 ] as const;
 
 export type ThemeId = string;

@@ -152,7 +152,7 @@ function ChumashPage() {
             </h2>
             {verses.map((verse) => (
               <article key={`${verse.chapter}-${verse.id}`} className="card-elev p-4 sm:p-5">
-                <p className="font-display text-xl leading-[2] sm:text-2xl">
+                <p className="torah-reading-text font-display text-xl leading-[2] sm:text-2xl">
                   <span className="ml-2 text-sm font-bold text-gold">
                     {query && `פרק ${hebrewNumber(verse.chapter)} · `}
                     {hebrewNumber(verse.pasuk_num)}
@@ -171,7 +171,10 @@ function ChumashPage() {
                           <h3 className="font-semibold">{question.text}</h3>
                           <div className="mt-2 space-y-2">
                             {question.perushim.map((answer) => (
-                              <div key={answer.id} className="border-r-2 border-gold pr-3">
+                              <div
+                                key={answer.id}
+                                className="torah-reading-text border-r-2 border-gold pr-3"
+                              >
                                 <p className="font-bold">{answer.mefaresh}</p>
                                 <p className="mt-1 leading-7">{answer.text}</p>
                               </div>

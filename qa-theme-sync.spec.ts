@@ -11,6 +11,7 @@ const themeNames = {
   forest: "ירוק זית",
   sand: "תכלת ולבן",
   night: "מצב לילה",
+  pash: "תורה עם מפרשים",
 } as const;
 
 type ThemeId = keyof typeof themeNames;
