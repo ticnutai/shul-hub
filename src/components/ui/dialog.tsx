@@ -1,8 +1,6 @@
-"use client";
-
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { GripHorizontal, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -20,8 +18,9 @@ const DialogOverlay = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
+    data-dialog-overlay
     className={cn(
-      "fixed inset-0 z-50 bg-black/80  data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -31,74 +30,41 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, style, ...props }, ref) => {
-  const [offset, setOffset] = React.useState({ x: 0, y: 0 });
-  const drag = React.useRef<{ x: number; y: number } | null>(null);
-
-  const onPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (event.button !== 0) return;
-    drag.current = { x: event.clientX - offset.x, y: event.clientY - offset.y };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  };
-  const onPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!drag.current) return;
-    setOffset({ x: event.clientX - drag.current.x, y: event.clientY - drag.current.y });
-  };
-  const endDrag = () => {
-    drag.current = null;
-  };
-
-  return (
-    <DialogPortal>
-      <DialogOverlay />
-      <DialogPrimitive.Content
-        ref={ref}
-        style={{
-          ...style,
-          transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px))`,
-        }}
-        className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-[calc(100vw-2rem)] max-w-lg gap-4 border bg-background p-6 pt-8 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
-          className,
-        )}
-        {...props}
-      >
-        <div
-          aria-label="גרירת החלון"
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-          onDoubleClick={() => setOffset({ x: 0, y: 0 })}
-          className="absolute inset-x-0 top-0 flex h-7 cursor-grab touch-none items-center justify-center rounded-t-lg active:cursor-grabbing"
-        >
-          <GripHorizontal className="h-4 w-4 text-muted-foreground/60" />
-        </div>
-        {children}
-        <DialogPrimitive.Close className="absolute left-4 top-7 rounded-sm opacity-70 ring-offset-background cursor-pointer transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </DialogPrimitive.Content>
-    </DialogPortal>
-  );
-});
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & { hideOverlay?: boolean; overlayClassName?: string }
+>(({ className, children, hideOverlay = false, overlayClassName, ...props }, ref) => (
+  <DialogPortal>
+    {!hideOverlay && <DialogOverlay className={overlayClassName} />}
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-[calc(100%-2rem)] max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-accent bg-card text-foreground p-4 sm:p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg rounded-md max-h-[90vh] overflow-y-auto",
+        className,
+      )}
+      {...props}
+    >
+      {/* Hidden default description so Radix never warns about a missing
+          aria-describedby. Any DialogDescription provided inside `children`
+          registers afterwards and overrides this fallback via Radix context. */}
+      <DialogPrimitive.Description className="sr-only">
+        תיבת דו-שיח
+      </DialogPrimitive.Description>
+      {children}
+      <DialogPrimitive.Close data-dialog-close="true" className="absolute right-2 top-2 sm:right-4 sm:top-4 rounded-sm opacity-70 ring-offset-background transition-opacity data-[state=open]:bg-accent data-[state=open]:text-muted-foreground hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+));
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const DialogHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex flex-col space-y-1.5 text-center sm:text-right", className)}
-    {...props}
-  />
+  <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />
 );
 DialogHeader.displayName = "DialogHeader";
 
 const DialogFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
-  <div
-    className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
-    {...props}
-  />
+  <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />
 );
 DialogFooter.displayName = "DialogFooter";
 
@@ -118,11 +84,7 @@ const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
 >(({ className, ...props }, ref) => (
-  <DialogPrimitive.Description
-    ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
-    {...props}
-  />
+  <DialogPrimitive.Description ref={ref} className={cn("text-sm text-muted-foreground", className)} {...props} />
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
@@ -130,8 +92,8 @@ export {
   Dialog,
   DialogPortal,
   DialogOverlay,
-  DialogTrigger,
   DialogClose,
+  DialogTrigger,
   DialogContent,
   DialogHeader,
   DialogFooter,

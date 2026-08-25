@@ -1,0 +1,7 @@
+{
+  "projectId": "bfiayuuhjtyccqobsjvl",
+  "projectUrl": "https://bfiayuuhjtyccqobsjvl.supabase.co",
+  "source": "supabase/migrations",
+  "status": "managed-by-authenticated-admin-runner",
+  "note": "The live migration history is read from get_migration_history; this file never embeds credentials or SQL."
+}

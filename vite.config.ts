@@ -1,73 +1,124 @@
-// @lovable.dev/vite-tanstack-config already includes the following — do NOT add them manually
-// or the app will break with duplicate plugins:
-//   - TanStack devtools (dev-only, first), tanstackStart, viteReact, tailwindcss, tsConfigPaths,
-//     nitro (build-only using cloudflare as a default target), VITE_* env injection, @ path alias,
-//     React/TanStack dedupe, error logger plugins, and sandbox detection (port/host/strictPort).
-// You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
-import { defineConfig } from "@lovable.dev/vite-tanstack-config";
-import fs from "node:fs";
-import path from "node:path";
-import type { Plugin } from "vite";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
+import { VitePWA } from "vite-plugin-pwa";
+import { devChatPlugin } from "./src/plugins/devChatPlugin";
+import pkg from "./package.json" with { type: "json" };
 
-function localMigrationCredentials(): Plugin {
-  return {
-    name: "local-migration-credentials",
-    apply: "serve",
-    configureServer(server) {
-      server.middlewares.use("/__dev/migration-credentials", (request, response, next) => {
-        if (request.method !== "POST") return next();
-        const remoteAddress = request.socket.remoteAddress ?? "";
-        if (!/^(::1|127\.0\.0\.1|::ffff:127\.0\.0\.1)$/.test(remoteAddress)) {
-          response.statusCode = 403;
-          response.end("Local access only");
-          return;
-        }
-        const origin = request.headers.origin;
-        if (origin && !/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
-          response.statusCode = 403;
-          response.end("Invalid origin");
-          return;
-        }
-
-        let body = "";
-        request.on("data", (chunk) => {
-          body += chunk;
-          if (body.length > 16_384) request.destroy();
-        });
-        request.on("end", () => {
-          try {
-            const parsed = JSON.parse(body) as { email?: string; password?: string };
-            const email = parsed.email?.trim() ?? "";
-            const password = parsed.password ?? "";
-            if (!email || !password || /[\r\n]/.test(email) || /[\r\n]/.test(password)) {
-              response.statusCode = 400;
-              response.end("Invalid credentials");
-              return;
-            }
-            fs.writeFileSync(
-              path.resolve(process.cwd(), ".env.migrations.local"),
-              `ADMIN_EMAIL=${email}\nADMIN_PASSWORD=${password}\n`,
-              { encoding: "utf8", mode: 0o600 },
-            );
-            response.statusCode = 204;
-            response.end();
-          } catch {
-            response.statusCode = 400;
-            response.end("Invalid request");
-          }
-        });
-      });
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
+  // The integration copy consumes only Shul Hub's root-level environment.
+  // No .env file is copied from the pash source repository.
+  envDir: ".",
+  server: {
+    host: "::",
+    port: 4300,
+    strictPort: true,
+    hmr: {
+      protocol: 'ws',
+      host: 'localhost',
     },
-  };
-}
-
-export default defineConfig({
-  vite: {
-    plugins: [localMigrationCredentials()],
   },
-  tanstackStart: {
-    // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
-    // nitro/vite builds from this
-    server: { entry: "server" },
+  plugins: [
+    react(),
+    mode === "development" && componentTagger(),
+    mode === "development" && devChatPlugin(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      devOptions: {
+        // Disable PWA/SW in `npm run dev` so localhost stays free of cached
+        // assets and stale service workers. Use `npm run preview` to test the
+        // real PWA build before deploy.
+        enabled: false,
+      },
+      includeAssets: ['favicon.ico', 'robots.txt'],
+      manifest: {
+        name: 'בית כנסת בסר 3 - תורה וקהילה',
+        short_name: 'בית כנסת בסר 3',
+        description: 'זמני תפילות, קהילה וספריית תורה עם שאלות ופירושים',
+        theme_color: '#1e3a5f',
+        background_color: '#ffffff',
+        display: 'standalone',
+        dir: 'rtl',
+        lang: 'he',
+        icons: [
+          {
+            src: '/icon-192x192.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: '/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: '/icon-512x512.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        globIgnores: ['**/assets/data-*.js'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+        // NOTE: Google Fonts (fonts.googleapis.com / fonts.gstatic.com) are intentionally
+        // NOT routed through Workbox. The browser HTTP cache + Google CDN already serve
+        // them optimally; intercepting through the SW caused a visible network race on
+        // every reload (the "Workbox: finished loading https://fonts.googleapis..."
+        // messages) which produced a late font swap and re-render after first paint.
+        runtimeCaching: [
+          {
+            urlPattern: /\.json$/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'torah-data-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-cache',
+              networkTimeoutSeconds: 10,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24
+              }
+            }
+          }
+        ]
+      }
+    })
+  ].filter(Boolean),
+  build: {
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('/src/data/bereishit.json')) return 'data-bereishit';
+          if (id.includes('/src/data/shemot.json')) return 'data-shemot';
+          if (id.includes('/src/data/vayikra.json')) return 'data-vayikra';
+          if (id.includes('/src/data/bamidbar.json')) return 'data-bamidbar';
+          if (id.includes('/src/data/devarim.json')) return 'data-devarim';
+        }
+      }
+    }
   },
-});
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "@community": path.resolve(__dirname, "./src/community"),
+    },
+  },
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
+}));
