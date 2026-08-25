@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <circle cx="256" cy="256" r="216" fill="hsl(0, 0%, 100%)" stroke="hsl(44, 55%, 58%)" stroke-width="12"/>
+  <text
+    x="256"
+    y="262"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    direction="rtl"
+    unicode-bidi="plaintext"
+    font-family="Frank Ruhl Libre, David, serif"
+    font-size="168"
+    font-weight="500"
+    fill="hsl(220, 60%, 20%)"
+    opacity="0.92"
+  >תורה</text>
+</svg>

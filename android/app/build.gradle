@@ -33,6 +33,16 @@ android {
         }
     }
     buildTypes {
+        debugParallel {
+            initWith debug
+            matchingFallbacks = ['debug']
+            applicationIdSuffix ".pashtheme"
+            versionNameSuffix "-pash-theme"
+            resValue "string", "app_name", "בית כנסת בסר 3 - תורה"
+            resValue "string", "title_activity_main", "בית כנסת בסר 3 - תורה"
+            resValue "string", "package_name", "com.ticnutai.bsr3synagogue.pashtheme"
+            resValue "string", "custom_url_scheme", "com.ticnutai.bsr3synagogue.pashtheme"
+        }
         release {
             signingConfig signingPropertiesFile.exists() ? signingConfigs.release : null
             minifyEnabled false

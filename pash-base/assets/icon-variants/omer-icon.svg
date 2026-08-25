@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a1a5e"/>
+      <stop offset="100%" stop-color="#0d0d3a"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffd700"/>
+      <stop offset="100%" stop-color="#daa520"/>
+    </linearGradient>
+    <linearGradient id="wheat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f0c040"/>
+      <stop offset="100%" stop-color="#c8942a"/>
+    </linearGradient>
+  </defs>
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="250" fill="url(#bg)"/>
+  <circle cx="256" cy="256" r="238" fill="none" stroke="url(#gold)" stroke-width="4" opacity="0.5"/>
+  
+  <!-- Stars (7 = weeks of Omer) -->
+  <g fill="#ffd700" opacity="0.35">
+    <circle cx="130" cy="100" r="4"/>
+    <circle cx="380" cy="90" r="3"/>
+    <circle cx="100" cy="200" r="3"/>
+    <circle cx="400" cy="180" r="4"/>
+    <circle cx="160" cy="420" r="3"/>
+    <circle cx="350" cy="410" r="3.5"/>
+    <circle cx="420" cy="320" r="3"/>
+  </g>
+  
+  <!-- Central wheat sheaf - left stalk -->
+  <g stroke="url(#wheat)" fill="none" stroke-width="5" stroke-linecap="round">
+    <path d="M220,350 Q210,280 200,220"/>
+    <!-- Left grains -->
+    <ellipse cx="192" cy="210" rx="12" ry="6" fill="url(#wheat)" stroke="none" transform="rotate(-20,192,210)"/>
+    <ellipse cx="188" cy="195" rx="11" ry="5.5" fill="url(#wheat)" stroke="none" transform="rotate(-25,188,195)"/>
+    <ellipse cx="186" cy="180" rx="10" ry="5" fill="url(#wheat)" stroke="none" transform="rotate(-30,186,180)"/>
+    <ellipse cx="196" cy="222" rx="12" ry="6" fill="url(#wheat)" stroke="none" transform="rotate(-15,196,222)"/>
+  </g>
+  
+  <!-- Central wheat sheaf - center stalk -->
+  <g stroke="url(#wheat)" fill="none" stroke-width="5" stroke-linecap="round">
+    <path d="M256,350 Q256,270 256,180"/>
+    <!-- Center grains -->
+    <ellipse cx="256" cy="170" rx="13" ry="6" fill="url(#wheat)" stroke="none"/>
+    <ellipse cx="256" cy="155" rx="12" ry="5.5" fill="url(#wheat)" stroke="none"/>
+    <ellipse cx="256" cy="140" rx="11" ry="5" fill="url(#wheat)" stroke="none"/>
+    <ellipse cx="256" cy="128" rx="9" ry="4" fill="url(#wheat)" stroke="none"/>
+    <ellipse cx="256" cy="184" rx="13" ry="6" fill="url(#wheat)" stroke="none"/>
+  </g>
+  
+  <!-- Central wheat sheaf - right stalk -->
+  <g stroke="url(#wheat)" fill="none" stroke-width="5" stroke-linecap="round">
+    <path d="M292,350 Q302,280 312,220"/>
+    <!-- Right grains -->
+    <ellipse cx="320" cy="210" rx="12" ry="6" fill="url(#wheat)" stroke="none" transform="rotate(20,320,210)"/>
+    <ellipse cx="324" cy="195" rx="11" ry="5.5" fill="url(#wheat)" stroke="none" transform="rotate(25,324,195)"/>
+    <ellipse cx="326" cy="180" rx="10" ry="5" fill="url(#wheat)" stroke="none" transform="rotate(30,326,180)"/>
+    <ellipse cx="316" cy="222" rx="12" ry="6" fill="url(#wheat)" stroke="none" transform="rotate(15,316,222)"/>
+  </g>
+  
+  <!-- Sheaf tie/band -->
+  <ellipse cx="256" cy="345" rx="50" ry="12" fill="none" stroke="#daa520" stroke-width="5"/>
+  
+  <!-- Hebrew text: ספירת העומר -->
+  <text x="256" y="430" text-anchor="middle" font-family="serif" font-size="42" font-weight="bold" fill="#ffd700">סְפִירַת הָעוֹמֶר</text>
+  
+  <!-- Number 49 in circle -->
+  <circle cx="256" cy="88" r="30" fill="none" stroke="#ffd700" stroke-width="2.5"/>
+  <text x="256" y="97" text-anchor="middle" font-family="serif" font-size="30" font-weight="bold" fill="#ffd700">מ״ט</text>
+</svg>
