@@ -728,10 +728,12 @@ export const Settings = () => {
               <span className="truncate">API</span>
               <Plug className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
             </TabsTrigger>
-            <TabsTrigger value="dev" className="gap-0.5 sm:gap-1 text-[10px] sm:text-sm px-1.5 sm:px-3 py-1.5 sm:py-2 min-w-0">
-              <span className="truncate">פיתוח</span>
-              <Code className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-            </TabsTrigger>
+            {import.meta.env.DEV && (
+              <TabsTrigger value="dev" className="gap-0.5 sm:gap-1 text-[10px] sm:text-sm px-1.5 sm:px-3 py-1.5 sm:py-2 min-w-0">
+                <span className="truncate">פיתוח</span>
+                <Code className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+              </TabsTrigger>
+            )}
           </TabsList>}
 
           <TabsContent value="calendar" className="space-y-4">
@@ -2026,7 +2028,7 @@ export const Settings = () => {
             </div>
           </TabsContent>
 
-          <TabsContent value="dev" className="space-y-4">
+          {import.meta.env.DEV && <TabsContent value="dev" className="space-y-4">
             <Card className="p-6 space-y-6">
               <div>
                 <h3 className="font-semibold text-lg mb-2">אייקוני פיתוח</h3>
@@ -2176,7 +2178,7 @@ export const Settings = () => {
             </Card>
 
             <MigrationManager />
-          </TabsContent>
+          </TabsContent>}
         </Tabs>
       </DialogContent>
     </Dialog>

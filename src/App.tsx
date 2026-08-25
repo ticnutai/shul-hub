@@ -91,7 +91,7 @@ const LoadingFallback = () => (
 
 function SeasonalOmerRoute() {
   const inSeason = useOmerSeason();
-  return inSeason ? <Omer /> : <Navigate to="/" replace />;
+  return inSeason ? <Omer /> : <Navigate to="/community" replace />;
 }
 
 function OfflineBanner() {
@@ -218,7 +218,8 @@ const App = () => {
                           <Trace id="App.Routes">
                           <Suspense fallback={<LoadingFallback />}>
                             <Routes>
-                              <Route path="/" element={<Index />} />
+                              <Route path="/" element={<Navigate to="/community" replace />} />
+                              <Route path="/chumash" element={<Index />} />
                               <Route path="/auth" element={<Auth />} />
                               <Route path="/profile" element={<UserProfile />} />
                               <Route path="/commentaries/:seferId/:perek/:pasuk" element={<Commentaries />} />

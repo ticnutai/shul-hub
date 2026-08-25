@@ -60,7 +60,7 @@ export const Auth = () => {
         return;
       }
       if (result.redirected) return;
-      navigate("/");
+      navigate("/community");
     } catch (e: any) {
       toast.error(e?.message || "שגיאה בהתחברות עם גוגל");
       setIsLoading(false);
@@ -71,7 +71,7 @@ export const Auth = () => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session && !session.user.is_anonymous) {
-        navigate("/");
+        navigate("/community");
         return;
       }
 
@@ -84,7 +84,7 @@ export const Auth = () => {
           password: remembered.password,
         }).then(({ error }) => {
           if (!error) {
-            navigate("/");
+            navigate("/community");
           } else {
             setIsLoading(false);
             // Credentials invalid, clear them
@@ -118,7 +118,7 @@ export const Auth = () => {
         }
 
         toast.success("התחברת בהצלחה!");
-        navigate("/");
+        navigate("/community");
       } else {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -133,7 +133,7 @@ export const Auth = () => {
 
         if (error) throw error;
         toast.success("נרשמת בהצלחה! מעבירים אותך...");
-        navigate("/");
+        navigate("/community");
       }
     } catch (error: any) {
       console.error("Auth error:", error);

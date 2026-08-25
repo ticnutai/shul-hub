@@ -27,7 +27,7 @@ export const SearchResults = ({ results, onExpandCommentary, onNavigate }: Searc
     if (onNavigate) {
       onNavigate(sefer, perek, pasuk);
     } else {
-      navigate(`/?sefer=${sefer}&perek=${perek}&pasuk=${pasuk}`);
+      navigate(`/chumash?sefer=${sefer}&perek=${perek}&pasuk=${pasuk}`);
     }
   };
 

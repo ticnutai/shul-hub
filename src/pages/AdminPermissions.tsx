@@ -51,7 +51,7 @@ const AdminPermissions = () => {
     }
     if (!isAdmin) {
       toast.error("אין לך הרשאת אדמין");
-      navigate("/");
+      navigate("/community");
     }
   }, [user, isAdmin, authLoading, rolesLoading, navigate]);
 

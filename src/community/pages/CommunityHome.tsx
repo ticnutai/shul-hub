@@ -259,7 +259,7 @@ export function CommunityHome() {
           const spacing = index === 0 ? "" : "mt-12";
           if (key === "minyanim") {
             return (
-              <section key={key} className={spacing} data-home-widget={key}>
+              <section id="minyanim" key={key} className={`${spacing} scroll-mt-48 sm:scroll-mt-40`} data-home-widget={key}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-2xl font-semibold">זמני התפילות</h2>
                   <div

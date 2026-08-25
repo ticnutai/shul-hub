@@ -1,16 +1,22 @@
 import { Link, NavLink } from "react-router-dom";
-import { BookOpen, CalendarClock, House, Megaphone, MessageSquareText, ScrollText, Settings, Users } from "lucide-react";
+import { BookOpen, House, Landmark, Megaphone, MessageSquareText, ScrollText, Settings, Users } from "lucide-react";
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
 
-const links = [
-  { to: "/community", label: "זמני תפילות", icon: CalendarClock },
-  { to: "/community/announcements", label: "מודעות", icon: Megaphone },
+const communityLinks = [
   { to: "/community/shiurim", label: "שיעורים", icon: BookOpen },
   { to: "/community/chavrutot", label: "חברותות", icon: Users },
-  { to: "/community/contact", label: "הודעה למנהל", icon: MessageSquareText },
+  { to: "/community/announcements", label: "מודעות", icon: Megaphone },
 ];
+
+const navItemClass = (isActive: boolean) =>
+  cn(
+    "flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition sm:gap-1.5 sm:px-3 sm:text-sm",
+    isActive
+      ? "text-[#f0c84b] ring-1 ring-[#d4af37]/80"
+      : "text-[#d4af37] hover:bg-white/5 hover:text-[#f0c84b]",
+  );
 
 export function CommunityHeader() {
   const { data: settings } = useSettings();
@@ -22,23 +28,40 @@ export function CommunityHeader() {
           <strong className="block truncate text-base sm:text-xl">{settings?.name ?? "בית הכנסת אושר של יהודי"}</strong>
           <span className="block truncate text-xs text-white/65 sm:text-sm">{settings?.address ?? "מצדה 9, בסר 3, קומה 34, בני ברק"}</span>
         </Link>
-        <Link to="/" className="grid size-9 shrink-0 place-items-center rounded-lg text-amber-400 hover:bg-white/10" aria-label="חומש ומפרשים">
-          <ScrollText className="size-5" />
-        </Link>
-        <Link to="/siddur" className="grid size-9 shrink-0 place-items-center rounded-lg text-amber-400 hover:bg-white/10" aria-label="סידור">
-          <BookOpen className="size-5" />
-        </Link>
-        <NotificationCenter />
+        <div className="flex shrink-0 items-center gap-0.5">
+          <Link to="/community/contact" aria-label="הודעה למנהל" title="הודעה למנהל" className="rounded-full p-2 text-white/75 transition hover:bg-white/10 hover:text-white">
+            <MessageSquareText className="size-5" />
+          </Link>
+          <NavLink to="/community/admin" aria-label="ניהול" title="ניהול" className={({ isActive }) => cn("rounded-full p-2 transition", isActive ? "bg-white/12 text-amber-400" : "text-white/75 hover:bg-white/10 hover:text-white")}>
+            <Settings className="size-5" />
+          </NavLink>
+          <NotificationCenter />
+        </div>
       </div>
-      <nav className="mx-auto flex max-w-7xl items-stretch overflow-x-auto px-2 pb-2 sm:px-5" aria-label="ניווט קהילתי">
-        {links.map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={to} end={to === "/community"} className={({ isActive }) => cn("flex min-w-max items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-white/75 transition", isActive ? "bg-white/12 text-amber-400 ring-1 ring-amber-400/50" : "hover:bg-white/10 hover:text-white")}>
-            <Icon className="size-4" />{label}
+      <nav className="mx-auto mt-1.5 grid max-w-3xl grid-cols-3 gap-1 px-2 pb-1 sm:mt-2 sm:px-5" aria-label="מדורים ראשיים">
+        {[
+          { to: "/community", label: "בית הכנסת", icon: Landmark },
+          { to: "/siddur", label: "סידור", icon: BookOpen },
+          { to: "/chumash", label: "חומש ומפרשים", icon: ScrollText },
+        ].map(({ to, label, icon: Icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={to === "/community"}
+            className={({ isActive }) => navItemClass(isActive)}
+          >
+            <Icon className="size-4 shrink-0" />
+            <span>{label}</span>
           </NavLink>
         ))}
-        <NavLink to="/community/admin" className={({ isActive }) => cn("mr-auto flex min-w-max items-center gap-1.5 rounded-lg px-3 py-2 text-sm", isActive ? "bg-white/12 text-amber-400" : "text-white/75 hover:bg-white/10")}>
-          <Settings className="size-4" />ניהול
-        </NavLink>
+      </nav>
+      <nav className="mx-auto grid max-w-3xl grid-cols-3 gap-1 px-2 pb-2 sm:px-5" aria-label="ניווט קהילתי">
+        {communityLinks.map(({ to, label, icon: Icon }) => (
+          <NavLink key={to} to={to} className={({ isActive }) => navItemClass(isActive)}>
+            <Icon className="size-4 shrink-0" />
+            <span>{label}</span>
+          </NavLink>
+        ))}
       </nav>
     </header>
   );

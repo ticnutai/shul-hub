@@ -24,7 +24,7 @@ export const UserMenu = ({ iconOnly = false }: { iconOnly?: boolean }) => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       toast.success("התנתקת בהצלחה");
-      navigate("/");
+      navigate("/community");
     } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
       toast.error("שגיאה בניתוק");
     }

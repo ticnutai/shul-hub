@@ -189,7 +189,7 @@ export const Commentaries = () => {
   }, [loading, commentaries]);
 
   const handleBack = () => {
-    navigate("/");
+    navigate("/chumash");
   };
 
   const toggleCompareMode = () => {

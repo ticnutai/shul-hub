@@ -4,10 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.ticnutai.bsr3synagogue',
   appName: 'בית כנסת בסר 3',
   webDir: 'dist',
-  server: {
-    url: 'https://shul-hub.lovable.app',
-    androidScheme: 'https',
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,

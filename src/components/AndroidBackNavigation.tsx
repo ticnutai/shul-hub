@@ -49,11 +49,11 @@ export function AndroidBackNavigation() {
     const handleBack = async (): Promise<"dismissed" | "navigated" | "exit"> => {
       if (dismissTopmostUiLayer()) return "dismissed";
 
-      const isCleanHome = location.pathname === "/" && !location.search && !location.hash;
+      const isCleanHome = location.pathname === "/community" && !location.search && !location.hash;
       if (!isCleanHome) {
         const historyIndex = Number(window.history.state?.idx ?? 0);
         if (historyIndex > 0) navigate(-1);
-        else navigate("/", { replace: true });
+        else navigate("/community", { replace: true });
         return "navigated";
       }
 

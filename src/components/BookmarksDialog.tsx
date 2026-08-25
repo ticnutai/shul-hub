@@ -52,7 +52,7 @@ export const BookmarksDialog = () => {
     const parts = pasukId.split("-");
     if (parts.length === 3) {
       const [sefer, perek, pasuk] = parts;
-      navigate(`/?sefer=${sefer}&perek=${perek}&pasuk=${pasuk}`);
+      navigate(`/chumash?sefer=${sefer}&perek=${perek}&pasuk=${pasuk}`);
       setOpen(false);
     }
   };

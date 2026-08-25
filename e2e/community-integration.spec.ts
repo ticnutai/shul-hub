@@ -8,13 +8,43 @@ const publicRoutes = [
   ["/community/contact", "הודעה לגבאי"],
 ] as const;
 
-test("Pash remains the full primary Torah experience and exposes community", async ({ page }) => {
+test("the default route opens the synagogue and exposes clear primary tabs", async ({ page }) => {
   const pageErrors: string[] = [];
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/");
-  await expect(page.locator("header")).toBeVisible();
-  await expect(page.locator('button[title="בית הכנסת והקהילה"]:visible').first()).toBeVisible();
+  await expect(page).toHaveURL(/\/community$/);
+  const primaryNav = page.getByRole("navigation", { name: "מדורים ראשיים" });
+  await expect(primaryNav.getByRole("link", { name: "בית הכנסת" })).toBeVisible();
+  await expect(primaryNav.getByRole("link", { name: "סידור" })).toBeVisible();
+  await expect(primaryNav.getByRole("link", { name: "חומש ומפרשים" })).toBeVisible();
+  const communityNav = page.getByRole("navigation", { name: "ניווט קהילתי" });
+  await expect(communityNav.getByRole("link", { name: "שיעורים" })).toBeVisible();
+  await expect(communityNav.getByRole("link", { name: "חברותות" })).toBeVisible();
+  await expect(communityNav.getByRole("link", { name: "מודעות" })).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
+test("the full Pash Torah experience remains available under the Chumash tab", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.goto("/chumash");
   await expect(page.locator('[data-layout="sefer-selector"]')).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
+test("the Siddur uses the same primary navigation row as Chumash", async ({ page }) => {
+  const pageErrors: string[] = [];
+  page.on("pageerror", error => pageErrors.push(error.message));
+  await page.goto("/siddur");
+
+  const primaryNav = page.getByRole("navigation", { name: "מדורים ראשיים" });
+  await expect(primaryNav.getByRole("button", { name: "חומש" })).toBeVisible();
+  await expect(primaryNav.locator('[aria-current="page"]')).toHaveText("סידור");
+  await expect(primaryNav.getByRole("button", { name: "בית הכנסת" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "סידור תפילה" })).toHaveCount(0);
+
+  const overflow = await page.locator("body").evaluate(el => el.scrollWidth - el.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
   expect(pageErrors).toEqual([]);
 });
 

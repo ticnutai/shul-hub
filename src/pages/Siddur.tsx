@@ -13,7 +13,7 @@ import type { FlatPasuk } from "@/types/torah";
 import { TEHILLIM_COMMENTATORS } from "@/hooks/useCommentaries";
 import { ColorPicker } from "@/components/ColorPicker";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, ThemeAppearanceControls, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
-import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, type LucideProps } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, Landmark, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -2834,35 +2834,52 @@ export const Siddur = () => {
       >
         <div className="w-full px-3 sm:px-5">
 
-          {/* ── Row 1: Title right, actions left ── */}
-          <div className="flex items-center justify-between gap-1 pt-2.5 pb-2 flex-nowrap min-w-0">
+          {/* ── Row 1: primary destinations, matching the Chumash header ── */}
+          <div className="relative flex min-h-9 items-center justify-center pt-2.5 pb-1" dir="rtl">
+            <h1 className="sr-only">סידור</h1>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              aria-label="חזרה"
+              title="חזרה"
+              className="absolute left-0 top-1/2 h-8 -translate-y-1/2 px-2 text-sm font-medium"
+              style={{ color: hText, background: "transparent" }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden md:inline">חזרה</span>
+            </Button>
 
-            {/* Right side: Title + Back */}
-            <div className="flex items-center gap-1.5 min-w-0 flex-shrink-0">
-              <h1
-                className="text-lg sm:text-2xl font-bold tracking-wide whitespace-nowrap"
-                style={{
-                  color: hText,
-                  fontFamily: "'Noto Serif Hebrew', 'David Libre', serif",
-                  textShadow: `0 0 20px ${hAccent}33`,
-                }}
+            <nav className="flex items-center justify-center gap-0.5 sm:gap-1" aria-label="מדורים ראשיים">
+              <button
+                onClick={() => navigate("/chumash")}
+                className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors hover:bg-white/10 sm:px-3 sm:text-sm"
+                style={{ color: hAccent }}
               >
-                סידור תפילה
-              </h1>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-sm font-medium flex-shrink-0 whitespace-nowrap"
-                style={{ color: hText, background: "transparent" }}
+                <Book className="h-4 w-4 flex-shrink-0" />
+                <span>חומש</span>
+              </button>
+              <div
+                aria-current="page"
+                className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-bold sm:px-3 sm:text-sm"
+                style={{ color: hAccent, border: `1px solid ${hAccent}66` }}
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span className="hidden sm:inline">חזרה</span>
-              </Button>
-            </div>
+                <BookMarked className="h-4 w-4 flex-shrink-0" />
+                <span>סידור</span>
+              </div>
+              <button
+                onClick={() => navigate("/community")}
+                className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors hover:bg-white/10 sm:px-3 sm:text-sm"
+                style={{ color: hAccent }}
+              >
+                <Landmark className="h-4 w-4 flex-shrink-0" />
+                <span>בית הכנסת</span>
+              </button>
+            </nav>
+          </div>
 
-            {/* Left side: actions — ltr so order is predictable */}
-            <div className="flex items-center gap-1.5 flex-shrink-0" dir="ltr">
+          {/* ── Row 2: Siddur actions ── */}
+          <div className="flex items-center justify-center gap-1.5 pb-2" dir="ltr">
               {/* Theme picker */}
               <ThemePicker />
               {/* T — text settings */}
@@ -2904,42 +2921,17 @@ export const Siddur = () => {
                 </DropdownMenu>
               )}
 
-              {/* Mode switcher: חומש | סידור | עומר — hidden on xs */}
-              <div
-                className="hidden sm:flex items-center rounded-full flex-shrink-0"
-                style={{ }}
-              >
-                <button
-                  onClick={() => navigate("/")}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-all hover:opacity-100"
-                  style={{ color: hAccent, opacity: 0.65 }}
-                  title="חומש"
-                >
-                  <Book className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="hidden sm:inline">חומש</span>
-                </button>
-                <span className="w-px h-3.5 opacity-25" style={{ background: hAccent }} />
-                <div
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold"
-                  style={{ color: hAccent }}
-                >
-                  <BookMarked className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="hidden sm:inline">סידור</span>
-                </div>
-                {omerInSeason && <>
-                <span className="w-px h-3.5 opacity-25" style={{ background: hAccent }} />
+              {omerInSeason && (
                 <button
                   onClick={() => navigate('/omer')}
-                  className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-all hover:opacity-100"
-                  style={{ color: hAccent, opacity: 0.65 }}
+                  className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ color: hAccent }}
                   title="ספירת העומר"
                 >
                   <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
                   <span className="hidden sm:inline">עומר</span>
                 </button>
-                </>}
-              </div>
-            </div>
+              )}
           </div>
 
           {/* ── Row 2: Nusach pills ── */}
@@ -3088,9 +3080,9 @@ export const Siddur = () => {
           <KriaPane
             onNavigate={(seferId, perek) => {
               if (seferId && perek) {
-                navigate(`/?sefer=${seferId}&perek=${perek}`);
+                navigate(`/chumash?sefer=${seferId}&perek=${perek}`);
               } else {
-                navigate("/");
+                navigate("/chumash");
               }
             }}
           />

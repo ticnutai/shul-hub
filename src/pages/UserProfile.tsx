@@ -79,7 +79,7 @@ export const UserProfile = () => {
         <div className="mb-8">
           <Button 
             variant="ghost" 
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/community")}
             className="mb-4 flex-row-reverse"
           >
             <ChevronLeft className="mr-2 h-4 w-4" />

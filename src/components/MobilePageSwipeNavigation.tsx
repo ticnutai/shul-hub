@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useDevice } from "@/contexts/DeviceContext";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
 
-const STANDARD_MAIN_PAGES = ["/", "/siddur"] as const;
+const STANDARD_MAIN_PAGES = ["/community", "/siddur", "/chumash"] as const;
 const MIN_HORIZONTAL_DISTANCE = 72;
 const MAX_VERTICAL_DISTANCE = 56;
 const EDGE_GUARD = 24;

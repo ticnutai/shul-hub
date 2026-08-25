@@ -91,7 +91,7 @@ export const SideContentPanel = ({
   const navigateToPasuk = (pasukId: string) => {
     const parsed = parsePasukId(pasukId);
     if (parsed) {
-      navigate(`/?sefer=${parsed.sefer}&perek=${parsed.perek}&pasuk=${parsed.pasuk}`);
+      navigate(`/chumash?sefer=${parsed.sefer}&perek=${parsed.perek}&pasuk=${parsed.pasuk}`);
     }
   };
 
