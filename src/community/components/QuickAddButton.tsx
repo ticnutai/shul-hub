@@ -40,6 +40,7 @@ export function QuickAddButton() {
         <Button
           size="icon"
           className="fixed bottom-5 left-5 z-50 h-14 w-14 rounded-full shadow-2xl md:bottom-8 md:left-8"
+          style={{ bottom: "calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
           aria-label="הוספה מהירה"
         >
           <Plus className="size-7" />

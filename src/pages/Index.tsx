@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense, useRef } from "react";
-import { Book, Loader2, ChevronRight, ChevronLeft, User, BookOpen, ScrollText, Languages, BookMarked, Sparkles, Cog, Check, LayoutPanelTop, Palette, Landmark } from "lucide-react";
+import { Book, Loader2, ChevronRight, ChevronLeft, User, BookOpen, ScrollText, Languages, Sparkles, Cog, Check, LayoutPanelTop, Palette } from "lucide-react";
 
 import { Sefer, FlatPasuk } from "@/types/torah";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ import { LuxuryTextView } from "@/components/LuxuryTextView";
 
 import { useReadingPositionSync } from "@/hooks/useReadingPositionSync";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
+import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 
 // Lazy load heavy components - split by usage priority
 // Critical components (loaded when mode is active)
@@ -871,40 +872,7 @@ const Index = () => {
               >
                 <UserMenu iconOnly />
               </div>
-              {mobileHeaderLayout === "stacked" && (
-                <div className="flex items-center justify-center gap-1">
-                <button
-                  onClick={() => {
-                    setCorpusMode("torah");
-                    localStorage.setItem("corpusMode", "torah");
-                    setSelectedSefer(TORAH_SEFARIM[0].id);
-                    setSelectedParsha(null);
-                    setSelectedPerek(null);
-                    setSelectedPasuk(null);
-                  }}
-                  className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-accent/80 transition-colors hover:bg-accent/10 hover:text-accent"
-                >
-                  <Book className="h-3.5 w-3.5" />
-                  חומש
-                </button>
-                <button
-                  onClick={() => navigate('/siddur')}
-                  className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-accent/65 transition-colors hover:bg-accent/10 hover:text-accent"
-                >
-                  <BookMarked className="h-3.5 w-3.5" />
-                  סידור
-                </button>
-                <button
-                  onClick={() => navigate('/community')}
-                  className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-accent/65 transition-colors hover:bg-accent/10 hover:text-accent"
-                  title="בית הכנסת והקהילה"
-                  aria-label="בית הכנסת והקהילה"
-                >
-                  <Landmark className="h-3.5 w-3.5" />
-                  בית הכנסת
-                </button>
-                </div>
-              )}
+              <PrimaryDestinationNav />
             </div>
             {/* Action row */}
             <div className="flex w-full items-center px-1">
@@ -939,52 +907,7 @@ const Index = () => {
                 {displayMode !== "luxury" && <span data-layout="btn-text-settings" data-layout-label="✏️ הגדרות טקסט"><TextDisplaySettings /></span>}
                 <span data-layout="btn-selection" data-layout-label="☑️ מצב בחירה"><SelectionModeButton /></span>
                 <span data-layout="btn-search" data-layout-label="🔍 חיפוש"><GlobalSearchTrigger onNavigateToPasuk={handleSearchNavigate} /></span>
-                {/* Mode switcher: in the regular layout all destinations stay on this row. */}
-                {mobileHeaderLayout === "single" && <span data-layout="btn-mode-switcher" data-layout-label="📚 מצב אפליקציה" className="flex items-center gap-0.5">
-                  <span data-layout="btn-corpus">
-                  <button
-                    onClick={() => {
-                      const next = corpusMode === "torah" ? "neviim" : "torah";
-                      setCorpusMode(next);
-                      localStorage.setItem("corpusMode", next);
-                      const firstSeferId = next === "neviim" ? NEVIIM_SEFARIM[0].id : TORAH_SEFARIM[0].id;
-                      setSelectedSefer(firstSeferId);
-                      setSelectedParsha(null);
-                      setSelectedPerek(null);
-                      setSelectedPasuk(null);
-                    }}
-                    className="flex items-center justify-center h-8 w-8 rounded-md text-xs font-semibold transition-all text-accent"
-                    title="חומש"
-                  >
-                    <Book className="h-4 w-4" />
-                  </button>
-                  </span>
-                  <span data-layout="btn-siddur">
-                  <button
-                    onClick={() => navigate('/siddur')}
-                    className="flex items-center justify-center h-8 w-8 rounded-md text-xs font-medium transition-all text-accent/50 hover:text-accent"
-                    title="סידור תפילה"
-                  >
-                    <BookMarked className="h-4 w-4" />
-                  </button>
-                  </span>
-                  <button
-                    onClick={() => navigate('/community')}
-                    className="flex h-8 w-8 items-center justify-center rounded-md text-accent/50 transition-all hover:text-accent"
-                    title="בית הכנסת והקהילה"
-                    aria-label="בית הכנסת והקהילה"
-                  >
-                    <Landmark className="h-4 w-4" />
-                  </button>
-                  {omerInSeason && <button
-                    onClick={() => navigate('/omer')}
-                    className="flex items-center justify-center h-8 w-8 rounded-md text-xs font-medium transition-all text-accent/50 hover:text-accent"
-                    title="ספירת העומר"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                  </button>}
-                </span>}
-                {mobileHeaderLayout === "stacked" && omerInSeason && (
+                {omerInSeason && (
                   <button
                     onClick={() => navigate('/omer')}
                     className="flex h-8 w-8 items-center justify-center rounded-md text-accent/50 transition-all hover:text-accent"
@@ -1061,45 +984,9 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Center: Mode switcher — חומש / סידור / עומר */}
-              <span data-layout="btn-mode-switcher" data-layout-label="📚 מצב אפליקציה" className="flex items-center gap-0.5">
-                <span data-layout="btn-corpus">
-                <button
-                  onClick={() => {
-                    const next = corpusMode === "torah" ? "neviim" : "torah";
-                    setCorpusMode(next);
-                    localStorage.setItem("corpusMode", next);
-                    const firstSeferId = next === "neviim" ? NEVIIM_SEFARIM[0].id : TORAH_SEFARIM[0].id;
-                    setSelectedSefer(firstSeferId);
-                    setSelectedParsha(null);
-                    setSelectedPerek(null);
-                    setSelectedPasuk(null);
-                  }}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-semibold transition-all text-accent"
-                  title="חומש"
-                >
-                  <Book className="h-4 w-4" />
-                  <span>חומש</span>
-                </button>
-                </span>
-                <span data-layout="btn-siddur">
-                <button
-                  onClick={() => navigate('/siddur')}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all text-accent/50 hover:text-accent"
-                  title="סידור תפילה"
-                >
-                  <BookMarked className="h-4 w-4" />
-                  <span>סידור</span>
-                </button>
-                </span>
-                <button
-                  onClick={() => navigate('/community')}
-                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-accent/50 transition-all hover:text-accent"
-                  title="בית הכנסת והקהילה"
-                >
-                  <Landmark className="h-4 w-4" />
-                  <span>בית הכנסת</span>
-                </button>
+              {/* Center: the same compact destination controls used everywhere. */}
+              <span data-layout="btn-mode-switcher" data-layout-label="📚 מצב אפליקציה" className="flex items-center gap-1">
+                <PrimaryDestinationNav />
                 {omerInSeason && <button
                   onClick={() => navigate('/omer')}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all text-accent/50 hover:text-accent"

@@ -150,6 +150,7 @@ const AutoLoginSetting = () => {
 const themes = [
   { id: "light" as Theme, name: "בהיר", description: "נושא בהיר ונקי" },
   { id: "classic" as Theme, name: "קלאסי", description: "נושא מסורתי בגווני כחול וזהב" },
+  { id: "torah-luxury" as Theme, name: "פאר תורה", description: "כרטיסים בהירים, מסגרות זהב ואיקונים כחול־זהב" },
   { id: "royal-gold" as Theme, name: "זהב מלכותי", description: "נושא יוקרתי בגווני זהב ובורדו" },
   { id: "gold-silver" as Theme, name: "זהב-אפור", description: "נושא אלגנטי בגווני זהב ואפור" },
   { id: "elegant-night" as Theme, name: "לילה אלגנטי", description: "נושא כהה ומתוחכם" },

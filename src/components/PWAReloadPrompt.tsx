@@ -22,7 +22,10 @@ export function PWAReloadPrompt() {
   return (
     <>
       {(offlineReady || needRefresh) && (
-        <div className="fixed bottom-4 right-4 z-50 bg-primary text-primary-foreground p-4 rounded-lg shadow-lg max-w-sm">
+        <div
+          className="fixed bottom-4 right-4 z-50 bg-primary text-primary-foreground p-4 rounded-lg shadow-lg max-w-sm"
+          style={{ bottom: "calc(1rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
+        >
           <div className="flex items-start gap-3">
             <div className="flex-1">
               {offlineReady ? (

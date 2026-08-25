@@ -38,6 +38,12 @@
   --safe-area-inset-right: env(safe-area-inset-right, 0px);
 }
 
+/* Keep normal page content above Android gesture/navigation bars. The value is
+   zero in ordinary browsers and is updated live by Capacitor SystemBars. */
+#root {
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
@@ -348,6 +354,42 @@ All colors MUST be HSL.
     --sidebar-ring: 38 92% 50%;
   }
 
+  /* Torah Luxury — optional bright parchment/navy/gold presentation inspired
+     by the Chumash controls. Existing themes remain unchanged. */
+  .torah-luxury {
+    --background: 38 35% 97%;
+    --foreground: 221 56% 18%;
+    --card: 40 33% 99%;
+    --card-foreground: 221 56% 18%;
+    --popover: 40 33% 99%;
+    --popover-foreground: 221 56% 18%;
+    --primary: 221 58% 23%;
+    --primary-foreground: 42 75% 96%;
+    --secondary: 40 42% 92%;
+    --secondary-foreground: 221 56% 18%;
+    --muted: 38 28% 93%;
+    --muted-foreground: 221 20% 43%;
+    --accent: 43 69% 50%;
+    --accent-foreground: 221 58% 18%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 32% 84%;
+    --input: 40 32% 84%;
+    --ring: 43 69% 50%;
+    --radius: 0.85rem;
+    --sidebar-background: 221 58% 22%;
+    --sidebar-foreground: 42 75% 96%;
+    --sidebar-primary: 43 69% 50%;
+    --sidebar-primary-foreground: 221 58% 18%;
+    --sidebar-accent: 221 48% 29%;
+    --sidebar-accent-foreground: 42 75% 96%;
+    --sidebar-border: 43 52% 43%;
+    --sidebar-ring: 43 69% 50%;
+    --shadow-soft: 0 5px 18px hsla(221, 58%, 18%, 0.09);
+    --shadow-medium: 0 8px 26px hsla(221, 58%, 18%, 0.13);
+    --shadow-gold: 0 5px 20px hsla(43, 69%, 50%, 0.2);
+  }
+
   .dark {
     --background: 220 55% 12%;
     --foreground: 40 80% 95%;
@@ -386,6 +428,101 @@ All colors MUST be HSL.
     --sidebar-border: 220 50% 18%;
     --sidebar-ring: 45 90% 55%;
   }
+}
+
+/* The Torah Luxury preset gives the synagogue navigation the same compact
+   pill language as the Chumash reference: navy type, real-gold icons and a
+   fine gold selected outline. */
+html.torah-luxury .community-nav-shell {
+  margin-top: 0.45rem;
+  margin-bottom: 0.3rem;
+  padding: 0.28rem !important;
+  border: 1px solid hsl(var(--sidebar-primary) / 0.32);
+  border-radius: 1.25rem;
+  background: hsl(var(--card));
+  box-shadow: var(--shadow-soft);
+}
+
+html.torah-luxury .community-nav-item {
+  min-height: 2.5rem;
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid transparent;
+  border-radius: 0.95rem;
+  background: transparent;
+}
+
+html.torah-luxury .community-nav-item svg {
+  color: hsl(var(--accent));
+}
+
+html.torah-luxury .community-nav-item[aria-current="page"] {
+  border-color: hsl(var(--accent));
+  background: hsl(var(--card));
+  box-shadow: 0 2px 10px hsl(var(--accent) / 0.14);
+}
+
+/* One compact, shared destination row for Community, Siddur and Chumash.
+   Each destination is deliberately its own control; there is no enclosing
+   pill, and only the selected destination receives the fine gold outline. */
+.primary-destination-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.primary-destination-item {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 1.9rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  padding: 0.28rem 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  color: #d5aa45;
+  background: transparent;
+  font-size: 0.68rem;
+  font-weight: 650;
+  line-height: 1.05;
+  text-align: center;
+  transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+}
+
+.primary-destination-item svg {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: none;
+  color: currentColor;
+}
+
+.primary-destination-item:hover {
+  color: #efc75e;
+  background: rgb(255 255 255 / 0.055);
+}
+
+.primary-destination-item-active {
+  color: #efc75e;
+  border-color: rgb(213 170 69 / 0.78);
+  background: rgb(255 255 255 / 0.045);
+  box-shadow: 0 2px 8px rgb(213 170 69 / 0.1);
+}
+
+@media (min-width: 640px) {
+  .primary-destination-nav { gap: 0.5rem; }
+  .primary-destination-item {
+    min-height: 2.1rem;
+    padding: 0.34rem 0.7rem;
+    font-size: 0.78rem;
+  }
+  .primary-destination-item svg { width: 1rem; height: 1rem; }
+}
+
+html.torah-luxury .card-elev {
+  border-color: hsl(var(--accent) / 0.24);
+  box-shadow: var(--shadow-soft);
 }
 
 @layer base {

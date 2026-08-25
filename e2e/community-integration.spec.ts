@@ -38,14 +38,54 @@ test("the Siddur uses the same primary navigation row as Chumash", async ({ page
   await page.goto("/siddur");
 
   const primaryNav = page.getByRole("navigation", { name: "מדורים ראשיים" });
-  await expect(primaryNav.getByRole("button", { name: "חומש" })).toBeVisible();
+  await expect(primaryNav.getByRole("link", { name: "חומש ומפרשים" })).toBeVisible();
   await expect(primaryNav.locator('[aria-current="page"]')).toHaveText("סידור");
-  await expect(primaryNav.getByRole("button", { name: "בית הכנסת" })).toBeVisible();
+  await expect(primaryNav.getByRole("link", { name: "בית הכנסת" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "סידור תפילה" })).toHaveCount(0);
 
   const overflow = await page.locator("body").evaluate(el => el.scrollWidth - el.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
   expect(pageErrors).toEqual([]);
+});
+
+test("fresh Siddur installs use the current continuous David Libre reading defaults", async ({ page }) => {
+  await page.goto("/siddur");
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+
+  const root = page.locator("[data-siddur-theme]");
+  await expect(root).toHaveAttribute("data-siddur-view-mode", "continuous");
+  await expect(root).toHaveAttribute("data-siddur-font", "David Libre");
+  await expect(root).toHaveAttribute("data-siddur-content-width", "narrow");
+  await expect(root).toHaveAttribute("data-siddur-text-alignment", "right");
+  await expect(root).toHaveAttribute("data-siddur-heading-bold", "true");
+  await expect(root).toHaveAttribute("data-siddur-opening-bold", "true");
+  await expect(root).toHaveAttribute("data-siddur-show-taamim", "false");
+});
+
+test("all three main screens share compact, separate destination controls", async ({ page }) => {
+  for (const [route, activeLabel] of [
+    ["/community", "בית הכנסת"],
+    ["/siddur", "סידור"],
+    ["/chumash", "חומש ומפרשים"],
+  ] as const) {
+    await page.goto(route);
+    const nav = page.getByRole("navigation", { name: "מדורים ראשיים" });
+    const links = nav.getByRole("link");
+    await expect(links).toHaveCount(3);
+    await expect(nav.locator('[aria-current="page"]')).toHaveText(activeLabel);
+
+    const geometry = await links.evaluateAll(elements => elements.map(element => {
+      const rect = element.getBoundingClientRect();
+      const style = getComputedStyle(element);
+      return { left: rect.left, right: rect.right, height: rect.height, border: style.borderTopColor };
+    }));
+    expect(geometry.every(item => item.height <= 36)).toBeTruthy();
+    const visualOrder = [...geometry].sort((a, b) => a.left - b.left);
+    for (let index = 1; index < visualOrder.length; index += 1) {
+      expect(visualOrder[index].left - visualOrder[index - 1].right).toBeGreaterThanOrEqual(4);
+    }
+  }
 });
 
 for (const [route, heading] of publicRoutes) {

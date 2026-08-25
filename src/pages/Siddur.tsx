@@ -13,7 +13,7 @@ import type { FlatPasuk } from "@/types/torah";
 import { TEHILLIM_COMMENTATORS } from "@/hooks/useCommentaries";
 import { ColorPicker } from "@/components/ColorPicker";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, ThemeAppearanceControls, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
-import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, Landmark, type LucideProps } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -29,6 +29,7 @@ import { normalizeHebrewText } from "@/utils/textUtils";
 import { useSiddurCategories, useSiddurSections, useTehillimData, preloadSiddurNusach } from "@/hooks/useSiddurData";
 import { getWeekdayLeyning, getCalendarPreference, type WeekdayLeyning } from "@/utils/parshaUtils";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
+import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 
 /* ─── Types ─────────────────────────────────────────────── */
 type SiddurSection   = { title: string; lines: string[] };
@@ -53,7 +54,7 @@ const loadLegacySiddurViewSettings = (): SiddurViewSettings => {
   const savedMode = localStorage.getItem("siddur-view-mode");
   const savedStyle = localStorage.getItem("siddur-display-style");
   return {
-    viewMode: isViewMode(savedMode) ? savedMode : "accordion",
+    viewMode: isViewMode(savedMode) ? savedMode : "continuous",
     displayStyle: isDisplayStyle(savedStyle) ? savedStyle : "classic",
   };
 };
@@ -2811,6 +2812,13 @@ export const Siddur = () => {
     <SiddurDisplayStyleContext.Provider value={{ displayStyle, setDisplayStyle }}>
     <div
       data-siddur-theme={activeTheme.id}
+      data-siddur-view-mode={viewMode}
+      data-siddur-font={fontSettings.siddurFont}
+      data-siddur-content-width={fontSettings.siddurContentWidth}
+      data-siddur-text-alignment={fontSettings.siddurTextAlignment}
+      data-siddur-heading-bold={String(fontSettings.siddurHeadingBold)}
+      data-siddur-opening-bold={String(fontSettings.siddurOpeningBold)}
+      data-siddur-show-taamim={String(fontSettings.showTaamim)}
       className="siddur-themed-root min-h-screen flex flex-col"
       style={{
         background: activeTheme.bg,
@@ -2850,32 +2858,7 @@ export const Siddur = () => {
               <span className="hidden md:inline">חזרה</span>
             </Button>
 
-            <nav className="flex items-center justify-center gap-0.5 sm:gap-1" aria-label="מדורים ראשיים">
-              <button
-                onClick={() => navigate("/chumash")}
-                className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors hover:bg-white/10 sm:px-3 sm:text-sm"
-                style={{ color: hAccent }}
-              >
-                <Book className="h-4 w-4 flex-shrink-0" />
-                <span>חומש</span>
-              </button>
-              <div
-                aria-current="page"
-                className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-bold sm:px-3 sm:text-sm"
-                style={{ color: hAccent, border: `1px solid ${hAccent}66` }}
-              >
-                <BookMarked className="h-4 w-4 flex-shrink-0" />
-                <span>סידור</span>
-              </div>
-              <button
-                onClick={() => navigate("/community")}
-                className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[11px] font-medium transition-colors hover:bg-white/10 sm:px-3 sm:text-sm"
-                style={{ color: hAccent }}
-              >
-                <Landmark className="h-4 w-4 flex-shrink-0" />
-                <span>בית הכנסת</span>
-              </button>
-            </nav>
+            <PrimaryDestinationNav />
           </div>
 
           {/* ── Row 2: Siddur actions ── */}

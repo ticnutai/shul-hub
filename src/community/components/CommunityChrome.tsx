@@ -1,8 +1,9 @@
 import { Link, NavLink } from "react-router-dom";
-import { BookOpen, House, Landmark, Megaphone, MessageSquareText, ScrollText, Settings, Users } from "lucide-react";
+import { BookOpen, House, Megaphone, MessageSquareText, Settings, Users } from "lucide-react";
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
+import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 
 const communityLinks = [
   { to: "/community/shiurim", label: "שיעורים", icon: BookOpen },
@@ -12,7 +13,7 @@ const communityLinks = [
 
 const navItemClass = (isActive: boolean) =>
   cn(
-    "flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition sm:gap-1.5 sm:px-3 sm:text-sm",
+    "community-nav-item flex min-h-10 min-w-0 items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-center text-[11px] font-semibold leading-tight transition sm:gap-1.5 sm:px-3 sm:text-sm",
     isActive
       ? "text-[#f0c84b] ring-1 ring-[#d4af37]/80"
       : "text-[#d4af37] hover:bg-white/5 hover:text-[#f0c84b]",
@@ -21,7 +22,11 @@ const navItemClass = (isActive: boolean) =>
 export function CommunityHeader() {
   const { data: settings } = useSettings();
   return (
-    <header dir="rtl" className="sticky top-0 z-50 border-b border-amber-400/40 bg-[#172c57] text-white shadow-lg">
+    <header
+      dir="rtl"
+      className="community-header sticky top-0 z-50 border-b border-sidebar-primary/40 bg-sidebar text-sidebar-foreground shadow-lg"
+      style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}
+    >
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-5">
         <span className="shrink-0 text-sm font-bold text-amber-400">ב״ה</span>
         <Link to="/community" className="min-w-0 flex-1 text-center sm:text-right">
@@ -38,24 +43,8 @@ export function CommunityHeader() {
           <NotificationCenter />
         </div>
       </div>
-      <nav className="mx-auto mt-1.5 grid max-w-3xl grid-cols-3 gap-1 px-2 pb-1 sm:mt-2 sm:px-5" aria-label="מדורים ראשיים">
-        {[
-          { to: "/community", label: "בית הכנסת", icon: Landmark },
-          { to: "/siddur", label: "סידור", icon: BookOpen },
-          { to: "/chumash", label: "חומש ומפרשים", icon: ScrollText },
-        ].map(({ to, label, icon: Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === "/community"}
-            className={({ isActive }) => navItemClass(isActive)}
-          >
-            <Icon className="size-4 shrink-0" />
-            <span>{label}</span>
-          </NavLink>
-        ))}
-      </nav>
-      <nav className="mx-auto grid max-w-3xl grid-cols-3 gap-1 px-2 pb-2 sm:px-5" aria-label="ניווט קהילתי">
+      <PrimaryDestinationNav className="mx-auto mt-2 max-w-md px-2 sm:mt-2.5" />
+      <nav className="community-nav-shell mx-auto grid max-w-3xl grid-cols-3 gap-1 px-2 pb-2 sm:px-5" aria-label="ניווט קהילתי">
         {communityLinks.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className={({ isActive }) => navItemClass(isActive)}>
             <Icon className="size-4 shrink-0" />
@@ -71,7 +60,10 @@ export function CommunityFooter() {
   const { data: settings } = useSettings();
   return (
     <footer dir="rtl" className="mt-16 border-t border-amber-400/20 bg-[#172c57] text-white/70">
-      <div className="mx-auto max-w-5xl px-4 py-8 text-center text-sm">
+      <div
+        className="mx-auto max-w-5xl px-4 pt-8 text-center text-sm"
+        style={{ paddingBottom: "calc(2rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
+      >
         <p className="font-semibold text-white">{settings?.name ?? "בית הכנסת"}</p>
         {settings?.address && <p className="mt-1">{settings.address}</p>}
         {settings?.phone && <p className="mt-1" dir="ltr">{settings.phone}</p>}

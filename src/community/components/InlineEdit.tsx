@@ -172,6 +172,7 @@ export function EditModeToggle() {
             ? "bg-primary text-primary-foreground ring-4 ring-primary/30"
             : "border border-border bg-card text-foreground hover:bg-accent",
         )}
+        style={{ bottom: "calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
       >
         {editMode ? <Check className="size-6" /> : <Pencil className="size-6" />}
       </button>
