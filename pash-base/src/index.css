@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Community module compatibility: the synagogue screens intentionally use
+   the active Pash theme tokens, so every Torah theme also styles community. */
+@layer components {
+  .hero-surface {
+    color: hsl(var(--primary-foreground));
+    background: linear-gradient(145deg, hsl(var(--sidebar-background)), hsl(var(--primary)));
+  }
+
+  .gold-rule {
+    background: linear-gradient(90deg, transparent, hsl(var(--accent)), transparent);
+  }
+
+  .card-elev {
+    border: 1px solid hsl(var(--border));
+    border-radius: calc(var(--radius) + 0.4rem);
+    background: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    box-shadow: var(--shadow-soft);
+  }
+
+  .text-gold { color: hsl(var(--accent)); }
+  .bg-gold { background-color: hsl(var(--accent)); }
+  .text-gold-foreground { color: hsl(var(--accent-foreground)); }
+  .shadow-soft { box-shadow: var(--shadow-soft); }
+}
+
 /* Safe area insets for Android/iOS notch/nav bar support.
    Capacitor 8 SystemBars plugin auto-injects --safe-area-inset-* CSS vars
    for WebViews where env() doesn't work reliably (WebView < 140). */

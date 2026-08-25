@@ -26,6 +26,14 @@ import { MetaSyncInitializer } from "@/components/MetaSyncInitializer";
 import { MobilePageSwipeNavigation } from "@/components/MobilePageSwipeNavigation";
 import { AndroidBackNavigation } from "@/components/AndroidBackNavigation";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { EditModeProvider } from "@community/lib/edit-mode";
+
+const communityQueryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1 },
+  },
+});
 
 const DEV_CHAT_ENABLED_KEY = "dev-chat-widget-enabled";
 const DEV_SCREENSHOT_ENABLED_KEY = "dev-screenshot-tool-enabled";
@@ -68,6 +76,12 @@ const LayoutEditor = lazy(() => import("./pages/LayoutEditor").then(m => ({ defa
 const Siddur = lazy(() => import("./pages/Siddur").then(m => ({ default: m.Siddur })));
 const Omer = lazy(() => import("./pages/Omer"));
 const AdminPermissions = lazy(() => import("./pages/AdminPermissions"));
+const CommunityHome = lazy(() => import("@community/pages/CommunityHome").then(m => ({ default: m.CommunityHome })));
+const CommunityAnnouncements = lazy(() => import("@community/pages/Announcements").then(m => ({ default: m.AnnouncementsPage })));
+const CommunityShiurim = lazy(() => import("@community/pages/Shiurim").then(m => ({ default: m.ShiurimPage })));
+const CommunityChavrutot = lazy(() => import("@community/pages/Chavrutot").then(m => ({ default: m.ChavrutotPage })));
+const CommunityContact = lazy(() => import("@community/pages/Contact").then(m => ({ default: m.ContactPage })));
+const CommunityAdmin = lazy(() => import("@community/pages/Admin").then(m => ({ default: m.AdminPage })));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -163,6 +177,8 @@ const App = () => {
     <ErrorBoundary fallbackTitle="שגיאה כללית באפליקציה">
     <Trace id="App.root">
     <AuthProvider>
+      <QueryClientProvider client={communityQueryClient}>
+      <EditModeProvider>
       <MetaSyncInitializer />
       <Trace id="App.Device">
       <DeviceProvider>
@@ -211,6 +227,12 @@ const App = () => {
                               <Route path="/omer" element={<SeasonalOmerRoute />} />
                               <Route path="/layout-editor" element={<LayoutEditor />} />
                               <Route path="/admin/permissions" element={<AdminPermissions />} />
+                              <Route path="/community" element={<CommunityHome />} />
+                              <Route path="/community/announcements" element={<CommunityAnnouncements />} />
+                              <Route path="/community/shiurim" element={<CommunityShiurim />} />
+                              <Route path="/community/chavrutot" element={<CommunityChavrutot />} />
+                              <Route path="/community/contact" element={<CommunityContact />} />
+                              <Route path="/community/admin" element={<CommunityAdmin />} />
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </Suspense>
@@ -234,6 +256,8 @@ const App = () => {
         </Trace>
       </DeviceProvider>
       </Trace>
+      </EditModeProvider>
+      </QueryClientProvider>
     </AuthProvider>
     </Trace>
   </ErrorBoundary>

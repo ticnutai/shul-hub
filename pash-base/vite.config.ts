@@ -115,6 +115,7 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@community": path.resolve(__dirname, "./src/community"),
     },
   },
   define: {

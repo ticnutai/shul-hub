@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense, useRef } from "react";
-import { Book, Loader2, ChevronRight, ChevronLeft, User, BookOpen, ScrollText, Languages, BookMarked, Sparkles, Cog, Check, LayoutPanelTop, Palette } from "lucide-react";
+import { Book, Loader2, ChevronRight, ChevronLeft, User, BookOpen, ScrollText, Languages, BookMarked, Sparkles, Cog, Check, LayoutPanelTop, Palette, Landmark } from "lucide-react";
 
 import { Sefer, FlatPasuk } from "@/types/torah";
 import { cn } from "@/lib/utils";
@@ -894,6 +894,15 @@ const Index = () => {
                   <BookMarked className="h-3.5 w-3.5" />
                   סידור
                 </button>
+                <button
+                  onClick={() => navigate('/community')}
+                  className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-medium text-accent/65 transition-colors hover:bg-accent/10 hover:text-accent"
+                  title="בית הכנסת והקהילה"
+                  aria-label="בית הכנסת והקהילה"
+                >
+                  <Landmark className="h-3.5 w-3.5" />
+                  בית הכנסת
+                </button>
                 </div>
               )}
             </div>
@@ -959,6 +968,14 @@ const Index = () => {
                     <BookMarked className="h-4 w-4" />
                   </button>
                   </span>
+                  <button
+                    onClick={() => navigate('/community')}
+                    className="flex h-8 w-8 items-center justify-center rounded-md text-accent/50 transition-all hover:text-accent"
+                    title="בית הכנסת והקהילה"
+                    aria-label="בית הכנסת והקהילה"
+                  >
+                    <Landmark className="h-4 w-4" />
+                  </button>
                   {omerInSeason && <button
                     onClick={() => navigate('/omer')}
                     className="flex items-center justify-center h-8 w-8 rounded-md text-xs font-medium transition-all text-accent/50 hover:text-accent"
@@ -1075,6 +1092,14 @@ const Index = () => {
                   <span>סידור</span>
                 </button>
                 </span>
+                <button
+                  onClick={() => navigate('/community')}
+                  className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-accent/50 transition-all hover:text-accent"
+                  title="בית הכנסת והקהילה"
+                >
+                  <Landmark className="h-4 w-4" />
+                  <span>בית הכנסת</span>
+                </button>
                 {omerInSeason && <button
                   onClick={() => navigate('/omer')}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all text-accent/50 hover:text-accent"

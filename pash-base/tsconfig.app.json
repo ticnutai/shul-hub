@@ -19,6 +19,9 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@community/*": [
+        "./src/community/*"
       ]
     },
     "skipLibCheck": true,
