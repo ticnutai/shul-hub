@@ -1,5 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, Palette, Settings, Check, WandSparkles, Copy, Save } from "lucide-react";
+import {
+  Menu,
+  Palette,
+  Settings,
+  Check,
+  WandSparkles,
+  Copy,
+  Save,
+  BookOpenText,
+  BookMarked,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { TextSettingsDialog } from "@/components/TextSettingsDialog";
@@ -95,6 +105,32 @@ export function SiteHeader() {
         </nav>
 
         <fieldset disabled={!hydrated} className="contents">
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            title="חומש ומפרשים"
+            aria-label="פתיחת חומש ומפרשים"
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary"
+          >
+            <Link to="/torah-chumash">
+              <BookOpenText className="size-5" />
+            </Link>
+          </Button>
+
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            title="סידור תפילה"
+            aria-label="פתיחת סידור תפילה"
+            className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-primary"
+          >
+            <Link to="/torah-siddur">
+              <BookMarked className="size-5" />
+            </Link>
+          </Button>
+
           <ThemeMenu />
 
           <TextSettingsDialog />

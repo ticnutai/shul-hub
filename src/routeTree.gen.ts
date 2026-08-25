@@ -16,6 +16,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ChavrutotRouteImport } from './routes/chavrutot'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as ShiurimRouteImport } from './routes/shiurim'
+import { Route as TorahChumashRouteImport } from './routes/torah-chumash'
+import { Route as TorahSiddurRouteImport } from './routes/torah-siddur'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 
 const IndexRoute = IndexRouteImport.update({
@@ -52,6 +54,16 @@ const ShiurimRoute = ShiurimRouteImport.update({
   path: '/shiurim',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TorahChumashRoute = TorahChumashRouteImport.update({
+  id: '/torah-chumash',
+  path: '/torah-chumash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TorahSiddurRoute = TorahSiddurRouteImport.update({
+  id: '/torah-siddur',
+  path: '/torah-siddur',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -65,6 +77,8 @@ export interface FileRoutesByFullPath {
   '/chavrutot': typeof ChavrutotRoute
   '/contact': typeof ContactRoute
   '/shiurim': typeof ShiurimRoute
+  '/torah-chumash': typeof TorahChumashRoute
+  '/torah-siddur': typeof TorahSiddurRoute
   '/admin': typeof AuthenticatedAdminRoute
 }
 export interface FileRoutesByTo {
@@ -74,6 +88,8 @@ export interface FileRoutesByTo {
   '/chavrutot': typeof ChavrutotRoute
   '/contact': typeof ContactRoute
   '/shiurim': typeof ShiurimRoute
+  '/torah-chumash': typeof TorahChumashRoute
+  '/torah-siddur': typeof TorahSiddurRoute
   '/admin': typeof AuthenticatedAdminRoute
 }
 export interface FileRoutesById {
@@ -85,6 +101,8 @@ export interface FileRoutesById {
   '/chavrutot': typeof ChavrutotRoute
   '/contact': typeof ContactRoute
   '/shiurim': typeof ShiurimRoute
+  '/torah-chumash': typeof TorahChumashRoute
+  '/torah-siddur': typeof TorahSiddurRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
 }
 export interface FileRouteTypes {
@@ -96,6 +114,8 @@ export interface FileRouteTypes {
     | '/chavrutot'
     | '/contact'
     | '/shiurim'
+    | '/torah-chumash'
+    | '/torah-siddur'
     | '/admin'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -105,6 +125,8 @@ export interface FileRouteTypes {
     | '/chavrutot'
     | '/contact'
     | '/shiurim'
+    | '/torah-chumash'
+    | '/torah-siddur'
     | '/admin'
   id:
     | '__root__'
@@ -115,6 +137,8 @@ export interface FileRouteTypes {
     | '/chavrutot'
     | '/contact'
     | '/shiurim'
+    | '/torah-chumash'
+    | '/torah-siddur'
     | '/_authenticated/admin'
   fileRoutesById: FileRoutesById
 }
@@ -126,6 +150,8 @@ export interface RootRouteChildren {
   ChavrutotRoute: typeof ChavrutotRoute
   ContactRoute: typeof ContactRoute
   ShiurimRoute: typeof ShiurimRoute
+  TorahChumashRoute: typeof TorahChumashRoute
+  TorahSiddurRoute: typeof TorahSiddurRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -179,6 +205,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShiurimRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/torah-chumash': {
+      id: '/torah-chumash'
+      path: '/torah-chumash'
+      fullPath: '/torah-chumash'
+      preLoaderRoute: typeof TorahChumashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/torah-siddur': {
+      id: '/torah-siddur'
+      path: '/torah-siddur'
+      fullPath: '/torah-siddur'
+      preLoaderRoute: typeof TorahSiddurRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -208,6 +248,8 @@ const rootRouteChildren: RootRouteChildren = {
   ChavrutotRoute: ChavrutotRoute,
   ContactRoute: ContactRoute,
   ShiurimRoute: ShiurimRoute,
+  TorahChumashRoute: TorahChumashRoute,
+  TorahSiddurRoute: TorahSiddurRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

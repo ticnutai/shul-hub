@@ -10,8 +10,10 @@
     "preview": "wrangler --cwd .output dev",
     "start": "wrangler --cwd .output dev",
     "lint": "eslint .",
-    "test:smoke": "playwright test qa-mobile-rtl.spec.ts qa-chavruta-requests.spec.ts qa-home-widgets.spec.ts qa-auth.spec.ts --reporter=line --workers=1 && playwright test qa-smoke.spec.ts --reporter=line --workers=1",
+    "test:smoke": "playwright test qa-mobile-rtl.spec.ts qa-chavruta-requests.spec.ts qa-home-widgets.spec.ts qa-auth.spec.ts qa-torah-library.spec.ts --reporter=line --workers=1 && playwright test qa-smoke.spec.ts --reporter=line --workers=1",
     "check": "npm run lint && npm run build && npm run test:smoke",
+    "torah:sync": "powershell -ExecutionPolicy Bypass -File scripts/sync-torah-library-data.ps1",
+    "torah:verify": "node scripts/verify-torah-library-boundary.mjs",
     "format": "prettier --write ."
   },
   "dependencies": {

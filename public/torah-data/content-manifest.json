@@ -1,0 +1,404 @@
+{
+    "schemaVersion":  1,
+    "sourceRepository":  "https://github.com/ticnutai/pash.git",
+    "sourceCommit":  "ae073088580b794a69bdfbf5f01b197253178fcc",
+    "importMode":  "read-only allowlisted JSON copy",
+    "sourceSupabaseImported":  false,
+    "files":  [
+                  {
+                      "path":  "bamidbar.json",
+                      "bytes":  10087439,
+                      "sha256":  "54c3fdd56241ba8d2ae3172116e4558ef3683d5e4f730d594d88d4e167ec3313"
+                  },
+                  {
+                      "path":  "bereishit.json",
+                      "bytes":  16526648,
+                      "sha256":  "e04c43809fbf4918bcf42c6e0c791dc9c0f6738a96eba74ac9f8dbb36624dfb3"
+                  },
+                  {
+                      "path":  "devarim.json",
+                      "bytes":  11882651,
+                      "sha256":  "27ca25f718b26a84a2abf3b12edb3f6a0095be83cc613ccb0c6a1b0e927b3032"
+                  },
+                  {
+                      "path":  "esther.json",
+                      "bytes":  119829,
+                      "sha256":  "98140e3b722c625b93a991393a74d12a36353f73ad5b468b32c201750207b1de"
+                  },
+                  {
+                      "path":  "ii_kings.json",
+                      "bytes":  503929,
+                      "sha256":  "e19650e2dd80e532939801c2d23c3f682fe2f2ce868c428cbaee9130beef4604"
+                  },
+                  {
+                      "path":  "ii_samuel.json",
+                      "bytes":  494693,
+                      "sha256":  "e837243476cf9ad1ea048bb6d50a23bd2ee3d05cf124c3ebdce2362d6da771a8"
+                  },
+                  {
+                      "path":  "i_kings.json",
+                      "bytes":  540619,
+                      "sha256":  "cb838f5bd9776a422e6af3faed7613dc50eee426f99224b3dce13340beb24a61"
+                  },
+                  {
+                      "path":  "i_samuel.json",
+                      "bytes":  575396,
+                      "sha256":  "02fc1d06ff7a98f68bcb237af109e3ccc3917bc3ce70e7291418d62b2d78bdf9"
+                  },
+                  {
+                      "path":  "joshua.json",
+                      "bytes":  424303,
+                      "sha256":  "822f85042b7828239a45b2ce4be5b50778662376bf9e7534c7ae34b701102a05"
+                  },
+                  {
+                      "path":  "judges.json",
+                      "bytes":  423248,
+                      "sha256":  "2d27aa2614f5cd6d61f45438e7dae82488e50e6d458b4c1b4a542dbaa0fb367c"
+                  },
+                  {
+                      "path":  "shemot.json",
+                      "bytes":  15229083,
+                      "sha256":  "3126af86911c2b0be60417b7d050126832d824d5a1899a99682e5743610b1d0c"
+                  },
+                  {
+                      "path":  "tehillim.json",
+                      "bytes":  424142,
+                      "sha256":  "217bce458b2368d9547832fdc49e79de40bf27aa7d27f952a4f01e9960d65aa3"
+                  },
+                  {
+                      "path":  "vayikra.json",
+                      "bytes":  8016834,
+                      "sha256":  "c0d97600a71af5097ccb3b1d3d0eb8b0a7844ed96c050cbb3dd9e80661cb54b7"
+                  },
+                  {
+                      "path":  "sefaria/Chizkuni_on_Deuteronomy.json",
+                      "bytes":  262550,
+                      "sha256":  "07c04aeca4801398eb235cc5e704f176dc0e854bd84b8581301089e52fe1b530"
+                  },
+                  {
+                      "path":  "sefaria/Chizkuni_on_Exodus.json",
+                      "bytes":  428934,
+                      "sha256":  "f0dd4521ea4834b58d885fd1db0b34cef96e39d8001e93862c4651f8b80b09fb"
+                  },
+                  {
+                      "path":  "sefaria/Chizkuni_on_Genesis.json",
+                      "bytes":  496433,
+                      "sha256":  "e7a980efc4589754ec1257461f5f1d82f0662c4f6e8cf007c86c45d827c0f3f6"
+                  },
+                  {
+                      "path":  "sefaria/Chizkuni_on_Leviticus.json",
+                      "bytes":  255064,
+                      "sha256":  "6f7ee9b22e175173343326c937802c280920f23cc9a0a27366af2d316b34d7c0"
+                  },
+                  {
+                      "path":  "sefaria/Chizkuni_on_Numbers.json",
+                      "bytes":  269626,
+                      "sha256":  "24c960572c156f0b6656bd52cd21c87423310dab1d03d625fdb2330c99ad4954"
+                  },
+                  {
+                      "path":  "sefaria/Ibn_Ezra_on_Deuteronomy.json",
+                      "bytes":  215297,
+                      "sha256":  "9cebf14a74db8130c9c67dc5a666582d1d4d73d599f3251ab22f6470a352dc6b"
+                  },
+                  {
+                      "path":  "sefaria/Ibn_Ezra_on_Exodus.json",
+                      "bytes":  1243770,
+                      "sha256":  "cc73034b9ddb178d96f899414239e3d53fd0a7febeaa4de21b3d742801715d2c"
+                  },
+                  {
+                      "path":  "sefaria/Ibn_Ezra_on_Genesis.json",
+                      "bytes":  1035,
+                      "sha256":  "33bec2f6dbd3277d88f8da47953b6f4075242725eaca2518f3e49bde8b215bdc"
+                  },
+                  {
+                      "path":  "sefaria/Ibn_Ezra_on_Leviticus.json",
+                      "bytes":  212864,
+                      "sha256":  "ba434ebf2608ba0ec8b1898ff0312109a03d177f72705bbfd1f4e9d42638c59f"
+                  },
+                  {
+                      "path":  "sefaria/Ibn_Ezra_on_Numbers.json",
+                      "bytes":  199525,
+                      "sha256":  "b35a0e6c5c7426164085a84860b14da7c2880c9a596cb830c71da397520f0e4f"
+                  },
+                  {
+                      "path":  "sefaria/Ibn_Ezra_on_Psalms.json",
+                      "bytes":  594529,
+                      "sha256":  "72dd5c370cbf708fd270a7d9cf442cbe149b11f1e01dc5937c7740dc78806d17"
+                  },
+                  {
+                      "path":  "sefaria/Kli_Yakar_on_Deuteronomy.json",
+                      "bytes":  509386,
+                      "sha256":  "b7a6a4399a37fb177360dcafcb3e596ba35999e5830a02c081ba8ec12309a316"
+                  },
+                  {
+                      "path":  "sefaria/Kli_Yakar_on_Exodus.json",
+                      "bytes":  770924,
+                      "sha256":  "1e55699dfd814ad4d022490f247fa1b91170fd992ae6aa22a30f58ddcdcc7cec"
+                  },
+                  {
+                      "path":  "sefaria/Kli_Yakar_on_Genesis.json",
+                      "bytes":  751711,
+                      "sha256":  "e5d474150435c8f8c7de3eeb786ffa3298be089f185af6b20ef51b78c401e766"
+                  },
+                  {
+                      "path":  "sefaria/Kli_Yakar_on_Leviticus.json",
+                      "bytes":  390730,
+                      "sha256":  "046d7b919d805eb8a3693e1ec2cf486fe44bf2766d13c7616ac32b8a09307f15"
+                  },
+                  {
+                      "path":  "sefaria/Kli_Yakar_on_Numbers.json",
+                      "bytes":  423076,
+                      "sha256":  "c3ea6bf519c8772c4078354345ae263068ae61cc4e1cd5215695441f4bd1be3a"
+                  },
+                  {
+                      "path":  "sefaria/Malbim_on_Deuteronomy.json",
+                      "bytes":  1414867,
+                      "sha256":  "5fe4cc04240a56e8d2d514c95a4fa9a278a1f738d6c541cd6708d11a8d905709"
+                  },
+                  {
+                      "path":  "sefaria/Malbim_on_Exodus.json",
+                      "bytes":  1651263,
+                      "sha256":  "1cecd8b15736a7efeb53ad05bfdc2a64dcdec7fc998fd468de92c3954928c693"
+                  },
+                  {
+                      "path":  "sefaria/Malbim_on_Genesis.json",
+                      "bytes":  1350912,
+                      "sha256":  "36af056c5193efacaded583e948d85dee9019a75b7cc1f432c3b094ec230169d"
+                  },
+                  {
+                      "path":  "sefaria/Malbim_on_Numbers.json",
+                      "bytes":  1245369,
+                      "sha256":  "3de4730ed85572b6fa52fb513093f0271239926b471a54e32d16b8397f3071db"
+                  },
+                  {
+                      "path":  "sefaria/Malbim_on_Psalms.json",
+                      "bytes":  1389338,
+                      "sha256":  "3d7f88d663286049ffa45d6d9ecc4ba2b8a5a17a46f89d4e8fad5b57ee9eae65"
+                  },
+                  {
+                      "path":  "sefaria/Metzudat_David_on_Psalms.json",
+                      "bytes":  466368,
+                      "sha256":  "d27a927eb02b2c5a36fb3663ad6cd191c75a343b679d00de3deba24066c38709"
+                  },
+                  {
+                      "path":  "sefaria/Or_HaChaim_on_Deuteronomy.json",
+                      "bytes":  988473,
+                      "sha256":  "b3d8a7f0ea8504767a65860ad8a94e96770a146f78fdab590d465747ca6aaace"
+                  },
+                  {
+                      "path":  "sefaria/Or_HaChaim_on_Exodus.json",
+                      "bytes":  1753397,
+                      "sha256":  "12db8449016e7b3349d735a267b2aeab83ff3836566c2a4ad1ee36569ebe1f04"
+                  },
+                  {
+                      "path":  "sefaria/Or_HaChaim_on_Genesis.json",
+                      "bytes":  1757602,
+                      "sha256":  "ccec8aea9bf3843cf4c6a8b2620710e0fa523b41a5e6ca61aeddb3a6e1394fa2"
+                  },
+                  {
+                      "path":  "sefaria/Or_HaChaim_on_Leviticus.json",
+                      "bytes":  1397536,
+                      "sha256":  "c4b5bea636184215f3f2cb3577a5bc2cc4f8df421be10e8c168acd068bdf017f"
+                  },
+                  {
+                      "path":  "sefaria/Or_HaChaim_on_Numbers.json",
+                      "bytes":  1432532,
+                      "sha256":  "fec03c81112ff9f4334398d2daaa52b583930d92d3f0ec2d5ff711629a9c818c"
+                  },
+                  {
+                      "path":  "sefaria/Radak_on_Psalms.json",
+                      "bytes":  1149273,
+                      "sha256":  "7b7decfa360c7b77f006a037bbdafd3cae58eb98ce1eee1e92629801d654fa99"
+                  },
+                  {
+                      "path":  "sefaria/Ramban_on_Deuteronomy.json",
+                      "bytes":  950144,
+                      "sha256":  "7adc65aa0b7a44bf04692cfa86998eadef84a3bb0c8f9bdcddee1d8a3d35f364"
+                  },
+                  {
+                      "path":  "sefaria/Ramban_on_Exodus.json",
+                      "bytes":  1360263,
+                      "sha256":  "cffc060f40dca808256c3a858bde73621044d052a6fbe297593eb9da0db065a1"
+                  },
+                  {
+                      "path":  "sefaria/Ramban_on_Genesis.json",
+                      "bytes":  1664,
+                      "sha256":  "3578edbb5f9ab007f61cb043db4914f57ed68324e0a68026b024c9adf096313b"
+                  },
+                  {
+                      "path":  "sefaria/Ramban_on_Leviticus.json",
+                      "bytes":  1027293,
+                      "sha256":  "df374aff902687db7a01d1cd19cd168a17377ed6047e97a51f996bbc7beaa6f3"
+                  },
+                  {
+                      "path":  "sefaria/Ramban_on_Numbers.json",
+                      "bytes":  821244,
+                      "sha256":  "5bc30d7da1a5089e62c2d0886addd5a69c0604fcb02abf15a4586fe9fab645c9"
+                  },
+                  {
+                      "path":  "sefaria/Rashi_on_Deuteronomy.json",
+                      "bytes":  427587,
+                      "sha256":  "49083b08b03d0520a93d8f09b9785713114e01cceea1b167cfe9be92630e11d0"
+                  },
+                  {
+                      "path":  "sefaria/Rashi_on_Exodus.json",
+                      "bytes":  687966,
+                      "sha256":  "410ae5e910d83a92e5ad75c8b50f2b879986fd4a0d7f958e54599ceac720f56e"
+                  },
+                  {
+                      "path":  "sefaria/Rashi_on_Genesis.json",
+                      "bytes":  2476,
+                      "sha256":  "8b86432308a8f5b9ef2597ce67a5f901a87d3c5e3ec5ca52a7cd1f71871a8db8"
+                  },
+                  {
+                      "path":  "sefaria/Rashi_on_Leviticus.json",
+                      "bytes":  415005,
+                      "sha256":  "28a7fa8c9cf1753e51a811dd19c544f7bd200272e322415157fd48e58ed97252"
+                  },
+                  {
+                      "path":  "sefaria/Rashi_on_Numbers.json",
+                      "bytes":  454618,
+                      "sha256":  "752e19603f8dacef643acbee9d86866905043e388cf7b4ed5fddb0c727efa198"
+                  },
+                  {
+                      "path":  "sefaria/Rashi_on_Psalms.json",
+                      "bytes":  659918,
+                      "sha256":  "0d44c4bdfe4e83d81fa637b47ebfe7b2add9137ea6479ba171f5d378fdc545b0"
+                  },
+                  {
+                      "path":  "sefaria/Sforno_on_Deuteronomy.json",
+                      "bytes":  300718,
+                      "sha256":  "05bf4599c98b5e5c51e15786e05317dd0109bb22782ed49c86ccf965e0c6e2ae"
+                  },
+                  {
+                      "path":  "sefaria/Sforno_on_Exodus.json",
+                      "bytes":  385535,
+                      "sha256":  "55d35fa0bcaf1b568e261dbe817af27d36bc92492be84e7a94bf7751992e0428"
+                  },
+                  {
+                      "path":  "sefaria/Sforno_on_Genesis.json",
+                      "bytes":  1071,
+                      "sha256":  "4b5b93427ba109cf651723690db5c7ae9af9607dc66061816c6e307f992741e6"
+                  },
+                  {
+                      "path":  "sefaria/Sforno_on_Leviticus.json",
+                      "bytes":  218974,
+                      "sha256":  "01fcb90cb49ba6f3e4d0e295f98bcd514c43e428f5215337ef9b4050e8dacd94"
+                  },
+                  {
+                      "path":  "sefaria/Sforno_on_Numbers.json",
+                      "bytes":  255236,
+                      "sha256":  "453cfa420dd772d4ee9c735a132d665a9fd842ebed907df5d821308826c594b2"
+                  },
+                  {
+                      "path":  "siddur/siddur_ashkenaz.json",
+                      "bytes":  774757,
+                      "sha256":  "70850caf3b0c7630c4aa5992f2ef89e03e7991e3e0de06ef2cc72a4e41975a13"
+                  },
+                  {
+                      "path":  "siddur/siddur_ashkenaz_arvit.json",
+                      "bytes":  100763,
+                      "sha256":  "f01417ba04b80760bc840d5d92188d98f5c758185fda35cc50913406b3a7503d"
+                  },
+                  {
+                      "path":  "siddur/siddur_ashkenaz_other.json",
+                      "bytes":  340957,
+                      "sha256":  "78c04958c8e2fea113ef28ece3df984cc73baadbdcd6a9117fb74d6d672b3b4d"
+                  },
+                  {
+                      "path":  "siddur/siddur_ashkenaz_shabbat_kabbalat.json",
+                      "bytes":  22096,
+                      "sha256":  "6757c67175cb421d656a15979cf830795d18351f3415d4ce6d8a345d15100b35"
+                  },
+                  {
+                      "path":  "siddur/siddur_ashkenaz_shacharit.json",
+                      "bytes":  265503,
+                      "sha256":  "0c99123e9d6f26300e34c502a27c5fbddcfde3ae70ac7c824b95af36bd4a9bb0"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad.json",
+                      "bytes":  3002520,
+                      "sha256":  "ec0175a23b46602f24cce7b170de7a601ab2908dc0e12ea822a9cdbbe389a686"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad_arvit.json",
+                      "bytes":  86403,
+                      "sha256":  "1f35e53a225b9619d4ecf090144c36da6fafa278e0705f64ce953cdfb3486818"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad_mincha.json",
+                      "bytes":  104287,
+                      "sha256":  "e761bc676c9f49007c7404dff8c8e3f5111c73a87f1465ebd21b154a434927e6"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad_other.json",
+                      "bytes":  2252652,
+                      "sha256":  "b867d23b329baf3aa42f91a30138f0a13cda09840d6749863e3137bb76be6286"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad_shabbat_kabbalat.json",
+                      "bytes":  18368,
+                      "sha256":  "f2900ea983d3c1025d75a13c461dc39d370b06b2c4182c89dd831b77b7872731"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad_shabbat_mincha.json",
+                      "bytes":  159489,
+                      "sha256":  "a18ae780bccd06c06f2b9108efe49ffaf7eeab1e2f11e9e046e794e9a09d596a"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad_shabbat_musaf.json",
+                      "bytes":  55507,
+                      "sha256":  "b1be8703773c50204d98610d173a43080350105d3bbcc6531454aa8ce1fa99b5"
+                  },
+                  {
+                      "path":  "siddur/siddur_chabad_shacharit.json",
+                      "bytes":  239657,
+                      "sha256":  "e846cf5d4c751f8e67168f4510a874869e100ad3dc555a3778fcd577d3a2b4dc"
+                  },
+                  {
+                      "path":  "siddur/siddur_edot_hamizrach.json",
+                      "bytes":  2035974,
+                      "sha256":  "c3c651b1e17e88a3bdfda552b1810d040fa4cc23788616f4af61d2a6afdd1a56"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard.json",
+                      "bytes":  3001822,
+                      "sha256":  "a2cfc2f9f176875900366d7e47fd55093ea6d4799fcc071adc6ee0868f6cf4f2"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard_arvit.json",
+                      "bytes":  85901,
+                      "sha256":  "54af7d6d4f7b5a2414d49abaa40cdead7df0452a7ac4a828a26b7aa301853653"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard_mincha.json",
+                      "bytes":  103529,
+                      "sha256":  "d953aa6767ad2774ca165cf1b35019494443de1b4ed26cd7110b27d1fbbb61c5"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard_other.json",
+                      "bytes":  2254638,
+                      "sha256":  "b9d151d563080a48f81b8201140e8713d346cacfab3603e9a49fc48d6376fd21"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard_shabbat_kabbalat.json",
+                      "bytes":  18478,
+                      "sha256":  "8c66cf36d7bfaaca8c0dd919c27e7272029bc6a1d1c2bb1070428481fec2a920"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard_shabbat_mincha.json",
+                      "bytes":  159315,
+                      "sha256":  "8876b5df8aaed0324ea8d1bf743ac9db1a45d38e3dd0b75e955c0f087180fde6"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard_shabbat_musaf.json",
+                      "bytes":  55673,
+                      "sha256":  "ff122408fdf13e14037ede3cf6b37cbdc9db640837bb00640e420c4d6a20e4a5"
+                  },
+                  {
+                      "path":  "siddur/siddur_sefard_shacharit.json",
+                      "bytes":  238131,
+                      "sha256":  "be58676eb9eea731dda7cbc6fb7ddae9b5126e1fe71faeef681ba9b2d1e6651f"
+                  }
+              ]
+}
