@@ -79,6 +79,14 @@ test("all three main screens share compact, separate destination controls", asyn
     await expect(links).toHaveCount(3);
     await expect(nav.locator('[aria-current="page"]')).toHaveText(activeLabel);
 
+    const dividerSpacing = await nav.evaluate(element => {
+      const navRect = element.getBoundingClientRect();
+      const headerRect = element.closest('[data-testid="global-app-header"]')!.getBoundingClientRect();
+      return headerRect.bottom - navRect.bottom;
+    });
+    expect(dividerSpacing).toBeGreaterThanOrEqual(8);
+    expect(dividerSpacing).toBeLessThanOrEqual(14);
+
     const geometry = await links.evaluateAll(elements => elements.map(element => {
       const rect = element.getBoundingClientRect();
       const style = getComputedStyle(element);
@@ -99,6 +107,57 @@ test("all three main screens share compact, separate destination controls", asyn
       expect(visualOrder[index].left - visualOrder[index - 1].right).toBeGreaterThanOrEqual(4);
     }
   }
+});
+
+test("the global synagogue strip persists unchanged while only page content changes", async ({ page }) => {
+  await page.goto("/community");
+
+  const header = page.getByTestId("global-app-header");
+  await expect(header).toHaveCount(1);
+  await expect(header.getByTestId("community-site-title")).toHaveText("בית הכנסת אושר של יהודי");
+
+  const initialGeometry = await header.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    const nav = element.querySelector('[aria-label="מדורים ראשיים"]')!.getBoundingClientRect();
+    return {
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      navTop: nav.top,
+      navHeight: nav.height,
+    };
+  });
+  await header.evaluate(element => { element.dataset.persistenceProbe = "same-shell"; });
+
+  for (const [label, route] of [
+    ["סידור", /\/siddur$/],
+    ["חומש ומפרשים", /\/chumash$/],
+    ["בית הכנסת", /\/community$/],
+  ] as const) {
+    await header.getByRole("link", { name: label, exact: true }).click();
+    await expect(page).toHaveURL(route);
+    await expect(page.getByTestId("global-app-header")).toHaveCount(1);
+    await expect(header).toHaveAttribute("data-persistence-probe", "same-shell");
+    const geometry = await header.evaluate(element => {
+      const rect = element.getBoundingClientRect();
+      const nav = element.querySelector('[aria-label="מדורים ראשיים"]')!.getBoundingClientRect();
+      return {
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        navTop: nav.top,
+        navHeight: nav.height,
+      };
+    });
+    for (const key of Object.keys(initialGeometry) as Array<keyof typeof initialGeometry>) {
+      expect(Math.abs(geometry[key] - initialGeometry[key]), `${label}: ${key}`).toBeLessThanOrEqual(1);
+    }
+  }
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
 });
 
 for (const [route, heading] of publicRoutes) {
@@ -156,6 +215,19 @@ test("community destinations use a compact strip separated from the main tabs", 
   expect(metrics.gap).toBeGreaterThanOrEqual(14);
   expect(metrics.maxItemHeight).toBeLessThanOrEqual(32);
 
+  const seamlessBackground = await page.locator(".community-secondary-shell").evaluate(element => {
+    const shell = element.getBoundingClientRect();
+    const header = document.querySelector('[data-testid="global-app-header"]')!.getBoundingClientRect();
+    const shellColor = getComputedStyle(element).backgroundColor;
+    const headerColor = getComputedStyle(document.querySelector('[data-testid="global-app-header"]')!).backgroundColor;
+    return {
+      seam: Math.abs(shell.top - header.bottom),
+      sameColor: shellColor === headerColor,
+    };
+  });
+  expect(seamlessBackground.seam).toBeLessThanOrEqual(1);
+  expect(seamlessBackground.sameColor).toBeTruthy();
+
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
 });
@@ -186,25 +258,57 @@ test("the full synagogue name stays visible while management moves to the footer
   ]);
   expect(contactOrder[0]).toBeLessThan(contactOrder[1]);
   expect(contactOrder[1]).toBeLessThan(contactOrder[2]);
+  const utilityActions = footer.getByTestId("footer-utility-actions");
   const managementLink = footer.getByRole("link", { name: "ניהול האתר" });
+  const themesButton = footer.getByRole("button", { name: "ערכות נושא" });
   await managementLink.scrollIntoViewIfNeeded();
   await expect(managementLink).toBeVisible();
+  await expect(themesButton).toBeVisible();
   await expect(managementLink).toHaveAttribute("href", "/community/admin?tab=settings");
 
-  const placement = await managementLink.evaluate(element => {
-    const link = element.getBoundingClientRect();
+  const placement = await utilityActions.evaluate(element => {
+    const controls = Array.from(element.children, child => child.getBoundingClientRect());
     const footerRect = element.parentElement!.getBoundingClientRect();
+    const actions = element.getBoundingClientRect();
     return {
-      width: link.width,
-      height: link.height,
-      rightInset: footerRect.right - link.right,
-      bottomInset: footerRect.bottom - link.bottom,
+      widths: controls.map(control => control.width),
+      heights: controls.map(control => control.height),
+      gap: Math.max(controls[0].left, controls[1].left) - Math.min(controls[0].right, controls[1].right),
+      rightInset: footerRect.right - actions.right,
+      bottomInset: footerRect.bottom - actions.bottom,
     };
   });
-  expect(placement.width).toBeLessThanOrEqual(36);
-  expect(placement.height).toBeLessThanOrEqual(36);
+  expect(placement.widths.every(width => width <= 36)).toBeTruthy();
+  expect(placement.heights.every(height => height <= 36)).toBeTruthy();
+  expect(placement.gap).toBeGreaterThanOrEqual(6);
   expect(placement.rightInset).toBeLessThanOrEqual(16);
   expect(placement.bottomInset).toBeGreaterThanOrEqual(0);
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test("the footer theme shortcut opens the shared theme picker and new presets persist", async ({ page }) => {
+  await page.goto("/community");
+  await page.evaluate(() => localStorage.removeItem("torah-theme"));
+  await page.reload();
+
+  const footer = page.locator("footer");
+  const themesButton = footer.getByRole("button", { name: "ערכות נושא" });
+  await themesButton.scrollIntoViewIfNeeded();
+  await themesButton.click();
+
+  const themePanel = page.locator('[data-theme-panel="chumash"]');
+  await expect(themePanel).toBeVisible();
+  await expect(themePanel.getByText("פנינה וזהב", { exact: true })).toBeVisible();
+  await expect(themePanel.getByText("קלף ונייבי", { exact: true })).toBeVisible();
+  await expect(themePanel.getByText("לילה כחול וזהב", { exact: true })).toBeVisible();
+
+  await themePanel.getByText("פנינה וזהב", { exact: true }).click();
+  await expect(page.locator("html")).toHaveClass(/pearl-gold/);
+  await themePanel.getByTitle("סגור").click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveClass(/pearl-gold/);
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);

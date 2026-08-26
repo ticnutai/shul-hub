@@ -29,7 +29,6 @@ import { normalizeHebrewText } from "@/utils/textUtils";
 import { useSiddurCategories, useSiddurSections, useTehillimData, preloadSiddurNusach } from "@/hooks/useSiddurData";
 import { getWeekdayLeyning, getCalendarPreference, type WeekdayLeyning } from "@/utils/parshaUtils";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
-import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 
 /* ─── Types ─────────────────────────────────────────────── */
 type SiddurSection   = { title: string; lines: string[] };
@@ -2831,10 +2830,9 @@ export const Siddur = () => {
     >
       {/* ── Header ── */}
       <header
-        className="sticky top-0 z-40"
+        className="relative z-40"
         style={{
           background: activeTheme.headerBg,
-          paddingTop: "max(var(--safe-area-inset-top, var(--sai-top, env(safe-area-inset-top, 0px))), 24px)",
           boxShadow: siddurAppearance(activeTheme).headerShadow
             ? THEME_SHADOWS[siddurAppearance(activeTheme).shadow]
             : "none",
@@ -2842,27 +2840,21 @@ export const Siddur = () => {
       >
         <div className="w-full px-3 sm:px-5">
 
-          {/* ── Row 1: primary destinations, matching the Chumash header ── */}
-          <div className="relative flex min-h-9 items-center justify-center pt-2.5 pb-1" dir="rtl">
-            <h1 className="sr-only">סידור</h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(-1)}
-              aria-label="חזרה"
-              title="חזרה"
-              className="absolute left-0 top-1/2 h-8 -translate-y-1/2 px-2 text-sm font-medium"
-              style={{ color: hText, background: "transparent" }}
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden md:inline">חזרה</span>
-            </Button>
-
-            <PrimaryDestinationNav />
-          </div>
-
-          {/* ── Row 2: Siddur actions ── */}
-          <div className="flex items-center justify-center gap-1.5 pb-2" dir="ltr">
+          <h1 className="sr-only">סידור</h1>
+          {/* Siddur-specific controls. Main destinations live in GlobalAppHeader. */}
+          <div className="relative flex items-center justify-center gap-1.5 py-2" dir="ltr">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                aria-label="חזרה"
+                title="חזרה"
+                className="absolute left-0 h-8 px-2 text-sm font-medium"
+                style={{ color: hText, background: "transparent" }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden md:inline">חזרה</span>
+              </Button>
               {/* Theme picker */}
               <ThemePicker />
               {/* T — text settings */}

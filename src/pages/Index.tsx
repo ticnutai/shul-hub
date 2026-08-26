@@ -39,7 +39,6 @@ import { LuxuryTextView } from "@/components/LuxuryTextView";
 
 import { useReadingPositionSync } from "@/hooks/useReadingPositionSync";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
-import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 
 // Lazy load heavy components - split by usage priority
 // Critical components (loaded when mode is active)
@@ -51,7 +50,6 @@ const SideContentPanel = lazy(() => import("@/components/SideContentPanel").then
 const QuickSelector = lazy(() => import("@/components/QuickSelector").then(m => ({ default: m.QuickSelector })));
 const FloatingQuickSelector = lazy(() => import("@/components/FloatingQuickSelector").then(m => ({ default: m.FloatingQuickSelector })));
 const FloatingActionButton = lazy(() => import("@/components/FloatingActionButton").then(m => ({ default: m.FloatingActionButton })));
-const Settings = lazy(() => import("@/components/Settings").then(m => ({ default: m.Settings })));
 
 const ComponentLoader = () => (
   <div className="flex flex-col items-center justify-center py-8 gap-3 animate-fade-in">
@@ -857,26 +855,14 @@ const Index = () => {
       }}
     >
       {/* Header - Fully Responsive */}
-      <header data-layout="header" data-theme-header data-layout-label="הדר ראשי" className="sticky top-0 z-50 bg-sidebar shadow-lg">
+      <header data-layout="header" data-theme-header data-layout-label="כלי חומש" className="relative z-40 bg-sidebar shadow-lg">
         <div className="w-full px-3 sm:px-4 py-2 sm:py-3">
           {/* Mobile Layout - Stack vertically */}
-          <div
-            className="flex flex-col gap-1 md:hidden"
-            style={{ paddingTop: 'max(var(--safe-area-inset-top, var(--sai-top, env(safe-area-inset-top, 0px))), 28px)' }}
-          >
-            <div className="relative flex min-h-7 items-center justify-center pb-0.5" dir="rtl">
-              <div
-                data-layout="btn-user"
-                data-layout-label="👤 חשבון"
-                className="absolute left-0 top-1/2 flex -translate-y-1/2 items-center gap-0.5"
-              >
-                <UserMenu iconOnly />
-              </div>
-              <PrimaryDestinationNav />
-            </div>
+          <div className="flex flex-col gap-1 md:hidden">
             {/* Action row */}
             <div className="flex w-full items-center px-1">
               <div data-layout="header-actions-mobile" data-layout-label="כפתורי כותרת (מובייל)" className="flex w-full items-center justify-between gap-0.5">
+                <span data-layout="btn-user" data-layout-label="👤 חשבון"><UserMenu iconOnly /></span>
                 <span data-layout="btn-lang" data-layout-label="🌐 שפה">
                 <Button
                   variant="ghost"
@@ -941,7 +927,7 @@ const Index = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => (document.querySelector('[data-settings-trigger]') as HTMLElement)?.click()}
+                    onClick={() => window.dispatchEvent(new CustomEvent("open-app-settings"))}
                     className="h-8 w-8 text-accent hover:bg-accent/10 hover:text-accent"
                     title="הגדרות"
                     aria-label="הגדרות"
@@ -984,9 +970,8 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* Center: the same compact destination controls used everywhere. */}
+              {/* Center: seasonal route shortcut. Main destinations live in GlobalAppHeader. */}
               <span data-layout="btn-mode-switcher" data-layout-label="📚 מצב אפליקציה" className="flex items-center gap-1">
-                <PrimaryDestinationNav />
                 {omerInSeason && <button
                   onClick={() => navigate('/omer')}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-sm font-medium transition-all text-accent/50 hover:text-accent"
@@ -1021,7 +1006,7 @@ const Index = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => (document.querySelector('[data-settings-trigger]') as HTMLElement)?.click()}
+                    onClick={() => window.dispatchEvent(new CustomEvent("open-app-settings"))}
                     className="h-8 w-8 text-accent hover:text-accent hover:bg-accent/10"
                     title="הגדרות"
                   >
@@ -1037,11 +1022,6 @@ const Index = () => {
           </div>
         </div>
       </header>
-
-      {/* Floating Settings Button - rendered by Settings component */}
-      <Suspense fallback={null}>
-        {!(isMobile && sidePanelOpen) && <Settings />}
-      </Suspense>
 
       {/* Layout editor overlay — Ctrl+Shift+L or floating button */}
       <LayoutOverlay />

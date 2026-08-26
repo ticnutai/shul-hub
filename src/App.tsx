@@ -29,6 +29,7 @@ import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EditModeProvider } from "@community/lib/edit-mode";
 import { LiveDesignProvider } from "@/lib/live-design";
+import { GlobalAppShell } from "@/components/GlobalAppShell";
 
 const communityQueryClient = new QueryClient({
   defaultOptions: {
@@ -168,21 +169,23 @@ const App = () => {
                           <Suspense fallback={<LoadingFallback />}>
                             <Routes>
                               <Route path="/" element={<Navigate to="/community" replace />} />
-                              <Route path="/chumash" element={<Index />} />
                               <Route path="/auth" element={<Auth />} />
                               <Route path="/profile" element={<UserProfile />} />
-                              <Route path="/commentaries/:seferId/:perek/:pasuk" element={<Commentaries />} />
                               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                              <Route path="/siddur" element={<Siddur />} />
-                              <Route path="/omer" element={<SeasonalOmerRoute />} />
                               <Route path="/layout-editor" element={<LayoutEditor />} />
                               <Route path="/admin/permissions" element={<AdminPermissions />} />
-                              <Route path="/community" element={<CommunityHome />} />
-                              <Route path="/community/announcements" element={<CommunityAnnouncements />} />
-                              <Route path="/community/shiurim" element={<CommunityShiurim />} />
-                              <Route path="/community/chavrutot" element={<CommunityChavrutot />} />
-                              <Route path="/community/contact" element={<CommunityContact />} />
-                              <Route path="/community/admin" element={<CommunityAdmin />} />
+                              <Route element={<GlobalAppShell />}>
+                                <Route path="/chumash" element={<Index />} />
+                                <Route path="/commentaries/:seferId/:perek/:pasuk" element={<Commentaries />} />
+                                <Route path="/siddur" element={<Siddur />} />
+                                <Route path="/omer" element={<SeasonalOmerRoute />} />
+                                <Route path="/community" element={<CommunityHome />} />
+                                <Route path="/community/announcements" element={<CommunityAnnouncements />} />
+                                <Route path="/community/shiurim" element={<CommunityShiurim />} />
+                                <Route path="/community/chavrutot" element={<CommunityChavrutot />} />
+                                <Route path="/community/contact" element={<CommunityContact />} />
+                                <Route path="/community/admin" element={<CommunityAdmin />} />
+                              </Route>
                               <Route path="*" element={<NotFound />} />
                             </Routes>
                           </Suspense>

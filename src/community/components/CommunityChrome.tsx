@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { BookOpen, House, Megaphone, MessageSquareText, Settings, Users } from "lucide-react";
+import { BookOpen, House, Megaphone, MessageSquareText, Palette, Settings, Users } from "lucide-react";
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
@@ -19,10 +19,11 @@ const navItemClass = (isActive: boolean) =>
       : "text-[#d4af37] hover:bg-white/5 hover:text-[#f0c84b]",
   );
 
-export function CommunityHeader() {
+export function GlobalAppHeader() {
   const { data: settings } = useSettings();
   return (
     <header
+      data-testid="global-app-header"
       dir="rtl"
       className="community-header sticky top-0 z-50 border-b border-sidebar-primary/40 bg-sidebar text-sidebar-foreground shadow-lg"
       style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}
@@ -40,7 +41,15 @@ export function CommunityHeader() {
           <NotificationCenter />
         </div>
       </div>
-      <PrimaryDestinationNav className="mx-auto mt-2 max-w-md px-2 sm:mt-2.5" />
+      <PrimaryDestinationNav className="mx-auto mb-2 mt-2 max-w-md px-2 sm:mb-2.5 sm:mt-2.5" />
+    </header>
+  );
+}
+
+/** Contextual navigation shown only inside the synagogue section. */
+export function CommunityHeader() {
+  return (
+    <div dir="rtl" className="community-secondary-shell bg-sidebar text-sidebar-foreground">
       <nav className="community-nav-shell community-secondary-nav mx-auto grid grid-cols-3 gap-1" aria-label="ניווט קהילתי">
         {communityLinks.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} className={({ isActive }) => navItemClass(isActive)}>
@@ -49,7 +58,7 @@ export function CommunityHeader() {
           </NavLink>
         ))}
       </nav>
-    </header>
+    </div>
   );
 }
 
@@ -80,21 +89,38 @@ export function CommunityFooter() {
           </a>
         </div>
         <Link to="/community" className="mt-4 inline-flex items-center gap-1 text-amber-400"><House className="size-4" />חזרה לדף הקהילה</Link>
-        <NavLink
-          to="/community/admin?tab=settings"
-          aria-label="ניהול האתר"
-          title="ניהול האתר"
-          className={({ isActive }) => cn(
-            "absolute inline-flex size-8 items-center justify-center rounded-full border border-white/15 transition",
-            isActive ? "bg-white/12 text-amber-400" : "text-white/60 hover:bg-white/10 hover:text-amber-400",
-          )}
+        <div
+          data-testid="footer-utility-actions"
+          className="absolute flex items-center gap-2"
           style={{
             right: "0.75rem",
             bottom: "calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))",
           }}
         >
-          <Settings className="size-4" />
-        </NavLink>
+          <NavLink
+            to="/community/admin?tab=settings"
+            aria-label="ניהול האתר"
+            title="ניהול האתר"
+            className={({ isActive }) => cn(
+              "inline-flex size-8 items-center justify-center rounded-full border border-white/15 transition",
+              isActive ? "bg-white/12 text-amber-400" : "text-white/60 hover:bg-white/10 hover:text-amber-400",
+            )}
+          >
+            <Settings className="size-4" />
+          </NavLink>
+          <button
+            type="button"
+            aria-label="ערכות נושא"
+            title="ערכות נושא"
+            className="inline-flex size-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:bg-white/10 hover:text-amber-400"
+            onClick={() => {
+              document.documentElement.dataset.openAppThemes = "true";
+              window.dispatchEvent(new CustomEvent("open-app-themes"));
+            }}
+          >
+            <Palette className="size-4" />
+          </button>
+        </div>
       </div>
     </footer>
   );

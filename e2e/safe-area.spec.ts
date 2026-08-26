@@ -50,9 +50,8 @@ test("Torah Luxury remains an optional persisted community theme", async ({ page
   );
   await page.evaluate(() => localStorage.setItem("torah-theme", JSON.stringify("torah-luxury")));
   await page.reload();
-  await page.evaluate(() => document.fonts.ready);
-
   await expect(page.locator("html")).toHaveClass(/torah-luxury/);
+  await page.waitForFunction(() => document.fonts.status === "loaded");
   const nav = page.locator(".primary-destination-nav").first();
   const activeItem = nav.locator('.primary-destination-item[aria-current="page"]');
   await expect(nav).toBeVisible();

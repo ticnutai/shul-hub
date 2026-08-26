@@ -487,6 +487,113 @@ All colors MUST be HSL.
     --shadow-gold: 0 5px 20px hsla(43, 69%, 50%, 0.2);
   }
 
+  /* Pearl and gold — bright, restrained reading surface inspired by the
+     reference's independent white controls and fine golden outlines. */
+  .pearl-gold {
+    --background: 38 32% 98%;
+    --foreground: 221 58% 17%;
+    --card: 0 0% 100%;
+    --card-foreground: 221 58% 17%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 58% 17%;
+    --primary: 221 58% 22%;
+    --primary-foreground: 42 72% 96%;
+    --secondary: 40 37% 94%;
+    --secondary-foreground: 221 50% 24%;
+    --muted: 38 25% 94%;
+    --muted-foreground: 221 18% 44%;
+    --accent: 43 78% 54%;
+    --accent-foreground: 221 58% 17%;
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 42 35% 84%;
+    --input: 42 35% 84%;
+    --ring: 43 78% 54%;
+    --radius: 0.9rem;
+    --sidebar-background: 221 58% 20%;
+    --sidebar-foreground: 42 72% 96%;
+    --sidebar-primary: 43 78% 54%;
+    --sidebar-primary-foreground: 221 58% 17%;
+    --sidebar-accent: 221 46% 27%;
+    --sidebar-accent-foreground: 43 82% 65%;
+    --sidebar-border: 43 66% 47%;
+    --sidebar-ring: 43 78% 54%;
+    --shadow-soft: 0 5px 18px hsla(43, 65%, 40%, 0.12);
+    --shadow-medium: 0 9px 28px hsla(221, 58%, 18%, 0.12);
+    --shadow-gold: 0 5px 20px hsla(43, 78%, 50%, 0.2);
+  }
+
+  /* Parchment and navy — warm paper, crisp dark type and calm beige tabs. */
+  .parchment-navy {
+    --background: 39 32% 96%;
+    --foreground: 220 55% 16%;
+    --card: 42 38% 99%;
+    --card-foreground: 220 55% 16%;
+    --popover: 42 38% 99%;
+    --popover-foreground: 220 55% 16%;
+    --primary: 220 57% 23%;
+    --primary-foreground: 42 80% 97%;
+    --secondary: 39 45% 90%;
+    --secondary-foreground: 220 42% 29%;
+    --muted: 38 30% 91%;
+    --muted-foreground: 220 17% 45%;
+    --accent: 39 56% 53%;
+    --accent-foreground: 220 55% 16%;
+    --destructive: 0 69% 49%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 36 28% 81%;
+    --input: 36 28% 81%;
+    --ring: 39 56% 53%;
+    --radius: 0.7rem;
+    --sidebar-background: 220 57% 22%;
+    --sidebar-foreground: 42 80% 97%;
+    --sidebar-primary: 39 66% 56%;
+    --sidebar-primary-foreground: 220 55% 16%;
+    --sidebar-accent: 220 44% 29%;
+    --sidebar-accent-foreground: 39 70% 66%;
+    --sidebar-border: 39 52% 45%;
+    --sidebar-ring: 39 66% 56%;
+    --shadow-soft: 0 4px 14px hsla(31, 26%, 25%, 0.1);
+    --shadow-medium: 0 8px 24px hsla(220, 45%, 18%, 0.12);
+    --shadow-gold: 0 4px 18px hsla(39, 56%, 48%, 0.18);
+  }
+
+  /* Midnight gold — a deeper synagogue presentation while keeping content
+     cards readable in warm ivory, like the supplied navy/gold references. */
+  .midnight-gold {
+    --background: 222 47% 11%;
+    --foreground: 42 55% 94%;
+    --card: 221 44% 16%;
+    --card-foreground: 42 55% 94%;
+    --popover: 221 44% 16%;
+    --popover-foreground: 42 55% 94%;
+    --primary: 43 74% 55%;
+    --primary-foreground: 222 54% 14%;
+    --secondary: 221 38% 22%;
+    --secondary-foreground: 42 55% 94%;
+    --muted: 221 35% 21%;
+    --muted-foreground: 40 25% 72%;
+    --accent: 43 78% 55%;
+    --accent-foreground: 222 54% 14%;
+    --destructive: 0 66% 52%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 43 37% 37%;
+    --input: 221 30% 29%;
+    --ring: 43 78% 55%;
+    --radius: 0.8rem;
+    --sidebar-background: 222 57% 14%;
+    --sidebar-foreground: 42 60% 95%;
+    --sidebar-primary: 43 78% 55%;
+    --sidebar-primary-foreground: 222 54% 14%;
+    --sidebar-accent: 221 46% 23%;
+    --sidebar-accent-foreground: 43 82% 66%;
+    --sidebar-border: 43 54% 43%;
+    --sidebar-ring: 43 78% 55%;
+    --shadow-soft: 0 5px 18px hsla(0, 0%, 0%, 0.24);
+    --shadow-medium: 0 10px 30px hsla(0, 0%, 0%, 0.34);
+    --shadow-gold: 0 5px 22px hsla(43, 78%, 50%, 0.23);
+  }
+
   .dark {
     --background: 220 55% 12%;
     --foreground: 40 80% 95%;
@@ -564,10 +671,15 @@ html.torah-luxury .community-nav-item[aria-current="page"] {
 html.torah-luxury .community-secondary-nav {
   width: calc(100% - 5rem);
   max-width: 20rem;
-  margin-top: 1.15rem;
-  margin-bottom: 0.45rem;
+  margin-top: 0;
+  margin-bottom: 0;
   padding: 0.12rem !important;
   border-radius: 0.85rem;
+}
+
+.community-secondary-shell {
+  padding-block: 1.15rem 0.45rem;
+  background: hsl(var(--sidebar-background));
 }
 
 .community-secondary-nav .community-nav-item,
@@ -581,7 +693,6 @@ html.torah-luxury .community-secondary-nav .community-nav-item {
 @media (min-width: 640px) {
   .community-secondary-nav,
   html.torah-luxury .community-secondary-nav {
-    margin-top: 1.25rem;
     padding: 0.12rem !important;
   }
 
@@ -589,6 +700,10 @@ html.torah-luxury .community-secondary-nav .community-nav-item {
   html.torah-luxury .community-secondary-nav .community-nav-item {
     min-height: 1.85rem;
     font-size: 0.73rem;
+  }
+
+  .community-secondary-shell {
+    padding-top: 1.25rem;
   }
 }
 
