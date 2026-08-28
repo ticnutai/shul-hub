@@ -111,9 +111,19 @@ export default function YamimNoraimEvent() {
             <p className="text-xs font-bold text-[#a37415]">לפרטים ולכל נושא ביהדות</p>
             <h2 className="mt-1 text-2xl font-black">{event.contactName}</h2>
             <a href={`tel:${event.contactPhoneRaw}`} className="mt-2 block text-xl font-black text-[#116295]" dir="ltr">{event.contactPhone}</a>
-            <div className="mt-5 grid grid-cols-2 gap-2">
+            <div className="mt-5 flex items-center gap-2">
               <a href={`tel:${event.contactPhoneRaw}`} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#102c57] px-3 py-3 text-sm font-black text-white"><Phone className="h-4 w-4" />התקשרו</a>
-              <a href={whatsappUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#1f9d62] px-3 py-3 text-sm font-black text-white"><MessageCircle className="h-4 w-4" />WhatsApp</a>
+              <a
+                data-testid="yamim-noraim-event-whatsapp"
+                href={whatsappUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-12 w-12 items-center justify-center rounded-xl border border-[#d4aa49]/55 bg-[#f4bd35] text-[#102c57] shadow-sm transition hover:bg-[#ffd263] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#d4aa49]"
+                aria-label={`פתח WhatsApp אל ${event.contactName} עם הודעה מוכנה`}
+                title="פתיחת WhatsApp"
+              >
+                <MessageCircle className="h-5 w-5" aria-hidden="true" />
+              </a>
             </div>
           </div>
         </section>

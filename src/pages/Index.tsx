@@ -39,7 +39,6 @@ import { LuxuryTextView } from "@/components/LuxuryTextView";
 
 import { useReadingPositionSync } from "@/hooks/useReadingPositionSync";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
-import { YamimNoraimAnnouncement } from "@/components/YamimNoraimAnnouncement";
 
 // Lazy load heavy components - split by usage priority
 // Critical components (loaded when mode is active)
@@ -1030,7 +1029,6 @@ const Index = () => {
       <div 
         className="container mx-auto px-3 sm:px-4 py-1 sm:py-2 space-y-1 sm:space-y-2 transition-[padding] duration-300 ease-in-out"
       >
-        <YamimNoraimAnnouncement />
 
         {/* Sefer / Parsha / Perek / Pasuk Selector */}
         <div data-layout="sefer-selector" data-layout-label="בורר חומש / פרשה / פסוק">

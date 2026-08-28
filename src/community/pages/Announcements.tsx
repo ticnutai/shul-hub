@@ -2,6 +2,7 @@ import { CommunityHeader } from "@community/components/CommunityChrome";
 import { CommunityFooter } from "@community/components/CommunityChrome";
 import { AnnouncementCard } from "@community/components/AnnouncementCard";
 import { useAnnouncements } from "@community/lib/data";
+import { YamimNoraimAnnouncement } from "@/components/YamimNoraimAnnouncement";
 
 export function AnnouncementsPage() {
   const { data = [], isLoading } = useAnnouncements();
@@ -13,6 +14,10 @@ export function AnnouncementsPage() {
         <h1 className="text-3xl font-bold">מודעות לציבור</h1>
         <p className="mt-2 text-muted-foreground">מזל טוב, הודעות ועדכונים לכלל המתפללים.</p>
         <div className="gold-rule mt-6 h-px w-full" />
+
+        <div className="mt-6">
+          <YamimNoraimAnnouncement />
+        </div>
 
         {isLoading && <p className="mt-8 text-muted-foreground">טוען…</p>}
         {!isLoading && data.length === 0 && (

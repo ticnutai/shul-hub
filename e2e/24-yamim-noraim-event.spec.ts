@@ -11,9 +11,12 @@ function collectRuntimeErrors(page: Page) {
   return errors;
 }
 
-test("the concise announcement opens the complete event page", async ({ page }) => {
+test("the synagogue announcement opens the complete event page", async ({ page }) => {
   const errors = collectRuntimeErrors(page);
   await page.goto("/chumash");
+  await expect(page.getByTestId("yamim-noraim-announcement")).toHaveCount(0);
+
+  await page.goto("/community/announcements");
 
   const announcement = page.getByTestId("yamim-noraim-announcement");
   await expect(announcement).toBeVisible({ timeout: 30_000 });
@@ -24,6 +27,7 @@ test("the concise announcement opens the complete event page", async ({ page }) 
   await expect(whatsapp).toBeVisible();
   await expect(whatsapp).toHaveAttribute("href", /wa\.me\/972546473461\?text=/);
   await expect(whatsapp).toHaveAttribute("href", /%D7%A9%D7%9C%D7%95%D7%9D/);
+  await expect(whatsapp).toHaveText("");
   await announcement.getByRole("link", { name: "פתח את כל פרטי תפילות הימים הנוראים" }).click();
 
   await expect(page).toHaveURL(new RegExp(`${eventPath}$`));
@@ -38,6 +42,9 @@ test("the concise announcement opens the complete event page", async ({ page }) 
   await expect(page.getByText(/כיסא ב־20/)).toBeVisible();
   await expect(page.getByText(/אין עזרת נשים במקום/)).toBeVisible();
   await expect(page.getByRole("link", { name: /054-6473461/ }).first()).toBeVisible();
+  const eventWhatsapp = page.getByTestId("yamim-noraim-event-whatsapp");
+  await expect(eventWhatsapp).toBeVisible();
+  await expect(eventWhatsapp).toHaveText("");
 
   const poster = page.getByRole("img", { name: /המודעה המקורית/ });
   await poster.scrollIntoViewIfNeeded();

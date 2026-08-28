@@ -54,11 +54,11 @@ export function YamimNoraimAnnouncement() {
           href={whatsappUrl}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-full border border-[#63d596]/50 bg-[#168c55] px-3 text-xs font-black text-white shadow-sm transition hover:bg-[#117747] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9af0bf]"
+          className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[#f4bd35]/55 bg-[#f4bd35]/15 text-[#ffd263] shadow-sm transition hover:bg-[#f4bd35]/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4bd35]"
           aria-label={`פתח WhatsApp אל ${event.contactName} עם הודעה מוכנה`}
+          title="פתיחת WhatsApp"
         >
           <MessageCircle className="h-4 w-4" aria-hidden="true" />
-          WhatsApp
         </a>
       </div>
     </aside>
