@@ -53,6 +53,7 @@ const CommunityShiurim = lazy(() => import("@community/pages/Shiurim").then(m =>
 const CommunityChavrutot = lazy(() => import("@community/pages/Chavrutot").then(m => ({ default: m.ChavrutotPage })));
 const CommunityContact = lazy(() => import("@community/pages/Contact").then(m => ({ default: m.ContactPage })));
 const CommunityAdmin = lazy(() => import("@community/pages/Admin").then(m => ({ default: m.AdminPage })));
+const YamimNoraimEvent = lazy(() => import("./pages/YamimNoraimEvent"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -174,6 +175,7 @@ const App = () => {
                               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                               <Route path="/layout-editor" element={<LayoutEditor />} />
                               <Route path="/admin/permissions" element={<AdminPermissions />} />
+                              <Route path="/events/yamim-noraim-concord-2026" element={<YamimNoraimEvent />} />
                               <Route element={<GlobalAppShell />}>
                                 <Route path="/chumash" element={<Index />} />
                                 <Route path="/commentaries/:seferId/:perek/:pasuk" element={<Commentaries />} />
