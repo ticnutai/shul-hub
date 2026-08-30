@@ -107,6 +107,8 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   title text NOT NULL,
   body text NOT NULL DEFAULT '',
   pinned boolean NOT NULL DEFAULT false,
+  sort_order integer NOT NULL DEFAULT 100000,
+  show_on_home boolean NOT NULL DEFAULT true,
   expires_at date,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
@@ -288,6 +290,8 @@ ALTER TABLE public.shiurim ADD COLUMN IF NOT EXISTS reminder_minutes integer NOT
 ALTER TABLE public.minyanim ADD COLUMN IF NOT EXISTS notification_enabled boolean NOT NULL DEFAULT false;
 ALTER TABLE public.minyanim ADD COLUMN IF NOT EXISTS reminder_minutes integer NOT NULL DEFAULT 15 CHECK (reminder_minutes BETWEEN 0 AND 10080);
 ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS notification_enabled boolean NOT NULL DEFAULT false;
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 100000;
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS show_on_home boolean NOT NULL DEFAULT true;
 ALTER TABLE public.chavrutot ADD COLUMN IF NOT EXISTS notification_enabled boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS public.notification_preferences (

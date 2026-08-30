@@ -1,5 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
-import { BookOpen, House, Megaphone, MessageSquareText, Palette, Settings, Users } from "lucide-react";
+import { BookOpen, House, Megaphone, MessageCircle, MessageSquareText, Palette, Settings, Users } from "lucide-react";
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
@@ -65,6 +65,11 @@ export function CommunityHeader() {
 export function CommunityFooter() {
   const { data: settings } = useSettings();
   const contactPhone = settings?.phone ?? "054-647-3461";
+  const contactPhoneDigits = contactPhone.replace(/\D/g, "");
+  const whatsappPhone = contactPhoneDigits.startsWith("0")
+    ? `972${contactPhoneDigits.slice(1)}`
+    : contactPhoneDigits;
+  const whatsappMessage = "שלום הרב חיים אושרי, אשמח ליצור קשר בנושא יהדות.";
   return (
     <footer dir="rtl" className="mt-16 border-t border-amber-400/20 bg-[#172c57] text-white/70">
       <div
@@ -79,14 +84,26 @@ export function CommunityFooter() {
         >
           <p data-testid="community-contact-topic" className="text-sm font-medium text-amber-400">לכל נושא של יהדות</p>
           <p data-testid="community-rabbi-name" className="mt-1 text-base font-semibold text-white">הרב חיים אושרי</p>
-          <a
-            data-testid="community-phone"
-            className="mt-1.5 inline-block text-sm tracking-wide text-white/80 transition hover:text-amber-300"
-            dir="ltr"
-            href={`tel:${contactPhone.replace(/[^\d+]/g, "")}`}
-          >
-            {contactPhone}
-          </a>
+          <div className="mt-1.5 flex items-center justify-center gap-2" dir="ltr">
+            <a
+              data-testid="community-phone"
+              className="text-sm tracking-wide text-white/80 transition hover:text-amber-300"
+              href={`tel:${contactPhone.replace(/[^\d+]/g, "")}`}
+            >
+              {contactPhone}
+            </a>
+            <a
+              data-testid="community-whatsapp"
+              href={`https://wa.me/${whatsappPhone}?text=${encodeURIComponent(whatsappMessage)}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="פתיחת WhatsApp אל הרב חיים אושרי"
+              title="פתיחת WhatsApp"
+              className="inline-flex size-8 items-center justify-center rounded-full border border-amber-400/45 bg-amber-400/10 text-amber-300 transition hover:bg-amber-400/20 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            >
+              <MessageCircle className="size-4" aria-hidden="true" />
+            </a>
+          </div>
         </div>
         <Link to="/community" className="mt-4 inline-flex items-center gap-1 text-amber-400"><House className="size-4" />חזרה לדף הקהילה</Link>
         <div

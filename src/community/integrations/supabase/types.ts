@@ -47,6 +47,8 @@ export type Database = {
           kind: string;
           notification_enabled: boolean;
           pinned: boolean;
+          show_on_home: boolean;
+          sort_order: number;
           title: string;
           updated_at: string;
         };
@@ -58,6 +60,8 @@ export type Database = {
           kind?: string;
           notification_enabled?: boolean;
           pinned?: boolean;
+          show_on_home?: boolean;
+          sort_order?: number;
           title: string;
           updated_at?: string;
         };
@@ -69,6 +73,8 @@ export type Database = {
           kind?: string;
           notification_enabled?: boolean;
           pinned?: boolean;
+          show_on_home?: boolean;
+          sort_order?: number;
           title?: string;
           updated_at?: string;
         };

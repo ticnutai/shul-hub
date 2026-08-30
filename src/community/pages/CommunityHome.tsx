@@ -14,6 +14,7 @@ import { CommunityHeader } from "@community/components/CommunityChrome";
 import { CommunityFooter } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { AnnouncementCard } from "@community/components/AnnouncementCard";
+import { YamimNoraimAnnouncement } from "@/components/YamimNoraimAnnouncement";
 import {
   useAnnouncements,
   useChavrutot,
@@ -195,7 +196,7 @@ export function CommunityHome() {
     timeZone: "Asia/Jerusalem",
   }).format(today);
 
-  const topAnnouncements = announcements.slice(0, 3);
+  const homeAnnouncements = announcements.filter((announcement) => announcement.show_on_home);
   const topShiurim = shiurim.filter((shiur) => shiur.active).slice(0, 3);
   const topChavrutot = chavrutot.filter((chavruta) => chavruta.active).slice(0, 3);
 
@@ -418,11 +419,14 @@ export function CommunityHome() {
                     </Link>
                   </Button>
                 </div>
+                <div className="mt-4">
+                  <YamimNoraimAnnouncement />
+                </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  {topAnnouncements.map((a) => (
+                  {homeAnnouncements.map((a) => (
                     <AnnouncementCard key={a.id} announcement={a} />
                   ))}
-                  {topAnnouncements.length === 0 && (
+                  {homeAnnouncements.length === 0 && (
                     <p className="card-elev p-5 text-sm text-muted-foreground">
                       אין כרגע מודעות חדשות.
                     </p>

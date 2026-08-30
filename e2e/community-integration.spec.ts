@@ -251,6 +251,10 @@ test("the full synagogue name stays visible while management moves to the footer
   const phone = footer.getByTestId("community-phone");
   await expect(phone).toBeVisible();
   await expect(phone).toHaveAttribute("href", /^tel:\+?\d+$/);
+  const whatsapp = footer.getByTestId("community-whatsapp");
+  await expect(whatsapp).toBeVisible();
+  await expect(whatsapp).toHaveAttribute("href", /^https:\/\/wa\.me\/972\d+\?text=/);
+  await expect(whatsapp).toHaveText("");
   const contactOrder = await Promise.all([
     topic.evaluate(element => element.getBoundingClientRect().top),
     rabbiName.evaluate(element => element.getBoundingClientRect().top),

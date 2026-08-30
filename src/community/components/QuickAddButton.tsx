@@ -91,6 +91,7 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [showOnHome, setShowOnHome] = useState(true);
   const [saving, setSaving] = useState(false);
 
   async function save() {
@@ -102,6 +103,7 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
       kind: "general",
       pinned,
       notification_enabled: false,
+      show_on_home: showOnHome,
     });
     setSaving(false);
     if (error) {
@@ -129,7 +131,11 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
       </div>
       <div className="flex items-center gap-3">
         <Switch id="quick-pinned" checked={pinned} onCheckedChange={setPinned} />
-        <Label htmlFor="quick-pinned">להצמיד לראש הרשימה</Label>
+        <Label htmlFor="quick-pinned">סימון כמודעה מוצמדת</Label>
+      </div>
+      <div className="flex items-center gap-3">
+        <Switch id="quick-show-on-home" checked={showOnHome} onCheckedChange={setShowOnHome} />
+        <Label htmlFor="quick-show-on-home">להציג גם בדף הבית</Label>
       </div>
       <Button onClick={save} disabled={saving || !title.trim()}>
         שמירה

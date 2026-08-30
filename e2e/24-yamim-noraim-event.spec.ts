@@ -16,6 +16,9 @@ test("the synagogue announcement opens the complete event page", async ({ page }
   await page.goto("/chumash");
   await expect(page.getByTestId("yamim-noraim-announcement")).toHaveCount(0);
 
+  await page.goto("/community");
+  await expect(page.getByTestId("yamim-noraim-announcement")).toBeVisible({ timeout: 30_000 });
+
   await page.goto("/community/announcements");
 
   const announcement = page.getByTestId("yamim-noraim-announcement");

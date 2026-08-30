@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderPlus, GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -55,13 +55,104 @@ function RowShell({
   );
 }
 
+function reorder<T>(items: T[], from: number, to: number) {
+  const next = [...items];
+  const [moved] = next.splice(from, 1);
+  if (!moved) return items;
+  next.splice(to, 0, moved);
+  return next;
+}
+
 /* ---------------- מודעות ---------------- */
 
 export function AnnouncementsAdmin() {
   const { data = [] } = useAnnouncements();
+  const qc = useQueryClient();
   const save = useSaveRow("announcements", "announcements");
   const remove = useDeleteRow("announcements", "announcements");
   const [draft, setDraft] = useState<Partial<Announcement> | null>(null);
+  const [ordered, setOrdered] = useState<Announcement[]>([]);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const orderedRef = useRef<Announcement[]>([]);
+  const draggedIndexRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (draggedIndexRef.current !== null) return;
+    orderedRef.current = data;
+    setOrdered(data);
+  }, [data]);
+
+  async function persistOrder(items: Announcement[]) {
+    setSavingOrder(true);
+    const results = await Promise.all(
+      items.map((announcement, index) =>
+        supabase
+          .from("announcements")
+          .update({ sort_order: (index + 1) * 10 })
+          .eq("id", announcement.id),
+      ),
+    );
+    setSavingOrder(false);
+    const failure = results.find((result) => result.error)?.error;
+    if (failure) {
+      toast.error("שמירת סדר המודעות נכשלה");
+      await qc.invalidateQueries({ queryKey: ["announcements"] });
+      return;
+    }
+    await qc.invalidateQueries({ queryKey: ["announcements"] });
+    toast.success("סדר המודעות נשמר");
+  }
+
+  function beginPointerDrag(index: number, pointerId: number) {
+    if (savingOrder) return;
+    const initialOrder = orderedRef.current.map((item) => item.id).join(",");
+    draggedIndexRef.current = index;
+    setDraggedId(orderedRef.current[index]?.id ?? null);
+
+    const move = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      event.preventDefault();
+      const target = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>("[data-announcement-index]");
+      const targetIndex = Number(target?.dataset.announcementIndex);
+      const currentIndex = draggedIndexRef.current;
+      if (!Number.isInteger(targetIndex) || currentIndex === null || targetIndex === currentIndex)
+        return;
+      const next = reorder(orderedRef.current, currentIndex, targetIndex);
+      orderedRef.current = next;
+      draggedIndexRef.current = targetIndex;
+      setOrdered(next);
+    };
+
+    const cleanup = () => {
+      draggedIndexRef.current = null;
+      setDraggedId(null);
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", finish);
+      document.removeEventListener("pointercancel", cancel);
+    };
+
+    const finish = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      const finalItems = orderedRef.current;
+      const changed = finalItems.map((item) => item.id).join(",") !== initialOrder;
+      cleanup();
+      if (changed) void persistOrder(finalItems);
+    };
+
+    const cancel = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      orderedRef.current = data;
+      setOrdered(data);
+      cleanup();
+    };
+
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", finish);
+    document.addEventListener("pointercancel", cancel);
+  }
 
   return (
     <div className="space-y-4">
@@ -74,6 +165,8 @@ export function AnnouncementsAdmin() {
               body: "",
               pinned: false,
               notification_enabled: false,
+              show_on_home: true,
+              sort_order: (ordered.length + 1) * 10,
             })
           }
         >
@@ -81,18 +174,53 @@ export function AnnouncementsAdmin() {
         </Button>
       </div>
 
-      <div className="card-elev divide-y divide-border">
-        {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין מודעות.</p>}
-        {data.map((a) => (
-          <RowShell
-            key={a.id}
-            title={a.title}
-            subtitle={`${ANNOUNCEMENT_KINDS.find((k) => k.id === a.kind)?.label ?? ""}${
-              a.expires_at ? ` · בתוקף עד ${a.expires_at}` : ""
-            }`}
-            onEdit={() => setDraft(a)}
-            onDelete={() => remove.mutate(a.id)}
-          />
+      <p className="text-sm text-muted-foreground">
+        גררו את הידית שליד מודעה כדי לקבוע מה תופיע ראשונה, שנייה וכן הלאה. הסדר נשמר מיד.
+      </p>
+      <div className="card-elev divide-y divide-border" data-testid="announcements-sort-list">
+        {ordered.length === 0 && <p className="p-6 text-center text-muted-foreground">אין מודעות.</p>}
+        {ordered.map((announcement, index) => (
+          <div
+            key={announcement.id}
+            data-announcement-index={index}
+            data-testid={`announcement-row-${announcement.id}`}
+            className={
+              "flex items-center gap-2 px-3 py-3 transition-opacity " +
+              (draggedId === announcement.id ? "opacity-55" : "")
+            }
+          >
+            <button
+              type="button"
+              data-testid={`announcement-drag-${announcement.id}`}
+              className="touch-none cursor-grab rounded-md p-2 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+              aria-label={`גרירת המודעה ${announcement.title}`}
+              title="גרור לשינוי סדר המודעות"
+              disabled={savingOrder}
+              onPointerDown={(event) => {
+                event.preventDefault();
+                beginPointerDrag(index, event.pointerId);
+              }}
+            >
+              <GripVertical className="size-5" />
+            </button>
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
+              {index + 1}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-medium">{announcement.title}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {ANNOUNCEMENT_KINDS.find((kind) => kind.id === announcement.kind)?.label ?? ""}
+                {announcement.expires_at ? ` · בתוקף עד ${announcement.expires_at}` : ""}
+                {` · ${announcement.show_on_home ? "מופיעה גם בדף הבית" : "רק בטאב מודעות"}`}
+              </p>
+            </div>
+            <Button size="icon" variant="ghost" onClick={() => setDraft(announcement)} aria-label="עריכה">
+              <Pencil className="size-4" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => remove.mutate(announcement.id)} aria-label="מחיקה">
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </div>
         ))}
       </div>
 
@@ -159,7 +287,15 @@ export function AnnouncementsAdmin() {
               checked={draft.pinned ?? false}
               onCheckedChange={(v) => setDraft({ ...draft, pinned: v })}
             />
-            <Label htmlFor="pinned">להצמיד לראש הרשימה</Label>
+            <Label htmlFor="pinned">סימון כמודעה מוצמדת (הסדר נקבע בגרירה)</Label>
+          </div>
+          <div className="flex items-center gap-3">
+            <Switch
+              id="announcement-show-on-home"
+              checked={draft.show_on_home ?? true}
+              onCheckedChange={(value) => setDraft({ ...draft, show_on_home: value })}
+            />
+            <Label htmlFor="announcement-show-on-home">להציג את המודעה גם בווידג׳ט בדף הבית</Label>
           </div>
           <div className="flex items-center gap-3">
             <Switch
