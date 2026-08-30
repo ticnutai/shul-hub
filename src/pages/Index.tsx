@@ -838,10 +838,11 @@ const Index = () => {
     }
   }, [seferCache, selectedSefer, seferData, corpusMode]);
 
+  const [mobileQuickNavRequest, setMobileQuickNavRequest] = useState(0);
+
   const handleOpenQuickNav = useCallback(() => {
     logInteraction("Index", "handleOpenQuickNav");
-    const trigger = document.querySelector('[data-floating-quick-trigger]') as HTMLElement | null;
-    trigger?.click();
+    setMobileQuickNavRequest(request => request + 1);
   }, []);
 
   return (
@@ -1394,6 +1395,7 @@ const Index = () => {
             selectedPasuk={selectedPasuk}
             onPasukSelect={handlePasukSelect}
             hiddenTrigger={true}
+            openRequest={mobileQuickNavRequest}
           />
         </Suspense>
       )}

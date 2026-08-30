@@ -1,11 +1,21 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { toHebrewNumber } from "@/utils/hebrewNumbers";
 import { Sefer } from "@/types/torah";
-import { Circle, ArrowRight, Home } from "lucide-react";
+import {
+  ArrowRight,
+  Bookmark,
+  Circle,
+  Ellipsis,
+  Home,
+  Search,
+  Settings,
+  Share2,
+  StickyNote,
+} from "lucide-react";
 import { useDevice } from "@/contexts/DeviceContext";
 import { logInteraction } from "@/utils/interactionDebug";
 
@@ -21,6 +31,7 @@ interface FloatingQuickSelectorProps {
   selectedPasuk: number | null;
   onPasukSelect: (pasuk: number | null) => void;
   hiddenTrigger?: boolean;
+  openRequest?: number;
 }
 
 export const FloatingQuickSelector = ({
@@ -33,9 +44,12 @@ export const FloatingQuickSelector = ({
   selectedPasuk,
   onPasukSelect,
   hiddenTrigger = false,
+  openRequest = 0,
 }: FloatingQuickSelectorProps) => {
   const [open, setOpen] = useState(false);
   const [currentLevel, setCurrentLevel] = useState<SelectionLevel>("parsha");
+  const [showHeaderExtras, setShowHeaderExtras] = useState(false);
+  const handledOpenRequest = useRef(0);
   const { isMobile } = useDevice();
 
   // Reset to parsha level when sefer changes
@@ -45,29 +59,15 @@ export const FloatingQuickSelector = ({
     logInteraction("FloatingQuickSelector", "sefer-change-reset", { seferId: sefer?.sefer_id });
   }, [sefer?.sefer_id]);
 
-  // Keep the dialog in sync with the actual selection state
+  // A request may arrive while the large Torah data chunk is still loading.
+  // Keep it pending and open as soon as the selector has a sefer to display.
   useEffect(() => {
-    if (!open) return;
-
-    logInteraction("FloatingQuickSelector", "sync-level", {
-      selectedParsha,
-      selectedPerek,
-      selectedPasuk,
-      open,
-    });
-
-    if (selectedParsha === null) {
-      setCurrentLevel("parsha");
-      return;
-    }
-
-    if (selectedPerek === null) {
-      setCurrentLevel("perek");
-      return;
-    }
-
-    setCurrentLevel("pasuk");
-  }, [open, selectedParsha, selectedPerek]);
+    if (!isMobile || !sefer || openRequest <= handledOpenRequest.current) return;
+    handledOpenRequest.current = openRequest;
+    setCurrentLevel("parsha");
+    setShowHeaderExtras(false);
+    setOpen(true);
+  }, [isMobile, openRequest, sefer]);
 
   // Get perakim for the selected parsha only
   const perakimToShow = useMemo(() => {
@@ -141,6 +141,11 @@ export const FloatingQuickSelector = ({
   };
 
   const getCurrentTitle = () => {
+    if (isMobile) {
+      if (currentLevel === "parsha") return "פרשות";
+      if (currentLevel === "perek") return "פרקים";
+      return "פסוקים";
+    }
     if (currentLevel === "parsha") {
       return "בחר פרשה";
     } else if (currentLevel === "perek") {
@@ -155,8 +160,22 @@ export const FloatingQuickSelector = ({
 
   const selectedButtonClass = "border-accent text-primary";
 
+  const runHeaderAction = (actionId: "search" | "bookmarks" | "notes" | "share" | "settings") => {
+    setOpen(false);
+    window.dispatchEvent(new CustomEvent("torah-mobile-quick-action", { detail: actionId }));
+  };
+
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (nextOpen) {
+          setCurrentLevel("parsha");
+          setShowHeaderExtras(false);
+        }
+        setOpen(nextOpen);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           data-floating-quick-trigger
@@ -180,7 +199,11 @@ export const FloatingQuickSelector = ({
         align={isMobile ? "end" : "start"}
         sideOffset={12}
         dir="rtl"
-        className={cn("max-h-[400px] p-0 overflow-hidden border border-accent bg-card text-foreground", isMobile ? "w-[calc(100vw-2rem)]" : "w-[320px]")}
+        data-testid="mobile-torah-selector"
+        className={cn(
+          "p-0 overflow-hidden border border-accent bg-card text-foreground",
+          isMobile ? "w-[calc(100vw-2rem)] max-h-[min(72dvh,620px)]" : "w-[320px] max-h-[400px]",
+        )}
       >
         {/* Header */}
         <div className="sticky top-0 z-10 bg-muted/50 backdrop-blur-sm border-b p-3 flex items-center justify-between gap-2" dir="rtl">
@@ -197,7 +220,42 @@ export const FloatingQuickSelector = ({
             )}
             <h3 className="font-semibold text-sm break-words flex-1 text-right">{getCurrentTitle()}</h3>
           </div>
-          {currentLevel !== "parsha" && (
+          {isMobile && (
+            <div
+              className="flex min-w-0 items-center justify-start gap-0.5"
+              data-testid="mobile-selector-actions"
+            >
+              {showHeaderExtras ? (
+                <>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => setShowHeaderExtras(false)} aria-label="חזרה לפעולות הראשיות">
+                    <ArrowRight className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => runHeaderAction("bookmarks")} aria-label="סימניות">
+                    <Bookmark className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => runHeaderAction("notes")} aria-label="הערות">
+                    <StickyNote className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => runHeaderAction("share")} aria-label="שיתוף">
+                    <Share2 className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => runHeaderAction("settings")} aria-label="הגדרות">
+                    <Settings className="size-4" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => runHeaderAction("search")} aria-label="חיפוש">
+                    <Search className="size-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="size-8" onClick={() => setShowHeaderExtras(true)} aria-label="פעולות נוספות">
+                    <Ellipsis className="size-4" />
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+          {!isMobile && currentLevel !== "parsha" && (
             <Button
               variant="ghost"
               size="sm"
@@ -254,7 +312,7 @@ export const FloatingQuickSelector = ({
                   className={cn("h-9 px-4 font-bold whitespace-nowrap", selectedButtonClass)}
                   title="חזרה לבחירת פרק"
                 >
-                  פרק {toHebrewNumber(selectedPerek)}
+                  {isMobile ? toHebrewNumber(selectedPerek) : `פרק ${toHebrewNumber(selectedPerek)}`}
                 </Button>
               </>
             )}
@@ -262,16 +320,20 @@ export const FloatingQuickSelector = ({
         </div>
 
         {/* Content */}
-        <ScrollArea className="h-[320px]">
-          <div className="p-3 space-y-2" dir="rtl">
+        <ScrollArea className={cn(isMobile ? "h-[min(52dvh,430px)]" : "h-[320px]")}>
+          <div className={cn("p-3", !isMobile && "space-y-2")} dir="rtl">
             {currentLevel === "parsha" && (
-              <>
+              <div
+                data-selector-level="parsha"
+                className={cn(isMobile ? "grid grid-cols-2 gap-2" : "space-y-2")}
+              >
                 {sefer.parshiot.map((parsha) => (
                   <Button
                     key={parsha.parsha_id}
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-right h-auto py-3 px-4 touch-manipulation break-words whitespace-normal",
+                      "w-full h-auto touch-manipulation break-words whitespace-normal",
+                      isMobile ? "min-h-12 justify-center px-2 py-2 text-center" : "justify-start px-4 py-3 text-right",
                       selectedParsha === parsha.parsha_id && selectedButtonClass
                     )}
                     onClick={() => handleParshaSelect(parsha.parsha_id)}
@@ -279,31 +341,38 @@ export const FloatingQuickSelector = ({
                     <span className="font-semibold break-words">{parsha.parsha_name}</span>
                   </Button>
                 ))}
-              </>
+              </div>
             )}
 
             {currentLevel === "perek" && selectedParsha !== null && (
-              <>
+              <div
+                data-selector-level="perek"
+                className={cn(isMobile ? "grid grid-cols-4 gap-2" : "space-y-2")}
+              >
                 {perakimToShow.map((perek) => (
                   <Button
                     key={perek.perek_num}
                     variant="outline"
                     className={cn(
-                      "w-full justify-start text-right h-auto py-3 px-4 touch-manipulation",
+                      "w-full touch-manipulation",
+                      isMobile ? "h-11 justify-center px-1 py-1 text-center" : "h-auto justify-start px-4 py-3 text-right",
                       selectedPerek === perek.perek_num && selectedButtonClass
                     )}
                     onClick={() => handlePerekSelect(perek.perek_num)}
                   >
                     <span className="font-semibold">
-                      פרק {toHebrewNumber(perek.perek_num)}
+                      {isMobile ? toHebrewNumber(perek.perek_num) : `פרק ${toHebrewNumber(perek.perek_num)}`}
                     </span>
                   </Button>
                 ))}
-              </>
+              </div>
             )}
 
             {currentLevel === "pasuk" && selectedPerek !== null && (
-              <>
+              <div
+                data-selector-level="pasuk"
+                className={cn(isMobile ? "grid grid-cols-5 gap-2" : "space-y-2")}
+              >
                 {Array.from({ length: totalPesukimInPerek }, (_, i) => i + 1).map((pasukNum) => {
                   const hasContent = pesukimWithContent.has(pasukNum);
                   return (
@@ -311,7 +380,8 @@ export const FloatingQuickSelector = ({
                       key={pasukNum}
                       variant="outline"
                       className={cn(
-                        "w-full justify-start text-right h-auto py-3 px-4 touch-manipulation",
+                        "w-full touch-manipulation",
+                        isMobile ? "relative h-12 justify-center px-1 py-1 text-center" : "h-auto justify-start px-4 py-3 text-right",
                         selectedPasuk === pasukNum && selectedButtonClass,
                         !hasContent && "opacity-50"
                       )}
@@ -319,15 +389,15 @@ export const FloatingQuickSelector = ({
                       disabled={!hasContent}
                     >
                       <span className="font-semibold">
-                        פסוק {toHebrewNumber(pasukNum)}
+                        {isMobile ? toHebrewNumber(pasukNum) : `פסוק ${toHebrewNumber(pasukNum)}`}
                       </span>
                       {hasContent && (
-                        <span className="h-2 w-2 rounded-full bg-accent" />
+                        <span className={cn("h-2 w-2 rounded-full bg-accent", isMobile && "absolute right-1 top-1")} />
                       )}
                     </Button>
                   );
                 })}
-              </>
+              </div>
             )}
           </div>
         </ScrollArea>

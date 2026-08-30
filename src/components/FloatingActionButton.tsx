@@ -291,6 +291,17 @@ export const FloatingActionButton = ({
     }
   }, [onOpenQuickNav, currentSefer, currentPerek, currentPasuk, expanded, showExtraActions]);
 
+  // The mobile quick selector owns the compact action icons in its header.
+  // Keep the actual dialogs/actions here so desktop behavior stays unchanged.
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const actionId = (event as CustomEvent<string>).detail;
+      if (actionId) handleAction(actionId);
+    };
+    window.addEventListener("torah-mobile-quick-action", handler);
+    return () => window.removeEventListener("torah-mobile-quick-action", handler);
+  }, [handleAction]);
+
   const handleSearchSubmit = useCallback(() => {
     logInteraction("FloatingActionButton", "search-submit", { searchQuery });
     if (searchQuery.trim()) {
@@ -408,6 +419,11 @@ export const FloatingActionButton = ({
           onClick={() => {
             // Toggle only when not dragged; hasMoved is false for a plain click
             if (!hasMoved.current) {
+              if (isMobile) {
+                logInteraction("FloatingActionButton", "open-mobile-quick-nav");
+                onOpenQuickNav?.();
+                return;
+              }
               logInteraction("FloatingActionButton", "toggle-expanded", { nextExpanded: !expanded });
               setExpanded(prev => !prev);
             }
