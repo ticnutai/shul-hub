@@ -46,8 +46,8 @@ service.edits().tracks().update(
                 "versionCodes": [version_code],
                 "status": "completed",
                 "releaseNotes": [
-                    {"language": "he-IL", "text": "גרסת בדיקה ראשונה של בית כנסת בסר 3"},
-                    {"language": "en-US", "text": "First internal test release of BSR 3 Synagogue"},
+                    {"language": "he-IL", "text": "גרסת בדיקה 1.8.13: עדכון אוטומטי של הווב ותיקוני יציבות"},
+                    {"language": "en-US", "text": "Internal 1.8.13: automatic web updates and stability fixes"},
                 ],
             }
         ]
