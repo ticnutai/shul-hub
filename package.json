@@ -35,7 +35,6 @@
     "@capacitor/local-notifications": "^8.0.2",
     "@capacitor/share": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
-    "@capacitor/status-bar": "^8.0.1",
     "@hebcal/core": "^6.0.6",
     "@hebcal/leyning": "^9.5.4",
     "@hookform/resolvers": "^3.10.0",

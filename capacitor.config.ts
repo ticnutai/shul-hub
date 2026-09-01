@@ -12,15 +12,12 @@ const config: CapacitorConfig = {
       showSpinner: false,
       androidScaleType: 'CENTER_CROP',
     },
-    StatusBar: {
-      style: 'DARK',
-      backgroundColor: '#1e3a5f',
-    },
-    // Capacitor 8: SystemBars replaces StatusBar for edge-to-edge apps.
-    // insetsHandling: "css" → auto-injects --safe-area-inset-* vars in WebView.
+    // Capacitor 8 SystemBars is the edge-to-edge replacement for the legacy
+    // StatusBar plugin. It injects reliable safe-area variables on Android.
     SystemBars: {
       insetsHandling: 'css',
       style: 'DARK',
+      hidden: false,
     },
     Keyboard: {
       resize: 'body',

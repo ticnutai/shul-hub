@@ -2,9 +2,8 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { torahDB } from "./utils/torahDB";
-import { Capacitor } from "@capacitor/core";
+import { Capacitor, SystemBars, SystemBarsStyle } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
-import { StatusBar, Style } from "@capacitor/status-bar";
 import { installStartupDiagnostics } from "./utils/startupDiagnostics";
 import { installLayoutShiftTracker } from "./utils/renderDebug";
 
@@ -50,8 +49,9 @@ document.documentElement.dataset.appBuild = __APP_BUILD_ID__;
 
 // Initialize Capacitor plugins on native platforms
 if (Capacitor.isNativePlatform()) {
-  StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
-  StatusBar.setBackgroundColor({ color: '#1e3a5f' }).catch(() => {});
+  // Capacitor 8 SystemBars is designed for Android's modern edge-to-edge
+  // behavior and avoids the deprecated Window status-bar color APIs.
+  SystemBars.setStyle({ style: SystemBarsStyle.Dark }).catch(() => {});
   SplashScreen.hide().catch(() => {});
 }
 
