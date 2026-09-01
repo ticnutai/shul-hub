@@ -62,6 +62,12 @@ export default defineConfig(({ mode }) => ({
         ]
       },
       workbox: {
+        // Activate a new application shell immediately and remove only
+        // obsolete Workbox precaches. User settings in localStorage and
+        // IndexedDB are deliberately left untouched.
+        cleanupOutdatedCaches: true,
+        clientsClaim: true,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         globIgnores: ['**/assets/data-*.js'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
@@ -81,19 +87,10 @@ export default defineConfig(({ mode }) => ({
                 maxAgeSeconds: 60 * 60 * 24 * 30
               }
             }
-          },
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24
-              }
-            }
           }
+          // Supabase is intentionally not cached by the service worker. Live
+          // announcements, prayer times and admin changes must reach mobile
+          // clients immediately.
         ]
       }
     })
@@ -120,5 +117,6 @@ export default defineConfig(({ mode }) => ({
   },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __APP_BUILD_ID__: JSON.stringify(process.env.VITE_PWA_BUILD_ID || pkg.version),
   },
 }));

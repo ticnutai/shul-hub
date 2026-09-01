@@ -33,6 +33,21 @@ if (import.meta.env.DEV && "serviceWorker" in navigator) {
   }).catch(() => {});
 }
 
+// A regular refresh may still be answered by the currently active PWA
+// worker. Reload exactly once when a newer worker takes control so the page
+// starts with its new HTML/JS shell. A first-time install needs no reload.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  const hadControllerAtStartup = Boolean(navigator.serviceWorker.controller);
+  let reloadingForNewWorker = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadControllerAtStartup || reloadingForNewWorker) return;
+    reloadingForNewWorker = true;
+    window.location.reload();
+  });
+}
+
+document.documentElement.dataset.appBuild = __APP_BUILD_ID__;
+
 // Initialize Capacitor plugins on native platforms
 if (Capacitor.isNativePlatform()) {
   StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
