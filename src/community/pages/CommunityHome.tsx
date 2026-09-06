@@ -121,6 +121,16 @@ export function CommunityHome() {
     return sections.filter((w) => w.visible).map((w) => w.key);
   }, [widgets]);
 
+  const sectionWidths = useMemo(
+    () =>
+      new Map(
+        widgets
+          .filter((widget) => widget.kind === "section")
+          .map((widget) => [widget.key, widget.layout_width === "half" ? "half" : "full"]),
+      ),
+    [widgets],
+  );
+
   const shownZmanim = useMemo<SolarEvent[]>(() => {
     const items = widgets.filter((w) => w.kind === "zman");
     if (items.length === 0) return SHOWN_ZMANIM;
@@ -206,6 +216,14 @@ export function CommunityHome() {
 
       <section className="hero-surface">
         <div className="mx-auto max-w-5xl px-4 py-14 text-center sm:py-16">
+          {settings?.home_header_variant === "karovim_logo" && (
+            <img
+              data-testid="community-karovim-hero-logo"
+              src="/karovim-logo-v1.png"
+              alt="קרובים"
+              className="mx-auto mb-6 h-36 w-auto max-w-full object-contain sm:h-52 lg:h-60"
+            />
+          )}
           <p className="text-sm text-gold sm:text-base">
             {settings?.id ? (
               <InlineEdit
@@ -255,12 +273,12 @@ export function CommunityHome() {
         </div>
       </section>
 
-      <main className="mx-auto max-w-5xl px-4 py-10 text-right sm:py-12">
-        {sectionOrder.map((key, index) => {
-          const spacing = index === 0 ? "" : "mt-12";
+      <main className="mx-auto grid max-w-5xl grid-cols-1 gap-x-6 gap-y-12 px-4 py-10 text-right sm:grid-cols-2 sm:py-12">
+        {sectionOrder.map((key) => {
+          const sectionClass = sectionWidths.get(key) === "half" ? "sm:col-span-1" : "sm:col-span-2";
           if (key === "minyanim") {
             return (
-              <section id="minyanim" key={key} className={`${spacing} scroll-mt-48 sm:scroll-mt-40`} data-home-widget={key}>
+              <section id="minyanim" key={key} className={`${sectionClass} scroll-mt-48 sm:scroll-mt-40`} data-home-widget={key} data-widget-width={sectionWidths.get(key) ?? "full"}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="text-2xl font-semibold">זמני התפילות</h2>
                   <div
@@ -392,7 +410,7 @@ export function CommunityHome() {
           if (key === "zmanim") {
             if (shownZmanim.length === 0) return null;
             return (
-              <section key={key} className={spacing} data-home-widget={key}>
+              <section key={key} className={sectionClass} data-home-widget={key} data-widget-width={sectionWidths.get(key) ?? "full"}>
                 <h2 className="text-2xl font-semibold">זמני היום</h2>
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {shownZmanim.map((z) => (
@@ -410,7 +428,7 @@ export function CommunityHome() {
 
           if (key === "announcements") {
             return (
-              <section key={key} className={spacing} data-home-widget={key}>
+              <section key={key} className={sectionClass} data-home-widget={key} data-widget-width={sectionWidths.get(key) ?? "full"}>
                 <div className="flex items-center justify-between">
                   <h2 className="text-2xl font-semibold">מודעות לציבור</h2>
                   <Button asChild variant="ghost" size="sm">
@@ -424,7 +442,13 @@ export function CommunityHome() {
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {homeAnnouncements.map((a) => (
-                    <AnnouncementCard key={a.id} announcement={a} />
+                    <div
+                      key={a.id}
+                      className={a.home_width === "full" ? "sm:col-span-2" : "sm:col-span-1"}
+                      data-announcement-home-width={a.home_width === "full" ? "full" : "half"}
+                    >
+                      <AnnouncementCard announcement={a} />
+                    </div>
                   ))}
                   {homeAnnouncements.length === 0 && (
                     <p className="card-elev p-5 text-sm text-muted-foreground">
@@ -438,7 +462,7 @@ export function CommunityHome() {
 
           if (key === "shiurim") {
             return (
-              <section key={key} className={spacing} data-home-widget={key}>
+              <section key={key} className={sectionClass} data-home-widget={key} data-widget-width={sectionWidths.get(key) ?? "full"}>
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-2xl font-semibold">שיעורי תורה</h2>
                   <Button asChild variant="ghost" size="sm">
@@ -476,7 +500,7 @@ export function CommunityHome() {
 
           if (key === "chavrutot") {
             return (
-              <section key={key} className={spacing} data-home-widget={key}>
+              <section key={key} className={sectionClass} data-home-widget={key} data-widget-width={sectionWidths.get(key) ?? "full"}>
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="text-2xl font-semibold">חברותות</h2>
                   <Button asChild variant="ghost" size="sm">
@@ -519,7 +543,7 @@ export function CommunityHome() {
 
           if (key === "contact") {
             return (
-              <section key={key} className={spacing} data-home-widget={key}>
+              <section key={key} className={sectionClass} data-home-widget={key} data-widget-width={sectionWidths.get(key) ?? "full"}>
                 <div className="card-elev flex flex-col items-start gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="flex items-center gap-2">

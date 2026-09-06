@@ -3,12 +3,7 @@ import type { Announcement } from "@community/lib/data";
 import { InlineEdit } from "@community/components/InlineEdit";
 import { useEditMode } from "@community/lib/edit-mode";
 import { announcementCardStyle, normalizeAnnouncementStyle } from "@community/lib/announcement-style";
-
-export const ANNOUNCEMENT_KINDS = [
-  { id: "mazal_tov", label: "מזל טוב" },
-  { id: "general", label: "הודעה כללית" },
-  { id: "memorial", label: "אבל / אזכרה" },
-] as const;
+import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
 
 export function AnnouncementCard({ announcement }: { announcement: Announcement }) {
   const { editMode } = useEditMode();
@@ -24,10 +19,20 @@ export function AnnouncementCard({ announcement }: { announcement: Announcement 
 
   return (
     <article
-      className="card-elev border p-4 transition-shadow"
+      className="card-elev h-full overflow-hidden border transition-shadow"
       style={announcementCardStyle(announcement.style)}
       data-announcement-preset={presentation.preset}
     >
+      {announcement.image_url && (
+        <img
+          src={announcement.image_url}
+          alt={`תמונה עבור ${announcement.title}`}
+          className="aspect-[16/9] w-full object-cover"
+          loading="lazy"
+          data-testid="announcement-image"
+        />
+      )}
+      <div className="p-4">
       <div className={`flex items-center gap-2 ${presentation.align === "center" ? "justify-center" : ""}`}>
         <span
           className="grid size-8 place-items-center rounded-full"
@@ -64,6 +69,7 @@ export function AnnouncementCard({ announcement }: { announcement: Announcement 
           />
         </p>
       )}
+      </div>
     </article>
   );
 }

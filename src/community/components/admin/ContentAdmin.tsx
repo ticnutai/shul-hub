@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderPlus, GripVertical, Palette, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { FolderPlus, GripVertical, ImagePlus, Loader2, Palette, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ANNOUNCEMENT_KINDS } from "@community/components/AnnouncementCard";
+import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
 import {
   DAYS_HE,
   useAnnouncements,
@@ -179,6 +179,8 @@ export function AnnouncementsAdmin() {
   const [ordered, setOrdered] = useState<Announcement[]>([]);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [originalImagePath, setOriginalImagePath] = useState<string | null>(null);
   const orderedRef = useRef<Announcement[]>([]);
   const draggedIndexRef = useRef<number | null>(null);
 
@@ -259,22 +261,89 @@ export function AnnouncementsAdmin() {
     document.addEventListener("pointercancel", cancel);
   }
 
+  function editAnnouncement(announcement: Announcement) {
+    setOriginalImagePath(announcement.image_path);
+    setDraft(announcement);
+  }
+
+  function createAnnouncement() {
+    setOriginalImagePath(null);
+    setDraft({
+      kind: "mazal_tov",
+      title: "",
+      body: "",
+      pinned: false,
+      notification_enabled: false,
+      show_on_home: true,
+      home_width: "half",
+      image_url: null,
+      image_path: null,
+      sort_order: (ordered.length + 1) * 10,
+      style: presetAnnouncementStyle("classic") as Announcement["style"],
+    });
+  }
+
+  async function discardDraft() {
+    if (draft?.image_path && draft.image_path !== originalImagePath) {
+      await supabase.storage.from("community-media").remove([draft.image_path]);
+    }
+    setDraft(null);
+    setOriginalImagePath(null);
+  }
+
+  async function uploadAnnouncementImage(file: File) {
+    if (!draft) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("אפשר להעלות קובץ תמונה בלבד");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("התמונה גדולה מדי. הגודל המרבי הוא 5MB");
+      return;
+    }
+    setUploadingImage(true);
+    const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const path = `announcements/${crypto.randomUUID()}.${extension}`;
+    const { error } = await supabase.storage
+      .from("community-media")
+      .upload(path, file, { cacheControl: "3600", upsert: false });
+    if (error) {
+      setUploadingImage(false);
+      toast.error(error.message || "העלאת התמונה נכשלה");
+      return;
+    }
+    if (draft.image_path && draft.image_path !== originalImagePath) {
+      await supabase.storage.from("community-media").remove([draft.image_path]);
+    }
+    const { data: publicImage } = supabase.storage.from("community-media").getPublicUrl(path);
+    setDraft({ ...draft, image_path: path, image_url: publicImage.publicUrl });
+    setUploadingImage(false);
+    toast.success("התמונה הועלתה. לחצו שמירה כדי לפרסם אותה");
+  }
+
+  async function removeDraftImage() {
+    if (!draft) return;
+    if (draft.image_path && draft.image_path !== originalImagePath) {
+      await supabase.storage.from("community-media").remove([draft.image_path]);
+    }
+    setDraft({ ...draft, image_url: null, image_path: null });
+  }
+
+  function deleteAnnouncement(announcement: Announcement) {
+    remove.mutate(announcement.id, {
+      onSuccess: () => {
+        if (announcement.image_path) {
+          void supabase.storage.from("community-media").remove([announcement.image_path]);
+        }
+      },
+    });
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button
-          onClick={() =>
-            setDraft({
-              kind: "mazal_tov",
-              title: "",
-              body: "",
-              pinned: false,
-              notification_enabled: false,
-              show_on_home: true,
-              sort_order: (ordered.length + 1) * 10,
-              style: presetAnnouncementStyle("classic") as Announcement["style"],
-            })
-          }
+          onClick={createAnnouncement}
         >
           <Plus className="size-4" /> מודעה חדשה
         </Button>
@@ -320,10 +389,10 @@ export function AnnouncementsAdmin() {
                 {` · ${announcement.show_on_home ? "מופיעה גם בדף הבית" : "רק בטאב מודעות"}`}
               </p>
             </div>
-            <Button size="icon" variant="ghost" onClick={() => setDraft(announcement)} aria-label="עריכה">
+            <Button size="icon" variant="ghost" onClick={() => editAnnouncement(announcement)} aria-label="עריכה">
               <Pencil className="size-4" />
             </Button>
-            <Button size="icon" variant="ghost" onClick={() => remove.mutate(announcement.id)} aria-label="מחיקה">
+            <Button size="icon" variant="ghost" onClick={() => deleteAnnouncement(announcement)} aria-label="מחיקה">
               <Trash2 className="size-4 text-destructive" />
             </Button>
           </div>
@@ -337,7 +406,15 @@ export function AnnouncementsAdmin() {
             e.preventDefault();
             save.mutate(
               { ...draft, expires_at: draft.expires_at || null },
-              { onSuccess: () => setDraft(null) },
+              {
+                onSuccess: () => {
+                  if (originalImagePath && originalImagePath !== draft.image_path) {
+                    void supabase.storage.from("community-media").remove([originalImagePath]);
+                  }
+                  setDraft(null);
+                  setOriginalImagePath(null);
+                },
+              },
             );
           }}
         >
@@ -379,6 +456,45 @@ export function AnnouncementsAdmin() {
               placeholder="מזל טוב למשפחת…"
             />
           </div>
+          <section className="space-y-3 rounded-xl border border-border p-4" data-testid="announcement-image-editor">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold">תמונה למודעה</h3>
+                <p className="text-xs text-muted-foreground">JPG, PNG, WebP או GIF, עד 5MB.</p>
+              </div>
+              <Label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                {uploadingImage ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
+                {draft.image_url ? "החלפת תמונה" : "הוספת תמונה"}
+                <Input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  disabled={uploadingImage}
+                  data-testid="announcement-image-input"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) void uploadAnnouncementImage(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </Label>
+            </div>
+            {draft.image_url && (
+              <div className="relative overflow-hidden rounded-xl border bg-muted" data-testid="announcement-image-preview">
+                <img src={draft.image_url} alt="תצוגה מקדימה של תמונת המודעה" className="max-h-72 w-full object-contain" />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  className="absolute left-2 top-2"
+                  aria-label="הסרת תמונת המודעה"
+                  onClick={() => void removeDraftImage()}
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            )}
+          </section>
           <AnnouncementDesignEditor
             value={draft.style}
             title={draft.title ?? ""}
@@ -409,6 +525,24 @@ export function AnnouncementsAdmin() {
             />
             <Label htmlFor="announcement-show-on-home">להציג את המודעה גם בווידג׳ט בדף הבית</Label>
           </div>
+          {draft.show_on_home && (
+            <div className="space-y-2 rounded-xl border border-border p-4">
+              <Label>רוחב המודעה בדף הבית</Label>
+              <Select
+                value={draft.home_width === "full" ? "full" : "half"}
+                onValueChange={(homeWidth) => setDraft({ ...draft, home_width: homeWidth })}
+              >
+                <SelectTrigger aria-label="רוחב המודעה בדף הבית" data-testid="announcement-home-width">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">רוחב מלא — מודעה אחת בשורה</SelectItem>
+                  <SelectItem value="half">חצי שורה — שתי מודעות זו לצד זו</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">במובייל המודעה תמיד תיפרס לרוחב המסך לקריאות טובה.</p>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <Switch
               id="announcement-notification"
@@ -418,8 +552,11 @@ export function AnnouncementsAdmin() {
             <Label htmlFor="announcement-notification">לשלוח התראה למשתמשים שבחרו מודעות</Label>
           </div>
           <div className="flex gap-2">
-            <Button type="submit">שמירה</Button>
-            <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
+            <Button type="submit" disabled={uploadingImage || save.isPending}>
+              {save.isPending && <Loader2 className="size-4 animate-spin" />}
+              {save.isPending ? "שומר…" : "שמירה"}
+            </Button>
+            <Button type="button" variant="ghost" disabled={uploadingImage} onClick={() => void discardDraft()}>
               ביטול
             </Button>
           </div>

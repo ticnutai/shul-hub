@@ -1,9 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { GripVertical, Eye, EyeOff, Smartphone } from "lucide-react";
+import { Columns2, GripVertical, Eye, EyeOff, PanelTop, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@community/integrations/supabase/client";
 import { useHomeWidgets, type HomeWidget } from "@community/lib/data";
 
@@ -72,8 +79,9 @@ function WidgetList({
           <li
             key={item.id}
             data-widget-index={index}
+            data-widget-key={item.key}
             className={
-              "flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-opacity " +
+              "flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-opacity " +
               (dragIndex === index ? "opacity-60" : "")
             }
           >
@@ -89,6 +97,33 @@ function WidgetList({
               <GripVertical className="size-5" />
             </button>
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.label}</span>
+            {item.kind === "section" && (
+              <Select
+                value={item.layout_width === "half" ? "half" : "full"}
+                onValueChange={(layoutWidth) =>
+                  onChange(
+                    items.map((widget) =>
+                      widget.id === item.id ? { ...widget, layout_width: layoutWidth } : widget,
+                    ),
+                  )
+                }
+              >
+                <SelectTrigger
+                  className="order-last h-9 w-full sm:order-none sm:w-[8.75rem]"
+                  aria-label={`רוחב ${item.label} בדף הבית`}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full">
+                    <span className="flex items-center gap-2"><PanelTop className="size-4" /> רוחב מלא</span>
+                  </SelectItem>
+                  <SelectItem value="half">
+                    <span className="flex items-center gap-2"><Columns2 className="size-4" /> חצי שורה</span>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            )}
             {item.visible ? (
               <Eye className="size-4 text-muted-foreground" />
             ) : (
@@ -129,6 +164,7 @@ export function WidgetsAdmin() {
       label: widget.label,
       kind: widget.kind,
       visible: widget.visible,
+      layout_width: widget.layout_width === "half" ? "half" : "full",
       sort_order: (index + 1) * 10,
     }));
     const { error } = await supabase.from("home_widgets").upsert(rows, { onConflict: "id" });
@@ -147,7 +183,7 @@ export function WidgetsAdmin() {
     <div className="space-y-4">
       <WidgetList
         title="מקטעי דף הבית"
-        hint="גררו מהידית כדי לשנות סדר, וכבו כדי להסתיר מכל המתפללים."
+        hint="גררו לשינוי סדר, בחרו רוחב מלא או חצי שורה, וכבו כדי להסתיר מכל המתפללים."
         items={sections}
         onChange={setSections}
       />

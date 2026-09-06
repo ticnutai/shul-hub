@@ -44,6 +44,9 @@ export type Database = {
           created_at: string;
           expires_at: string | null;
           id: string;
+          home_width: string;
+          image_path: string | null;
+          image_url: string | null;
           kind: string;
           notification_enabled: boolean;
           pinned: boolean;
@@ -58,6 +61,9 @@ export type Database = {
           created_at?: string;
           expires_at?: string | null;
           id?: string;
+          home_width?: string;
+          image_path?: string | null;
+          image_url?: string | null;
           kind?: string;
           notification_enabled?: boolean;
           pinned?: boolean;
@@ -72,6 +78,9 @@ export type Database = {
           created_at?: string;
           expires_at?: string | null;
           id?: string;
+          home_width?: string;
+          image_path?: string | null;
+          image_url?: string | null;
           kind?: string;
           notification_enabled?: boolean;
           pinned?: boolean;
@@ -183,6 +192,7 @@ export type Database = {
           key: string;
           kind: string;
           label: string;
+          layout_width: string;
           sort_order: number;
           updated_at: string;
           visible: boolean;
@@ -193,6 +203,7 @@ export type Database = {
           key: string;
           kind?: string;
           label: string;
+          layout_width?: string;
           sort_order?: number;
           updated_at?: string;
           visible?: boolean;
@@ -203,6 +214,7 @@ export type Database = {
           key?: string;
           kind?: string;
           label?: string;
+          layout_width?: string;
           sort_order?: number;
           updated_at?: string;
           visible?: boolean;

@@ -23,8 +23,8 @@ export function useSaveRow(table: TableName, queryKey: string) {
         : await supabase.from(table).insert(row as never);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [queryKey] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: [queryKey] });
       toast.success("נשמר בהצלחה");
     },
     onError: (e: Error) => toast.error(e.message || "השמירה נכשלה"),
@@ -38,8 +38,8 @@ export function useDeleteRow(table: TableName, queryKey: string) {
       const { error } = await supabase.from(table).delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [queryKey] });
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: [queryKey] });
       toast.success("נמחק");
     },
     onError: (e: Error) => toast.error(e.message || "המחיקה נכשלה"),

@@ -31,15 +31,26 @@ export function GlobalAppHeader() {
       className="community-header sticky top-0 z-50 border-b border-sidebar-primary/40 bg-sidebar text-sidebar-foreground shadow-lg"
       style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}
     >
-      <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-5">
-        <span className="shrink-0 text-sm font-bold text-amber-400">ב״ה</span>
-        <Link to="/community" className="min-w-0 flex-1 text-center sm:text-right">
+      <div
+        className={cn(
+          "mx-auto max-w-7xl items-center px-3 py-3 sm:px-5",
+          showKarovimLogo ? "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : "flex gap-3",
+        )}
+      >
+        <span className={cn("shrink-0 text-sm font-bold text-amber-400", showKarovimLogo && "justify-self-start")}>ב״ה</span>
+        <Link
+          to="/community"
+          className={cn(
+            "min-w-0 text-center",
+            showKarovimLogo ? "justify-self-center" : "flex-1 sm:text-right",
+          )}
+        >
           {showKarovimLogo ? (
             <img
               data-testid="community-karovim-logo"
               src="/karovim-logo-v1.png"
               alt="קרובים"
-              className="mx-auto h-12 w-auto max-w-[12rem] object-contain sm:mx-0 sm:h-14"
+              className="mx-auto h-14 w-auto max-w-[13rem] object-contain sm:h-20 sm:max-w-[16rem] lg:h-24 lg:max-w-[18rem]"
             />
           ) : (
             <>
@@ -48,7 +59,7 @@ export function GlobalAppHeader() {
             </>
           )}
         </Link>
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className={cn("flex shrink-0 items-center gap-0.5", showKarovimLogo && "justify-self-end")}>
           <Link
             to={user && !user.is_anonymous ? "/profile" : "/auth"}
             aria-label={user && !user.is_anonymous ? "כניסה לאזור האישי" : "כניסה או הרשמה למערכת"}
