@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
   tzeit_offset_minutes integer NOT NULL DEFAULT 20,
   phone text NOT NULL DEFAULT '',
   theme text NOT NULL DEFAULT 'navy',
+  home_header_variant text NOT NULL DEFAULT 'standard' CHECK (home_header_variant IN ('standard', 'karovim_logo')),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -292,6 +293,7 @@ ALTER TABLE public.minyanim ADD COLUMN IF NOT EXISTS reminder_minutes integer NO
 ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS notification_enabled boolean NOT NULL DEFAULT false;
 ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS sort_order integer NOT NULL DEFAULT 100000;
 ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS show_on_home boolean NOT NULL DEFAULT true;
+ALTER TABLE public.announcements ADD COLUMN IF NOT EXISTS style jsonb NOT NULL DEFAULT '{}'::jsonb;
 ALTER TABLE public.chavrutot ADD COLUMN IF NOT EXISTS notification_enabled boolean NOT NULL DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS public.notification_preferences (

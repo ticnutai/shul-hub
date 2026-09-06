@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 import { assertShulHubSupabase } from './project-boundary';
+import { authSessionStorage } from '@/lib/authPreferences';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
@@ -13,7 +14,7 @@ assertShulHubSupabase(SUPABASE_URL);
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: authSessionStorage,
     persistSession: true,
     autoRefreshToken: true,
   }

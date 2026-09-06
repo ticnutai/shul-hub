@@ -302,7 +302,7 @@ test("the footer theme shortcut opens the shared theme picker and new presets pe
   await themesButton.scrollIntoViewIfNeeded();
   await themesButton.click();
 
-  const themePanel = page.locator('[data-theme-panel="chumash"]');
+  const themePanel = page.locator('[data-theme-panel="chumash"]:visible').first();
   await expect(themePanel).toBeVisible();
   await expect(themePanel.getByText("פנינה וזהב", { exact: true })).toBeVisible();
   await expect(themePanel.getByText("קלף ונייבי", { exact: true })).toBeVisible();
@@ -355,7 +355,7 @@ test("authenticated administrator can open every management section", async ({ p
   page.on("pageerror", error => pageErrors.push(error.message));
   await page.goto("/auth");
   await page.getByLabel("אימייל").fill(email!);
-  await page.getByLabel("סיסמה").fill(password!);
+  await page.getByLabel("סיסמה", { exact: true }).fill(password!);
   await page.getByRole("button", { name: "התחבר", exact: true }).click();
   await page.waitForURL(url => !url.pathname.endsWith("/auth"));
   const storedSession = await page.evaluate(() => {
@@ -400,7 +400,8 @@ test("authenticated administrator can open every management section", async ({ p
   await expect(liveDesignButton).toBeVisible();
 
   await themeManagerButton.click();
-  const themePanel = page.locator('[data-theme-panel="chumash"]');
+  const visibleAdminThemePanels = page.locator('[data-theme-panel="chumash"]:visible');
+  const themePanel = visibleAdminThemePanels.first();
   await expect(themePanel).toBeVisible();
   await expect(themePanel.getByText("נייבי וזהב", { exact: true })).toBeVisible();
   if (isMobile) {
@@ -422,7 +423,9 @@ test("authenticated administrator can open every management section", async ({ p
     expect(Math.abs(panelMetrics.height - panelMetrics.viewportHeight)).toBeLessThanOrEqual(1);
     expect(panelMetrics.overflow).toBeLessThanOrEqual(1);
   }
-  await themePanel.getByTitle("סגור").click();
+  await visibleAdminThemePanels.evaluateAll((panels) => {
+    panels.forEach((panel) => (panel.querySelector('[title="סגור"]') as HTMLButtonElement | null)?.click());
+  });
 
   await liveDesignButton.click();
   await expect(page).toHaveURL(/\/community\?designMode=1/);

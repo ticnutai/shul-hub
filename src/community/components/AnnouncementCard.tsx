@@ -2,6 +2,7 @@ import { PartyPopper, Megaphone, Flower2 } from "lucide-react";
 import type { Announcement } from "@community/lib/data";
 import { InlineEdit } from "@community/components/InlineEdit";
 import { useEditMode } from "@community/lib/edit-mode";
+import { announcementCardStyle, normalizeAnnouncementStyle } from "@community/lib/announcement-style";
 
 export const ANNOUNCEMENT_KINDS = [
   { id: "mazal_tov", label: "מזל טוב" },
@@ -11,6 +12,7 @@ export const ANNOUNCEMENT_KINDS = [
 
 export function AnnouncementCard({ announcement }: { announcement: Announcement }) {
   const { editMode } = useEditMode();
+  const presentation = normalizeAnnouncementStyle(announcement.style);
   const Icon =
     announcement.kind === "mazal_tov"
       ? PartyPopper
@@ -21,19 +23,26 @@ export function AnnouncementCard({ announcement }: { announcement: Announcement 
   const kindLabel = ANNOUNCEMENT_KINDS.find((k) => k.id === announcement.kind)?.label ?? "הודעה";
 
   return (
-    <article className="card-elev p-4">
-      <div className="flex items-center gap-2">
-        <span className="grid size-8 place-items-center rounded-full bg-accent text-accent-foreground">
+    <article
+      className="card-elev border p-4 transition-shadow"
+      style={announcementCardStyle(announcement.style)}
+      data-announcement-preset={presentation.preset}
+    >
+      <div className={`flex items-center gap-2 ${presentation.align === "center" ? "justify-center" : ""}`}>
+        <span
+          className="grid size-8 place-items-center rounded-full"
+          style={{ backgroundColor: `${presentation.accent}22`, color: presentation.accent }}
+        >
           <Icon className="size-4" />
         </span>
-        <span className="text-xs font-medium text-muted-foreground">{kindLabel}</span>
+        <span className="text-xs font-medium opacity-70">{kindLabel}</span>
         {announcement.pinned && (
           <span className="rounded-full bg-gold px-2 py-0.5 text-[11px] font-medium text-gold-foreground">
             מוצמד
           </span>
         )}
       </div>
-      <h3 className="mt-3 text-lg font-semibold">
+      <h3 className="mt-3 font-semibold" style={{ fontSize: presentation.titleSize }}>
         <InlineEdit
           table="announcements"
           id={announcement.id}
@@ -43,7 +52,7 @@ export function AnnouncementCard({ announcement }: { announcement: Announcement 
         />
       </h3>
       {(announcement.body || editMode) && (
-        <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+        <p className="mt-1 whitespace-pre-line opacity-75" style={{ fontSize: presentation.bodySize }}>
           <InlineEdit
             table="announcements"
             id={announcement.id}

@@ -1,9 +1,10 @@
 import { Link, NavLink } from "react-router-dom";
-import { BookOpen, House, Megaphone, MessageCircle, MessageSquareText, Palette, Settings, Users } from "lucide-react";
+import { BookOpen, House, LogIn, Megaphone, MessageCircle, MessageSquareText, Palette, Settings, UserRoundCheck, Users } from "lucide-react";
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
 import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
+import { useAuth } from "@/contexts/AuthContext";
 
 const communityLinks = [
   { to: "/community/shiurim", label: "שיעורים", icon: BookOpen },
@@ -21,6 +22,8 @@ const navItemClass = (isActive: boolean) =>
 
 export function GlobalAppHeader() {
   const { data: settings } = useSettings();
+  const { user, loading } = useAuth();
+  const showKarovimLogo = settings?.home_header_variant === "karovim_logo";
   return (
     <header
       data-testid="global-app-header"
@@ -31,10 +34,33 @@ export function GlobalAppHeader() {
       <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 sm:px-5">
         <span className="shrink-0 text-sm font-bold text-amber-400">ב״ה</span>
         <Link to="/community" className="min-w-0 flex-1 text-center sm:text-right">
-          <strong data-testid="community-site-title" className="block whitespace-normal text-base font-bold leading-tight sm:text-xl">{settings?.name ?? "בית הכנסת אושר של יהודי"}</strong>
-          <span className="block truncate text-xs text-white/65 sm:text-sm">{settings?.address ?? "מצדה 9, בסר 3, קומה 34, בני ברק"}</span>
+          {showKarovimLogo ? (
+            <img
+              data-testid="community-karovim-logo"
+              src="/karovim-logo-v1.png"
+              alt="קרובים"
+              className="mx-auto h-12 w-auto max-w-[12rem] object-contain sm:mx-0 sm:h-14"
+            />
+          ) : (
+            <>
+              <strong data-testid="community-site-title" className="block whitespace-normal text-base font-bold leading-tight sm:text-xl">{settings?.name ?? "בית הכנסת אושר של יהודי"}</strong>
+              <span data-testid="community-site-address" className="block truncate text-xs text-white/65 sm:text-sm">{settings?.address ?? "מצדה 9, בסר 3, קומה 34, בני ברק"}</span>
+            </>
+          )}
         </Link>
         <div className="flex shrink-0 items-center gap-0.5">
+          <Link
+            to={user && !user.is_anonymous ? "/profile" : "/auth"}
+            aria-label={user && !user.is_anonymous ? "כניסה לאזור האישי" : "כניסה או הרשמה למערכת"}
+            title={user && !user.is_anonymous ? "האזור האישי" : "כניסה או הרשמה"}
+            data-testid="account-entry"
+            className="rounded-full p-2 text-amber-300 transition hover:bg-white/10 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            {user && !user.is_anonymous
+              ? <UserRoundCheck className="size-5" aria-hidden="true" />
+              : <LogIn className="size-5" aria-hidden="true" />}
+            <span className="sr-only">{loading ? "בודק חיבור" : "כניסה למערכת"}</span>
+          </Link>
           <Link to="/community/contact" aria-label="הודעה למנהל" title="הודעה למנהל" className="rounded-full p-2 text-white/75 transition hover:bg-white/10 hover:text-white">
             <MessageSquareText className="size-5" />
           </Link>

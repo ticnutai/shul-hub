@@ -81,6 +81,32 @@ export function SettingsAdmin() {
               {field("candle_offset_minutes", "הדלקת נרות — דקות לפני השקיעה", "number")}
               {field("tzeit_offset_minutes", "צאת הכוכבים — דקות אחרי השקיעה", "number")}
             </div>
+            <fieldset className="space-y-3 rounded-2xl border border-border p-4">
+              <legend className="px-2 font-semibold">תצוגת הכותרת העליונה</legend>
+              <p className="text-xs text-muted-foreground">
+                אפשר להציג את שם בית הכנסת והכתובת, או את לוגו קרובים ללא שורת הכתובת.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="בחירת תצוגת כותרת">
+                <button
+                  type="button"
+                  aria-pressed={(form.home_header_variant ?? "standard") === "standard"}
+                  className={`rounded-xl border p-3 text-right transition ${(form.home_header_variant ?? "standard") === "standard" ? "border-amber-500 ring-2 ring-amber-200" : "border-border"}`}
+                  onClick={() => setForm({ ...form, home_header_variant: "standard" })}
+                >
+                  <span className="block font-semibold">שם וכתובת</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">התצוגה הקיימת</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={form.home_header_variant === "karovim_logo"}
+                  className={`rounded-xl border p-3 text-right transition ${form.home_header_variant === "karovim_logo" ? "border-amber-500 ring-2 ring-amber-200" : "border-border"}`}
+                  onClick={() => setForm({ ...form, home_header_variant: "karovim_logo" })}
+                >
+                  <img src="/karovim-logo-v1.png" alt="קרובים" className="mx-auto h-16 w-auto object-contain" />
+                  <span className="mt-2 block text-center text-xs text-muted-foreground">לוגו בלבד, ללא כתובת</span>
+                </button>
+              </div>
+            </fieldset>
             <p className="text-xs text-muted-foreground">
               קווי האורך והרוחב קובעים את חישוב זמני היום. ברירת המחדל היא בני ברק (32.0853, 34.8338).
             </p>

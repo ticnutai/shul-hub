@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderPlus, GripVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { FolderPlus, GripVertical, Palette, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,14 @@ import {
 } from "@community/lib/data";
 import { useDeleteRow, useSaveRow } from "@community/lib/admin";
 import { supabase } from "@community/integrations/supabase/client";
+import {
+  ANNOUNCEMENT_STYLE_PRESETS,
+  announcementCardStyle,
+  normalizeAnnouncementStyle,
+  presetAnnouncementStyle,
+  type AnnouncementPreset,
+  type AnnouncementStyle,
+} from "@community/lib/announcement-style";
 
 function RowShell({
   title,
@@ -61,6 +69,103 @@ function reorder<T>(items: T[], from: number, to: number) {
   if (!moved) return items;
   next.splice(to, 0, moved);
   return next;
+}
+
+function AnnouncementDesignEditor({
+  value,
+  title,
+  body,
+  onChange,
+}: {
+  value: unknown;
+  title: string;
+  body: string;
+  onChange: (style: AnnouncementStyle) => void;
+}) {
+  const style = normalizeAnnouncementStyle(value);
+  const set = (patch: Partial<AnnouncementStyle>) => onChange({ ...style, ...patch });
+
+  return (
+    <section className="space-y-4 rounded-2xl border border-amber-300/60 bg-amber-50/35 p-4" data-testid="announcement-design-editor">
+      <div className="flex items-center justify-between gap-3">
+        <Button type="button" size="sm" variant="ghost" onClick={() => onChange(presetAnnouncementStyle("classic"))}>
+          <RotateCcw className="size-4" /> איפוס
+        </Button>
+        <div className="text-right">
+          <h3 className="flex items-center justify-end gap-2 font-semibold"><Palette className="size-4 text-amber-600" /> עיצוב המודעה</h3>
+          <p className="text-xs text-muted-foreground">בחרו תבנית או התאימו צבעים, טקסט ומסגרת.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5" role="group" aria-label="תבניות עיצוב מודעה">
+        {ANNOUNCEMENT_STYLE_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            type="button"
+            aria-pressed={style.preset === preset.id}
+            className={`rounded-xl border p-2 text-right transition ${style.preset === preset.id ? "border-amber-500 bg-white ring-2 ring-amber-200" : "border-border bg-white/70 hover:border-amber-300"}`}
+            onClick={() => onChange(presetAnnouncementStyle(preset.id))}
+          >
+            <span className="block text-sm font-semibold">{preset.label}</span>
+            <span className="mt-0.5 block text-[11px] leading-tight text-muted-foreground">{preset.description}</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        {([
+          ["background", "צבע רקע"],
+          ["foreground", "צבע טקסט"],
+          ["accent", "צבע הדגשה"],
+        ] as const).map(([field, label]) => (
+          <Label key={field} className="flex items-center justify-between gap-3 rounded-xl border bg-white p-2.5">
+            <span>{label}</span>
+            <Input
+              type="color"
+              aria-label={label}
+              className="h-9 w-14 cursor-pointer p-1"
+              value={style[field]}
+              onChange={(event) => set({ [field]: event.target.value, preset: style.preset as AnnouncementPreset })}
+            />
+          </Label>
+        ))}
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Label className="space-y-2">
+          <span className="flex justify-between"><span>{style.titleSize}px</span><span>גודל כותרת</span></span>
+          <Input type="range" min={16} max={34} value={style.titleSize} onChange={(event) => set({ titleSize: Number(event.target.value) })} />
+        </Label>
+        <Label className="space-y-2">
+          <span className="flex justify-between"><span>{style.bodySize}px</span><span>גודל תוכן</span></span>
+          <Input type="range" min={12} max={24} value={style.bodySize} onChange={(event) => set({ bodySize: Number(event.target.value) })} />
+        </Label>
+        <div className="space-y-2">
+          <Label>יישור טקסט</Label>
+          <Select value={style.align} onValueChange={(align: "right" | "center") => set({ align })}>
+            <SelectTrigger aria-label="יישור טקסט"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="right">לימין</SelectItem>
+              <SelectItem value="center">למרכז</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Label className="flex items-center justify-between gap-3 rounded-xl border bg-white p-3">
+          <Switch checked={style.shadow} onCheckedChange={(shadow) => set({ shadow })} />
+          <span>צל עדין לכרטיס</span>
+        </Label>
+      </div>
+
+      <div>
+        <p className="mb-2 text-sm font-medium">תצוגה מקדימה חיה</p>
+        <article className="border p-4" style={announcementCardStyle(style)} data-testid="announcement-design-preview">
+          <div className={`text-xs font-medium opacity-70 ${style.align === "center" ? "text-center" : "text-right"}`} style={{ color: style.accent }}>תצוגת מודעה</div>
+          <h4 className="mt-2 font-semibold" style={{ fontSize: style.titleSize }}>{title || "כותרת המודעה"}</h4>
+          <p className="mt-1 whitespace-pre-line opacity-75" style={{ fontSize: style.bodySize }}>{body || "כאן יוצג תוכן המודעה כפי שיראו אותו באתר."}</p>
+        </article>
+      </div>
+    </section>
+  );
 }
 
 /* ---------------- מודעות ---------------- */
@@ -167,6 +272,7 @@ export function AnnouncementsAdmin() {
               notification_enabled: false,
               show_on_home: true,
               sort_order: (ordered.length + 1) * 10,
+              style: presetAnnouncementStyle("classic") as Announcement["style"],
             })
           }
         >
@@ -273,6 +379,12 @@ export function AnnouncementsAdmin() {
               placeholder="מזל טוב למשפחת…"
             />
           </div>
+          <AnnouncementDesignEditor
+            value={draft.style}
+            title={draft.title ?? ""}
+            body={draft.body ?? ""}
+            onChange={(style) => setDraft({ ...draft, style: style as Announcement["style"] })}
+          />
           <div className="space-y-2">
             <Label>תוכן</Label>
             <Textarea

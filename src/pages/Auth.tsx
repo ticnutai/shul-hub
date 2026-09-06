@@ -10,46 +10,50 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2, Book, Eye, EyeOff } from "lucide-react";
-
-const REMEMBER_ME_KEY = "torah_remember_me";
-const AUTO_LOGIN_KEY = "torah_auto_login";
+import {
+  getAuthPersistence,
+  getRememberedEmail,
+  setAuthPersistence,
+  setRememberedEmail,
+} from "@/lib/authPreferences";
 
 export const getRememberedCredentials = () => {
-  try {
-    const stored = localStorage.getItem(REMEMBER_ME_KEY);
-    if (stored) return JSON.parse(stored) as { email: string; password: string };
-  } catch { /* ignore invalid stored credentials */ }
-  return null;
+  const email = getRememberedEmail();
+  return email ? { email } : null;
 };
 
 export const getAutoLoginEnabled = () => {
-  return localStorage.getItem(AUTO_LOGIN_KEY) === "true";
+  return getAuthPersistence();
 };
 
 export const setAutoLoginEnabled = (enabled: boolean) => {
-  localStorage.setItem(AUTO_LOGIN_KEY, enabled ? "true" : "false");
+  setAuthPersistence(enabled);
 };
 
 export const clearRememberedCredentials = () => {
-  localStorage.removeItem(REMEMBER_ME_KEY);
-  localStorage.removeItem(AUTO_LOGIN_KEY);
+  setRememberedEmail(null);
+  setAuthPersistence(false);
 };
 
 export const Auth = () => {
+  const [recoveryFromUrl] = useState(() => window.location.hash.includes("type=recovery")
+    || new URLSearchParams(window.location.search).get("type") === "recovery");
   const remembered = getRememberedCredentials();
   const [email, setEmail] = useState(remembered?.email || "");
-  const [password, setPassword] = useState(remembered?.password || "");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(!!remembered);
+  const [rememberMe, setRememberMe] = useState(getAuthPersistence());
   const [isResettingPassword, setIsResettingPassword] = useState(false);
-  const [attemptedAutoLogin, setAttemptedAutoLogin] = useState(false);
+  const [isRecovery, setIsRecovery] = useState(recoveryFromUrl);
   const navigate = useNavigate();
 
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
+    setAuthPersistence(rememberMe);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
@@ -70,31 +74,18 @@ export const Auth = () => {
   useEffect(() => {
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session && !session.user.is_anonymous) {
+      if (session && !session.user.is_anonymous && !recoveryFromUrl) {
         navigate("/community");
         return;
       }
 
-      // Auto-login if enabled and credentials are remembered
-      if (!attemptedAutoLogin && getAutoLoginEnabled() && remembered) {
-        setAttemptedAutoLogin(true);
-        setIsLoading(true);
-        supabase.auth.signInWithPassword({
-          email: remembered.email,
-          password: remembered.password,
-        }).then(({ error }) => {
-          if (!error) {
-            navigate("/community");
-          } else {
-            setIsLoading(false);
-            // Credentials invalid, clear them
-            clearRememberedCredentials();
-            setRememberMe(false);
-          }
-        });
-      }
     });
-  }, [navigate, attemptedAutoLogin]);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "PASSWORD_RECOVERY") setIsRecovery(true);
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate, recoveryFromUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,6 +93,7 @@ export const Auth = () => {
 
     try {
       if (isLogin) {
+        setAuthPersistence(rememberMe);
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
@@ -109,13 +101,7 @@ export const Auth = () => {
 
         if (error) throw error;
 
-        // Save or clear remembered credentials
-        if (rememberMe) {
-          localStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({ email, password }));
-        } else {
-          localStorage.removeItem(REMEMBER_ME_KEY);
-          localStorage.removeItem(AUTO_LOGIN_KEY);
-        }
+        setRememberedEmail(rememberMe ? email : null);
 
         toast.success("התחברת בהצלחה!");
         navigate("/community");
@@ -170,14 +156,29 @@ export const Auth = () => {
     }
   };
 
-  // Show loading while auto-login is in progress
-  if (isLoading && attemptedAutoLogin && !email) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const handlePasswordUpdate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (password.length < 8) {
+      toast.error("הסיסמה החדשה חייבת להכיל לפחות 8 תווים");
+      return;
+    }
+    if (password !== confirmPassword) {
+      toast.error("הסיסמאות אינן תואמות");
+      return;
+    }
+    setIsLoading(true);
+    const { error } = await supabase.auth.updateUser({ password });
+    setIsLoading(false);
+    if (error) {
+      toast.error(error.message || "עדכון הסיסמה נכשל");
+      return;
+    }
+    setIsRecovery(false);
+    setPassword("");
+    setConfirmPassword("");
+    toast.success("הסיסמה עודכנה בהצלחה");
+    navigate("/community");
+  };
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
@@ -187,18 +188,20 @@ export const Auth = () => {
             <Book className="h-12 w-12 text-amber-500" />
           </div>
           <CardTitle className="text-2xl text-[#1b2a4a]">
-            {isLogin ? "כניסה למערכת" : "הרשמה"}
+            {isRecovery ? "בחירת סיסמה חדשה" : isLogin ? "כניסה למערכת" : "הרשמה"}
           </CardTitle>
           <CardDescription className="text-[#1b2a4a]/70">
-            {isLogin
+            {isRecovery
+              ? "הזן סיסמה חדשה לחשבון שלך"
+              : isLogin
               ? "לכל משתמש נשמרים נתונים נפרדים. התחבר כדי לעבוד על המרחב האישי שלך."
               : "צור חשבון חדש כדי להתחיל"}
           </CardDescription>
         </CardHeader>
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={isRecovery ? handlePasswordUpdate : handleSubmit}>
           <CardContent className="space-y-4">
-            {!isLogin && (
+            {!isRecovery && !isLogin && (
               <div className="space-y-2">
                 <Label htmlFor="displayName" className="text-[#1b2a4a] font-semibold">שם תצוגה</Label>
                 <Input
@@ -212,7 +215,7 @@ export const Auth = () => {
               </div>
             )}
 
-            <div className="space-y-2">
+            {!isRecovery && <div className="space-y-2">
               <Label htmlFor="email" className="text-[#1b2a4a] font-semibold">אימייל</Label>
               <Input
                 id="email"
@@ -224,7 +227,7 @@ export const Auth = () => {
                 className="text-right border-amber-300 focus:border-amber-500 focus:ring-amber-500 text-[#1b2a4a]"
                 disabled={isLoading}
               />
-            </div>
+            </div>}
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-[#1b2a4a] font-semibold">סיסמה</Label>
@@ -245,6 +248,7 @@ export const Auth = () => {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute left-0 top-1/2 -translate-y-1/2 p-3 text-amber-400 hover:text-[#1b2a4a] transition-colors"
                   tabIndex={-1}
+                  aria-label={showPassword ? "הסתרת הסיסמה" : "הצגת הסיסמה"}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -260,7 +264,23 @@ export const Auth = () => {
               )}
             </div>
 
-            {isLogin && (
+            {isRecovery && (
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password" className="text-[#1b2a4a] font-semibold">אימות סיסמה חדשה</Label>
+                <Input
+                  id="confirm-password"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  required
+                  minLength={8}
+                  className="text-right border-amber-300 text-[#1b2a4a]"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+
+            {!isRecovery && isLogin && (
               <div className="flex items-center justify-between gap-3">
                 <button
                   type="button"
@@ -296,6 +316,8 @@ export const Auth = () => {
                   <Loader2 className="ml-2 h-4 w-4 animate-spin" />
                   {isLogin ? "מתחבר..." : "נרשם..."}
                 </>
+              ) : isRecovery ? (
+                "עדכון סיסמה"
               ) : isLogin ? (
                 "התחבר"
               ) : (
@@ -303,16 +325,16 @@ export const Auth = () => {
               )}
             </Button>
 
-            <div className="relative w-full">
+            {!isRecovery && <div className="relative w-full">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-amber-300" />
               </div>
               <div className="relative flex justify-center text-xs">
                 <span className="bg-white px-2 text-[#1b2a4a]/60">או</span>
               </div>
-            </div>
+            </div>}
 
-            <Button
+            {!isRecovery && <Button
               type="button"
               variant="outline"
               onClick={handleGoogleSignIn}
@@ -326,9 +348,9 @@ export const Auth = () => {
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83C6.71 7.31 9.14 5.38 12 5.38z"/>
               </svg>
               <span>התחברות עם גוגל</span>
-            </Button>
+            </Button>}
 
-            <div className="text-center text-sm">
+            {!isRecovery && <div className="text-center text-sm">
               <button
                 type="button"
                 onClick={() => {
@@ -342,7 +364,7 @@ export const Auth = () => {
                   ? "אין חשבון? יצירת משתמש חדש"
                   : "כבר יש לך חשבון? התחבר כאן"}
               </button>
-            </div>
+            </div>}
 
             <div className="text-center">
               <Link to="/" className="text-sm text-[#1b2a4a]/60 hover:underline">

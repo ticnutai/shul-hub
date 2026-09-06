@@ -49,6 +49,7 @@ export type Database = {
           pinned: boolean;
           show_on_home: boolean;
           sort_order: number;
+          style: Json;
           title: string;
           updated_at: string;
         };
@@ -62,6 +63,7 @@ export type Database = {
           pinned?: boolean;
           show_on_home?: boolean;
           sort_order?: number;
+          style?: Json;
           title: string;
           updated_at?: string;
         };
@@ -75,6 +77,7 @@ export type Database = {
           pinned?: boolean;
           show_on_home?: boolean;
           sort_order?: number;
+          style?: Json;
           title?: string;
           updated_at?: string;
         };
@@ -393,6 +396,7 @@ export type Database = {
           created_at: string;
           elevation: number;
           id: string;
+          home_header_variant: string;
           latitude: number;
           longitude: number;
           name: string;
@@ -409,6 +413,7 @@ export type Database = {
           created_at?: string;
           elevation?: number;
           id?: string;
+          home_header_variant?: string;
           latitude?: number;
           longitude?: number;
           name?: string;
@@ -425,6 +430,7 @@ export type Database = {
           created_at?: string;
           elevation?: number;
           id?: string;
+          home_header_variant?: string;
           latitude?: number;
           longitude?: number;
           name?: string;
