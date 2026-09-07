@@ -67,27 +67,35 @@ test("the daily lesson flyer is published in announcements and lessons", async (
   await expect(lesson).toContainText("ידוע בבהירות ובהסבר נפלאים");
 });
 
-test("active Karovim layout keeps both logos centered and the hero logo larger", async ({ page }) => {
+test("active Karovim layout shows one large centered header logo", async ({ page }) => {
   test.skip(process.env.QA_KAROVIM_LAYOUT !== "1", "runs only while the shared Karovim setting is enabled for visual QA");
   await page.goto("/community");
 
   const headerLogo = page.getByTestId("community-karovim-logo");
-  const heroLogo = page.getByTestId("community-karovim-hero-logo");
   await expect(headerLogo).toBeVisible();
-  await expect(heroLogo).toBeVisible();
-  const [headerBox, heroBox, contentCenter] = await Promise.all([
+  await expect(page.getByTestId("community-karovim-hero-logo")).toHaveCount(0);
+  await expect(page.locator('img[src="/karovim-logo-v2.png"]')).toHaveCount(1);
+  await expect(headerLogo).toHaveAttribute("alt", "קרובים – להיות קרוב זה יהודי");
+  const [headerBox, contentCenter] = await Promise.all([
     headerLogo.boundingBox(),
-    heroLogo.boundingBox(),
     page.evaluate(() => {
       const bodyBox = document.body.getBoundingClientRect();
       return bodyBox.left + bodyBox.width / 2;
     }),
   ]);
   expect(headerBox).not.toBeNull();
-  expect(heroBox).not.toBeNull();
   expect(Math.abs((headerBox!.x + headerBox!.width / 2) - contentCenter)).toBeLessThanOrEqual(2);
-  expect(Math.abs((heroBox!.x + heroBox!.width / 2) - contentCenter)).toBeLessThanOrEqual(2);
-  expect(heroBox!.height).toBeGreaterThan(headerBox!.height * 2);
+  expect(headerBox!.width).toBeGreaterThan(180);
+  if (test.info().project.name === "mobile-android") {
+    const [blessingBox, actionsBox] = await Promise.all([
+      page.getByTestId("community-header-blessing").boundingBox(),
+      page.getByTestId("community-header-actions").boundingBox(),
+    ]);
+    expect(blessingBox).not.toBeNull();
+    expect(actionsBox).not.toBeNull();
+    expect(blessingBox!.y + blessingBox!.height).toBeLessThanOrEqual(headerBox!.y);
+    expect(actionsBox!.y + actionsBox!.height).toBeLessThanOrEqual(headerBox!.y);
+  }
   await expect(page.getByTestId("community-site-address")).toHaveCount(0);
 });
 
@@ -122,23 +130,20 @@ test("administrator can switch to the Karovim logo header and restore the curren
 
     await page.goto("/community");
     const headerLogo = page.getByTestId("community-karovim-logo");
-    const heroLogo = page.getByTestId("community-karovim-hero-logo");
     await expect(headerLogo).toBeVisible();
-    await expect(heroLogo).toBeVisible();
+    await expect(page.getByTestId("community-karovim-hero-logo")).toHaveCount(0);
+    await expect(page.locator('img[src="/karovim-logo-v2.png"]')).toHaveCount(1);
     await expect(page.getByTestId("community-site-address")).toHaveCount(0);
-    const [headerBox, heroBox, contentCenter] = await Promise.all([
+    const [headerBox, contentCenter] = await Promise.all([
       headerLogo.boundingBox(),
-      heroLogo.boundingBox(),
       page.evaluate(() => {
         const bodyBox = document.body.getBoundingClientRect();
         return bodyBox.left + bodyBox.width / 2;
       }),
     ]);
     expect(headerBox).not.toBeNull();
-    expect(heroBox).not.toBeNull();
     expect(Math.abs((headerBox!.x + headerBox!.width / 2) - contentCenter)).toBeLessThanOrEqual(2);
-    expect(Math.abs((heroBox!.x + heroBox!.width / 2) - contentCenter)).toBeLessThanOrEqual(2);
-    expect(heroBox!.height).toBeGreaterThan(headerBox!.height);
+    expect(headerBox!.width).toBeGreaterThan(240);
   } finally {
     await page.goto("/community/admin?tab=settings");
     const choices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
@@ -150,6 +155,135 @@ test("administrator can switch to the Karovim logo header and restore the curren
     await expect(page.getByText("נשמר בהצלחה")).toBeVisible();
     await page.goto("/community");
     await expect(page.getByTestId("community-site-address")).toBeVisible();
+  }
+});
+
+test("administrator can persist shared responsive Karovim logo dimensions", async ({ page, browser }, testInfo) => {
+  const email = process.env.QA_ADMIN_EMAIL;
+  const password = process.env.QA_ADMIN_PASSWORD;
+  test.skip(!email || !password, "QA admin credentials are not configured");
+
+  await page.goto("/auth");
+  await page.getByLabel("אימייל").fill(email!);
+  await page.getByLabel("סיסמה", { exact: true }).fill(password!);
+  await page.getByRole("button", { name: "התחבר", exact: true }).click();
+  await page.waitForURL((url) => !url.pathname.endsWith("/auth"));
+  await page.goto("/community/admin?tab=settings");
+
+  const choices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
+  const originalVariant = (await choices.getByRole("button", { name: /שם וכתובת/ }).getAttribute("aria-pressed")) === "true"
+    ? "standard"
+    : "karovim_logo";
+  await choices.getByRole("button", { name: /קרובים/ }).click();
+  const mobileWidth = page.getByTestId("setting-karovim_logo_mobile_width");
+  const mobileHeight = page.getByTestId("setting-karovim_logo_mobile_height");
+  const mobileOffsetX = page.getByTestId("setting-karovim_logo_mobile_offset_x");
+  const mobileOffsetY = page.getByTestId("setting-karovim_logo_mobile_offset_y");
+  const desktopWidth = page.getByTestId("setting-karovim_logo_desktop_width");
+  const desktopHeight = page.getByTestId("setting-karovim_logo_desktop_height");
+  const desktopOffsetX = page.getByTestId("setting-karovim_logo_desktop_offset_x");
+  const desktopOffsetY = page.getByTestId("setting-karovim_logo_desktop_offset_y");
+  await expect(page.getByTestId("karovim-logo-size-settings")).toBeVisible();
+  await expect(mobileWidth).toBeVisible();
+  await expect(mobileHeight).toBeVisible();
+  await expect(desktopWidth).toBeVisible();
+  await expect(desktopHeight).toBeVisible();
+  await expect(mobileOffsetX).toBeVisible();
+  await expect(mobileOffsetY).toBeVisible();
+  await expect(desktopOffsetX).toBeVisible();
+  await expect(desktopOffsetY).toBeVisible();
+  await expect(page.getByTestId("karovim-logo-size-preview")).toBeVisible();
+  await expect(page.getByTestId("karovim-header-preview")).toHaveAttribute("data-preview-mode", "mobile");
+  await page.getByRole("button", { name: "מחשב", exact: true }).click();
+  await expect(page.getByTestId("karovim-header-preview")).toHaveAttribute("data-preview-mode", "desktop");
+  await page.getByRole("button", { name: "מובייל", exact: true }).click();
+  if (testInfo.project.name !== "desktop-chromium") {
+    const previewLogo = page.getByTestId("karovim-logo-size-preview");
+    const widthBefore = (await previewLogo.boundingBox())!.width;
+    const currentWidth = Number(await mobileWidth.inputValue());
+    await mobileWidth.fill(String(currentWidth >= 330 ? currentWidth - 30 : currentWidth + 30));
+    await expect.poll(async () => (await previewLogo.boundingBox())!.width).not.toBe(widthBefore);
+
+    await page.reload();
+    return;
+  }
+
+  const original = {
+    variant: originalVariant,
+    mobileWidth: await mobileWidth.inputValue(),
+    mobileHeight: await mobileHeight.inputValue(),
+    mobileOffsetX: await mobileOffsetX.inputValue(),
+    mobileOffsetY: await mobileOffsetY.inputValue(),
+    desktopWidth: await desktopWidth.inputValue(),
+    desktopHeight: await desktopHeight.inputValue(),
+    desktopOffsetX: await desktopOffsetX.inputValue(),
+    desktopOffsetY: await desktopOffsetY.inputValue(),
+  };
+
+  try {
+    const previewLogo = page.getByTestId("karovim-logo-size-preview");
+    const logoBox = await previewLogo.boundingBox();
+    expect(logoBox).not.toBeNull();
+    await page.mouse.move(logoBox!.x + logoBox!.width / 2, logoBox!.y + logoBox!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(logoBox!.x + logoBox!.width / 2 + 24, logoBox!.y + logoBox!.height / 2 + 12, { steps: 4 });
+    await page.mouse.up();
+    await expect.poll(async () => Number(await mobileOffsetX.inputValue())).not.toBe(Number(original.mobileOffsetX));
+
+    await mobileWidth.fill("246");
+    await mobileHeight.fill("142");
+    await mobileOffsetX.fill("-22");
+    await mobileOffsetY.fill("14");
+    await desktopWidth.fill("512");
+    await desktopHeight.fill("286");
+    await desktopOffsetX.fill("34");
+    await desktopOffsetY.fill("18");
+    await Promise.all([
+      page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/rest/v1/settings")),
+      page.getByRole("button", { name: "שמירת הגדרות" }).click(),
+    ]);
+    await expect(page.getByText("נשמר בהצלחה")).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByTestId("setting-karovim_logo_desktop_width")).toHaveValue("512");
+    const anonymousPage = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    try {
+      await anonymousPage.goto("http://127.0.0.1:4300/community");
+      const logo = anonymousPage.getByTestId("community-karovim-logo");
+      await expect(logo).toBeVisible();
+      await expect(logo).toHaveCSS("width", "512px");
+      await expect(logo).toHaveCSS("height", "286px");
+      await expect(logo).toHaveCSS("transform", "matrix(1, 0, 0, 1, 34, 18)");
+      await anonymousPage.setViewportSize({ width: 390, height: 844 });
+      await anonymousPage.reload();
+      await expect(anonymousPage.getByTestId("community-karovim-logo")).toHaveCSS("width", "246px");
+      await expect(anonymousPage.getByTestId("community-karovim-logo")).toHaveCSS("height", "142px");
+      await expect(anonymousPage.getByTestId("community-karovim-logo")).toHaveCSS("transform", "matrix(1, 0, 0, 1, -22, 14)");
+    } finally {
+      await anonymousPage.close();
+    }
+  } finally {
+    await page.goto("/community/admin?tab=settings");
+    const restoreChoices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
+    await restoreChoices.getByRole("button", { name: original.variant === "standard" ? /שם וכתובת/ : /קרובים/ }).click();
+    if (original.variant === "standard") {
+      await restoreChoices.getByRole("button", { name: /קרובים/ }).click();
+    }
+    await page.getByTestId("setting-karovim_logo_mobile_width").fill(original.mobileWidth);
+    await page.getByTestId("setting-karovim_logo_mobile_height").fill(original.mobileHeight);
+    await page.getByTestId("setting-karovim_logo_mobile_offset_x").fill(original.mobileOffsetX);
+    await page.getByTestId("setting-karovim_logo_mobile_offset_y").fill(original.mobileOffsetY);
+    await page.getByTestId("setting-karovim_logo_desktop_width").fill(original.desktopWidth);
+    await page.getByTestId("setting-karovim_logo_desktop_height").fill(original.desktopHeight);
+    await page.getByTestId("setting-karovim_logo_desktop_offset_x").fill(original.desktopOffsetX);
+    await page.getByTestId("setting-karovim_logo_desktop_offset_y").fill(original.desktopOffsetY);
+    if (original.variant === "standard") {
+      await restoreChoices.getByRole("button", { name: /שם וכתובת/ }).click();
+    }
+    await Promise.all([
+      page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/rest/v1/settings")),
+      page.getByRole("button", { name: "שמירת הגדרות" }).click(),
+    ]);
   }
 });
 

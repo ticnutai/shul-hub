@@ -216,14 +216,6 @@ export function CommunityHome() {
 
       <section className="hero-surface">
         <div className="mx-auto max-w-5xl px-4 py-14 text-center sm:py-16">
-          {settings?.home_header_variant === "karovim_logo" && (
-            <img
-              data-testid="community-karovim-hero-logo"
-              src="/karovim-logo-v1.png"
-              alt="קרובים"
-              className="mx-auto mb-6 h-36 w-auto max-w-full object-contain sm:h-52 lg:h-60"
-            />
-          )}
           <p className="text-sm text-gold sm:text-base">
             {settings?.id ? (
               <InlineEdit

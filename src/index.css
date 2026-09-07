@@ -690,6 +690,26 @@ html.torah-luxury .community-secondary-nav .community-nav-item {
   font-size: 0.64rem;
 }
 
+.community-karovim-logo {
+  width: min(calc(100vw - 2rem), var(--karovim-logo-mobile-width, 230px));
+  height: var(--karovim-logo-mobile-height, 130px);
+  transform: translate(
+    var(--karovim-logo-mobile-offset-x, 0px),
+    var(--karovim-logo-mobile-offset-y, 0px)
+  );
+}
+
+@media (min-width: 640px) {
+  .community-karovim-logo {
+    width: min(52vw, var(--karovim-logo-desktop-width, 480px));
+    height: var(--karovim-logo-desktop-height, 270px);
+    transform: translate(
+      var(--karovim-logo-desktop-offset-x, 0px),
+      var(--karovim-logo-desktop-offset-y, 0px)
+    );
+  }
+}
+
 @media (min-width: 640px) {
   .community-secondary-nav,
   html.torah-luxury .community-secondary-nav {

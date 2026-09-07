@@ -6,6 +6,10 @@ import { NotificationCenter } from "@community/components/NotificationCenter";
 import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 import { useAuth } from "@/contexts/AuthContext";
 
+function boundedDimension(value: number | null | undefined, fallback: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, Number.isFinite(value) ? Number(value) : fallback));
+}
+
 const communityLinks = [
   { to: "/community/shiurim", label: "שיעורים", icon: BookOpen },
   { to: "/community/chavrutot", label: "חברותות", icon: Users },
@@ -24,6 +28,16 @@ export function GlobalAppHeader() {
   const { data: settings } = useSettings();
   const { user, loading } = useAuth();
   const showKarovimLogo = settings?.home_header_variant === "karovim_logo";
+  const karovimLogoDimensions = {
+    "--karovim-logo-mobile-width": `${boundedDimension(settings?.karovim_logo_mobile_width, 230, 140, 360)}px`,
+    "--karovim-logo-mobile-height": `${boundedDimension(settings?.karovim_logo_mobile_height, 130, 70, 240)}px`,
+    "--karovim-logo-mobile-offset-x": `${boundedDimension(settings?.karovim_logo_mobile_offset_x, 0, -120, 120)}px`,
+    "--karovim-logo-mobile-offset-y": `${boundedDimension(settings?.karovim_logo_mobile_offset_y, 0, -80, 80)}px`,
+    "--karovim-logo-desktop-width": `${boundedDimension(settings?.karovim_logo_desktop_width, 480, 240, 720)}px`,
+    "--karovim-logo-desktop-height": `${boundedDimension(settings?.karovim_logo_desktop_height, 270, 120, 420)}px`,
+    "--karovim-logo-desktop-offset-x": `${boundedDimension(settings?.karovim_logo_desktop_offset_x, 0, -240, 240)}px`,
+    "--karovim-logo-desktop-offset-y": `${boundedDimension(settings?.karovim_logo_desktop_offset_y, 0, -120, 120)}px`,
+  } as React.CSSProperties;
   return (
     <header
       data-testid="global-app-header"
@@ -34,23 +48,36 @@ export function GlobalAppHeader() {
       <div
         className={cn(
           "mx-auto max-w-7xl items-center px-3 py-3 sm:px-5",
-          showKarovimLogo ? "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]" : "flex gap-3",
+          showKarovimLogo
+            ? "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-y-2 sm:gap-y-0"
+            : "flex gap-3",
         )}
       >
-        <span className={cn("shrink-0 text-sm font-bold text-amber-400", showKarovimLogo && "justify-self-start")}>ב״ה</span>
+        <span
+          data-testid="community-header-blessing"
+          className={cn(
+            "shrink-0 text-sm font-bold text-amber-400",
+            showKarovimLogo && "col-start-1 row-start-1 justify-self-start",
+          )}
+        >
+          ב״ה
+        </span>
         <Link
           to="/community"
           className={cn(
             "min-w-0 text-center",
-            showKarovimLogo ? "justify-self-center" : "flex-1 sm:text-right",
+            showKarovimLogo
+              ? "col-span-3 col-start-1 row-start-2 justify-self-center sm:col-span-1 sm:col-start-2 sm:row-start-1"
+              : "flex-1 sm:text-right",
           )}
         >
           {showKarovimLogo ? (
             <img
               data-testid="community-karovim-logo"
-              src="/karovim-logo-v1.png"
-              alt="קרובים"
-              className="mx-auto h-14 w-auto max-w-[13rem] object-contain sm:h-20 sm:max-w-[16rem] lg:h-24 lg:max-w-[18rem]"
+              src="/karovim-logo-v2.png"
+              alt="קרובים – להיות קרוב זה יהודי"
+              className="community-karovim-logo mx-auto object-contain"
+              style={karovimLogoDimensions}
             />
           ) : (
             <>
@@ -59,7 +86,13 @@ export function GlobalAppHeader() {
             </>
           )}
         </Link>
-        <div className={cn("flex shrink-0 items-center gap-0.5", showKarovimLogo && "justify-self-end")}>
+        <div
+          data-testid="community-header-actions"
+          className={cn(
+            "flex shrink-0 items-center gap-0.5",
+            showKarovimLogo && "col-start-3 row-start-1 justify-self-end",
+          )}
+        >
           <Link
             to={user && !user.is_anonymous ? "/profile" : "/auth"}
             aria-label={user && !user.is_anonymous ? "כניסה לאזור האישי" : "כניסה או הרשמה למערכת"}
