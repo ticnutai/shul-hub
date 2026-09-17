@@ -10,10 +10,94 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
+      admin_messages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_read: boolean
+          phone: string
+          sender_name: string
+          subject: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          phone?: string
+          sender_name?: string
+          subject?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          phone?: string
+          sender_name?: string
+          subject?: string
+        }
+        Relationships: []
+      }
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          expires_at: string | null
+          home_width: string
+          id: string
+          image_path: string | null
+          image_url: string | null
+          kind: string
+          notification_enabled: boolean
+          pinned: boolean
+          show_on_home: boolean
+          sort_order: number
+          style: Json
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          home_width?: string
+          id?: string
+          image_path?: string | null
+          image_url?: string | null
+          kind?: string
+          notification_enabled?: boolean
+          pinned?: boolean
+          show_on_home?: boolean
+          sort_order?: number
+          style?: Json
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          expires_at?: string | null
+          home_width?: string
+          id?: string
+          image_path?: string | null
+          image_url?: string | null
+          kind?: string
+          notification_enabled?: boolean
+          pinned?: boolean
+          show_on_home?: boolean
+          sort_order?: number
+          style?: Json
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       app_themes: {
         Row: {
           created_at: string
@@ -38,6 +122,165 @@ export type Database = {
           name?: string
           theme?: Json
           updated_at?: string
+        }
+        Relationships: []
+      }
+      chavruta_requests: {
+        Row: {
+          availability: string
+          created_at: string
+          email: string
+          id: string
+          intent: string
+          level: string
+          name: string
+          notes: string
+          phone: string
+          share_contact: boolean
+          status: string
+          study_format: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          availability?: string
+          created_at?: string
+          email?: string
+          id?: string
+          intent?: string
+          level?: string
+          name: string
+          notes?: string
+          phone?: string
+          share_contact?: boolean
+          status?: string
+          study_format?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          availability?: string
+          created_at?: string
+          email?: string
+          id?: string
+          intent?: string
+          level?: string
+          name?: string
+          notes?: string
+          phone?: string
+          share_contact?: boolean
+          status?: string
+          study_format?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      chavrutot: {
+        Row: {
+          active: boolean
+          contact: string
+          created_at: string
+          id: string
+          looking_for_partner: boolean
+          notification_enabled: boolean
+          partners: string
+          sort_order: number
+          time_text: string
+          topic: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          contact?: string
+          created_at?: string
+          id?: string
+          looking_for_partner?: boolean
+          notification_enabled?: boolean
+          partners?: string
+          sort_order?: number
+          time_text?: string
+          topic: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          contact?: string
+          created_at?: string
+          id?: string
+          looking_for_partner?: boolean
+          notification_enabled?: boolean
+          partners?: string
+          sort_order?: number
+          time_text?: string
+          topic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      commentaries: {
+        Row: {
+          commentator: string
+          created_at: string
+          id: string
+          pasuk: number
+          perek: number
+          sefer_id: number
+          text: string
+        }
+        Insert: {
+          commentator: string
+          created_at?: string
+          id?: string
+          pasuk: number
+          perek: number
+          sefer_id: number
+          text: string
+        }
+        Update: {
+          commentator?: string
+          created_at?: string
+          id?: string
+          pasuk?: number
+          perek?: number
+          sefer_id?: number
+          text?: string
+        }
+        Relationships: []
+      }
+      home_widgets: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          kind: string
+          label: string
+          layout_width: string
+          sort_order: number
+          updated_at: string
+          visible: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          kind?: string
+          label: string
+          layout_width?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          kind?: string
+          label?: string
+          layout_width?: string
+          sort_order?: number
+          updated_at?: string
+          visible?: boolean
         }
         Relationships: []
       }
@@ -87,7 +330,7 @@ export type Database = {
           executed_by: string | null
           id: string
           name: string
-          sql_content: string | null
+          statements_count: number
           success: boolean
         }
         Insert: {
@@ -96,7 +339,7 @@ export type Database = {
           executed_by?: string | null
           id?: string
           name: string
-          sql_content?: string | null
+          statements_count?: number
           success?: boolean
         }
         Update: {
@@ -105,8 +348,157 @@ export type Database = {
           executed_by?: string | null
           id?: string
           name?: string
-          sql_content?: string | null
+          statements_count?: number
           success?: boolean
+        }
+        Relationships: []
+      }
+      minyan_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          display_mode: string
+          id: string
+          name: string
+          sort_order: number
+          subcategories: Json
+          system_key: string | null
+          updated_at: string
+          visible_from: string | null
+          visible_until: string | null
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          display_mode?: string
+          id?: string
+          name: string
+          sort_order?: number
+          subcategories?: Json
+          system_key?: string | null
+          updated_at?: string
+          visible_from?: string | null
+          visible_until?: string | null
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          display_mode?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          subcategories?: Json
+          system_key?: string | null
+          updated_at?: string
+          visible_from?: string | null
+          visible_until?: string | null
+        }
+        Relationships: []
+      }
+      minyanim: {
+        Row: {
+          active: boolean
+          category_id: string | null
+          created_at: string
+          day_type: string
+          fixed_time: string | null
+          id: string
+          label: string
+          note: string
+          notification_enabled: boolean
+          offset_minutes: number
+          prayer: string
+          relative_to: string | null
+          reminder_minutes: number
+          room: string
+          sort_order: number
+          time_mode: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          day_type?: string
+          fixed_time?: string | null
+          id?: string
+          label?: string
+          note?: string
+          notification_enabled?: boolean
+          offset_minutes?: number
+          prayer?: string
+          relative_to?: string | null
+          reminder_minutes?: number
+          room?: string
+          sort_order?: number
+          time_mode?: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          day_type?: string
+          fixed_time?: string | null
+          id?: string
+          label?: string
+          note?: string
+          notification_enabled?: boolean
+          offset_minutes?: number
+          prayer?: string
+          relative_to?: string | null
+          reminder_minutes?: number
+          room?: string
+          sort_order?: number
+          time_mode?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minyanim_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "minyan_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notification_preferences: {
+        Row: {
+          announcements_enabled: boolean
+          browser_enabled: boolean
+          chavrutot_enabled: boolean
+          enabled: boolean
+          minyanim_enabled: boolean
+          selected_minyan_ids: string[]
+          selected_shiur_ids: string[]
+          shiurim_enabled: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          announcements_enabled?: boolean
+          browser_enabled?: boolean
+          chavrutot_enabled?: boolean
+          enabled?: boolean
+          minyanim_enabled?: boolean
+          selected_minyan_ids?: string[]
+          selected_shiur_ids?: string[]
+          shiurim_enabled?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          announcements_enabled?: boolean
+          browser_enabled?: boolean
+          chavrutot_enabled?: boolean
+          enabled?: boolean
+          minyanim_enabled?: boolean
+          selected_minyan_ids?: string[]
+          selected_shiur_ids?: string[]
+          shiurim_enabled?: boolean
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -184,35 +576,23 @@ export type Database = {
       }
       profiles: {
         Row: {
-          approval_status: string
-          approved_at: string | null
-          approved_by: string | null
           created_at: string
           display_name: string | null
           id: string
-          requested_role: string | null
           updated_at: string
           username: string | null
         }
         Insert: {
-          approval_status?: string
-          approved_at?: string | null
-          approved_by?: string | null
           created_at?: string
           display_name?: string | null
           id: string
-          requested_role?: string | null
           updated_at?: string
           username?: string | null
         }
         Update: {
-          approval_status?: string
-          approved_at?: string | null
-          approved_by?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
-          requested_role?: string | null
           updated_at?: string
           username?: string | null
         }
@@ -250,6 +630,203 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      rashi_commentary: {
+        Row: {
+          created_at: string
+          id: string
+          pasuk: number
+          perek: number
+          sefer_id: number
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          pasuk: number
+          perek: number
+          sefer_id: number
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          pasuk?: number
+          perek?: number
+          sefer_id?: number
+          text?: string
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          address: string
+          candle_offset_minutes: number
+          city: string
+          created_at: string
+          elevation: number
+          home_header_variant: string
+          id: string
+          karovim_logo_desktop_height: number
+          karovim_logo_desktop_offset_x: number
+          karovim_logo_desktop_offset_y: number
+          karovim_logo_desktop_width: number
+          karovim_logo_mobile_height: number
+          karovim_logo_mobile_offset_x: number
+          karovim_logo_mobile_offset_y: number
+          karovim_logo_mobile_width: number
+          latitude: number
+          longitude: number
+          name: string
+          phone: string
+          subtitle: string
+          theme: string
+          tzeit_offset_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          candle_offset_minutes?: number
+          city?: string
+          created_at?: string
+          elevation?: number
+          home_header_variant?: string
+          id?: string
+          karovim_logo_desktop_height?: number
+          karovim_logo_desktop_offset_x?: number
+          karovim_logo_desktop_offset_y?: number
+          karovim_logo_desktop_width?: number
+          karovim_logo_mobile_height?: number
+          karovim_logo_mobile_offset_x?: number
+          karovim_logo_mobile_offset_y?: number
+          karovim_logo_mobile_width?: number
+          latitude?: number
+          longitude?: number
+          name?: string
+          phone?: string
+          subtitle?: string
+          theme?: string
+          tzeit_offset_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          candle_offset_minutes?: number
+          city?: string
+          created_at?: string
+          elevation?: number
+          home_header_variant?: string
+          id?: string
+          karovim_logo_desktop_height?: number
+          karovim_logo_desktop_offset_x?: number
+          karovim_logo_desktop_offset_y?: number
+          karovim_logo_desktop_width?: number
+          karovim_logo_mobile_height?: number
+          karovim_logo_mobile_offset_x?: number
+          karovim_logo_mobile_offset_y?: number
+          karovim_logo_mobile_width?: number
+          latitude?: number
+          longitude?: number
+          name?: string
+          phone?: string
+          subtitle?: string
+          theme?: string
+          tzeit_offset_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shiur_categories: {
+        Row: {
+          active: boolean
+          created_at: string
+          description: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      shiurim: {
+        Row: {
+          active: boolean
+          category_id: string | null
+          created_at: string
+          day_of_week: number
+          description: string
+          id: string
+          location: string
+          notification_enabled: boolean
+          reminder_minutes: number
+          schedule_type: string
+          sort_order: number
+          teacher: string
+          time_text: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          day_of_week?: number
+          description?: string
+          id?: string
+          location?: string
+          notification_enabled?: boolean
+          reminder_minutes?: number
+          schedule_type?: string
+          sort_order?: number
+          teacher?: string
+          time_text?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          category_id?: string | null
+          created_at?: string
+          day_of_week?: number
+          description?: string
+          id?: string
+          location?: string
+          notification_enabled?: boolean
+          reminder_minutes?: number
+          schedule_type?: string
+          sort_order?: number
+          teacher?: string
+          time_text?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shiurim_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "shiur_categories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       siddur: {
         Row: {
@@ -606,8 +1183,6 @@ export type Database = {
           font_settings: Json | null
           font_settings_mobile: Json | null
           id: string
-          quiz_attempts: Json
-          quiz_plans: Json
           show_shared_content: boolean | null
           siddur_display_settings: Json | null
           theme: string | null
@@ -622,8 +1197,6 @@ export type Database = {
           font_settings?: Json | null
           font_settings_mobile?: Json | null
           id?: string
-          quiz_attempts?: Json
-          quiz_plans?: Json
           show_shared_content?: boolean | null
           siddur_display_settings?: Json | null
           theme?: string | null
@@ -638,8 +1211,6 @@ export type Database = {
           font_settings?: Json | null
           font_settings_mobile?: Json | null
           id?: string
-          quiz_attempts?: Json
-          quiz_plans?: Json
           show_shared_content?: boolean | null
           siddur_display_settings?: Json | null
           theme?: string | null
@@ -678,21 +1249,63 @@ export type Database = {
         }
         Relationships: []
       }
+      user_ui_preferences: {
+        Row: {
+          created_at: string
+          preferences: Json
+          preferences_updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          preferences?: Json
+          preferences_updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          preferences?: Json
+          preferences_updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      approve_user: {
+      admin_create_user: {
         Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
+          p_email: string
+          p_name?: string
+          p_password: string
+          p_role?: Database["public"]["Enums"]["app_role"]
         }
-        Returns: undefined
+        Returns: string
       }
-      exec_sql: { Args: { query: string }; Returns: Json }
-      execute_safe_migration: {
-        Args: { p_migration_name: string; p_migration_sql: string }
+      admin_delete_user: { Args: { p_user_id: string }; Returns: boolean }
+      admin_list_users: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          id: string
+          last_sign_in_at: string
+          name: string
+          role: string
+        }[]
+      }
+      admin_update_user_role: {
+        Args: {
+          p_role: Database["public"]["Enums"]["app_role"]
+          p_user_id: string
+        }
+        Returns: boolean
+      }
+      claim_admin: { Args: never; Returns: boolean }
+      execute_admin_migration: {
+        Args: { p_name: string; p_statements: string[] }
         Returns: Json
       }
       get_migration_history: {
@@ -702,6 +1315,7 @@ export type Database = {
           executed_at: string
           id: string
           name: string
+          statements_count: number
           success: boolean
         }[]
       }
@@ -711,6 +1325,23 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      is_admin: { Args: never; Returns: boolean }
+      list_approved_chavruta_requests: {
+        Args: never
+        Returns: {
+          availability: string
+          created_at: string
+          email: string
+          id: string
+          intent: string
+          level: string
+          name: string
+          notes: string
+          phone: string
+          study_format: string
+          topic: string
+        }[]
       }
       list_users_with_roles: {
         Args: never
@@ -722,7 +1353,6 @@ export type Database = {
           user_id: string
         }[]
       }
-      reject_user: { Args: { _user_id: string }; Returns: undefined }
       set_user_role: {
         Args: {
           _grant: boolean
@@ -733,7 +1363,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "editor" | "viewer" | "user"
+      app_role: "admin" | "gabbai" | "user" | "editor" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -749,12 +1379,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -778,11 +1408,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -803,11 +1433,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -828,11 +1458,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -845,11 +1475,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -861,7 +1491,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "editor", "viewer", "user"],
+      app_role: ["admin", "gabbai", "user", "editor", "viewer"],
     },
   },
 } as const
