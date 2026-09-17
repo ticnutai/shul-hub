@@ -9,8 +9,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarRange,
   GripVertical,
-  LayoutList,
-  PanelsTopLeft,
   Pencil,
   Plus,
   Settings2,
@@ -41,6 +39,10 @@ import { useDeleteRow, useSaveRow } from "@community/lib/admin";
 import { RELATIVE_LABELS, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { RELATIVE_OPTIONS } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
+import {
+  normalizePrayerLayout,
+  PrayerLayoutPicker,
+} from "@community/components/PrayerLayoutPicker";
 import { supabase } from "@community/integrations/supabase/client";
 
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
@@ -333,32 +335,14 @@ export function MinyanimAdmin() {
                 {category.name}
                 {!category.active && <span className="mr-1 text-xs">(מוסתר)</span>}
               </button>
-              <button
-                type="button"
-                data-no-page-swipe
-                aria-label={`שינוי תצוגת ${category.name}. תצוגה נוכחית: ${
-                  category.display_mode === "list" ? "רשימה רציפה" : "טאבים"
-                }`}
-                title={
-                  category.display_mode === "list"
-                    ? "תצוגה רציפה — לחץ למעבר לטאבים"
-                    : "תצוגת טאבים — לחץ למעבר לרשימה רציפה"
-                }
-                className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+              <PrayerLayoutPicker
+                value={normalizePrayerLayout(category.display_mode)}
                 disabled={saveCategory.isPending}
-                onClick={() =>
-                  saveCategory.mutate({
-                    id: category.id,
-                    display_mode: category.display_mode === "list" ? "tabs" : "list",
-                  })
+                label={`שינוי תצוגת ${category.name}`}
+                onChange={(displayMode) =>
+                  saveCategory.mutate({ id: category.id, display_mode: displayMode })
                 }
-              >
-                {category.display_mode === "list" ? (
-                  <LayoutList className="size-4" />
-                ) : (
-                  <PanelsTopLeft className="size-4" />
-                )}
-              </button>
+              />
             </div>
           ))}
           <button

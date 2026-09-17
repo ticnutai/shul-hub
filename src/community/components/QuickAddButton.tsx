@@ -26,7 +26,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { DAYS_HE, PRAYERS } from "@community/lib/data";
-import { ANNOUNCEMENT_KINDS } from "@community/components/AnnouncementCard";
+import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
 
 export function QuickAddButton() {
   const { isAdmin, loading } = useAuth();
