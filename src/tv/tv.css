@@ -140,7 +140,8 @@
 .tv-logo {
   display: block;
   flex: 0 0 auto;
-  height: calc(var(--u) * 12.5);
+  /* --es: the admin's size for this element (boardEdit.ts). */
+  height: calc(var(--u) * 12.5 * var(--es, 1));
   width: auto;
   object-fit: contain;
   filter: drop-shadow(0 calc(var(--u) * 0.4) calc(var(--u) * 1) color-mix(in srgb, #000 35%, transparent));
@@ -1225,6 +1226,131 @@
   line-height: 1.5;
 }
 
+/* ---------------------------------------------------------------- shabbat - */
+
+/*
+ * The Shabbat screen (ShabbatScene.tsx): words on the right, the candles and
+ * challot on the left, a warm candle-light glow over the theme's background.
+ * Still at rest: only the flames flicker, for ~90 s every 10 minutes, and
+ * the scene steps a few pixels every 10 minutes (the transform set inline).
+ */
+.tv-shabbat-slide {
+  justify-content: center;
+}
+
+.tv-shabbat {
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  align-items: center;
+  gap: calc(var(--u) * 3);
+  transition: transform 3s ease-in-out;
+  background: radial-gradient(ellipse 60% 70% at 30% 45%, color-mix(in srgb, #ffc766 14%, transparent), transparent 70%);
+  border-radius: calc(var(--u) * 2);
+}
+
+.tv-shabbat-text {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1.6);
+  min-width: 0;
+}
+
+.tv-shabbat-title {
+  margin: 0;
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 13);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--tv-accent);
+  text-shadow:
+    0 0 calc(var(--u) * 2.4) color-mix(in srgb, #ffc766 45%, transparent),
+    0 calc(var(--u) * 0.4) calc(var(--u) * 1) color-mix(in srgb, #000 40%, transparent);
+}
+
+.tv-shabbat-parasha {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 4);
+  font-weight: 700;
+  color: var(--tv-text);
+}
+
+.tv-shabbat-blessing {
+  margin: 0;
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 2.8);
+  line-height: 1.45;
+  color: var(--tv-text-dim);
+}
+
+.tv-shabbat-times {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 1.4);
+  margin: calc(var(--u) * 1) 0 0;
+}
+
+.tv-shabbat-time {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 0.3);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2.4);
+  border-radius: calc(var(--u) * 1.4);
+  background: var(--tv-panel);
+  border: 1px solid var(--tv-border);
+}
+
+.tv-shabbat-time dt {
+  font-size: calc(var(--fs) * 1.9);
+  color: var(--tv-text-dim);
+}
+
+.tv-shabbat-time dd {
+  margin: 0;
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 4.2);
+  font-weight: 800;
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-shabbat-art {
+  min-width: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.tv-shabbat-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 62cqh;
+  filter: drop-shadow(0 calc(var(--u) * 1) calc(var(--u) * 2.4) color-mix(in srgb, #000 35%, transparent));
+}
+
+/* A finite flicker (~90 s), replayed when the flame is re-keyed every 10
+   minutes; at rest the flame is still, so the idle board costs no CPU. */
+.tv-flame {
+  animation: tv-flame 1.9s ease-in-out 48;
+}
+
+@keyframes tv-flame {
+  0%,
+  100% {
+    transform: scale(1, 1) skewX(0deg);
+  }
+  25% {
+    transform: scale(0.96, 1.06) skewX(2deg);
+  }
+  50% {
+    transform: scale(1.03, 0.95) skewX(-1.5deg);
+  }
+  75% {
+    transform: scale(0.98, 1.04) skewX(1deg);
+  }
+}
+
 /* --------------------------------------- browser controls (web mode only) - */
 
 .tv-frame.is-idle,
@@ -1321,7 +1447,30 @@
   }
 
   .tv-logo {
-    height: calc(var(--u) * 10);
+    height: calc(var(--u) * 10 * var(--es, 1));
+  }
+
+  .tv-shabbat {
+    grid-template-columns: 1fr;
+    align-content: start;
+  }
+
+  .tv-shabbat-art {
+    order: -1;
+  }
+
+  .tv-shabbat-title {
+    font-size: calc(var(--fs) * 9);
+    text-align: center;
+  }
+
+  .tv-shabbat-text {
+    align-items: center;
+    text-align: center;
+  }
+
+  .tv-shabbat-times {
+    justify-content: center;
   }
 
   .tv-clock {
@@ -1501,6 +1650,7 @@
 @media (prefers-reduced-motion: reduce) {
   .tv-bg,
   .tv-slide,
+  .tv-flame,
   .tv-ticker-text,
   .tv-alert-card,
   .tv-slideshow.is-kenburns .tv-show-item.is-active img {

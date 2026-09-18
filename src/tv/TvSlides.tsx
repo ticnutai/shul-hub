@@ -5,6 +5,7 @@ import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit, type BoardEditApi } from "./boardEdit";
 import type { FlipArea } from "./config";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
+import { ShabbatSlide } from "./ShabbatScene";
 import { jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
 
 /**
@@ -84,6 +85,8 @@ export function SlideView({
       return <ShiurimSlide slide={slide} now={now} />;
     case "slideshow":
       return <SlideshowSlide slide={slide} paused={paused} />;
+    case "shabbat":
+      return <ShabbatSlide times={slide.times} now={now} />;
   }
 }
 

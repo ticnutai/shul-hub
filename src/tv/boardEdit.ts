@@ -1,6 +1,6 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, type CSSProperties } from "react";
 import { ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
-import type { FlipArea, TvConfig } from "./config";
+import type { ElementStyle, FlipArea, TvConfig } from "./config";
 
 /**
  * What an admin can change directly on the board, and how the board reads it.
@@ -59,6 +59,10 @@ export const EDITABLE: Record<string, EditableSpec> = {
   "footer.dots": { label: "נקודות השקופיות", hideable: true },
   ticker: { label: "סרגל רץ", text: "", hideable: true, multiline: true },
   "footer.status": { label: "מצב חיבור", hideable: true },
+  "shabbat.title": { label: "מסך שבת: כותרת", text: "שבת שלום" },
+  "shabbat.blessing": { label: "מסך שבת: שורת ברכה", text: "בּוֹאִי בְשָׁלוֹם עֲטֶרֶת בַּעְלָהּ, גַּם בְּשִׂמְחָה וּבְצָהֳלָה", hideable: true, multiline: true },
+  "shabbat.art": { label: "מסך שבת: ציור חלות ונרות", hideable: true },
+  "shabbat.times": { label: "מסך שבת: זמני השבת", hideable: true },
   ...Object.fromEntries(
     SHOWN_ZMANIM.map((e) => [`zman.${e}`, { label: `זמן: ${ZMAN_LABELS[e]}`, text: ZMAN_LABELS[e], hideable: true } satisfies EditableSpec]),
   ),
@@ -90,6 +94,41 @@ export function setText(config: TvConfig, key: string, value: string | null): Tv
   return { ...config, texts };
 }
 
+export function setElementStyle(config: TvConfig, key: string, patch: Partial<ElementStyle> | null): TvConfig {
+  const styles = { ...config.styles };
+  if (patch === null) {
+    delete styles[key];
+    return { ...config, styles };
+  }
+  const next: ElementStyle = { ...styles[key], ...patch };
+  // Defaults are dropped so an untouched element carries no entry.
+  if (next.scale === 1 || next.scale === undefined) delete next.scale;
+  if (!next.color) delete next.color;
+  if (!next.x) delete next.x;
+  if (!next.y) delete next.y;
+  if (Object.keys(next).length) styles[key] = next;
+  else delete styles[key];
+  return { ...config, styles };
+}
+
+/**
+ * Inline style for one element from its ElementStyle. Text size works by
+ * redefining --fs on the element (every font-size in tv.css is a multiple of
+ * it, and children inherit it), colour is plain `color`, and the nudge is a
+ * translate in screen-percent units so it holds on any screen shape.
+ */
+export function elementStyleCss(s: ElementStyle | undefined): CSSProperties | undefined {
+  if (!s) return undefined;
+  const css: Record<string, string> = {};
+  if (s.scale && s.scale !== 1) {
+    css["--fs"] = `calc(var(--u) * var(--tv-scale, 1) * ${s.scale})`;
+    css["--es"] = String(s.scale);
+  }
+  if (s.color) css.color = s.color;
+  if (s.x || s.y) css.transform = `translate(${s.x ?? 0}cqw, ${s.y ?? 0}cqh)`;
+  return css as CSSProperties;
+}
+
 export function toggleFlip(config: TvConfig, area: FlipArea): TvConfig {
   return {
     ...config,
@@ -104,8 +143,11 @@ export interface BoardEditApi {
   text: (key: string, fallback: string) => string;
   hidden: (key: string) => boolean;
   flipped: (area: FlipArea) => boolean;
-  /** Marks an element as editable - only while the admin is editing. */
-  attr: (key: string) => { "data-edit"?: string };
+  /**
+   * Props for an editable element: its admin-set look (always), and the
+   * data-edit marker for click-to-edit (only while the admin is editing).
+   */
+  attr: (key: string) => { "data-edit"?: string; style?: CSSProperties };
 }
 
 const NO_ATTR = {};
@@ -118,7 +160,11 @@ export function makeBoardEdit(config: TvConfig, editing: boolean): BoardEditApi 
     },
     hidden: (key) => isHidden(config, key),
     flipped: (area) => config.flipped.includes(area),
-    attr: editing ? (key) => ({ "data-edit": key }) : () => NO_ATTR,
+    attr: (key) => {
+      const style = elementStyleCss(config.styles[key]);
+      if (!editing) return style ? { style } : NO_ATTR;
+      return style ? { "data-edit": key, style } : { "data-edit": key };
+    },
   };
 }
 

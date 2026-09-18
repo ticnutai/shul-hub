@@ -32,7 +32,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useNow } from "@community/lib/realtime";
-import { TV_THEMES, getTheme } from "@/tv/themes";
+import { allThemes, getTheme } from "@/tv/themes";
 import { DEFAULT_TV_CONFIG } from "@/tv/config";
 import { formatDuration } from "@/tv/device";
 import { SlideStrip, TvPreview } from "./TvPreview";
@@ -228,7 +228,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
           </Badge>
         )}
         {s.paused && <Badge variant="outline">⏸ מושהה</Badge>}
-        {s.themeOverride && <Badge variant="outline">ערכה מהשלט: {getTheme(s.themeOverride).name}</Badge>}
+        {s.themeOverride && <Badge variant="outline">ערכה מהשלט: {getTheme(s.themeOverride, baseConfig?.customThemes).name}</Badge>}
         <span className="ms-auto text-xs text-muted-foreground">
           {device.app_version ? `גרסה ${device.app_version}` : ""}
           {s.screen ? ` · ${s.screen.split("@")[0]}` : ""}
@@ -295,8 +295,8 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
               onChange={(e) => run("theme", "theme", { theme: e.target.value || null })}
               className="block h-9 w-full rounded-md border bg-background px-2 text-sm"
             >
-              <option value="">לפי העיצוב השמור ({getTheme(baseConfig?.theme).name})</option>
-              {TV_THEMES.map((t) => (
+              <option value="">לפי העיצוב השמור ({getTheme(baseConfig?.theme, baseConfig?.customThemes).name})</option>
+              {allThemes(baseConfig?.customThemes).map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
                 </option>

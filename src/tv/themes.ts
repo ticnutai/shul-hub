@@ -45,11 +45,33 @@ export const THEME_VAR_LABELS: Record<ThemeVar, string> = {
 };
 
 export interface TvTheme {
-  id: TvThemeId;
+  /** A built-in id, or "c_<random>" for a theme the admin saved (tv_config.customThemes). */
+  id: string;
   name: string;
   description: string;
   light: boolean;
   vars: Record<ThemeVar, string>;
+}
+
+/** Ids of themes the admin saved; kept distinct from the built-in ids. */
+export const CUSTOM_THEME_ID_RE = /^c_[a-z0-9]{4,24}$/;
+
+export function newCustomThemeId(): string {
+  return `c_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Built-in themes followed by the admin's own, which may shadow nothing (ids never clash). */
+export function allThemes(customThemes?: readonly TvTheme[] | null): TvTheme[] {
+  return [...TV_THEMES, ...(customThemes ?? [])];
+}
+
+/** Whether a background colour reads as light (for the picker's contrast and the OLED hint). */
+export function isLightColor(color: string): boolean {
+  const m = color.trim().match(/^#([0-9a-f]{6})$/i);
+  if (!m) return false;
+  const n = parseInt(m[1], 16);
+  const [r, g, b] = [n >> 16, (n >> 8) & 255, n & 255].map((c) => c / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.5;
 }
 
 export const TV_THEMES: TvTheme[] = [
@@ -185,8 +207,8 @@ export const TV_FONTS: TvFont[] = [
 export const TV_FONTS_HREF =
   "https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=David+Libre:wght@400;500;700&family=Frank+Ruhl+Libre:wght@500;700;900&family=Heebo:wght@400;500;700;800&family=Rubik:wght@500;700&family=Secular+One&display=swap";
 
-export function getTheme(id: string | null | undefined): TvTheme {
-  return TV_THEMES.find((t) => t.id === id) ?? TV_THEMES[0];
+export function getTheme(id: string | null | undefined, customThemes?: readonly TvTheme[] | null): TvTheme {
+  return allThemes(customThemes).find((t) => t.id === id) ?? TV_THEMES[0];
 }
 
 export function getFont(id: string | null | undefined): TvFont {
@@ -202,13 +224,14 @@ const FALLBACK = ', "Segoe UI", system-ui, sans-serif';
  */
 export function themeStyle(options: {
   theme: string;
+  customThemes?: readonly TvTheme[] | null;
   overrides?: Record<string, string> | null;
   font: string;
   textScale?: number;
   backgroundImage?: string | null;
   backgroundDim?: number;
 }): CSSProperties {
-  const theme = getTheme(options.theme);
+  const theme = getTheme(options.theme, options.customThemes);
   const font = getFont(options.font);
   const vars: Record<string, string> = { ...theme.vars };
   for (const [key, value] of Object.entries(options.overrides ?? {})) {

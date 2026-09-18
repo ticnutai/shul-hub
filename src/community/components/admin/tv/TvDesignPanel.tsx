@@ -6,6 +6,9 @@ import {
   BellRing,
   Check,
   ExternalLink,
+  Expand,
+  Maximize2,
+  Minimize2,
   ImagePlus,
   Minus,
   Pencil,
@@ -44,8 +47,21 @@ import {
   type AlertEvent,
   type TvConfig,
 } from "@/tv/config";
-import { getTheme, isSafeCssValue, THEME_VAR_LABELS, THEME_VARS, TV_FONTS, TV_THEMES, type ThemeVar } from "@/tv/themes";
+import {
+  allThemes,
+  getTheme,
+  isLightColor,
+  isSafeCssValue,
+  newCustomThemeId,
+  THEME_VAR_LABELS,
+  THEME_VARS,
+  TV_FONTS,
+  TV_THEMES,
+  type ThemeVar,
+  type TvTheme,
+} from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
+import { nextCandleLighting } from "@/tv/shabbat";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useBroadcastDraft } from "./tvDraftChannel";
 import { TvEditInspector } from "./TvEditInspector";
@@ -303,6 +319,20 @@ export function TvDesignPanel() {
   // Click-to-edit on the board itself (see boardEdit.ts / TvEditInspector).
   const [editing, setEditing] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
+  // A bigger preview: "wide" stacks the controls under a full-width preview;
+  // fullscreen puts the preview column alone on the whole screen.
+  const [wide, setWide] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const previewColumn = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onChange = () => setFullscreen(document.fullscreenElement === previewColumn.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void previewColumn.current?.requestFullscreen?.().catch(() => toast.error("הדפדפן לא אפשר מסך מלא"));
+  };
   useEffect(() => {
     if (!editing) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSelected(null);
@@ -331,6 +361,23 @@ export function TvDesignPanel() {
     setSimulatedNow(new Date(at.getTime() - lead * 60_000 + 2000));
     window.setTimeout(() => setSimulatedNow(null), 12_000);
     toast.info(`מציג איך תיראה ההתראה ${lead} דקות לפני ${ALERT_EVENT_LABELS[event as AlertEvent]}`);
+  };
+
+  // Preview the Shabbat screen: jump the preview clock to 20 minutes after
+  // the next candle lighting, until the admin goes back to real time.
+  const [shabbatPreview, setShabbatPreview] = useState(false);
+  const toggleShabbatPreview = () => {
+    if (shabbatPreview) {
+      setShabbatPreview(false);
+      setSimulatedNow(null);
+      return;
+    }
+    const candle = nextCandleLighting(new Date(), board.data.settings);
+    if (!candle) return toast.error("לא ניתן לחשב את זמן הדלקת הנרות");
+    setShabbatPreview(true);
+    setSimulatedNow(new Date(candle.getTime() + 20 * 60_000));
+    setPreviewIndex(0);
+    if (!draft.shabbat.enabled) toast.warning("מסך השבת כבוי - הוא לא יופיע בשבת עד שתפעילו אותו.");
   };
 
   /* -------------------------------------------------------------- save -- */
@@ -382,7 +429,42 @@ export function TvDesignPanel() {
     }
   };
 
-  const theme = getTheme(draft.theme);
+  const themes = allThemes(draft.customThemes);
+  const theme = getTheme(draft.theme, draft.customThemes);
+  const isCustom = draft.customThemes.some((t) => t.id === draft.theme);
+  const hasOverrides = Object.keys(draft.themeOverrides).length > 0;
+  /** The colours on screen now: the theme plus the live edits below. */
+  const currentVars = () => ({ ...theme.vars, ...(draft.themeOverrides as Partial<Record<ThemeVar, string>>) }) as Record<ThemeVar, string>;
+  const [naming, setNaming] = useState<{ mode: "new" | "rename"; id?: string; value: string } | null>(null);
+  const commitName = () => {
+    if (!naming) return;
+    const name = naming.value.trim().slice(0, 40);
+    if (!name) return toast.error("צריך לתת שם לערכה");
+    if (naming.mode === "new") {
+      const vars = currentVars();
+      const t: TvTheme = { id: newCustomThemeId(), name, description: `על בסיס "${theme.name}"`, light: isLightColor(vars["--tv-bg-a"]), vars };
+      edit("theme-new", (c) => ({ ...c, customThemes: [...c.customThemes, t], theme: t.id, themeOverrides: {} }));
+      toast.success(`הערכה "${name}" נשמרה ונבחרה. היא תגיע למסכים ב"שמור ושדר".`);
+    } else {
+      edit("theme-rename", (c) => ({ ...c, customThemes: c.customThemes.map((t) => (t.id === naming.id ? { ...t, name } : t)) }));
+    }
+    setNaming(null);
+  };
+  const updateTheme = () => {
+    const vars = currentVars();
+    edit("theme-update", (c) => ({
+      ...c,
+      customThemes: c.customThemes.map((t) => (t.id === c.theme ? { ...t, vars, light: isLightColor(vars["--tv-bg-a"]) } : t)),
+      themeOverrides: {},
+    }));
+    toast.success(`הערכה "${theme.name}" עודכנה.`);
+  };
+  const deleteTheme = (id: string) =>
+    edit("theme-delete", (c) => ({
+      ...c,
+      customThemes: c.customThemes.filter((t) => t.id !== id),
+      ...(c.theme === id ? { theme: "navy", themeOverrides: {} } : {}),
+    }));
   const [uploading, setUploading] = useState(false);
   const upload = async (files: FileList | null, into: "background" | "slideshow") => {
     if (!files?.length) return;
@@ -422,10 +504,18 @@ export function TvDesignPanel() {
     );
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
+    <div className={`grid gap-5 ${wide ? "" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"}`}>
       {/* ------------------------------------------------ preview column -- */}
-      <div className="order-1 space-y-3 lg:order-2">
-        <div className="lg:sticky lg:top-4 lg:space-y-3">
+      <div ref={previewColumn} className={`order-1 space-y-3 lg:order-2 ${fullscreen ? "overflow-auto bg-background p-4" : ""}`}>
+        <div className={wide || fullscreen ? "space-y-3" : "lg:sticky lg:top-4 lg:space-y-3"}>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant={wide ? "default" : "outline"} size="sm" aria-pressed={wide} onClick={() => setWide((w) => !w)} title="התצוגה על כל רוחב המסך, והבקרות מתחתיה">
+              {wide ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />} {wide ? "תצוגה רגילה" : "תצוגה רחבה"}
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={toggleFullscreen} title="התצוגה והעורך על כל המסך (Esc ליציאה)">
+              <Expand className="size-4" /> {fullscreen ? "יציאה ממסך מלא" : "מסך מלא לעריכה"}
+            </Button>
+          </div>
           <TvDeviceStudio
             {...board}
             config={draft}
@@ -436,6 +526,8 @@ export function TvDesignPanel() {
             editing={editing}
             selected={selected}
             onSelect={setSelected}
+            onEdit={edit}
+            large={wide || fullscreen}
           />
           {editing && (
             <div className="mt-3">
@@ -463,7 +555,15 @@ export function TvDesignPanel() {
             <Button type="button" variant="outline" size="sm" onClick={showAlertExample} disabled={!draft.alerts.enabled}>
               <BellRing className="size-4" /> דוגמת התראת זמנים
             </Button>
-            {simulatedNow && <span className="text-xs text-muted-foreground">מדמה את השעה {simulatedNow.toTimeString().slice(0, 5)}</span>}
+            <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} onClick={toggleShabbatPreview}>
+              🕯️ {shabbatPreview ? "חזרה לזמן אמת" : "תצוגת מסך שבת"}
+            </Button>
+            {simulatedNow && (
+              <span className="text-xs text-muted-foreground">
+                מדמה {shabbatPreview ? "ערב שבת, " : "את השעה "}
+                {simulatedNow.toTimeString().slice(0, 5)}
+              </span>
+            )}
             <span className="ms-auto flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -533,38 +633,117 @@ export function TvDesignPanel() {
           </Button>
         </div>
 
-        <Section title="ערכת נושא" hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה).">
+        <Section title="ערכת נושא" hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה.">
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {TV_THEMES.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                aria-pressed={draft.theme === t.id}
-                onClick={() => edit("theme", (c) => ({ ...c, theme: t.id, themeOverrides: {} }))}
-                className={`overflow-hidden rounded-lg border text-right transition ${
-                  draft.theme === t.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
-                }`}
-              >
+            {themes.map((t) => {
+              const custom = !TV_THEMES.some((b) => b.id === t.id);
+              return (
                 <div
-                  className="flex h-12 items-end gap-1 p-2"
-                  style={{
-                    background: `radial-gradient(ellipse at 20% 0%, ${t.vars["--tv-bg-b"]}, transparent 70%), ${t.vars["--tv-bg-a"]}`,
-                  }}
+                  key={t.id}
+                  className={`relative overflow-hidden rounded-lg border text-right transition ${
+                    draft.theme === t.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
+                  }`}
                 >
-                  <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent"] }} />
-                  <span className="size-4 rounded-full" style={{ background: t.vars["--tv-text"] }} />
-                  <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent-2"] }} />
+                  <button
+                    type="button"
+                    aria-pressed={draft.theme === t.id}
+                    onClick={() => edit("theme", (c) => ({ ...c, theme: t.id, themeOverrides: {} }))}
+                    className="block w-full text-right"
+                  >
+                    <div
+                      className="flex h-12 items-end gap-1 p-2"
+                      style={{
+                        background: `radial-gradient(ellipse at 20% 0%, ${t.vars["--tv-bg-b"]}, transparent 70%), ${t.vars["--tv-bg-a"]}`,
+                      }}
+                    >
+                      <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent"] }} />
+                      <span className="size-4 rounded-full" style={{ background: t.vars["--tv-text"] }} />
+                      <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent-2"] }} />
+                    </div>
+                    <div className="p-2 pb-1">
+                      <div className="text-sm font-medium">
+                        {t.name}
+                        {custom && <span className="ms-1 rounded bg-secondary px-1 text-[10px] font-normal text-muted-foreground">שלי</span>}
+                      </div>
+                      <div className="text-[11px] leading-tight text-muted-foreground">{t.description}</div>
+                    </div>
+                  </button>
+                  {custom && (
+                    <div className="flex gap-1 px-1 pb-1">
+                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setNaming({ mode: "rename", id: t.id, value: t.name })}>
+                        שינוי שם
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] text-destructive">
+                            מחיקה
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent dir="rtl">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>למחוק את הערכה "{t.name}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {draft.theme === t.id ? "היא בשימוש כרגע; הלוח יחזור ל\"לילה כחול\". " : ""}
+                              המחיקה תגיע למסכים ב"שמור ושדר", ועד אז אפשר לבטל (Ctrl+Z).
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>ביטול</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteTheme(t.id)}>
+                              מחיקה
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
                 </div>
-                <div className="p-2">
-                  <div className="text-sm font-medium">{t.name}</div>
-                  <div className="text-[11px] leading-tight text-muted-foreground">{t.description}</div>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
-          {Object.keys(draft.themeOverrides).length > 0 && (
-            <p className="text-xs text-muted-foreground">בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.</p>
+          {naming ? (
+            <form
+              className="flex flex-wrap items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                commitName();
+              }}
+            >
+              <Input
+                autoFocus
+                aria-label="שם הערכה"
+                value={naming.value}
+                maxLength={40}
+                placeholder={naming.mode === "new" ? "שם לערכה החדשה, למשל: חגים" : "שם חדש"}
+                className="h-9 w-56"
+                onChange={(e) => setNaming({ ...naming, value: e.target.value })}
+              />
+              <Button type="submit" size="sm">
+                {naming.mode === "new" ? "שמירת הערכה" : "שינוי השם"}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(null)}>
+                ביטול
+              </Button>
+            </form>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setNaming({ mode: "new", value: hasOverrides ? `${theme.name} (מותאם)` : "" })}>
+                <Plus className="size-4" /> שמירה כערכה חדשה
+              </Button>
+              {isCustom && (
+                <Button type="button" variant="outline" size="sm" disabled={!hasOverrides} onClick={updateTheme} title={hasOverrides ? "שומר את שינויי הצבע שלמטה לתוך הערכה" : "שנו צבעים למטה ואז עדכנו"}>
+                  <Save className="size-4" /> עדכון הערכה "{theme.name}"
+                </Button>
+              )}
+              <span className="text-xs text-muted-foreground">
+                {isCustom
+                  ? "ערכה שלכם: שנו צבעים למטה ולחצו \"עדכון הערכה\"."
+                  : "ערכה מובנית: שנו צבעים למטה ושמרו כערכה חדשה כדי לערוך אותה."}
+                {draft.customThemes.length >= 24 ? " הגעתם למספר הערכות המרבי (24)." : ""}
+              </span>
+            </div>
           )}
+          {hasOverrides && <p className="text-xs text-muted-foreground">בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.</p>}
         </Section>
 
         <Section title="גופן וגודל טקסט">
@@ -739,6 +918,47 @@ export function TvDesignPanel() {
               </li>
             ))}
           </ul>
+        </Section>
+
+        <Section
+          title="מסך שבת"
+          hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי הגדרות בית הכנסת."
+        >
+          <label className="flex items-center gap-3">
+            <Switch
+              checked={draft.shabbat.enabled}
+              onCheckedChange={(on) => edit("sb-on", (c) => ({ ...c, shabbat: { ...c.shabbat, enabled: on } }))}
+            />
+            מסך שבת פעיל
+          </label>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            צאת השבת:
+            <Stepper
+              label="דקות אחרי השקיעה"
+              value={draft.shabbat.endMinutesAfterSunset}
+              min={18}
+              max={90}
+              step={1}
+              format={(v) => `${v} דק׳`}
+              onChange={(v) => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: v } }))}
+            />
+            <span className="text-xs text-muted-foreground">אחרי השקיעה</span>
+            {[40, 72].map((m) => (
+              <Button
+                key={m}
+                type="button"
+                size="sm"
+                variant={draft.shabbat.endMinutesAfterSunset === m ? "default" : "outline"}
+                className="h-7 px-2 text-xs"
+                onClick={() => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: m } }))}
+              >
+                {m === 72 ? "72 (ר״ת)" : `${m} (מקובל)`}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            אפשר לשנות את הכיתוב, להסתיר חלקים ולהזיז בעריכה ישירה: לחצו "תצוגת מסך שבת" ואז "עריכה ישירה בלוח".
+          </p>
         </Section>
 
         <Section title="ראש המסך">

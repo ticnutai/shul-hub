@@ -1,4 +1,5 @@
-import { ArrowDown, ArrowLeftRight, ArrowUp, Eye, EyeOff, Globe, MousePointerClick, RotateCcw, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowLeftRight, ArrowUp, Eye, EyeOff, Globe, Minus, Move, MousePointerClick, Plus, RotateCcw, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,8 +14,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { EDITABLE, isHidden, setHidden, setText, toggleFlip } from "@/tv/boardEdit";
-import type { FlipArea, RecordTable, TvConfig } from "@/tv/config";
+import { EDITABLE, isHidden, setElementStyle, setHidden, setText, toggleFlip } from "@/tv/boardEdit";
+import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
+import { isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
 
@@ -123,6 +125,108 @@ function Selected({ k, config, data, onEdit, onClose }: { k: string; config: TvC
       ) : (
         <RecordElement k={k} config={config} data={data} onEdit={onEdit} onClose={onClose} />
       )}
+      <ElementLook k={k} style={config.styles[k]} onEdit={onEdit} />
+    </div>
+  );
+}
+
+/* ------------------------------------------ size, colour and position -- */
+
+function NumStep({
+  label,
+  value,
+  min,
+  max,
+  step,
+  format,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  format: (v: number) => string;
+  onChange: (v: number) => void;
+}) {
+  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
+  return (
+    <div className="inline-flex items-center rounded-md border bg-background" role="group" aria-label={label}>
+      <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={`הקטנת ${label}`} onClick={() => onChange(clamp(value - step))} disabled={value <= min}>
+        <Minus className="size-3.5" />
+      </Button>
+      <span className="min-w-12 px-1 text-center text-xs tabular-nums" role="spinbutton" aria-label={label} aria-valuenow={value} aria-valuemin={min} aria-valuemax={max}>
+        {format(value)}
+      </span>
+      <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={`הגדלת ${label}`} onClick={() => onChange(clamp(value + step))} disabled={value >= max}>
+        <Plus className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
+/**
+ * The look of the selected element on its own: text size, colour and a
+ * nudge from its natural place. Stored per element in tv_config.styles and
+ * rendered the same way on the TV (boardEdit.elementStyleCss). Dragging the
+ * element in the preview edits the same x / y.
+ */
+function ElementLook({ k, style, onEdit }: { k: string; style: ElementStyle | undefined; onEdit: Edit }) {
+  const scale = style?.scale ?? 1;
+  const [colorText, setColorText] = useState(style?.color ?? "");
+  useEffect(() => setColorText(style?.color ?? ""), [style?.color]);
+  const set = (patch: Partial<ElementStyle>, group = "look") => onEdit(`style:${group}:${k}`, (c) => setElementStyle(c, k, patch));
+  const changed = Boolean(style && Object.keys(style).length);
+  const isHex = /^#[0-9a-f]{6}$/i.test(style?.color ?? "");
+
+  return (
+    <div className="space-y-2 border-t pt-3">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+        <Move className="size-3.5" /> עיצוב הרכיב הזה בלבד
+        {changed && (
+          <Button type="button" variant="ghost" size="sm" className="ms-auto h-7 text-xs" onClick={() => onEdit(`style:reset:${k}`, (c) => setElementStyle(c, k, null))}>
+            <RotateCcw className="size-3.5" /> איפוס העיצוב
+          </Button>
+        )}
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        <label className="flex items-center gap-2">
+          גודל טקסט
+          <NumStep label="גודל טקסט של הרכיב" value={Math.round(scale * 100)} min={50} max={200} step={5} format={(v) => `${v}%`} onChange={(v) => set({ scale: v / 100 }, "scale")} />
+        </label>
+        <label className="flex items-center gap-2">
+          צבע
+          <input
+            type="color"
+            aria-label="צבע הרכיב"
+            value={isHex ? style!.color! : "#ffffff"}
+            onChange={(e) => set({ color: e.target.value }, "color")}
+            className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+          />
+          <Input
+            dir="ltr"
+            aria-label="צבע הרכיב (ערך)"
+            value={colorText}
+            placeholder="של הערכה"
+            className={`h-8 w-28 font-mono text-xs ${colorText && !isSafeCssValue(colorText) ? "border-destructive" : ""}`}
+            onChange={(e) => {
+              setColorText(e.target.value);
+              if (e.target.value === "" || isSafeCssValue(e.target.value)) set({ color: e.target.value.trim() || undefined }, "color");
+            }}
+          />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+        <label className="flex items-center gap-2">
+          ימין/שמאל
+          <NumStep label="הזזה אופקית" value={style?.x ?? 0} min={-50} max={50} step={0.5} format={(v) => `${v}%`} onChange={(v) => set({ x: v }, "pos")} />
+        </label>
+        <label className="flex items-center gap-2">
+          למעלה/למטה
+          <NumStep label="הזזה אנכית" value={style?.y ?? 0} min={-50} max={50} step={0.5} format={(v) => `${v}%`} onChange={(v) => set({ y: v }, "pos")} />
+        </label>
+        <span className="text-xs text-muted-foreground">אפשר גם לגרור את הרכיב בתצוגה. ההזזה באחוזי מסך, כך שהיא נשמרת בכל גודל מסך.</span>
+      </div>
     </div>
   );
 }

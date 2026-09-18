@@ -61,15 +61,18 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     () =>
       themeStyle({
         theme: config.theme,
+        customThemes: config.customThemes,
         overrides: config.themeOverrides,
         font: config.font,
         textScale: config.textScale,
         backgroundImage: config.backgroundImage,
         backgroundDim: config.backgroundDim,
       }),
-    [config.theme, config.themeOverrides, config.font, config.textScale, config.backgroundImage, config.backgroundDim],
+    [config.theme, config.customThemes, config.themeOverrides, config.font, config.textScale, config.backgroundImage, config.backgroundDim],
   );
-  const alert = currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
+  // On Shabbat the screen already shows its times; no countdowns or pop-ups.
+  const shabbat = slides[0]?.kind === "shabbat";
+  const alert = shabbat ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
     <BoardEditContext.Provider value={edit}>
@@ -109,7 +112,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         <footer className="tv-footer">
-          {edit.hidden("footer.dots") ? (
+          {edit.hidden("footer.dots") || shabbat ? (
             <span />
           ) : (
             <div className="tv-footer-slides" {...edit.attr("footer.dots")}>

@@ -1,10 +1,11 @@
-import { useState, type MouseEvent, type ReactNode } from "react";
+import { useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import "./tvEdit.css";
 import type { TvConfig } from "@/tv/config";
 import { TvBoard } from "@/tv/TvBoard";
 import type { BoardSlide } from "@/tv/useBoardData";
 import { slideLabel, type useTvSlides } from "./tvPreviewData";
 import { DeviceFrame, DeviceToolbar } from "./DevicePreview";
+import { setElementStyle } from "@/tv/boardEdit";
 import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
 
@@ -128,13 +129,61 @@ function BoardInFrame({ config, slides, data, now, zmanim, index, paused = false
 export function TvDeviceStudio({
   selected = null,
   onSelect,
+  onEdit,
+  large = false,
   ...props
-}: BoardProps & { selected?: string | null; onSelect?: (key: string | null) => void }) {
+}: BoardProps & {
+  selected?: string | null;
+  onSelect?: (key: string | null) => void;
+  /** The editor's draft updater; enables drag-to-move of the selected element. */
+  onEdit?: (key: string, update: (c: TvConfig) => TvConfig) => void;
+  /** Expanded / full-screen editing: the preview takes most of the viewport. */
+  large?: boolean;
+}) {
   useTvFonts();
   const choice = useDeviceChoice();
   const [actualSize, setActualSize] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const editing = Boolean(props.editing);
+  const maxH = large ? Math.max(360, (typeof window === "undefined" ? 900 : window.innerHeight) - 220) : undefined;
+
+  // Drag-to-move. The delta is converted to percent of the board's frame
+  // (cqw / cqh), which is what ElementStyle stores, so it lands in the same
+  // relative place on every device - whatever scale the preview is drawn at.
+  const drag = useRef<{ key: string; frame: DOMRect; startX: number; startY: number; x0: number; y0: number; moved: boolean } | null>(null);
+  const onPointerDown = (e: PointerEvent) => {
+    if (!editing || !onEdit || e.button !== 0) return;
+    const el = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-edit]") : null;
+    const frame = el?.closest<HTMLElement>(".tv-frame");
+    if (!el || !frame) return;
+    const key = el.dataset.edit!;
+    const s = props.config.styles[key];
+    drag.current = { key, frame: frame.getBoundingClientRect(), startX: e.clientX, startY: e.clientY, x0: s?.x ?? 0, y0: s?.y ?? 0, moved: false };
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = (e: PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (!d.moved && Math.hypot(dx, dy) < 4) return;
+    d.moved = true;
+    const x = Math.round((d.x0 + (dx / d.frame.width) * 100) * 10) / 10;
+    const y = Math.round((d.y0 + (dy / d.frame.height) * 100) * 10) / 10;
+    onEdit!(`style:pos:${d.key}`, (c) => setElementStyle(c, d.key, { x: Math.max(-50, Math.min(50, x)), y: Math.max(-50, Math.min(50, y)) }));
+  };
+  const onPointerUp = (e: PointerEvent) => {
+    const d = drag.current;
+    drag.current = null;
+    if (!d) return;
+    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    if (d.moved) {
+      // The click that ends a drag must not change the selection.
+      onSelect?.(d.key);
+      suppressClick.current = true;
+    }
+  };
+  const suppressClick = useRef(false);
 
   // Click-to-edit: the nearest element carrying data-edit wins, so clicking a
   // minyan's name edits the name and clicking its row edits the row.
@@ -147,7 +196,17 @@ export function TvDeviceStudio({
           if (!key) return;
           e.preventDefault();
           e.stopPropagation();
+          if (suppressClick.current) {
+            suppressClick.current = false;
+            return;
+          }
           onSelect?.(key);
+        },
+        onPointerDown,
+        onPointerMove,
+        onPointerUp,
+        onPointerCancel: () => {
+          drag.current = null;
         },
         onMouseOver: (e: MouseEvent) => setHovered(keyAt(e.target)),
         onMouseLeave: () => setHovered(null),
@@ -172,7 +231,7 @@ export function TvDeviceStudio({
               key={id}
               className={`m-0 space-y-1.5 ${id === "tv" || id === "desktop" || id === "laptop" ? "col-span-2 sm:col-span-3" : id === "tablet" ? "col-span-1 sm:col-span-2" : "col-span-1"}`}
             >
-              <DeviceFrame view={choice.views[id]} maxHeight={id === "tablet" ? 320 : id === "mobile" ? 300 : 240}>
+              <DeviceFrame view={choice.views[id]} maxHeight={large ? (id === "tablet" || id === "mobile" ? 520 : 400) : id === "tablet" ? 320 : id === "mobile" ? 300 : 240}>
                 <BoardInFrame {...props} editing={editing} />
               </DeviceFrame>
               <figcaption className="text-center text-xs text-muted-foreground">
@@ -185,7 +244,7 @@ export function TvDeviceStudio({
         </div>
       ) : (
         <div className="rounded-xl bg-muted/30 p-3">
-          <DeviceFrame view={choice.view as DeviceView} maxHeight={choice.view.device === "tv" ? 520 : 620} actualSize={actualSize}>
+          <DeviceFrame view={choice.view as DeviceView} maxHeight={maxH ?? (choice.view.device === "tv" ? 520 : 620)} actualSize={actualSize}>
             <BoardInFrame {...props} editing={editing} />
           </DeviceFrame>
         </div>

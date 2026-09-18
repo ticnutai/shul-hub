@@ -5,7 +5,8 @@
  * outline about 1.5 px on screen however small the device is drawn.
  */
 .tv-edit-mode [data-edit] {
-  cursor: pointer;
+  cursor: grab;
+  touch-action: none;
   outline: calc(1.5px / var(--ps, 1)) dashed rgb(59 130 246 / 0.35);
   outline-offset: calc(1px / var(--ps, 1));
 }

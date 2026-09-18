@@ -4,7 +4,7 @@ import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
 import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
-import { getTheme, TV_THEMES, type TvThemeId } from "./themes";
+import { allThemes, getTheme } from "./themes";
 import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
@@ -27,22 +27,28 @@ import { WebControls } from "./TvWebControls";
 
 const THEME_OVERRIDE_KEY = "shul-tv-theme-override";
 
-function readOverride(): TvThemeId | null {
+function readOverride(): string | null {
   try {
-    const v = localStorage.getItem(THEME_OVERRIDE_KEY);
-    return TV_THEMES.some((t) => t.id === v) ? (v as TvThemeId) : null;
+    // Validated against the theme list (built-in + the admin's) where it is used.
+    return localStorage.getItem(THEME_OVERRIDE_KEY) || null;
   } catch {
     return null;
   }
 }
 
-function writeOverride(v: TvThemeId | null) {
+function writeOverride(v: string | null) {
   try {
     if (v) localStorage.setItem(THEME_OVERRIDE_KEY, v);
     else localStorage.removeItem(THEME_OVERRIDE_KEY);
   } catch {
     /* no storage: the override just won't survive a restart */
   }
+}
+
+/** Slide name for the remote's toast; the Shabbat screen is not a configurable slide. */
+function kindLabel(kind: string | undefined): string {
+  if (kind === "shabbat") return "שבת שלום";
+  return (SLIDE_KIND_LABELS as Record<string, string>)[kind ?? ""] ?? "";
 }
 
 /** Hebrew names for the log, which the admin reads. */
@@ -99,8 +105,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
 
   // The remote's theme choice is kept on the TV. In a browser it lasts only
   // for the visit, so an admin never keeps seeing a stale local theme.
-  const [themeOverride, setThemeOverride] = useState<TvThemeId | null>(() => (web ? null : readOverride()));
+  const [themeOverride, setThemeOverride] = useState<string | null>(() => (web ? null : readOverride()));
   const baseConfig = configOverride ?? adminConfig;
+  const themes = useMemo(() => allThemes(baseConfig.customThemes), [baseConfig.customThemes]);
   // When the admin picks a theme (saved, or in the editor's draft), it wins
   // over whatever the remote chose.
   const lastAdminTheme = useRef(baseConfig.theme);
@@ -113,8 +120,12 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   }, [baseConfig.theme, web]);
 
   const config = useMemo<TvConfig>(
-    () => (themeOverride ? { ...baseConfig, theme: themeOverride, themeOverrides: {} } : baseConfig),
-    [baseConfig, themeOverride],
+    () =>
+      // A remote choice the admin has since deleted is simply ignored.
+      themeOverride && themes.some((t) => t.id === themeOverride)
+        ? { ...baseConfig, theme: themeOverride, themeOverrides: {} }
+        : baseConfig,
+    [baseConfig, themeOverride, themes],
   );
 
   // Slides change at most once a minute (expiring notices, the day rolling
@@ -200,20 +211,20 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   }, [notice]);
 
   const applyTheme = useCallback(
-    (id: TvThemeId | null) => {
+    (id: string | null) => {
       setThemeOverride(id);
       if (!web) writeOverride(id);
-      flash(`ערכת נושא: ${getTheme(id ?? baseConfig.theme).name}${id ? "" : " (של המנהל)"}`);
+      flash(`ערכת נושא: ${getTheme(id ?? baseConfig.theme, themes).name}${id ? "" : " (של המנהל)"}`);
     },
-    [baseConfig.theme, flash, web],
+    [baseConfig.theme, themes, flash, web],
   );
 
   const cycleTheme = useCallback(
     (delta: number) => {
-      const currentIdx = TV_THEMES.findIndex((t) => t.id === config.theme);
-      applyTheme(TV_THEMES[(currentIdx + delta + TV_THEMES.length) % TV_THEMES.length].id);
+      const currentIdx = themes.findIndex((t) => t.id === config.theme);
+      applyTheme(themes[(currentIdx + delta + themes.length) % themes.length].id);
     },
-    [config.theme, applyTheme],
+    [config.theme, themes, applyTheme],
   );
 
   // ------------------------------------------------ state for the admin --
@@ -263,7 +274,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         goTo(typeof p.index === "number" ? p.index : String(p.slideId ?? p.kind ?? ""));
         break;
       case "theme": {
-        const id = typeof p.theme === "string" && TV_THEMES.some((t) => t.id === p.theme) ? (p.theme as TvThemeId) : null;
+        const id = typeof p.theme === "string" && themes.some((t) => t.id === p.theme) ? p.theme : null;
         applyTheme(id);
         break;
       }
@@ -301,11 +312,11 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       switch (e.key) {
         case "ArrowLeft":
           go(1);
-          flash(SLIDE_KIND_LABELS[s[(i + 1) % s.length]?.kind] ?? "");
+          flash(kindLabel(s[(i + 1) % s.length]?.kind));
           break;
         case "ArrowRight":
           go(-1);
-          flash(SLIDE_KIND_LABELS[s[(i - 1 + s.length) % s.length]?.kind] ?? "");
+          flash(kindLabel(s[(i - 1 + s.length) % s.length]?.kind));
           break;
         case "Enter":
         case " ":
@@ -411,7 +422,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
           {web && (
             <WebControls
               paused={paused}
-              themeName={getTheme(config.theme).name}
+              themeName={getTheme(config.theme, themes).name}
               exitHref={exitHref}
               onPrev={() => go(-1)}
               onNext={() => go(1)}
@@ -450,7 +461,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
                     </>
                   )}
                   <br />
-                  ערכת נושא: {getTheme(config.theme).name}
+                  ערכת נושא: {getTheme(config.theme, themes).name}
                   {themeOverride ? " (נבחרה בשלט)" : ""} · גרסה {__APP_VERSION__}
                 </p>
               </div>

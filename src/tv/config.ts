@@ -1,5 +1,14 @@
 import type { SolarEvent } from "@community/lib/zmanim";
-import { TV_FONTS, TV_THEMES, type TvFontId, type TvThemeId } from "./themes";
+import {
+  CUSTOM_THEME_ID_RE,
+  isSafeCssValue,
+  THEME_VARS,
+  TV_FONTS,
+  TV_THEMES,
+  type ThemeVar,
+  type TvFontId,
+  type TvTheme,
+} from "./themes";
 
 /**
  * Everything an admin can change about the board, in one JSON document.
@@ -60,8 +69,27 @@ export const ALERT_EVENT_LABELS: Record<AlertEvent, string> = {
   candle: "הדלקת נרות (בערב שבת)",
 };
 
+/**
+ * Per-element look, set by clicking the element in the editor: text size,
+ * colour and a nudge from its natural place. The nudge is in percent of the
+ * screen (cqw / cqh), so it lands in the same relative spot on a TV, a
+ * laptop or a phone.
+ */
+export interface ElementStyle {
+  /** Text size multiplier, 0.5-2. */
+  scale?: number;
+  /** A safe colour (hex / rgb / hsl). */
+  color?: string;
+  /** Offset in percent of the screen width / height, -50..50. */
+  x?: number;
+  y?: number;
+}
+
 export interface TvConfig {
-  theme: TvThemeId;
+  /** A built-in theme id, or the id of one of `customThemes`. */
+  theme: string;
+  /** Themes the admin saved (from a built-in plus colour edits). */
+  customThemes: TvTheme[];
   font: TvFontId;
   textScale: number;
   /** Live-editor colour overrides on top of the theme (CSS var -> colour). */
@@ -80,6 +108,11 @@ export interface TvConfig {
     popupSeconds: number;
   };
   ticker: { enabled: boolean; text: string };
+  /**
+   * The Shabbat screen: from candle lighting on Friday until the end of
+   * Shabbat the board shows only it (see shabbat.ts).
+   */
+  shabbat: { enabled: boolean; endMinutesAfterSunset: number };
   slideshow: { images: Array<{ url: string; caption?: string }>; secondsPerImage: number };
   /**
    * Board-only wording, keyed by element (see EDITABLE in boardEdit.tsx):
@@ -90,6 +123,8 @@ export interface TvConfig {
   hidden: string[];
   /** Areas drawn mirror-wise (clock on the other side, panels swapped). */
   flipped: FlipArea[];
+  /** Per-element look, keyed like `texts` (see ElementStyle). */
+  styles: Record<string, ElementStyle>;
   /**
    * Editor only, never stored: content edits (an announcement's text, a
    * minyan's name...) waiting for "שמור ושדר". normalizeTvConfig drops it.
@@ -127,10 +162,13 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
     popupSeconds: 40,
   },
   ticker: { enabled: false, text: "" },
+  shabbat: { enabled: true, endMinutesAfterSunset: 40 },
   slideshow: { images: [], secondsPerImage: 8 },
   texts: {},
   hidden: [],
   flipped: [],
+  customThemes: [],
+  styles: {},
 };
 
 const KINDS = Object.keys(SLIDE_LAYOUTS) as SlideKind[];
@@ -144,11 +182,61 @@ const str = (v: unknown, fallback: string, max = 500) => (typeof v === "string" 
 /** Element keys: letters, digits and . : _ - only (ids are UUIDs). */
 const KEY_RE = /^[a-z0-9_.:-]{1,90}$/i;
 
+function normalizeCustomThemes(raw: unknown): TvTheme[] {
+  if (!Array.isArray(raw)) return [];
+  const out: TvTheme[] = [];
+  const seen = new Set<string>();
+  for (const t of raw) {
+    if (!isObj(t) || typeof t.id !== "string" || !CUSTOM_THEME_ID_RE.test(t.id) || seen.has(t.id)) continue;
+    if (!isObj(t.vars)) continue;
+    const vars = {} as Record<ThemeVar, string>;
+    let complete = true;
+    for (const v of THEME_VARS) {
+      const value = t.vars[v];
+      if (typeof value === "string" && isSafeCssValue(value)) vars[v] = value.trim();
+      else complete = false;
+    }
+    if (!complete) continue;
+    seen.add(t.id);
+    out.push({
+      id: t.id,
+      name: str(t.name, "ערכה מותאמת", 40).trim() || "ערכה מותאמת",
+      description: str(t.description, "", 80),
+      light: bool(t.light, false),
+      vars,
+    });
+    if (out.length >= 24) break;
+  }
+  return out;
+}
+
+export function normalizeElementStyle(raw: unknown): ElementStyle | null {
+  if (!isObj(raw)) return null;
+  const s: ElementStyle = {};
+  if (typeof raw.scale === "number" && Number.isFinite(raw.scale) && raw.scale !== 1) s.scale = Math.min(2, Math.max(0.5, raw.scale));
+  if (typeof raw.color === "string" && isSafeCssValue(raw.color)) s.color = raw.color.trim();
+  if (typeof raw.x === "number" && Number.isFinite(raw.x) && raw.x !== 0) s.x = Math.min(50, Math.max(-50, Math.round(raw.x * 10) / 10));
+  if (typeof raw.y === "number" && Number.isFinite(raw.y) && raw.y !== 0) s.y = Math.min(50, Math.max(-50, Math.round(raw.y * 10) / 10));
+  return Object.keys(s).length ? s : null;
+}
+
+function normalizeStyles(raw: unknown): Record<string, ElementStyle> {
+  const out: Record<string, ElementStyle> = {};
+  if (!isObj(raw)) return out;
+  for (const [k, v] of Object.entries(raw).slice(0, 200)) {
+    const s = KEY_RE.test(k) ? normalizeElementStyle(v) : null;
+    if (s) out[k] = s;
+  }
+  return out;
+}
+
 export function normalizeTvConfig(raw: unknown): TvConfig {
   const d = DEFAULT_TV_CONFIG;
   if (!isObj(raw)) return structuredClone(d);
 
-  const theme = TV_THEMES.some((t) => t.id === raw.theme) ? (raw.theme as TvThemeId) : d.theme;
+  const customThemes = normalizeCustomThemes(raw.customThemes);
+  const theme =
+    TV_THEMES.some((t) => t.id === raw.theme) || customThemes.some((t) => t.id === raw.theme) ? String(raw.theme) : d.theme;
   const font = TV_FONTS.some((f) => f.id === raw.font) ? (raw.font as TvFontId) : d.font;
 
   // Slides: keep the admin's order, drop unknown kinds, append any kind a newer
@@ -176,6 +264,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
   const header = isObj(raw.header) ? raw.header : {};
   const alerts = isObj(raw.alerts) ? raw.alerts : {};
   const ticker = isObj(raw.ticker) ? raw.ticker : {};
+  const shabbat = isObj(raw.shabbat) ? raw.shabbat : {};
   const slideshow = isObj(raw.slideshow) ? raw.slideshow : {};
 
   const leads = Array.isArray(alerts.leadMinutes)
@@ -206,6 +295,10 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
       popupSeconds: num(alerts.popupSeconds, d.alerts.popupSeconds, 10, 300),
     },
     ticker: { enabled: bool(ticker.enabled, d.ticker.enabled), text: str(ticker.text, "", 400) },
+    shabbat: {
+      enabled: bool(shabbat.enabled, d.shabbat.enabled),
+      endMinutesAfterSunset: Math.round(num(shabbat.endMinutesAfterSunset, d.shabbat.endMinutesAfterSunset, 18, 90)),
+    },
     slideshow: {
       images: (Array.isArray(slideshow.images) ? slideshow.images : [])
         .filter((i): i is Record<string, unknown> => isObj(i) && typeof i.url === "string" && i.url.startsWith("https://"))
@@ -221,5 +314,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     ),
     hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
+    customThemes,
+    styles: normalizeStyles(raw.styles),
   };
 }

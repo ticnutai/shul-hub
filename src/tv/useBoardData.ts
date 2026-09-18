@@ -18,6 +18,7 @@ import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
 import type { TvConfig } from "./config";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
+import { shabbatNow, type ShabbatTimes } from "./shabbat";
 
 /**
  * Data for the board, plus the rules that turn it into slides. Shared by the
@@ -86,7 +87,8 @@ export type BoardSlide =
   | (SlideBase & { kind: "learning" })
   | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
   | (SlideBase & { kind: "shiurim"; items: Shiur[] })
-  | (SlideBase & { kind: "slideshow"; images: TvConfig["slideshow"]["images"]; secondsPerImage: number });
+  | (SlideBase & { kind: "slideshow"; images: TvConfig["slideshow"]["images"]; secondsPerImage: number })
+  | (SlideBase & { kind: "shabbat"; times: ShabbatTimes });
 
 const ANNOUNCEMENTS_PER_PAGE = 4;
 
@@ -147,6 +149,11 @@ export function shiurMinutes(timeText: string | null | undefined): number {
 }
 
 export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim: Zmanim): BoardSlide[] {
+  // Shabbat: one screen, no rotation, from candle lighting until it ends.
+  if (config.shabbat.enabled) {
+    const times = shabbatNow(now, data.settings, config.shabbat.endMinutesAfterSunset);
+    if (times) return [{ id: "shabbat", kind: "shabbat", seconds: 3600, layout: "scene", times }];
+  }
   const slides: BoardSlide[] = [];
   const nowMs = now.getTime();
   const hidden = new Set(config.hidden);
