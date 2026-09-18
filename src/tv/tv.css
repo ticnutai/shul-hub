@@ -43,6 +43,20 @@ body,
   overflow: hidden;
 }
 
+/*
+ * No focus rings, anywhere. Android WebView draws its default focus ring in
+ * orange, and on a TV any remote key press (or an HDMI-CEC event from the TV
+ * itself) puts the page into keyboard-focus mode. Found on a real device: a
+ * bright orange frame appeared around the entire screen and stayed there. The
+ * board has nothing to focus, so the ring carries no information - it is only
+ * a static bright line, which is also exactly what burns into a panel.
+ */
+*,
+*:focus,
+*:focus-visible {
+  outline: none !important;
+}
+
 body {
   background: var(--tv-navy-deep);
   color: var(--tv-text);

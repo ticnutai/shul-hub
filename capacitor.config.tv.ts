@@ -17,6 +17,18 @@ const config: CapacitorConfig = {
     path: 'android-tv',
     allowMixedContent: false,
     backgroundColor: '#0b1628',
+    // Opens the WebView to Chrome DevTools Protocol, which scripts/tv-control.mjs
+    // uses to read the DOM, run JS, and capture console/network on the box.
+    // Capacitor only turns this on for debug builds; the board ships as a
+    // release build, so without this flag the page was a black box - on the
+    // device, uiautomator saw no WebView text at all.
+    //
+    // The socket is reachable only through an authorised ADB session: Chromium
+    // accepts connections from the shell/root UID only (devtools_auth.cc). ADB
+    // already gives full control of the device, so this widens nothing - the
+    // real production switch is turning Wireless debugging OFF on the TV,
+    // which closes both. Build with TV_WEBVIEW_DEBUG=0 to leave it out.
+    webContentsDebuggingEnabled: process.env.TV_WEBVIEW_DEBUG !== '0',
   },
   plugins: {
     SplashScreen: {

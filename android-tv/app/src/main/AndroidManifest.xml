@@ -82,4 +82,12 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Lets BootReceiver bring the board back after a power cut. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Receiving BOOT_COMPLETED is not enough on its own. Since Android 10 an
+         app in the background may not open an activity, and the system drops
+         the attempt SILENTLY (seen on the device: "Background activity launch
+         blocked ... BAL_BLOCK", no exception reaches the app). Holding "display
+         over other apps" is one of the documented exemptions. A TV has no
+         convenient screen to grant it, so it is granted once over ADB:
+           node scripts/tv-control.mjs autostart -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 </manifest>

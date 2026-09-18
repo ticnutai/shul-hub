@@ -1,5 +1,6 @@
 package com.ticnutai.bsr3synagogue.tv;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.WindowManager;
@@ -29,6 +30,14 @@ public class MainActivity extends BridgeActivity {
         // Hide the system bars. They serve no purpose without a remote in use
         // and, being static and bright, are the most likely thing on screen to
         // burn into a panel left on for months.
+        // Android draws its own focus highlight over a focused view once the
+        // device is in key-navigation mode, which a TV always is after the first
+        // remote press. On the board it showed as a frame around the whole
+        // screen. The page has nothing focusable, so the highlight is pure noise.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && getBridge() != null) {
+            getBridge().getWebView().setDefaultFocusHighlightEnabled(false);
+        }
+
         View decor = getWindow().getDecorView();
         decor.setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE

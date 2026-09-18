@@ -5,6 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0b1628" />
     <title>בית כנסת בסר 3 — לוח תצוגה</title>
+    <!--
+      No favicon. Without this line the WebView requests /favicon.ico on its
+      own, and on the device Capacitor's local server answered 404 for it even
+      though the file is packaged (PNGs and HTML from the same folder load
+      fine). A board has no browser tab, so an empty icon removes the request
+      and the console error along with it.
+    -->
+    <link rel="icon" href="data:," />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

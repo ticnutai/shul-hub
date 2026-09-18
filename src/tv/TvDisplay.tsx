@@ -82,7 +82,10 @@ export function TvDisplay() {
     const weekday = jerusalemWeekday(now);
     return list.filter(
       (s) => s.active && (s.schedule_type !== "weekly" || s.day_of_week === weekday),
-    );
+    )
+      // `sort_order` is the admin's ordering for the website, which on the
+      // wall read as 16:15, 08:45, 14:15, 15:15. A schedule is scanned by time.
+      .sort((a, b) => shiurMinutes(a.time_text) - shiurMinutes(b.time_text));
   }, [shiurim.data, now]);
 
   const slides = useMemo<Slide[]>(() => {
@@ -393,6 +396,17 @@ function TvFooter({
       </div>
     </footer>
   );
+}
+
+/**
+ * Minutes past midnight from a shiur's free-text time ("16:15 · חצי שעה",
+ * "8:45"). `time_text` is typed by the admin, so anything without a clock time
+ * sorts after the timed entries instead of breaking the order.
+ */
+function shiurMinutes(timeText: string | null | undefined): number {
+  const match = timeText?.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return Number.POSITIVE_INFINITY;
+  return Number(match[1]) * 60 + Number(match[2]);
 }
 
 function describeAge(ms: number): string {

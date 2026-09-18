@@ -23,6 +23,7 @@
     "tv:apk": "npm run tv:sync && cd android-tv && gradlew.bat assembleDebug",
     "tv:apk:release": "npm run tv:sync && cd android-tv && gradlew.bat assembleRelease",
     "tv:open": "node scripts/tv-cap.mjs open android",
+    "tv": "node scripts/tv-control.mjs",
     "android:sync": "vite build && npx cap sync android",
     "android:open": "npx cap open android",
     "android:run": "npx cap run android",
