@@ -43,6 +43,20 @@ function writeOverride(v: TvThemeId | null) {
   }
 }
 
+/** Hebrew names for the log, which the admin reads. */
+const COMMAND_LABELS: Record<TvCommand["command"], string> = {
+  pause: "עצירה",
+  resume: "המשך",
+  next: "שקופית הבאה",
+  prev: "שקופית קודמת",
+  goto: "מעבר לשקופית",
+  reload: "טעינה מחדש",
+  theme: "החלפת ערכת נושא",
+  snapshot: "צילום מסך",
+  message: "הודעה על המסך",
+  identify: "זיהוי מסך",
+};
+
 interface Notice {
   kind: "message" | "identify";
   text: string;
@@ -248,7 +262,7 @@ export function TvApp() {
         window.setTimeout(() => window.location.reload(), 500);
         return;
     }
-    l.log("info", "command", `פקודה: ${cmd.command}`, { command: cmd.command, payload: p });
+    l.log("info", "command", `פקודה מהמנהל: ${COMMAND_LABELS[cmd.command] ?? cmd.command}`, { command: cmd.command, payload: p });
     l.reportNow();
   };
 

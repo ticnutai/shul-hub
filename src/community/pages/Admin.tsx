@@ -1,6 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { LayoutDashboard, LogOut, ShieldAlert } from "lucide-react";
+import { lazy, Suspense } from "react";
+import { LayoutDashboard, LogOut, ShieldAlert, Tv } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +19,9 @@ import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { useAdminMessages } from "@community/lib/data";
 
+// Loaded only when the tab is opened: it brings the whole TV board with it.
+const TvAdmin = lazy(() => import("@community/components/admin/tv/TvAdmin"));
+
 export function AdminPage() {
   const { session, isAdmin, loading } = useAuth();
   const { data: messages = [] } = useAdminMessages();
@@ -28,7 +32,7 @@ export function AdminPage() {
   const requestedTab = searchParams.get("tab");
   const activeTab = [
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
-    "messages", "widgets", "settings", "users", "data", "qr",
+    "messages", "widgets", "settings", "users", "data", "qr", "tv",
   ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
@@ -94,6 +98,9 @@ export function AdminPage() {
               <TabsTrigger value="users">משתמשים</TabsTrigger>
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
               <TabsTrigger value="qr">קודי QR</TabsTrigger>
+              <TabsTrigger value="tv">
+                <Tv className="size-4" /> לוח תצוגה (TV)
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="minyanim" className="mt-6">
@@ -128,6 +135,11 @@ export function AdminPage() {
             </TabsContent>
             <TabsContent value="qr" className="mt-6">
               <QrCodesAdmin />
+            </TabsContent>
+            <TabsContent value="tv" className="mt-6">
+              <Suspense fallback={<p className="p-6 text-center text-muted-foreground">טוען את מרכז הבקרה…</p>}>
+                <TvAdmin />
+              </Suspense>
             </TabsContent>
           </Tabs>
         )}

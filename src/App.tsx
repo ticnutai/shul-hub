@@ -54,6 +54,8 @@ const CommunityChavrutot = lazy(() => import("@community/pages/Chavrutot").then(
 const CommunityContact = lazy(() => import("@community/pages/Contact").then(m => ({ default: m.ContactPage })));
 const CommunityAdmin = lazy(() => import("@community/pages/Admin").then(m => ({ default: m.AdminPage })));
 const YamimNoraimEvent = lazy(() => import("./pages/YamimNoraimEvent"));
+// Admin-only alerts about the TV screens; renders nothing for other users.
+const TvAdminWatcher = lazy(() => import("@community/components/admin/tv/TvAdminWatcher"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -165,6 +167,9 @@ const App = () => {
                         <MobilePageSwipeNavigation />
                         <AndroidBackNavigation />
                         <OmerEntryPopup />
+                        <Suspense fallback={null}>
+                          <TvAdminWatcher />
+                        </Suspense>
                         <ErrorBoundary fallbackTitle="שגיאה בטעינת הדף">
                           <Trace id="App.Routes">
                           <Suspense fallback={<LoadingFallback />}>
