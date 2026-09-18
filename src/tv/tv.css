@@ -1,137 +1,176 @@
 /*
- * Styling for the wall-mounted synagogue display.
+ * The wall display. Shared by the TV app and the admin's live preview, so
+ * EVERYTHING here is scoped under .tv-frame and nothing touches html/body
+ * (those rules live in tv-global.css, TV only).
  *
- * Three constraints drive everything here and none of them apply to the phone
- * app, which is why this does not reuse `index.css`:
+ * Sizing: .tv-frame is a size container and every length is derived from its
+ * height (cqh). On the TV the frame is the whole screen; in the admin it is a
+ * 16:9 box - the same stylesheet produces the same picture at any size, with
+ * no media queries and no transform-scaling tricks.
  *
- * 1. Ten-foot viewing. Every size is derived from viewport height so the same
- *    build is legible on a 1080p screen and on a 4K one without media queries.
- * 2. Overscan. Many TVs crop the edges of the signal, so all content sits
- *    inside a safe-area inset rather than against the edge.
- * 3. Burn-in. A static bright panel left on for weeks damages OLED panels, so
- *    the palette stays dark and the layout shifts between slides.
+ * Constraints that shaped it:
+ *  - Ten-foot reading: large type, strong contrast, few lines per slide.
+ *  - Overscan: TVs crop up to ~5% of the edges, so content sits in a safe area.
+ *  - Burn-in: dark defaults, a slowly drifting background, nothing bright and
+ *    static at the edges.
+ *
+ * Colours come only from the theme variables (themes.ts); tints are derived
+ * with color-mix so editing one variable restyles everything consistently.
  */
 
-:root {
-  --tv-navy-deep: #0b1628;
-  --tv-navy: #12243f;
-  --tv-navy-soft: #1b3054;
-  --tv-gold: #f0c35c;
-  --tv-gold-dim: #b99236;
-  --tv-text: #f4f7fb;
-  --tv-text-dim: #9fb2cc;
-  --tv-live: #4ade80;
-  --tv-stale: #fbbf24;
-
-  /* Overscan guard: TVs can crop up to ~5% of each edge. */
-  --tv-safe-x: 4vw;
-  --tv-safe-y: 4vh;
-
-  /* One scale knob. Everything below is a multiple of it. */
-  --tv-unit: 1vh;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
+.tv-frame {
+  container-type: size;
+  position: relative;
+  width: 100%;
   height: 100%;
-  margin: 0;
   overflow: hidden;
 }
 
-/*
- * No focus rings, anywhere. Android WebView draws its default focus ring in
- * orange, and on a TV any remote key press (or an HDMI-CEC event from the TV
- * itself) puts the page into keyboard-focus mode. Found on a real device: a
- * bright orange frame appeared around the entire screen and stayed there. The
- * board has nothing to focus, so the ring carries no information - it is only
- * a static bright line, which is also exactly what burns into a panel.
- */
-*,
-*:focus,
-*:focus-visible {
-  outline: none !important;
-}
-
-body {
-  background: var(--tv-navy-deep);
-  color: var(--tv-text);
-  font-family: "Heebo", "Assistant", "Segoe UI", system-ui, sans-serif;
-  direction: rtl;
-  /* A TV has no pointer and no text selection. Removing both avoids a stray
-     highlight left behind by a remote or a passing HDMI-CEC event. */
-  cursor: none;
-  user-select: none;
+.tv-frame *,
+.tv-frame *::before,
+.tv-frame *::after {
+  box-sizing: border-box;
 }
 
 .tv-root {
+  --u: 1cqh;
+  --fs: calc(var(--u) * var(--tv-scale, 1));
+  --tv-safe-x: 4cqw;
+  --tv-safe-y: 3.6cqh;
+  --tv-border: color-mix(in srgb, var(--tv-accent) 22%, transparent);
+  --tv-divider: color-mix(in srgb, var(--tv-text) 10%, transparent);
+  --tv-highlight: color-mix(in srgb, var(--tv-accent) 16%, transparent);
+  --tv-shadow: 0 calc(var(--u) * 0.8) calc(var(--u) * 3) color-mix(in srgb, #000 22%, transparent);
+
+  position: relative;
   height: 100%;
   display: flex;
   flex-direction: column;
   padding: var(--tv-safe-y) var(--tv-safe-x);
+  color: var(--tv-text);
+  font-family: var(--tv-font-body);
+  direction: rtl;
+  text-align: right;
+  line-height: 1.25;
+  isolation: isolate;
+}
+
+/* ------------------------------------------------------------ background - */
+
+/*
+ * NO continuous animation while the board is idle. Measured on the MECOOL box
+ * (Android 14, armeabi-v7a), with DevTools A/B switching:
+ *   - all animations off .......................... 0-6% CPU
+ *   - any ONE endless animation (drift OR progress) 45% CPU + 12-18% renderer
+ *   - the first version (background-position drift + 250 ms React tick)
+ *     ............................................ 83% + 39%
+ * One endless animation keeps the WebView compositing 60 frames a second, so
+ * swapping one for another does not help; the idle board must be still.
+ *
+ * Burn-in protection is kept by moving this layer to a new position on every
+ * slide change (TvBoard sets the transform); the transition runs for a few
+ * seconds and then the screen is static again.
+ */
+.tv-bg {
+  position: absolute;
+  inset: -12%;
+  z-index: -1;
   background:
-    radial-gradient(ellipse at 20% 0%, var(--tv-navy-soft) 0%, transparent 55%),
-    radial-gradient(ellipse at 100% 100%, #16304f 0%, transparent 50%),
-    var(--tv-navy-deep);
+    radial-gradient(ellipse 60% 55% at 22% 8%, var(--tv-bg-b), transparent 70%),
+    radial-gradient(ellipse 55% 50% at 95% 95%, var(--tv-bg-c), transparent 70%),
+    var(--tv-bg-a);
+  transition: transform 4s ease-in-out;
+}
+
+.tv-root.has-bg-image .tv-bg::before,
+.tv-root.has-bg-image .tv-bg::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.tv-root.has-bg-image .tv-bg::before {
+  background: var(--tv-bg-image) center / cover no-repeat;
+}
+
+.tv-root.has-bg-image .tv-bg::after {
+  background: color-mix(in srgb, var(--tv-bg-a) calc(var(--tv-bg-dim) * 100%), transparent);
 }
 
 /* ---------------------------------------------------------------- header - */
 
 .tv-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: calc(var(--tv-unit) * 3);
-  padding-bottom: calc(var(--tv-unit) * 2);
-  border-bottom: 2px solid rgba(240, 195, 92, 0.25);
+  gap: calc(var(--u) * 3);
+  padding-bottom: calc(var(--u) * 1.8);
+  border-bottom: max(1px, calc(var(--u) * 0.18)) solid var(--tv-border);
   flex: 0 0 auto;
 }
 
 .tv-title {
-  font-size: calc(var(--tv-unit) * 5.2);
-  font-weight: 800;
-  color: var(--tv-gold);
-  letter-spacing: -0.01em;
   margin: 0;
-  line-height: 1.1;
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 5.4);
+  font-weight: 800;
+  line-height: 1.05;
+  color: var(--tv-accent);
+  letter-spacing: -0.01em;
 }
 
 .tv-subtitle {
-  font-size: calc(var(--tv-unit) * 2.4);
+  margin-top: calc(var(--u) * 0.7);
+  font-size: calc(var(--fs) * 2.2);
   color: var(--tv-text-dim);
-  margin-top: calc(var(--tv-unit) * 0.6);
+}
+
+.tv-ribbon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 1);
+  margin-top: calc(var(--u) * 1);
+}
+
+.tv-ribbon span {
+  font-size: calc(var(--fs) * 1.9);
+  font-weight: 600;
+  padding: calc(var(--u) * 0.35) calc(var(--u) * 1.3);
+  border-radius: 999px;
+  background: var(--tv-highlight);
+  color: var(--tv-text);
+  border: 1px solid var(--tv-border);
 }
 
 .tv-clock {
   text-align: left;
   line-height: 1;
+  flex: 0 0 auto;
 }
 
 .tv-clock-time {
-  font-size: calc(var(--tv-unit) * 7);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 7.2);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
 }
 
 .tv-clock-date {
-  font-size: calc(var(--tv-unit) * 2.3);
+  margin-top: calc(var(--u) * 0.9);
+  font-size: calc(var(--fs) * 2.1);
   color: var(--tv-text-dim);
-  margin-top: calc(var(--tv-unit) * 0.8);
 }
 
-/* ------------------------------------------------------------------ body - */
+/* ----------------------------------------------------------------- stage - */
 
 .tv-stage {
   flex: 1 1 auto;
   min-height: 0;
-  padding: calc(var(--tv-unit) * 3) 0;
+  padding: calc(var(--u) * 2.6) 0 calc(var(--u) * 1.6);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .tv-slide {
@@ -139,13 +178,13 @@ body {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  animation: tv-enter 600ms ease-out both;
+  animation: tv-enter 700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 
 @keyframes tv-enter {
   from {
     opacity: 0;
-    transform: translateY(calc(var(--tv-unit) * 1.5));
+    transform: translateY(calc(var(--u) * 1.6));
   }
   to {
     opacity: 1;
@@ -153,55 +192,77 @@ body {
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tv-slide {
-    animation: none;
-  }
-}
-
 .tv-slide-heading {
   display: flex;
   align-items: baseline;
-  gap: calc(var(--tv-unit) * 2);
-  font-size: calc(var(--tv-unit) * 4.2);
+  gap: calc(var(--u) * 1.8);
+  margin: 0 0 calc(var(--u) * 2.2);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 4.3);
   font-weight: 700;
-  color: var(--tv-gold);
-  margin: 0 0 calc(var(--tv-unit) * 2.4);
+  color: var(--tv-accent);
   flex: 0 0 auto;
 }
 
 .tv-slide-heading small {
-  font-size: calc(var(--tv-unit) * 2.2);
+  font-family: var(--tv-font-body);
+  font-size: calc(var(--fs) * 2.2);
   font-weight: 500;
   color: var(--tv-text-dim);
 }
 
-/* --------------------------------------------------------- prayer  slide - */
+.tv-panel {
+  background: var(--tv-panel);
+  border: 1px solid var(--tv-border);
+  border-radius: calc(var(--u) * 1.6);
+  padding: calc(var(--u) * 2.2);
+  box-shadow: var(--tv-shadow);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+.tv-panel-title {
+  margin: 0 0 calc(var(--u) * 1.4);
+  font-size: calc(var(--fs) * 2.4);
+  font-weight: 700;
+  color: var(--tv-accent-2);
+  flex: 0 0 auto;
+}
+
+.tv-empty {
+  margin: auto;
+  font-size: calc(var(--fs) * 2.6);
+  color: var(--tv-text-dim);
+  text-align: center;
+}
+
+.tv-badge {
+  display: inline-block;
+  margin-inline-start: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 0.25) calc(var(--u) * 1.1);
+  border-radius: 999px;
+  background: var(--tv-accent);
+  color: var(--tv-on-accent);
+  font-family: var(--tv-font-body);
+  font-size: calc(var(--fs) * 1.6);
+  font-weight: 800;
+  vertical-align: middle;
+}
+
+.tv-frame .is-past {
+  opacity: 0.45;
+}
+
+/* ------------------------------------------------ prayer: split & zmanim - */
 
 .tv-prayer-grid {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: calc(var(--tv-unit) * 3);
-}
-
-.tv-panel {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(240, 195, 92, 0.18);
-  border-radius: calc(var(--tv-unit) * 1.6);
-  padding: calc(var(--tv-unit) * 2.4);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-}
-
-.tv-panel-title {
-  font-size: calc(var(--tv-unit) * 2.6);
-  font-weight: 600;
-  color: var(--tv-gold-dim);
-  margin: 0 0 calc(var(--tv-unit) * 1.8);
-  flex: 0 0 auto;
+  grid-template-columns: 1.4fr 1fr;
+  gap: calc(var(--u) * 2.6);
 }
 
 .tv-minyan-list,
@@ -209,78 +270,92 @@ body {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-around;
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.tv-minyan-list.is-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  column-gap: calc(var(--u) * 3);
+  align-content: space-evenly;
 }
 
 .tv-minyan-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: calc(var(--tv-unit) * 2);
-  padding: calc(var(--tv-unit) * 1.1) 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  gap: calc(var(--u) * 1.6);
+  padding: calc(var(--u) * 0.9) calc(var(--u) * 1.2);
+  border-bottom: 1px solid var(--tv-divider);
+  border-radius: calc(var(--u) * 0.8);
 }
 
 .tv-minyan-row:last-child {
-  border-bottom: none;
-}
-
-/* The next minyan is the single thing a person walking in wants to find. */
-.tv-minyan-row.is-next {
-  background: linear-gradient(90deg, rgba(240, 195, 92, 0.16), transparent 70%);
-  border-radius: calc(var(--tv-unit) * 0.9);
-  padding-right: calc(var(--tv-unit) * 1.4);
-  padding-left: calc(var(--tv-unit) * 1.4);
   border-bottom-color: transparent;
 }
 
+.tv-minyan-row.is-next,
+.tv-zman-row.is-next {
+  background: linear-gradient(270deg, var(--tv-highlight), transparent 80%);
+  border-bottom-color: transparent;
+  opacity: 1;
+}
+
 .tv-minyan-name {
-  font-size: calc(var(--tv-unit) * 3.4);
+  font-size: calc(var(--fs) * 3.1);
   font-weight: 700;
+  min-width: 0;
+}
+
+.is-two-col .tv-minyan-name {
+  font-size: calc(var(--fs) * 2.5);
 }
 
 .tv-minyan-source {
-  font-size: calc(var(--tv-unit) * 1.9);
-  color: var(--tv-text-dim);
+  display: block;
+  margin-top: calc(var(--u) * 0.2);
+  font-size: calc(var(--fs) * 1.7);
   font-weight: 400;
-  margin-right: calc(var(--tv-unit) * 1.2);
+  color: var(--tv-text-dim);
 }
 
 .tv-minyan-time {
-  font-size: calc(var(--tv-unit) * 4);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 3.8);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: var(--tv-text);
+  flex: 0 0 auto;
+}
+
+.is-two-col .tv-minyan-time {
+  font-size: calc(var(--fs) * 3);
 }
 
 .is-next .tv-minyan-time {
-  color: var(--tv-gold);
-}
-
-.tv-next-badge {
-  font-size: calc(var(--tv-unit) * 1.7);
-  font-weight: 700;
-  color: var(--tv-navy-deep);
-  background: var(--tv-gold);
-  border-radius: 999px;
-  padding: calc(var(--tv-unit) * 0.3) calc(var(--tv-unit) * 1.2);
-  margin-right: calc(var(--tv-unit) * 1.2);
+  color: var(--tv-accent);
 }
 
 .tv-zman-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: calc(var(--tv-unit) * 0.75) 0;
-  font-size: calc(var(--tv-unit) * 2.4);
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1);
+  border-radius: calc(var(--u) * 0.6);
+  font-size: calc(var(--fs) * 2.3);
 }
 
 .tv-zman-row dt {
   color: var(--tv-text-dim);
+}
+
+.tv-zman-row.is-next dt {
+  color: var(--tv-text);
+  font-weight: 700;
 }
 
 .tv-zman-row dd {
@@ -289,68 +364,378 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* --------------------------------------------------- announcements slide - */
+/* ---------------------------------------------------------- prayer: next - */
+
+.tv-next-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.7fr 1fr;
+  gap: calc(var(--u) * 2.6);
+}
+
+.tv-hero {
+  justify-content: center;
+  align-items: flex-start;
+  gap: calc(var(--u) * 0.6);
+  padding: calc(var(--u) * 3.4);
+  background:
+    radial-gradient(ellipse at 100% 0%, var(--tv-highlight), transparent 65%),
+    var(--tv-panel);
+}
+
+.tv-hero-kicker {
+  font-size: calc(var(--fs) * 2.4);
+  font-weight: 700;
+  color: var(--tv-accent-2);
+  letter-spacing: 0.02em;
+}
+
+.tv-hero-title {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 6);
+  font-weight: 800;
+  line-height: 1.05;
+}
+
+.tv-hero-time {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 14);
+  font-weight: 900;
+  line-height: 0.95;
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-hero-until {
+  font-size: calc(var(--fs) * 3);
+  font-weight: 700;
+}
+
+.tv-hero-meta {
+  font-size: calc(var(--fs) * 2.1);
+  color: var(--tv-text-dim);
+}
+
+.tv-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--u) * 1);
+  margin-top: auto;
+  padding-top: calc(var(--u) * 2);
+}
+
+.tv-chip {
+  display: flex;
+  gap: calc(var(--u) * 0.9);
+  align-items: baseline;
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1.4);
+  border-radius: 999px;
+  border: 1px solid var(--tv-border);
+  font-size: calc(var(--fs) * 1.9);
+}
+
+.tv-chip-time {
+  font-weight: 800;
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------ prayer: timeline - */
+
+.tv-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 calc(var(--u) * 1);
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  position: relative;
+}
+
+.tv-timeline.is-two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-flow: column;
+  column-gap: calc(var(--u) * 4);
+}
+
+.tv-tl-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2);
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 1);
+}
+
+.tv-tl-row.is-next {
+  background: var(--tv-highlight);
+  box-shadow: inset 0 0 0 1px var(--tv-border);
+  opacity: 1;
+}
+
+.tv-tl-dot {
+  width: calc(var(--u) * 1.6);
+  height: calc(var(--u) * 1.6);
+  border-radius: 50%;
+  border: calc(var(--u) * 0.3) solid var(--tv-accent);
+  flex: 0 0 auto;
+}
+
+.is-next .tv-tl-dot {
+  background: var(--tv-accent);
+  box-shadow: 0 0 0 calc(var(--u) * 0.8) var(--tv-highlight);
+}
+
+.tv-tl-time {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 3.6);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  min-width: calc(var(--u) * 11);
+}
+
+.is-next .tv-tl-time {
+  color: var(--tv-accent);
+}
+
+.tv-tl-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.tv-tl-kind {
+  font-size: calc(var(--fs) * 1.7);
+  font-weight: 700;
+  color: var(--tv-accent-2);
+}
+
+.tv-tl-name {
+  font-size: calc(var(--fs) * 2.7);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* -------------------------------------------------------------- learning - */
+
+.tv-learning-grid {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.25fr;
+  gap: calc(var(--u) * 2.6);
+}
+
+.tv-feature {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: calc(var(--u) * 1.6);
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--tv-highlight), transparent 70%),
+    var(--tv-panel);
+}
+
+.tv-feature-label {
+  font-size: calc(var(--fs) * 2.6);
+  font-weight: 700;
+  color: var(--tv-accent-2);
+}
+
+.tv-feature-value {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 6.4);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--tv-accent);
+}
+
+.tv-upcoming ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.tv-upcoming li {
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--u) * 0.7) 0;
+  border-bottom: 1px solid var(--tv-divider);
+}
+
+.tv-upcoming li:last-child {
+  border-bottom: none;
+}
+
+.tv-up-title {
+  font-size: calc(var(--fs) * 2.5);
+  font-weight: 700;
+}
+
+.tv-upcoming li.is-major .tv-up-title {
+  color: var(--tv-accent);
+}
+
+.tv-up-when {
+  font-size: calc(var(--fs) * 1.8);
+  color: var(--tv-text-dim);
+}
+
+.tv-learning-hero {
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: calc(var(--u) * 1.4);
+}
+
+.tv-parasha-huge {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 16);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--tv-accent);
+}
+
+.tv-learning-strip {
+  display: flex;
+  gap: calc(var(--u) * 2);
+  margin-top: calc(var(--u) * 3);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.tv-mini {
+  align-items: center;
+  gap: calc(var(--u) * 0.5);
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 2.6);
+}
+
+.tv-mini-label {
+  font-size: calc(var(--fs) * 1.8);
+  color: var(--tv-text-dim);
+}
+
+.tv-mini-value {
+  font-size: calc(var(--fs) * 3);
+  font-weight: 800;
+}
+
+.tv-mini.is-major .tv-mini-value {
+  color: var(--tv-accent);
+}
+
+/* --------------------------------------------------------- announcements - */
 
 .tv-cards {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  gap: calc(var(--tv-unit) * 2.4);
+  gap: calc(var(--u) * 2.4);
   grid-auto-rows: 1fr;
+  grid-template-columns: 1fr 1fr;
 }
 
 .tv-cards[data-count="1"] {
   grid-template-columns: 1fr;
 }
 
-.tv-cards[data-count="2"] {
-  grid-template-columns: 1fr 1fr;
-}
-
-.tv-cards[data-count="3"],
-.tv-cards[data-count="4"] {
-  grid-template-columns: 1fr 1fr;
-}
-
 .tv-card {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(240, 195, 92, 0.2);
-  border-right: calc(var(--tv-unit) * 0.6) solid var(--tv-gold);
-  border-radius: calc(var(--tv-unit) * 1.4);
-  padding: calc(var(--tv-unit) * 2.2);
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
+  background: var(--tv-panel);
+  border: 1px solid var(--tv-border);
+  border-inline-start: calc(var(--u) * 0.6) solid var(--tv-accent);
+  border-radius: calc(var(--u) * 1.4);
+  box-shadow: var(--tv-shadow);
+}
+
+.tv-card.is-pinned {
+  border-inline-start-color: var(--tv-pinned);
+}
+
+.tv-card-image {
+  width: 100%;
+  height: 38%;
+  object-fit: cover;
+  flex: 0 0 auto;
+}
+
+.tv-card-text {
+  padding: calc(var(--u) * 2.2);
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.tv-card-pinned {
-  border-right-color: #ef8f4c;
-}
-
 .tv-card-title {
-  font-size: calc(var(--tv-unit) * 3);
+  margin: 0 0 calc(var(--u) * 1.1);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 3);
   font-weight: 700;
-  margin: 0 0 calc(var(--tv-unit) * 1.2);
-  color: var(--tv-gold);
+  color: var(--tv-accent);
 }
 
 .tv-card-body {
-  font-size: calc(var(--tv-unit) * 2.3);
-  line-height: 1.5;
-  color: var(--tv-text);
   margin: 0;
+  font-size: calc(var(--fs) * 2.25);
+  line-height: 1.5;
   white-space: pre-wrap;
   overflow: hidden;
-  /* Long notices are truncated rather than scrolled: a slide has a fixed
-     lifetime, and half a scrolled message is worse than a clean cut. */
   display: -webkit-box;
   -webkit-line-clamp: 7;
   line-clamp: 7;
   -webkit-box-orient: vertical;
 }
 
-/* -------------------------------------------------------- shiurim  slide - */
+.tv-spotlight {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.tv-spotlight .tv-card {
+  flex: 1 1 auto;
+}
+
+.tv-card.is-large.has-image {
+  flex-direction: row;
+}
+
+.tv-card.is-large .tv-card-image {
+  width: 45%;
+  height: 100%;
+}
+
+.tv-card.is-large .tv-card-text {
+  padding: calc(var(--u) * 4);
+  justify-content: center;
+  flex: 1 1 auto;
+}
+
+.tv-card.is-large .tv-card-title {
+  font-size: calc(var(--fs) * 5.4);
+}
+
+.tv-card.is-large .tv-card-body {
+  font-size: calc(var(--fs) * 3.1);
+  -webkit-line-clamp: 9;
+  line-clamp: 9;
+}
+
+/* --------------------------------------------------------------- shiurim - */
 
 .tv-shiur-list {
   list-style: none;
@@ -366,40 +751,159 @@ body {
 .tv-shiur-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  align-items: baseline;
-  gap: calc(var(--tv-unit) * 2.5);
-  padding: calc(var(--tv-unit) * 1.3) calc(var(--tv-unit) * 1.4);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  align-items: center;
+  gap: calc(var(--u) * 2.5);
+  padding: calc(var(--u) * 1.1) calc(var(--u) * 1.4);
+  border-bottom: 1px solid var(--tv-divider);
+  border-radius: calc(var(--u) * 0.8);
 }
 
 .tv-shiur-row:last-child {
-  border-bottom: none;
+  border-bottom-color: transparent;
+}
+
+.tv-shiur-row.is-next {
+  background: linear-gradient(270deg, var(--tv-highlight), transparent 85%);
+  opacity: 1;
 }
 
 .tv-shiur-time {
-  font-size: calc(var(--tv-unit) * 3.2);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 3.1);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: var(--tv-gold);
-  min-width: calc(var(--tv-unit) * 12);
+  color: var(--tv-accent);
+  min-width: calc(var(--u) * 12);
 }
 
 .tv-shiur-title {
-  font-size: calc(var(--tv-unit) * 2.9);
+  display: block;
+  font-size: calc(var(--fs) * 2.8);
   font-weight: 700;
 }
 
 .tv-shiur-meta {
-  font-size: calc(var(--tv-unit) * 2);
+  display: block;
+  margin-top: calc(var(--u) * 0.3);
+  font-size: calc(var(--fs) * 1.9);
   color: var(--tv-text-dim);
-  margin-top: calc(var(--tv-unit) * 0.4);
 }
 
 .tv-shiur-teacher {
-  font-size: calc(var(--tv-unit) * 2.3);
+  font-size: calc(var(--fs) * 2.2);
   color: var(--tv-text-dim);
   text-align: left;
   white-space: nowrap;
+}
+
+.tv-shiur-cards {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 38), 1fr));
+  grid-auto-rows: 1fr;
+  gap: calc(var(--u) * 2.2);
+}
+
+.tv-shiur-card {
+  justify-content: center;
+  gap: calc(var(--u) * 0.6);
+}
+
+.tv-shiur-card.is-next {
+  background: var(--tv-highlight);
+  border-color: var(--tv-accent);
+  opacity: 1;
+}
+
+.tv-shiur-card .tv-shiur-teacher {
+  text-align: right;
+}
+
+/* ------------------------------------------------------------- slideshow - */
+
+.tv-slideshow {
+  position: relative;
+  border-radius: calc(var(--u) * 1.6);
+  overflow: hidden;
+  box-shadow: var(--tv-shadow);
+  animation: none;
+}
+
+.tv-show-item {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  transition: opacity 1200ms ease;
+}
+
+.tv-show-item.is-active {
+  opacity: 1;
+}
+
+.tv-show-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tv-slideshow.is-kenburns .tv-show-item.is-active img {
+  animation: tv-kenburns linear both;
+  animation-duration: inherit;
+}
+
+@keyframes tv-kenburns {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.1) translate(-2%, -1.5%);
+  }
+}
+
+.tv-show-item figcaption {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  padding: calc(var(--u) * 5) calc(var(--u) * 3) calc(var(--u) * 2.2);
+  background: linear-gradient(0deg, color-mix(in srgb, #000 70%, transparent), transparent);
+  color: #fff;
+  font-size: calc(var(--fs) * 3);
+  font-weight: 700;
+}
+
+/* ---------------------------------------------------------------- ticker - */
+
+.tv-ticker {
+  position: relative;
+  overflow: hidden;
+  flex: 0 0 auto;
+  margin-bottom: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 0.8) 0;
+  border-radius: calc(var(--u) * 0.8);
+  background: var(--tv-highlight);
+  border: 1px solid var(--tv-border);
+  white-space: nowrap;
+}
+
+/* Hebrew reads right to left, so the start of the sentence must appear
+   first: the text enters from the left and travels right. */
+.tv-ticker-text {
+  display: inline-block;
+  padding-inline: calc(var(--u) * 2);
+  font-size: calc(var(--fs) * 2.4);
+  font-weight: 700;
+  animation: tv-ticker linear infinite;
+}
+
+@keyframes tv-ticker {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100cqw);
+  }
 }
 
 /* ---------------------------------------------------------------- footer - */
@@ -409,49 +913,90 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: calc(var(--tv-unit) * 2);
-  padding-top: calc(var(--tv-unit) * 1.6);
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: calc(var(--tv-unit) * 1.9);
+  gap: calc(var(--u) * 2);
+  padding-top: calc(var(--u) * 1.4);
+  border-top: 1px solid var(--tv-divider);
+  font-size: calc(var(--fs) * 1.9);
   color: var(--tv-text-dim);
+}
+
+.tv-footer-slides {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.8);
+  min-width: calc(var(--u) * 14);
 }
 
 .tv-dots {
   display: flex;
-  gap: calc(var(--tv-unit) * 1);
+  gap: calc(var(--u) * 0.9);
 }
 
 .tv-dot {
-  width: calc(var(--tv-unit) * 1.1);
-  height: calc(var(--tv-unit) * 1.1);
+  width: calc(var(--u) * 1.1);
+  height: calc(var(--u) * 1.1);
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, var(--tv-text) 25%, transparent);
+  transition: background 300ms;
 }
 
 .tv-dot.is-active {
-  background: var(--tv-gold);
+  background: var(--tv-accent);
+}
+
+.tv-progress {
+  height: calc(var(--u) * 0.35);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tv-text) 12%, transparent);
+  overflow: hidden;
+}
+
+/* Steps once a second with the clock (no transition, no animation): a smooth
+   bar would be an endless animation, which costs ~45% CPU on the TV box. */
+.tv-progress span {
+  display: block;
+  height: 100%;
+  background: var(--tv-accent);
+  transform-origin: right;
+}
+
+.tv-alert-chip {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 0.8);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1.6);
+  border-radius: 999px;
+  background: var(--tv-highlight);
+  border: 1px solid var(--tv-accent);
+  color: var(--tv-text);
+  font-weight: 600;
+}
+
+.tv-alert-chip b {
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
 }
 
 .tv-status {
   display: flex;
   align-items: center;
-  gap: calc(var(--tv-unit) * 1);
+  gap: calc(var(--u) * 0.9);
 }
 
 .tv-status-dot {
-  width: calc(var(--tv-unit) * 1.2);
-  height: calc(var(--tv-unit) * 1.2);
+  width: calc(var(--u) * 1.2);
+  height: calc(var(--u) * 1.2);
   border-radius: 50%;
-  background: var(--tv-live);
+  background: #4ade80;
 }
 
 .tv-status-dot.is-connecting {
-  background: var(--tv-stale);
+  background: #fbbf24;
   animation: tv-pulse 1.4s ease-in-out infinite;
 }
 
 .tv-status-dot.is-offline {
-  background: var(--tv-stale);
+  background: #fbbf24;
 }
 
 @keyframes tv-pulse {
@@ -460,7 +1005,147 @@ body {
   }
 }
 
-/* ------------------------------------------------------- loading / empty - */
+/* -------------------------------------------------- zman reminder card - */
+
+.tv-alert-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--tv-bg-a) 72%, transparent);
+  animation: tv-fade 500ms ease both;
+}
+
+.tv-alert-card {
+  min-width: 52cqw;
+  padding: calc(var(--u) * 4.4) calc(var(--u) * 6);
+  border-radius: calc(var(--u) * 3);
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--tv-highlight), transparent 70%),
+    color-mix(in srgb, var(--tv-bg-a) 92%, var(--tv-accent));
+  border: calc(var(--u) * 0.25) solid var(--tv-accent);
+  box-shadow: 0 0 0 calc(var(--u) * 1.6) var(--tv-highlight), var(--tv-shadow);
+  text-align: center;
+  animation: tv-pop 600ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.tv-alert-icon {
+  font-size: calc(var(--fs) * 6);
+  line-height: 1;
+}
+
+.tv-alert-title {
+  margin-top: calc(var(--u) * 1.2);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 5);
+  font-weight: 800;
+}
+
+.tv-alert-countdown {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 15);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+}
+
+.tv-alert-sub {
+  margin-top: calc(var(--u) * 1);
+  font-size: calc(var(--fs) * 2.8);
+  color: var(--tv-text-dim);
+}
+
+@keyframes tv-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes tv-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+/* ----------------------------------------------------- toasts, help, etc - */
+
+.tv-paused,
+.tv-toast {
+  position: absolute;
+  z-index: 30;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: calc(var(--u) * 1) calc(var(--u) * 2.8);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tv-bg-a) 88%, transparent);
+  border: 1px solid var(--tv-accent);
+  font-size: calc(var(--fs) * 2.4);
+  font-weight: 700;
+  box-shadow: var(--tv-shadow);
+}
+
+.tv-paused {
+  top: calc(var(--u) * 1.4);
+}
+
+.tv-toast {
+  bottom: calc(var(--u) * 9);
+  animation: tv-fade 250ms ease both;
+}
+
+.tv-help {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--tv-bg-a) 82%, transparent);
+}
+
+.tv-help-card {
+  padding: calc(var(--u) * 4) calc(var(--u) * 5);
+  border-radius: calc(var(--u) * 2.4);
+  background: var(--tv-bg-a);
+  border: 1px solid var(--tv-accent);
+  box-shadow: var(--tv-shadow);
+  min-width: 46cqw;
+}
+
+.tv-help-card h2 {
+  margin: 0 0 calc(var(--u) * 2.4);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 4);
+  color: var(--tv-accent);
+}
+
+.tv-help-card dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: calc(var(--u) * 1.2) calc(var(--u) * 3);
+  margin: 0;
+  font-size: calc(var(--fs) * 2.4);
+}
+
+.tv-help-card dt {
+  font-weight: 800;
+  color: var(--tv-accent);
+}
+
+.tv-help-card dd {
+  margin: 0;
+}
+
+.tv-help-foot {
+  margin: calc(var(--u) * 2.4) 0 0;
+  font-size: calc(var(--fs) * 1.8);
+  color: var(--tv-text-dim);
+}
 
 .tv-centered {
   flex: 1 1 auto;
@@ -468,19 +1153,29 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--tv-unit) * 2);
+  gap: calc(var(--u) * 2);
   text-align: center;
 }
 
 .tv-centered-title {
-  font-size: calc(var(--tv-unit) * 4);
+  font-size: calc(var(--fs) * 4);
   font-weight: 700;
-  color: var(--tv-gold);
+  color: var(--tv-accent);
 }
 
 .tv-centered-note {
-  font-size: calc(var(--tv-unit) * 2.4);
+  font-size: calc(var(--fs) * 2.4);
   color: var(--tv-text-dim);
   max-width: 60ch;
   line-height: 1.5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-bg,
+  .tv-slide,
+  .tv-ticker-text,
+  .tv-alert-card,
+  .tv-slideshow.is-kenburns .tv-show-item.is-active img {
+    animation: none;
+  }
 }

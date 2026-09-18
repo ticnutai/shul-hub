@@ -1,0 +1,209 @@
+import {
+  minyanSubcategories,
+  useAnnouncements,
+  useMinyanCategories,
+  useMinyanim,
+  useSettings,
+  useShiurim,
+  type Announcement,
+  type Minyan,
+  type MinyanCategory,
+  type MinyanSubcategory,
+  type Settings,
+  type Shiur,
+} from "@community/lib/data";
+import { useMemo } from "react";
+import { dayTypeFor, jerusalemWeekday, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
+import { formatTime, type Zmanim } from "@community/lib/zmanim";
+import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
+import type { TvConfig } from "./config";
+import { useOfflineSnapshot } from "./useOfflineSnapshot";
+
+/**
+ * Data for the board, plus the rules that turn it into slides. Shared by the
+ * TV app and the admin preview, so what the admin sees is computed by exactly
+ * the same code as what hangs on the wall.
+ */
+
+export interface BoardData {
+  settings: Settings | null;
+  minyanim: Minyan[] | null;
+  categories: MinyanCategory[] | null;
+  announcements: Announcement[] | null;
+  shiurim: Shiur[] | null;
+  /** Some of the data came from the on-device copy, not from the server. */
+  stale: boolean;
+  anyLoaded: boolean;
+  sync: RealtimeSyncState;
+}
+
+export function useBoardData({ persist, live }: { persist: boolean; live: boolean }): BoardData {
+  // The admin site already refreshes through its own screens; only the TV
+  // needs its own socket.
+  const sync = useRealtimeSync(
+    live ? ["settings", "minyanim", "minyan_categories", "announcements", "shiurim"] : [],
+  );
+  const settings = useOfflineSnapshot("settings", useSettings().data, persist);
+  const minyanim = useOfflineSnapshot("minyanim", useMinyanim().data, persist);
+  const categories = useOfflineSnapshot("minyan_categories", useMinyanCategories().data, persist);
+  const announcements = useOfflineSnapshot("announcements", useAnnouncements().data, persist);
+  const shiurim = useOfflineSnapshot("shiurim", useShiurim().data, persist);
+
+  const parts = [settings, minyanim, categories, announcements, shiurim];
+  return {
+    settings: settings.data ?? null,
+    minyanim: minyanim.data,
+    categories: categories.data,
+    announcements: announcements.data,
+    shiurim: shiurim.data,
+    stale: parts.some((p) => p.isStale),
+    anyLoaded: parts.some((p) => p.data !== null),
+    sync: live ? sync : { status: "live", lastSyncedAt: null },
+  };
+}
+
+/* ----------------------------------------------------------------- slides */
+
+interface SlideBase {
+  /** Stable across data refreshes, so rotation keeps its place. */
+  id: string;
+  seconds: number;
+  layout: string;
+}
+
+export type BoardSlide =
+  | (SlideBase & { kind: "prayer"; title: string; rows: ResolvedMinyan[]; subcategories: MinyanSubcategory[] })
+  | (SlideBase & { kind: "learning" })
+  | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
+  | (SlideBase & { kind: "shiurim"; items: Shiur[] })
+  | (SlideBase & { kind: "slideshow"; images: TvConfig["slideshow"]["images"]; secondsPerImage: number });
+
+const ANNOUNCEMENTS_PER_PAGE = 4;
+
+function jerusalemDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+/**
+ * The prayer schedules to show today, mirroring the website's category rules:
+ * the category for today's day type, plus every visible category that is not
+ * tied to a day type (e.g. סליחות). The board previously filtered minyanim by
+ * `day_type` only, so a category like סליחות - whose minyanim are stored as
+ * `custom` - never appeared on the wall at all.
+ */
+function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim) {
+  const dayType = dayTypeFor(now);
+  const minyanim = data.minyanim ?? [];
+
+  if (!data.categories || data.categories.length === 0) {
+    return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim), subcategories: [] as MinyanSubcategory[] }];
+  }
+
+  const todayKey = jerusalemDateKey(now);
+  return data.categories
+    .filter(
+      (c) =>
+        c.active &&
+        (!c.visible_from || c.visible_from <= todayKey) &&
+        (!c.visible_until || c.visible_until >= todayKey) &&
+        (c.system_key === dayType || !c.system_key),
+    )
+    .sort((a, b) => (a.system_key ? 0 : 1) - (b.system_key ? 0 : 1) || a.sort_order - b.sort_order)
+    .map((c) => ({
+      id: c.id,
+      title: c.name,
+      subcategories: minyanSubcategories(c),
+      rows: minyanim
+        .filter((m) => m.active && (m.category_id === c.id || (!m.category_id && m.day_type === c.system_key)))
+        .map((m) => resolveMinyan(m, zmanim))
+        .filter((r): r is ResolvedMinyan => r !== null)
+        .sort((a, b) => a.minutes - b.minutes),
+    }));
+}
+
+/**
+ * Minutes past midnight from a shiur's free-text time ("16:15 · חצי שעה").
+ * Untimed entries sort last instead of breaking the order.
+ */
+export function shiurMinutes(timeText: string | null | undefined): number {
+  const match = timeText?.match(/(\d{1,2}):(\d{2})/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : Number.POSITIVE_INFINITY;
+}
+
+export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim: Zmanim): BoardSlide[] {
+  const slides: BoardSlide[] = [];
+  const nowMs = now.getTime();
+
+  for (const sc of config.slides) {
+    if (!sc.enabled) continue;
+    const base = { seconds: sc.seconds, layout: sc.layout };
+
+    if (sc.kind === "prayer") {
+      const schedules = prayerSchedules(data, now, zmanim);
+      const withRows = schedules.filter((s) => s.rows.length > 0);
+      // Always keep one prayer slide, even empty: it also carries the zmanim.
+      for (const s of withRows.length ? withRows : schedules.slice(0, 1)) {
+        slides.push({ ...base, id: `prayer:${s.id}`, kind: "prayer", title: s.title, rows: s.rows, subcategories: s.subcategories });
+      }
+    } else if (sc.kind === "learning") {
+      slides.push({ ...base, id: "learning", kind: "learning" });
+    } else if (sc.kind === "announcements") {
+      const items = (data.announcements ?? []).filter((a) => !a.expires_at || new Date(a.expires_at).getTime() > nowMs);
+      if (sc.layout === "spotlight") {
+        items.forEach((a, i) =>
+          slides.push({ ...base, id: `ann:${a.id}`, kind: "announcements", items: [a], page: i + 1, pages: items.length }),
+        );
+      } else {
+        const pages = Math.ceil(items.length / ANNOUNCEMENTS_PER_PAGE);
+        for (let p = 0; p < pages; p += 1)
+          slides.push({
+            ...base,
+            id: `ann:page${p}`,
+            kind: "announcements",
+            items: items.slice(p * ANNOUNCEMENTS_PER_PAGE, (p + 1) * ANNOUNCEMENTS_PER_PAGE),
+            page: p + 1,
+            pages,
+          });
+      }
+    } else if (sc.kind === "shiurim") {
+      const weekday = jerusalemWeekday(now);
+      const items = (data.shiurim ?? [])
+        .filter((s) => s.active && (s.schedule_type !== "weekly" || s.day_of_week === weekday))
+        // `sort_order` is the website's ordering; on the wall it read as
+        // 16:15, 08:45, 14:15, 15:15. A schedule is scanned by time.
+        .sort((a, b) => shiurMinutes(a.time_text) - shiurMinutes(b.time_text));
+      if (items.length) slides.push({ ...base, id: "shiurim", kind: "shiurim", items });
+    } else if (sc.kind === "slideshow") {
+      const images = config.slideshow.images;
+      if (images.length)
+        slides.push({
+          ...base,
+          id: "slideshow",
+          kind: "slideshow",
+          images,
+          secondsPerImage: config.slideshow.secondsPerImage,
+          // Show every picture once per pass, however long the admin set.
+          seconds: images.length * config.slideshow.secondsPerImage,
+        });
+    }
+  }
+
+  return slides.length ? slides : [{ id: "learning", kind: "learning", seconds: 30, layout: "cards" }];
+}
+
+/** Zmanim for the calendar day of `now`, recomputed once a day, not every second. */
+export function useDayZmanim(now: Date, settings: Settings | null): Zmanim {
+  const dayStamp = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime();
+  return useMemo(() => zmanimFor(new Date(dayStamp), settings), [dayStamp, settings]);
+}
+
+/** Minutes past midnight in Jerusalem, the scale ResolvedMinyan.minutes uses. */
+export function jerusalemMinutes(date: Date): number {
+  const [h, m] = formatTime(date).split(":");
+  return Number(h) * 60 + Number(m);
+}

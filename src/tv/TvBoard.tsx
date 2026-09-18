@@ -1,0 +1,214 @@
+import { memo, useMemo, type ReactNode } from "react";
+import { HDate } from "@hebcal/core";
+import { DAYS_HE } from "@community/lib/data";
+import { jerusalemWeekday } from "@community/lib/minyan-time";
+import { formatTime, type Zmanim } from "@community/lib/zmanim";
+import type { Settings } from "@community/lib/data";
+import type { TvConfig } from "./config";
+import { dafYomi, weeklyParasha } from "./learning";
+import { themeStyle } from "./themes";
+import { SlideView } from "./TvSlides";
+import type { BoardData, BoardSlide } from "./useBoardData";
+import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
+import "./tv.css";
+
+/**
+ * The board, as a pure function of its props. It owns no timers and no data
+ * fetching, which is what lets the admin site render the very same component
+ * in a preview frame, driven either by its own controls or by the state a
+ * real TV reports.
+ */
+
+export interface TvBoardProps {
+  data: BoardData;
+  config: TvConfig;
+  now: Date;
+  zmanim: Zmanim;
+  slides: BoardSlide[];
+  index: number;
+  /** Increments on every slide start; moves the background (burn-in guard). */
+  cycle: number;
+  /** 0..1 through the current slide; updated with the once-a-second clock. */
+  progress: number;
+  paused: boolean;
+  /** Anything to layer on top: remote-control toasts, help, pairing code. */
+  overlay?: ReactNode;
+  className?: string;
+}
+
+/** Background positions stepped through, one per slide change (see tv.css). */
+const DRIFT = [
+  "translate3d(-4%, -3%, 0)",
+  "translate3d(3%, 2%, 0)",
+  "translate3d(-2%, 4%, 0)",
+  "translate3d(4%, -2%, 0)",
+  "translate3d(0%, 0%, 0)",
+];
+
+export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className }: TvBoardProps) {
+  const slide = slides[Math.min(index, slides.length - 1)];
+  // Slide bodies only need minute precision; handing them the per-second
+  // clock would re-render every panel every second on a weak TV CPU.
+  const minuteStamp = Math.floor(now.getTime() / 60_000);
+  const minuteNow = useMemo(() => new Date(minuteStamp * 60_000), [minuteStamp]);
+  const style = useMemo(
+    () =>
+      themeStyle({
+        theme: config.theme,
+        overrides: config.themeOverrides,
+        font: config.font,
+        textScale: config.textScale,
+        backgroundImage: config.backgroundImage,
+        backgroundDim: config.backgroundDim,
+      }),
+    [config.theme, config.themeOverrides, config.font, config.textScale, config.backgroundImage, config.backgroundDim],
+  );
+  const alert = currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
+
+  return (
+    <div className={`tv-frame${className ? ` ${className}` : ""}`}>
+      <div className={`tv-root${config.backgroundImage ? " has-bg-image" : ""}`} style={style}>
+        <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
+        <TvHeader settings={data.settings} now={now} config={config} />
+
+        <main className="tv-stage">
+          {!data.anyLoaded ? (
+            <div className="tv-centered">
+              <div className="tv-centered-title">
+                {data.sync.status === "offline" ? "אין חיבור לרשת" : "טוען נתונים…"}
+              </div>
+              <p className="tv-centered-note">
+                {data.sync.status === "offline"
+                  ? "המסך ינסה להתחבר שוב אוטומטית. ברגע שהחיבור יחזור, הנתונים יוצגו."
+                  : "מתחבר לשרת בית הכנסת."}
+              </p>
+            </div>
+          ) : (
+            slide && (
+              <MemoSlideView key={`${slide.id}#${cycle}`} slide={slide} now={minuteNow} zmanim={zmanim} paused={paused} />
+            )
+          )}
+        </main>
+
+        {config.ticker.enabled && config.ticker.text.trim() && (
+          <div className="tv-ticker">
+            <span
+              className="tv-ticker-text"
+              style={{ animationDuration: `${Math.max(18, config.ticker.text.length * 0.32)}s` }}
+            >
+              {config.ticker.text}
+            </span>
+          </div>
+        )}
+
+        <footer className="tv-footer">
+          <div className="tv-footer-slides">
+            <div className="tv-dots">
+              {slides.map((s, i) => (
+                <span key={s.id + i} className={`tv-dot${i === index ? " is-active" : ""}`} />
+              ))}
+            </div>
+            <div className="tv-progress">
+              <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, progress))})` }} />
+            </div>
+          </div>
+
+          {alert && !alert.popup && (
+            <div className="tv-alert-chip">
+              <span className="tv-alert-chip-icon">⏳</span>
+              {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
+            </div>
+          )}
+
+          <SyncStatus data={data} now={now} />
+        </footer>
+
+        {alert?.popup && (
+          <div className="tv-alert-backdrop">
+            <div className="tv-alert-card" role="alert">
+              <div className="tv-alert-icon">⏳</div>
+              <div className="tv-alert-title">{alert.label}</div>
+              <div className="tv-alert-countdown">{formatCountdown(alert.secondsLeft)}</div>
+              <div className="tv-alert-sub">
+                {describeMinutes(alert.secondsLeft)} · בשעה {formatTime(alert.at)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {paused && <div className="tv-paused">⏸ מושהה</div>}
+        {overlay}
+      </div>
+    </div>
+  );
+}
+
+const MemoSlideView = memo(SlideView);
+
+function TvHeader({ settings, now, config }: { settings: Settings | null; now: Date; config: TvConfig }) {
+  const dayKey = now.toDateString();
+  const day = useMemo(() => {
+    const d = new Date(dayKey);
+    return {
+      hebrew: new HDate(d).renderGematriya(true),
+      parasha: weeklyParasha(d),
+      daf: dafYomi(d)?.label ?? null,
+    };
+  }, [dayKey]);
+
+  const gregorian = now.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
+  const weekday = DAYS_HE[jerusalemWeekday(now)];
+  const ribbon = [
+    config.header.parasha && day.parasha,
+    config.header.dafYomi && day.daf && `דף יומי: ${day.daf}`,
+  ].filter(Boolean);
+
+  return (
+    <header className="tv-header">
+      <div className="tv-header-main">
+        <h1 className="tv-title">{settings?.name ?? "בית הכנסת"}</h1>
+        <div className="tv-subtitle">
+          {weekday ? `יום ${weekday}` : ""}
+          {settings?.address ? ` · ${settings.address}` : ""}
+        </div>
+        {ribbon.length > 0 && (
+          <div className="tv-ribbon">
+            {ribbon.map((r, i) => (
+              <span key={i}>{r}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="tv-clock">
+        <div className="tv-clock-time">{formatTime(now)}</div>
+        <div className="tv-clock-date">
+          {day.hebrew} · {gregorian}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function SyncStatus({ data, now }: { data: BoardData; now: Date }) {
+  const { status, lastSyncedAt } = data.sync;
+  const live = status === "live" && !data.stale;
+  let label: string;
+  if (live) label = "מעודכן";
+  else if (status === "connecting") label = "מתחבר…";
+  else label = lastSyncedAt ? `מציג מידע מ־${describeAge(now.getTime() - lastSyncedAt.getTime())}` : "אין חיבור";
+  return (
+    <div className="tv-status">
+      <span className={`tv-status-dot${live ? "" : status === "connecting" ? " is-connecting" : " is-offline"}`} />
+      <span>{label}</span>
+    </div>
+  );
+}
+
+function describeAge(ms: number): string {
+  const minutes = Math.floor(ms / 60000);
+  if (minutes < 1) return "הרגע";
+  if (minutes < 60) return `לפני ${minutes} דק׳`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `לפני ${hours} שע׳`;
+  return `לפני ${Math.floor(hours / 24)} ימים`;
+}

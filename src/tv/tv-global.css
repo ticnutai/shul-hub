@@ -1,0 +1,35 @@
+/*
+ * Page-level rules for the TV app ONLY (imported by main-tv.tsx).
+ *
+ * Kept out of tv.css on purpose: the admin site imports tv.css to render the
+ * live preview, and these rules - no cursor, no scrolling, no focus rings -
+ * would break the whole website if they leaked into it.
+ */
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: #0b1628;
+  direction: rtl;
+  /* A TV has no pointer and no text selection. */
+  cursor: none;
+  user-select: none;
+}
+
+/*
+ * No focus rings. Android WebView draws its default ring in orange, and any
+ * remote key press puts the page in keyboard-focus mode. Found on the device:
+ * a bright orange frame around the entire screen that stayed there - a static
+ * bright line, which is exactly what burns into a panel.
+ */
+*,
+*:focus,
+*:focus-visible {
+  outline: none !important;
+}

@@ -8,23 +8,17 @@
     <!--
       No favicon. Without this line the WebView requests /favicon.ico on its
       own, and on the device Capacitor's local server answered 404 for it even
-      though the file is packaged (PNGs and HTML from the same folder load
-      fine). A board has no browser tab, so an empty icon removes the request
-      and the console error along with it.
+      though the file is packaged. A board has no browser tab, so an empty icon
+      removes the request and the console error along with it.
     -->
     <link rel="icon" href="data:," />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
-      Heebo covers the Hebrew weights the display needs. It is requested rather
-      than bundled so the TV build stays small; if the font never arrives the
-      CSS stack falls back to the system Hebrew face and the layout is unchanged.
+      Fonts are bundled (public-tv/fonts, from scripts/fetch-tv-fonts.mjs), not
+      loaded from Google: the TV often boots after a power cut before the
+      router is back, and must come up in the right typeface anyway.
     -->
-    <link
-      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap"
-      rel="stylesheet"
-    />
+    <link rel="stylesheet" href="./fonts/fonts.css" />
 
     <style>
       /* Painted before the bundle parses so a cold boot on the wall never

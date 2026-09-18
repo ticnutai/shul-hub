@@ -117,8 +117,12 @@ async function cdp() {
   ws.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.id && pending.has(msg.id)) {
-      const { resolve, reject } = pending.get(msg.id);
+      const { resolve, reject, timer } = pending.get(msg.id);
       pending.delete(msg.id);
+      // Without this the timeout timer kept Node alive after the answer had
+      // arrived: every command printed its result, then hung for the full
+      // timeout (up to 120 s) before exiting.
+      clearTimeout(timer);
       msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result);
     } else if (msg.method) {
       for (const fn of listeners.get(msg.method) || []) fn(msg.params);
@@ -130,13 +134,13 @@ async function cdp() {
       const id = nextId++;
       ws.send(JSON.stringify({ id, method, params }));
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
         // Evaluated code may legitimately wait (e.g. for the next slide, which
         // is up to a full 60s rotation away); protocol calls should not.
         const limit = method === "Runtime.evaluate" ? 120_000 : 20_000;
-        setTimeout(() => {
+        const timer = setTimeout(() => {
           if (pending.delete(id)) reject(new Error(`${method} timed out after ${limit / 1000}s`));
         }, limit);
+        pending.set(id, { resolve, reject, timer });
       });
     },
     on(method, fn) {

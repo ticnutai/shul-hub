@@ -50,8 +50,12 @@ function write<T>(key: string, data: T): number | null {
   }
 }
 
-export function useOfflineSnapshot<T>(key: string, live: T | undefined): Snapshot<T> {
-  const [fallback] = useState(() => read<T>(key));
+/**
+ * `enabled: false` is for the admin preview: it shows live data only and must
+ * not read or overwrite the TV's persisted copy (they share an origin in dev).
+ */
+export function useOfflineSnapshot<T>(key: string, live: T | undefined, enabled = true): Snapshot<T> {
+  const [fallback] = useState(() => (enabled ? read<T>(key) : null));
   const [savedAt, setSavedAt] = useState<number | null>(fallback?.savedAt ?? null);
 
   // Avoid rewriting an identical payload on every render; realtime refetches
@@ -59,13 +63,13 @@ export function useOfflineSnapshot<T>(key: string, live: T | undefined): Snapsho
   const lastWritten = useRef<string | null>(null);
 
   useEffect(() => {
-    if (live === undefined) return;
+    if (!enabled || live === undefined) return;
     const serialised = JSON.stringify(live);
     if (serialised === lastWritten.current) return;
     lastWritten.current = serialised;
     const at = write(key, live);
     setSavedAt(at ?? Date.now());
-  }, [key, live]);
+  }, [key, live, enabled]);
 
   if (live !== undefined) {
     return { data: live, isStale: false, savedAt: savedAt ? new Date(savedAt) : new Date() };

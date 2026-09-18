@@ -38,6 +38,10 @@ const OUT_DIR = "dist-tv";
 export default defineConfig({
   envDir: ".",
   base: "./",
+  // The website's public/ holds its PWA icons, service worker, policy pages
+  // and event images - none of which the board uses. The TV gets its own
+  // folder (fonts only), which also keeps the APK small.
+  publicDir: "public-tv",
   plugins: [react(), renameEntryForCapacitor(OUT_DIR)],
   server: {
     host: "::",

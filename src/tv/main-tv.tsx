@@ -2,7 +2,8 @@ import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
-import { TvDisplay } from "./TvDisplay";
+import { TvApp } from "./TvApp";
+import "./tv-global.css";
 
 /**
  * Entry point for the wall display build.
@@ -51,6 +52,6 @@ if ("wakeLock" in navigator) {
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
-    <TvDisplay />
+    <TvApp />
   </QueryClientProvider>,
 );
