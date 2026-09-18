@@ -5,7 +5,20 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    // Build output and generated native projects. Capacitor copies its own
+    // `native-bridge.js` into the Android build directory, and linting that
+    // vendored file reported an error against a rule this config disables.
+    ignores: [
+      "dist",
+      "dist-tv",
+      "dist-omer",
+      "android/**",
+      "android-tv/**",
+      "playwright-report",
+      "test-results",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

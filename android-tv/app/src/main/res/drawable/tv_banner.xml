@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Banner shown for this app on the Android TV home screen (320x180 dp).
+
+    Defined as a drawable rather than shipped as a PNG so it cannot drift from
+    the display's background colour, and so the TV project carries no binary
+    asset that has to be regenerated whenever the launcher icon changes.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <color android:color="#0b1628" />
+    </item>
+    <item
+        android:gravity="center"
+        android:width="96dp"
+        android:height="96dp">
+        <bitmap
+            android:src="@mipmap/ic_launcher"
+            android:gravity="center" />
+    </item>
+</layer-list>

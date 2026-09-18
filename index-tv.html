@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0b1628" />
+    <title>בית כנסת בסר 3 — לוח תצוגה</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!--
+      Heebo covers the Hebrew weights the display needs. It is requested rather
+      than bundled so the TV build stays small; if the font never arrives the
+      CSS stack falls back to the system Hebrew face and the layout is unchanged.
+    -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <style>
+      /* Painted before the bundle parses so a cold boot on the wall never
+         flashes white in a dark room. */
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #0b1628;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/tv/main-tv.tsx"></script>
+  </body>
+</html>
