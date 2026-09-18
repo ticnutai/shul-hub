@@ -5,6 +5,7 @@ import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { Settings } from "@community/lib/data";
 import type { TvConfig } from "./config";
+import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
 import { themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
@@ -31,6 +32,8 @@ export interface TvBoardProps {
   /** 0..1 through the current slide; updated with the once-a-second clock. */
   progress: number;
   paused: boolean;
+  /** Admin editor: mark editable elements (data-edit) for click-to-edit. */
+  editing?: boolean;
   /** Anything to layer on top: remote-control toasts, help, pairing code. */
   overlay?: ReactNode;
   className?: string;
@@ -45,7 +48,8 @@ const DRIFT = [
   "translate3d(0%, 0%, 0)",
 ];
 
-export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className }: TvBoardProps) {
+export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className, editing = false }: TvBoardProps) {
+  const edit = useMemo(() => makeBoardEdit(config, editing), [config, editing]);
   const slide = slides[Math.min(index, slides.length - 1)];
   // Slide bodies only need minute precision; handing them the per-second
   // clock would re-render every panel every second on a weak TV CPU.
@@ -66,6 +70,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const alert = currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
+    <BoardEditContext.Provider value={edit}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
       <div className={`tv-root${config.backgroundImage ? " has-bg-image" : ""}`} style={style}>
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
@@ -91,7 +96,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         </main>
 
         {config.ticker.enabled && config.ticker.text.trim() && (
-          <div className="tv-ticker">
+          <div className="tv-ticker" {...edit.attr("ticker")}>
             <span
               className="tv-ticker-text"
               style={{ animationDuration: `${Math.max(18, config.ticker.text.length * 0.32)}s` }}
@@ -102,16 +107,20 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         <footer className="tv-footer">
-          <div className="tv-footer-slides">
-            <div className="tv-dots">
-              {slides.map((s, i) => (
-                <span key={s.id + i} className={`tv-dot${i === index ? " is-active" : ""}`} />
-              ))}
+          {edit.hidden("footer.dots") ? (
+            <span />
+          ) : (
+            <div className="tv-footer-slides" {...edit.attr("footer.dots")}>
+              <div className="tv-dots">
+                {slides.map((s, i) => (
+                  <span key={s.id + i} className={`tv-dot${i === index ? " is-active" : ""}`} />
+                ))}
+              </div>
+              <div className="tv-progress">
+                <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, progress))})` }} />
+              </div>
             </div>
-            <div className="tv-progress">
-              <span style={{ transform: `scaleX(${Math.min(1, Math.max(0, progress))})` }} />
-            </div>
-          </div>
+          )}
 
           {alert && !alert.popup && (
             <div className="tv-alert-chip">
@@ -120,7 +129,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             </div>
           )}
 
-          <SyncStatus data={data} now={now} />
+          {!edit.hidden("footer.status") && <SyncStatus data={data} now={now} />}
         </footer>
 
         {alert?.popup && (
@@ -140,6 +149,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         {overlay}
       </div>
     </div>
+    </BoardEditContext.Provider>
   );
 }
 
@@ -158,33 +168,56 @@ function TvHeader({ settings, now, config }: { settings: Settings | null; now: D
 
   const gregorian = now.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
   const weekday = DAYS_HE[jerusalemWeekday(now)];
+  const edit = useBoardEdit();
   const ribbon = [
-    config.header.parasha && day.parasha,
-    config.header.dafYomi && day.daf && `דף יומי: ${day.daf}`,
-  ].filter(Boolean);
+    config.header.parasha && day.parasha && { key: "header.parasha", text: day.parasha },
+    config.header.dafYomi && day.daf && { key: "header.daf", text: `דף יומי: ${day.daf}` },
+  ].filter((r): r is { key: string; text: string } => Boolean(r));
+  const title = edit.text("header.title", settings?.name ?? "בית הכנסת");
+  const address = edit.text("header.address", settings?.address ?? "");
+  const subtitle = [
+    !edit.hidden("header.weekday") && weekday && { key: "header.weekday", text: `יום ${weekday}` },
+    !edit.hidden("header.address") && address && { key: "header.address", text: address },
+  ].filter((r): r is { key: string; text: string } => Boolean(r));
 
   return (
-    <header className="tv-header">
+    <header className={`tv-header${edit.flipped("header") ? " is-flipped" : ""}`}>
       <div className="tv-header-main">
-        <h1 className="tv-title">{settings?.name ?? "בית הכנסת"}</h1>
-        <div className="tv-subtitle">
-          {weekday ? `יום ${weekday}` : ""}
-          {settings?.address ? ` · ${settings.address}` : ""}
-        </div>
+        {!edit.hidden("header.title") && (
+          <h1 className="tv-title" {...edit.attr("header.title")}>
+            {title}
+          </h1>
+        )}
+        {subtitle.length > 0 && (
+          <div className="tv-subtitle">
+            {subtitle.map((p, i) => (
+              <span key={p.key} {...edit.attr(p.key)}>
+                {i > 0 ? " · " : ""}
+                {p.text}
+              </span>
+            ))}
+          </div>
+        )}
         {ribbon.length > 0 && (
           <div className="tv-ribbon">
-            {ribbon.map((r, i) => (
-              <span key={i}>{r}</span>
+            {ribbon.map((r) => (
+              <span key={r.key} {...edit.attr(r.key)}>
+                {r.text}
+              </span>
             ))}
           </div>
         )}
       </div>
-      <div className="tv-clock">
-        <div className="tv-clock-time">{formatTime(now)}</div>
-        <div className="tv-clock-date">
-          {day.hebrew} · {gregorian}
+      {!edit.hidden("header.clock") && (
+        <div className="tv-clock" {...edit.attr("header.clock")}>
+          <div className="tv-clock-time">{formatTime(now)}</div>
+          {!edit.hidden("header.date") && (
+            <div className="tv-clock-date" {...edit.attr("header.date")}>
+              {day.hebrew} · {gregorian}
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </header>
   );
 }
@@ -197,7 +230,7 @@ function SyncStatus({ data, now }: { data: BoardData; now: Date }) {
   else if (status === "connecting") label = "מתחבר…";
   else label = lastSyncedAt ? `מציג מידע מ־${describeAge(now.getTime() - lastSyncedAt.getTime())}` : "אין חיבור";
   return (
-    <div className="tv-status">
+    <div className="tv-status" {...useBoardEdit().attr("footer.status")}>
       <span className={`tv-status-dot${live ? "" : status === "connecting" ? " is-connecting" : " is-offline"}`} />
       <span>{label}</span>
     </div>

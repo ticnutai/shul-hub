@@ -2,11 +2,14 @@ import { useMemo } from "react";
 import { useNow } from "@community/lib/realtime";
 import type { TvConfig } from "@/tv/config";
 import { buildSlides, useBoardData, useDayZmanim, type BoardSlide } from "@/tv/useBoardData";
+import { applyRecordEdits } from "./tvRecords";
 
 export function useTvSlides(config: TvConfig, nowOverride?: Date | null) {
   // The site already keeps this data fresh; no second realtime socket and no
   // writes to the TV's offline copy.
-  const data = useBoardData({ persist: false, live: false });
+  const raw = useBoardData({ persist: false, live: false });
+  // Unsaved content edits from the board editor, shown as if already saved.
+  const data = useMemo(() => applyRecordEdits(raw, config._records), [raw, config._records]);
   const clock = useNow(1000);
   const now = nowOverride ?? clock;
   const zmanim = useDayZmanim(now, data.settings);

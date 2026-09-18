@@ -327,6 +327,16 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     return () => window.removeEventListener("keydown", onKey);
   }, [go, goTo, setPausedTo, cycleTheme, applyTheme, flash]);
 
+  // Another app opened on the TV (YouTube, input switch...) or back to the
+  // board: recorded so the disconnect report gives the real reason.
+  useEffect(() => {
+    if (web || !Capacitor.isNativePlatform()) return;
+    const handle = CapApp.addListener("appStateChange", ({ isActive }) => link.current?.setForeground(isActive));
+    return () => {
+      void handle.then((h) => h.remove());
+    };
+  }, [web, link]);
+
   // Android Back: open the help card instead of leaving the board.
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;

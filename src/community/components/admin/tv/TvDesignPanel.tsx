@@ -8,6 +8,7 @@ import {
   ExternalLink,
   ImagePlus,
   Minus,
+  Pencil,
   Pause,
   Play,
   Plus,
@@ -47,6 +48,9 @@ import { getTheme, isSafeCssValue, THEME_VAR_LABELS, THEME_VARS, TV_FONTS, TV_TH
 import { useDayZmanim } from "@/tv/useBoardData";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useBroadcastDraft } from "./tvDraftChannel";
+import { TvEditInspector } from "./TvEditInspector";
+import { commitRecordEdits } from "./tvRecords";
+import { useQueryClient } from "@tanstack/react-query";
 import { useTvSlides } from "./tvPreviewData";
 import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdminData";
 
@@ -296,6 +300,15 @@ export function TvDesignPanel() {
   const board = useTvSlides(draft, simulatedNow);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
+  // Click-to-edit on the board itself (see boardEdit.ts / TvEditInspector).
+  const [editing, setEditing] = useState(false);
+  const [selected, setSelected] = useState<string | null>(null);
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setSelected(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [editing]);
   const [cycle, setCycle] = useState(0);
   const index = Math.min(previewIndex, Math.max(board.slides.length - 1, 0));
   const current = board.slides[index];
@@ -325,9 +338,21 @@ export function TvDesignPanel() {
   const approvedCount = (devices.data ?? []).filter((d) => d.approved).length;
   const onlineCount = (devices.data ?? []).filter((d) => d.approved && deviceHealth(d, Date.now()).online).length;
 
+  const queryClient = useQueryClient();
   const save = async () => {
     try {
-      await saved.save.mutateAsync(normalizeTvConfig(draft));
+      // Content first (announcements, minyan names, the site name...): if a
+      // row fails, nothing is broadcast and the draft keeps every change.
+      const records = await commitRecordEdits(draft._records);
+      if (records) {
+        await Promise.all(
+          ["announcements", "shiurim", "minyanim", "settings"].map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
+        );
+      }
+      const clean = normalizeTvConfig(draft);
+      await saved.save.mutateAsync(clean);
+      // The draft carried the content edits; start clean from what was saved.
+      dispatch({ type: "load", config: clean });
       toast.success(
         approvedCount
           ? `נשמר ושודר. ${onlineCount} מתוך ${approvedCount} מסכים מחוברים יתעדכנו עכשיו${
@@ -384,8 +409,36 @@ export function TvDesignPanel() {
       {/* ------------------------------------------------ preview column -- */}
       <div className="order-1 space-y-3 lg:order-2">
         <div className="lg:sticky lg:top-4 lg:space-y-3">
-          <TvDeviceStudio {...board} config={draft} index={index} cycle={cycle} progress={0} paused={!autoplay} />
+          <TvDeviceStudio
+            {...board}
+            config={draft}
+            index={index}
+            cycle={cycle}
+            progress={0}
+            paused={!autoplay}
+            editing={editing}
+            selected={selected}
+            onSelect={setSelected}
+          />
+          {editing && (
+            <div className="mt-3">
+              <TvEditInspector selected={selected} config={draft} data={board.data} onEdit={edit} onSelect={setSelected} />
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant={editing ? "default" : "outline"}
+              size="sm"
+              aria-pressed={editing}
+              onClick={() => {
+                setEditing((v) => !v);
+                setSelected(null);
+                setAutoplay(false);
+              }}
+            >
+              <Pencil className="size-4" /> {editing ? "סיום עריכה בלוח" : "עריכה ישירה בלוח"}
+            </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => setAutoplay((a) => !a)}>
               {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
               {autoplay ? "עצירת הסבב" : "הפעלת סבב"}

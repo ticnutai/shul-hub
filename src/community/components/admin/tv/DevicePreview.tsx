@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { LayoutGrid, Maximize2, RotateCw } from "lucide-react";
 import { DEVICE_ORDER, DEVICES, viewportOf, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,19 @@ export function DeviceFrame({
     <div ref={outerRef} className={actualSize ? "w-full overflow-auto" : "w-full"} style={actualSize ? { maxHeight: "80vh" } : undefined}>
       {scale > 0 && (
         <div className="mx-auto" style={{ width: totalW * scale, height: totalH * scale }} dir="ltr">
-          <div style={{ width: totalW, height: totalH, transform: `scale(${scale})`, transformOrigin: "top left", position: "relative" }}>
+          <div
+            style={
+              {
+                width: totalW,
+                height: totalH,
+                transform: `scale(${scale})`,
+                transformOrigin: "top left",
+                position: "relative",
+                // Lets the editor keep its outlines a constant on-screen width.
+                "--ps": scale,
+              } as CSSProperties
+            }
+          >
             {/* body */}
             <div
               style={{

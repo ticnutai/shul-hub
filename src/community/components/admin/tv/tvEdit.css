@@ -1,0 +1,11 @@
+/*
+ * Click-to-edit outlines in the admin preview. Scoped to .tv-edit-mode (set
+ * by TvDeviceStudio only while editing), so neither the TV nor the normal
+ * preview ever carries them. --ps is the preview's scale, which keeps the
+ * outline about 1.5 px on screen however small the device is drawn.
+ */
+.tv-edit-mode [data-edit] {
+  cursor: pointer;
+  outline: calc(1.5px / var(--ps, 1)) dashed rgb(59 130 246 / 0.35);
+  outline-offset: calc(1px / var(--ps, 1));
+}

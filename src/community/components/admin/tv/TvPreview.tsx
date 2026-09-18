@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
+import "./tvEdit.css";
 import type { TvConfig } from "@/tv/config";
 import { TvBoard } from "@/tv/TvBoard";
 import type { BoardSlide } from "@/tv/useBoardData";
@@ -97,9 +98,10 @@ type BoardProps = ReturnType<typeof useTvSlides> & {
   paused?: boolean;
   progress?: number;
   cycle?: number;
+  editing?: boolean;
 };
 
-function BoardInFrame({ config, slides, data, now, zmanim, index, paused = false, progress = 0, cycle = 0 }: BoardProps) {
+function BoardInFrame({ config, slides, data, now, zmanim, index, paused = false, progress = 0, cycle = 0, editing = false }: BoardProps) {
   return (
     <div className="h-full w-full" dir="rtl">
       <TvBoard
@@ -112,6 +114,7 @@ function BoardInFrame({ config, slides, data, now, zmanim, index, paused = false
         cycle={cycle}
         progress={progress}
         paused={paused}
+        editing={editing}
       />
     </div>
   );
@@ -122,13 +125,38 @@ function BoardInFrame({ config, slides, data, now, zmanim, index, paused = false
  * a phone - or all of them side by side - rendered at each one's real
  * viewport. Every edit shows on every device at once.
  */
-export function TvDeviceStudio(props: BoardProps) {
+export function TvDeviceStudio({
+  selected = null,
+  onSelect,
+  ...props
+}: BoardProps & { selected?: string | null; onSelect?: (key: string | null) => void }) {
   useTvFonts();
   const choice = useDeviceChoice();
   const [actualSize, setActualSize] = useState(false);
+  const [hovered, setHovered] = useState<string | null>(null);
+  const editing = Boolean(props.editing);
+
+  // Click-to-edit: the nearest element carrying data-edit wins, so clicking a
+  // minyan's name edits the name and clicking its row edits the row.
+  const keyAt = (target: EventTarget | null) =>
+    target instanceof Element ? (target.closest<HTMLElement>("[data-edit]")?.dataset.edit ?? null) : null;
+  const editHandlers = editing
+    ? {
+        onClickCapture: (e: MouseEvent) => {
+          const key = keyAt(e.target);
+          if (!key) return;
+          e.preventDefault();
+          e.stopPropagation();
+          onSelect?.(key);
+        },
+        onMouseOver: (e: MouseEvent) => setHovered(keyAt(e.target)),
+        onMouseLeave: () => setHovered(null),
+      }
+    : {};
 
   return (
-    <div className="space-y-3">
+    <div className={`space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
+      {editing && <EditHighlight hovered={hovered} selected={selected} />}
       <DeviceToolbar
         mode={choice.mode}
         view={choice.view}
@@ -145,7 +173,7 @@ export function TvDeviceStudio(props: BoardProps) {
               className={`m-0 space-y-1.5 ${id === "tv" || id === "desktop" || id === "laptop" ? "col-span-2 sm:col-span-3" : id === "tablet" ? "col-span-1 sm:col-span-2" : "col-span-1"}`}
             >
               <DeviceFrame view={choice.views[id]} maxHeight={id === "tablet" ? 320 : id === "mobile" ? 300 : 240}>
-                <BoardInFrame {...props} />
+                <BoardInFrame {...props} editing={editing} />
               </DeviceFrame>
               <figcaption className="text-center text-xs text-muted-foreground">
                 <button type="button" className="underline-offset-2 hover:underline" onClick={() => choice.setMode(id)}>
@@ -158,10 +186,20 @@ export function TvDeviceStudio(props: BoardProps) {
       ) : (
         <div className="rounded-xl bg-muted/30 p-3">
           <DeviceFrame view={choice.view as DeviceView} maxHeight={choice.view.device === "tv" ? 520 : 620} actualSize={actualSize}>
-            <BoardInFrame {...props} />
+            <BoardInFrame {...props} editing={editing} />
           </DeviceFrame>
         </div>
       )}
     </div>
   );
+}
+
+/** Outlines the hovered and selected element on every device at once. */
+function EditHighlight({ hovered, selected }: { hovered: string | null; selected: string | null }) {
+  const sel = (k: string) => `.tv-edit-mode [data-edit="${CSS.escape(k)}"]`;
+  const rules = [
+    hovered && hovered !== selected && `${sel(hovered)} { outline-color: rgb(59 130 246 / 0.9); background-color: rgb(59 130 246 / 0.08); }`,
+    selected && `${sel(selected)} { outline: calc(3px / var(--ps, 1)) solid rgb(37 99 235) !important; background-color: rgb(59 130 246 / 0.12); }`,
+  ].filter(Boolean);
+  return <style>{rules.join(" ")}</style>;
 }

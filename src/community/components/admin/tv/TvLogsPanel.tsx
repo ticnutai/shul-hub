@@ -30,6 +30,7 @@ const KIND_LABELS: Record<string, string> = {
   command: "פקודה",
   snapshot: "צילום מסך",
   paired: "צימוד",
+  background: "אפליקציה אחרת",
 };
 
 interface Outage {

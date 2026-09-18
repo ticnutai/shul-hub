@@ -1,0 +1,129 @@
+import { createContext, useContext } from "react";
+import { ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
+import type { FlipArea, TvConfig } from "./config";
+
+/**
+ * What an admin can change directly on the board, and how the board reads it.
+ *
+ * The pattern is the one visual-editing CMSs use (Sanity's overlays,
+ * TinaCMS's data-tina-field): every editable element carries a key naming
+ * its source, the editor maps a click to that key, and the value is edited in
+ * a real form field - never by typing into the rendered text, which fights
+ * React for the DOM and loses the caret and undo.
+ *
+ * Two kinds of source:
+ *   - board wording and layout (this file): stored in tv_config, affects the
+ *     board only;
+ *   - content records ("ann:<id>:title", "minyan:<id>:label"...): the same
+ *     row the website shows, edited in place (see the admin editor).
+ *
+ * "Moving" is constrained on purpose: swapping sides and reordering. Free
+ * dragging to x/y positions would break the moment the board is shown on a
+ * screen of another shape (TV, laptop, phone), which is exactly what the
+ * device preview is for.
+ */
+
+export interface EditableSpec {
+  label: string;
+  /** Default wording; absent = the element has no editable text. */
+  text?: string;
+  hideable?: boolean;
+  /** Clicking "move" swaps this area. */
+  flip?: FlipArea;
+  /** The text normally comes from the site settings (name / address). */
+  siteField?: "name" | "address";
+  multiline?: boolean;
+}
+
+export const SHOWN_ZMANIM: SolarEvent[] = ["alot", "sunrise", "sof_zman_shma", "sof_zman_tefila", "chatzot", "plag", "sunset", "tzeit"];
+
+export const EDITABLE: Record<string, EditableSpec> = {
+  "header.title": { label: "שם בית הכנסת", text: "", hideable: true, flip: "header", siteField: "name" },
+  "header.weekday": { label: "היום בשבוע", hideable: true },
+  "header.address": { label: "כתובת", text: "", hideable: true, siteField: "address" },
+  "header.parasha": { label: "פרשת השבוע (בראש המסך)", hideable: true },
+  "header.daf": { label: "הדף היומי (בראש המסך)", hideable: true },
+  "header.clock": { label: "שעון", hideable: true, flip: "header" },
+  "header.date": { label: "תאריך", hideable: true },
+  "heading.prayer": { label: "כותרת: זמני התפילות", text: "זמני התפילות", hideable: true },
+  "heading.learning": { label: "כותרת: לימוד יומי", text: "לימוד יומי ולוח שנה", hideable: true },
+  "heading.announcements": { label: "כותרת: מודעות", text: "מודעות לציבור", hideable: true },
+  "heading.shiurim": { label: "כותרת: שיעורים", text: "שיעורי תורה", hideable: true },
+  "panel.minyanim": { label: "כותרת: מניינים", text: "מניינים", hideable: true, flip: "prayer" },
+  "panel.zmanim": { label: "לוח זמני היום", text: "זמני היום", hideable: true, flip: "prayer" },
+  "hero.kicker": { label: "המניין הבא", text: "המניין הבא" },
+  "learning.parasha": { label: "כרטיס פרשת השבוע", text: "פרשת השבוע", hideable: true, flip: "learning" },
+  "learning.daf": { label: "כרטיס הדף היומי", text: "הדף היומי", hideable: true, flip: "learning" },
+  "learning.upcoming": { label: "כרטיס בימים הקרובים", text: "בימים הקרובים", hideable: true, flip: "learning" },
+  "footer.dots": { label: "נקודות השקופיות", hideable: true },
+  ticker: { label: "סרגל רץ", text: "", hideable: true, multiline: true },
+  "footer.status": { label: "מצב חיבור", hideable: true },
+  ...Object.fromEntries(
+    SHOWN_ZMANIM.map((e) => [`zman.${e}`, { label: `זמן: ${ZMAN_LABELS[e]}`, text: ZMAN_LABELS[e], hideable: true } satisfies EditableSpec]),
+  ),
+};
+
+/** Keys whose visibility lives in an existing setting rather than `hidden`. */
+const HEADER_TOGGLES: Record<string, keyof TvConfig["header"]> = { "header.parasha": "parasha", "header.daf": "dafYomi" };
+
+export function isHidden(config: TvConfig, key: string): boolean {
+  const toggle = HEADER_TOGGLES[key];
+  return toggle ? !config.header[toggle] : config.hidden.includes(key);
+}
+
+export function setHidden(config: TvConfig, key: string, hidden: boolean): TvConfig {
+  const toggle = HEADER_TOGGLES[key];
+  if (toggle) return { ...config, header: { ...config.header, [toggle]: !hidden } };
+  const rest = config.hidden.filter((k) => k !== key);
+  return { ...config, hidden: hidden ? [...rest, key] : rest };
+}
+
+export function setText(config: TvConfig, key: string, value: string | null): TvConfig {
+  const texts = { ...config.texts };
+  if (value === null) delete texts[key];
+  else texts[key] = value.slice(0, 300);
+  return { ...config, texts };
+}
+
+export function toggleFlip(config: TvConfig, area: FlipArea): TvConfig {
+  return {
+    ...config,
+    flipped: config.flipped.includes(area) ? config.flipped.filter((a) => a !== area) : [...config.flipped, area],
+  };
+}
+
+/* ------------------------------------------------ what the board reads -- */
+
+export interface BoardEditApi {
+  /** The admin's wording for `key`, or `fallback`. */
+  text: (key: string, fallback: string) => string;
+  hidden: (key: string) => boolean;
+  flipped: (area: FlipArea) => boolean;
+  /** Marks an element as editable - only while the admin is editing. */
+  attr: (key: string) => { "data-edit"?: string };
+}
+
+const NO_ATTR = {};
+
+export function makeBoardEdit(config: TvConfig, editing: boolean): BoardEditApi {
+  return {
+    text: (key, fallback) => {
+      const v = config.texts[key];
+      return v !== undefined && v.trim() !== "" ? v : fallback;
+    },
+    hidden: (key) => isHidden(config, key),
+    flipped: (area) => config.flipped.includes(area),
+    attr: editing ? (key) => ({ "data-edit": key }) : () => NO_ATTR,
+  };
+}
+
+export const BoardEditContext = createContext<BoardEditApi>({
+  text: (_k, fallback) => fallback,
+  hidden: () => false,
+  flipped: () => false,
+  attr: () => NO_ATTR,
+});
+
+export function useBoardEdit(): BoardEditApi {
+  return useContext(BoardEditContext);
+}

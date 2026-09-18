@@ -15,6 +15,8 @@ const IDENTITY_KEY = "shul-tv-device";
 const QUEUE_KEY = "shul-tv-event-queue";
 const LAST_BEAT_KEY = "shul-tv-last-beat";
 const OUTAGE_KEY = "shul-tv-outage";
+/** When the board app went to the background, while it is there. */
+const BACKGROUND_KEY = "shul-tv-background-since";
 
 /** Recommended cadence: cheap for the server, and 3 missed beats = 3 minutes. */
 export const HEARTBEAT_MS = 60_000;
@@ -22,7 +24,7 @@ export const HEARTBEAT_MS = 60_000;
 const RETRY_STEPS_MS = [10_000, 20_000, 30_000, 60_000];
 const MAX_QUEUE = 300;
 
-export type OutageReason = "network" | "internet" | "server" | "server_error" | "auth" | "timeout" | "restart";
+export type OutageReason = "network" | "internet" | "server" | "server_error" | "auth" | "timeout" | "restart" | "background";
 
 export const OUTAGE_REASON_LABELS: Record<OutageReason, string> = {
   network: "אין רשת (Wi-Fi או כבל מנותקים)",
@@ -32,6 +34,7 @@ export const OUTAGE_REASON_LABELS: Record<OutageReason, string> = {
   auth: "המסך לא אומת מול השרת",
   timeout: "השרת לא ענה בזמן",
   restart: "המסך כבה או הופעל מחדש (למשל הפסקת חשמל)",
+  background: "נפתחה בטלוויזיה אפליקציה אחרת (הלוח עבר לרקע)",
 };
 
 export interface DeviceStatus {
@@ -176,12 +179,16 @@ export class DeviceLink {
   start() {
     const lastBeat = load<number | null>(LAST_BEAT_KEY, null);
     const gapMs = lastBeat ? Date.now() - lastBeat : null;
+    const backgroundSince = load<number | null>(BACKGROUND_KEY, null);
+    save(BACKGROUND_KEY, null);
     if (gapMs !== null && gapMs > 3 * HEARTBEAT_MS) {
-      // The app was not running for longer than a few heartbeats: power cut,
-      // TV switched off, or a crash. Count it as an outage so the report
-      // shows the gap with a reason, not as silence.
-      if (!this.outage) this.outage = { since: lastBeat!, reasons: [], attempts: 0 };
-      if (!this.outage.reasons.includes("restart")) this.outage.reasons.push("restart");
+      // The app was not running for longer than a few heartbeats. If it had
+      // been sent to the background (someone opened YouTube on the TV) that
+      // is the reason; otherwise a power cut, the TV switched off, or a crash.
+      // Count it as an outage so the report shows the gap with a reason.
+      const reason: OutageReason = backgroundSince ? "background" : "restart";
+      if (!this.outage) this.outage = { since: backgroundSince ?? lastBeat!, reasons: [], attempts: 0 };
+      if (!this.outage.reasons.includes(reason)) this.outage.reasons.push(reason);
       save(OUTAGE_KEY, this.outage);
     }
     this.log("info", "boot", "המסך עלה", {
@@ -203,6 +210,37 @@ export class DeviceLink {
     window.removeEventListener("error", this.onError);
     window.removeEventListener("unhandledrejection", this.onRejection);
     window.removeEventListener("online", this.onOnline);
+  }
+
+  /**
+   * The board app left the screen (another app opened) or came back.
+   * In the background Android pauses the WebView, heartbeats stop and the
+   * admin sees the screen go offline - which is true, the board is not on the
+   * wall. This records why, so the report says "another app was opened"
+   * instead of guessing a power cut.
+   */
+  setForeground(active: boolean) {
+    if (this.stopped) return;
+    if (!active) {
+      if (load<number | null>(BACKGROUND_KEY, null) === null) save(BACKGROUND_KEY, Date.now());
+      this.log("warn", "background", "הלוח עבר לרקע: נפתחה בטלוויזיה אפליקציה אחרת");
+      this.scheduleFlush(0);
+      return;
+    }
+    const since = load<number | null>(BACKGROUND_KEY, null);
+    save(BACKGROUND_KEY, null);
+    if (since === null) return;
+    const awayMs = Date.now() - since;
+    // Short trips (the remote's Home button pressed by mistake) stay a log line.
+    if (awayMs > 3 * HEARTBEAT_MS) {
+      if (!this.outage) this.outage = { since, reasons: [], attempts: 0 };
+      if (!this.outage.reasons.includes("background")) this.outage.reasons.push("background");
+      save(OUTAGE_KEY, this.outage);
+    } else {
+      this.log("info", "background", `הלוח חזר למסך אחרי ${formatDuration(awayMs)}`);
+    }
+    window.clearTimeout(this.timer);
+    void this.beat();
   }
 
   /** Push the current state now (slide change, command) instead of waiting a minute. */

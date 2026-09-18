@@ -96,9 +96,10 @@ function jerusalemDateKey(date: Date): string {
  * `day_type` only, so a category like סליחות - whose minyanim are stored as
  * `custom` - never appeared on the wall at all.
  */
-function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim) {
+function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidden: Set<string>) {
   const dayType = dayTypeFor(now);
-  const minyanim = data.minyanim ?? [];
+  // Hidden from the board by the admin (the website still lists them).
+  const minyanim = (data.minyanim ?? []).filter((m) => !hidden.has(`minyan:${m.id}`));
 
   if (!data.categories || data.categories.length === 0) {
     return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim), subcategories: [] as MinyanSubcategory[] }];
@@ -138,13 +139,14 @@ export function shiurMinutes(timeText: string | null | undefined): number {
 export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim: Zmanim): BoardSlide[] {
   const slides: BoardSlide[] = [];
   const nowMs = now.getTime();
+  const hidden = new Set(config.hidden);
 
   for (const sc of config.slides) {
     if (!sc.enabled) continue;
     const base = { seconds: sc.seconds, layout: sc.layout };
 
     if (sc.kind === "prayer") {
-      const schedules = prayerSchedules(data, now, zmanim);
+      const schedules = prayerSchedules(data, now, zmanim, hidden);
       const withRows = schedules.filter((s) => s.rows.length > 0);
       // Always keep one prayer slide, even empty: it also carries the zmanim.
       for (const s of withRows.length ? withRows : schedules.slice(0, 1)) {
@@ -153,7 +155,9 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
     } else if (sc.kind === "learning") {
       slides.push({ ...base, id: "learning", kind: "learning" });
     } else if (sc.kind === "announcements") {
-      const items = (data.announcements ?? []).filter((a) => !a.expires_at || new Date(a.expires_at).getTime() > nowMs);
+      const items = (data.announcements ?? []).filter(
+        (a) => !hidden.has(`ann:${a.id}`) && (!a.expires_at || new Date(a.expires_at).getTime() > nowMs),
+      );
       if (sc.layout === "spotlight") {
         items.forEach((a, i) =>
           slides.push({ ...base, id: `ann:${a.id}`, kind: "announcements", items: [a], page: i + 1, pages: items.length }),
@@ -173,7 +177,7 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
     } else if (sc.kind === "shiurim") {
       const weekday = jerusalemWeekday(now);
       const items = (data.shiurim ?? [])
-        .filter((s) => s.active && (s.schedule_type !== "weekly" || s.day_of_week === weekday))
+        .filter((s) => s.active && !hidden.has(`shiur:${s.id}`) && (s.schedule_type !== "weekly" || s.day_of_week === weekday))
         // `sort_order` is the website's ordering; on the wall it read as
         // 16:15, 08:45, 14:15, 15:15. A schedule is scanned by time.
         .sort((a, b) => shiurMinutes(a.time_text) - shiurMinutes(b.time_text));

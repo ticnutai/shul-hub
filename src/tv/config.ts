@@ -80,7 +80,29 @@ export interface TvConfig {
   };
   ticker: { enabled: boolean; text: string };
   slideshow: { images: Array<{ url: string; caption?: string }>; secondsPerImage: number };
+  /**
+   * Board-only wording, keyed by element (see EDITABLE in boardEdit.tsx):
+   * "header.title" -> "בית הכנסת ...". A missing key shows the default text.
+   */
+  texts: Record<string, string>;
+  /** Elements taken off the board: element keys, or "ann:<id>", "shiur:<id>", "minyan:<id>". */
+  hidden: string[];
+  /** Areas drawn mirror-wise (clock on the other side, panels swapped). */
+  flipped: FlipArea[];
+  /**
+   * Editor only, never stored: content edits (an announcement's text, a
+   * minyan's name...) waiting for "שמור ושדר". normalizeTvConfig drops it.
+   */
+  _records?: RecordEdit[];
 }
+
+export const FLIP_AREAS = ["header", "prayer", "learning"] as const;
+export type FlipArea = (typeof FLIP_AREAS)[number];
+
+export type RecordTable = "announcements" | "shiurim" | "minyanim" | "settings";
+export type RecordEdit =
+  | { table: RecordTable; id: string; field: string; value: string | number }
+  | { table: "announcements"; id: string; delete: true };
 
 export const DEFAULT_TV_CONFIG: TvConfig = {
   theme: "navy",
@@ -105,6 +127,9 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   },
   ticker: { enabled: false, text: "" },
   slideshow: { images: [], secondsPerImage: 8 },
+  texts: {},
+  hidden: [],
+  flipped: [],
 };
 
 const KINDS = Object.keys(SLIDE_LAYOUTS) as SlideKind[];
@@ -115,6 +140,8 @@ const num = (v: unknown, fallback: number, min: number, max: number) =>
   typeof v === "number" && Number.isFinite(v) ? Math.min(max, Math.max(min, v)) : fallback;
 const bool = (v: unknown, fallback: boolean) => (typeof v === "boolean" ? v : fallback);
 const str = (v: unknown, fallback: string, max = 500) => (typeof v === "string" ? v.slice(0, max) : fallback);
+/** Element keys: letters, digits and . : _ - only (ids are UUIDs). */
+const KEY_RE = /^[a-z0-9_.:-]{1,90}$/i;
 
 export function normalizeTvConfig(raw: unknown): TvConfig {
   const d = DEFAULT_TV_CONFIG;
@@ -181,5 +208,13 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
         .map((i) => ({ url: String(i.url), caption: typeof i.caption === "string" ? i.caption.slice(0, 120) : undefined })),
       secondsPerImage: num(slideshow.secondsPerImage, d.slideshow.secondsPerImage, 3, 60),
     },
+    texts: Object.fromEntries(
+      Object.entries(isObj(raw.texts) ? raw.texts : {})
+        .filter((e): e is [string, string] => KEY_RE.test(e[0]) && typeof e[1] === "string")
+        .slice(0, 200)
+        .map(([k, v]) => [k, v.slice(0, 300)]),
+    ),
+    hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
+    flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
   };
 }
