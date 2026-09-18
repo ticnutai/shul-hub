@@ -741,7 +741,11 @@ export function TvDesignPanel() {
           </ul>
         </Section>
 
-        <Section title="שורת לימוד בראש המסך">
+        <Section title="ראש המסך">
+          <label className="flex items-center gap-3">
+            <Switch checked={draft.header.logo} onCheckedChange={(on) => edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))} />
+            לוגו קרובים ליד שם בית הכנסת
+          </label>
           <label className="flex items-center gap-3">
             <Switch checked={draft.header.parasha} onCheckedChange={(on) => edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))} />
             פרשת השבוע

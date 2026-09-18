@@ -38,6 +38,7 @@ export interface EditableSpec {
 export const SHOWN_ZMANIM: SolarEvent[] = ["alot", "sunrise", "sof_zman_shma", "sof_zman_tefila", "chatzot", "plag", "sunset", "tzeit"];
 
 export const EDITABLE: Record<string, EditableSpec> = {
+  "header.logo": { label: "לוגו קרובים", hideable: true, flip: "header" },
   "header.title": { label: "שם בית הכנסת", text: "", hideable: true, flip: "header", siteField: "name" },
   "header.weekday": { label: "היום בשבוע", hideable: true },
   "header.address": { label: "כתובת", text: "", hideable: true, siteField: "address" },
@@ -64,7 +65,11 @@ export const EDITABLE: Record<string, EditableSpec> = {
 };
 
 /** Keys whose visibility lives in an existing setting rather than `hidden`. */
-const HEADER_TOGGLES: Record<string, keyof TvConfig["header"]> = { "header.parasha": "parasha", "header.daf": "dafYomi" };
+const HEADER_TOGGLES: Record<string, keyof TvConfig["header"]> = {
+  "header.parasha": "parasha",
+  "header.daf": "dafYomi",
+  "header.logo": "logo",
+};
 
 export function isHidden(config: TvConfig, key: string): boolean {
   const toggle = HEADER_TOGGLES[key];

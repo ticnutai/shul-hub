@@ -11,6 +11,7 @@ import { themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
 import type { BoardData, BoardSlide } from "./useBoardData";
 import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
+import karovimLogo from "./assets/karovim-logo.png";
 import "./tv.css";
 
 /**
@@ -206,31 +207,42 @@ function TvHeader({ settings, now, config }: { settings: Settings | null; now: D
 
   return (
     <header className={`tv-header${edit.flipped("header") ? " is-flipped" : ""}`}>
-      <div className="tv-header-main">
-        {!edit.hidden("header.title") && (
-          <h1 className="tv-title" {...edit.attr("header.title")}>
-            {title}
-          </h1>
+      <div className="tv-header-brand">
+        {!edit.hidden("header.logo") && (
+          <img
+            className="tv-logo"
+            src={karovimLogo}
+            alt="קרובים - להיות קרוב זה יהודי"
+            decoding="async"
+            {...edit.attr("header.logo")}
+          />
         )}
-        {subtitle.length > 0 && (
-          <div className="tv-subtitle">
-            {subtitle.map((p, i) => (
-              <span key={p.key} {...edit.attr(p.key)}>
-                {i > 0 ? " · " : ""}
-                {p.text}
-              </span>
-            ))}
-          </div>
-        )}
-        {ribbon.length > 0 && (
-          <div className="tv-ribbon">
-            {ribbon.map((r) => (
-              <span key={r.key} {...edit.attr(r.key)}>
-                {r.text}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="tv-header-main">
+          {!edit.hidden("header.title") && (
+            <h1 className="tv-title" {...edit.attr("header.title")}>
+              {title}
+            </h1>
+          )}
+          {subtitle.length > 0 && (
+            <div className="tv-subtitle">
+              {subtitle.map((p, i) => (
+                <span key={p.key} {...edit.attr(p.key)}>
+                  {i > 0 ? " · " : ""}
+                  {p.text}
+                </span>
+              ))}
+            </div>
+          )}
+          {ribbon.length > 0 && (
+            <div className="tv-ribbon">
+              {ribbon.map((r) => (
+                <span key={r.key} {...edit.attr(r.key)}>
+                  {r.text}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       {!edit.hidden("header.clock") && (
         <div className="tv-clock" {...edit.attr("header.clock")}>

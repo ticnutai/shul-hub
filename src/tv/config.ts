@@ -69,7 +69,8 @@ export interface TvConfig {
   backgroundImage: string | null;
   backgroundDim: number;
   slides: TvSlideConfig[];
-  header: { parasha: boolean; dafYomi: boolean };
+  /** Header extras. `logo`: the קרובים logo beside the synagogue name. */
+  header: { parasha: boolean; dafYomi: boolean; logo: boolean };
   alerts: {
     enabled: boolean;
     events: AlertEvent[];
@@ -118,7 +119,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
     { kind: "shiurim", enabled: true, seconds: 18, layout: "list" },
     { kind: "slideshow", enabled: false, seconds: 30, layout: "kenburns" },
   ],
-  header: { parasha: true, dafYomi: true },
+  header: { parasha: true, dafYomi: true, logo: true },
   alerts: {
     enabled: true,
     events: ["sof_zman_shma", "sof_zman_tefila", "sunset", "candle"],
@@ -191,7 +192,11 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     backgroundImage: typeof raw.backgroundImage === "string" && raw.backgroundImage.startsWith("https://") ? raw.backgroundImage : null,
     backgroundDim: num(raw.backgroundDim, d.backgroundDim, 0, 0.95),
     slides,
-    header: { parasha: bool(header.parasha, d.header.parasha), dafYomi: bool(header.dafYomi, d.header.dafYomi) },
+    header: {
+      parasha: bool(header.parasha, d.header.parasha),
+      dafYomi: bool(header.dafYomi, d.header.dafYomi),
+      logo: bool(header.logo, d.header.logo),
+    },
     alerts: {
       enabled: bool(alerts.enabled, d.alerts.enabled),
       events: Array.isArray(alerts.events)

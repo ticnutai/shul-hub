@@ -54,6 +54,7 @@ export function TvEditInspector({
     ...config.hidden,
     ...(!config.header.parasha ? ["header.parasha"] : []),
     ...(!config.header.dafYomi ? ["header.daf"] : []),
+    ...(!config.header.logo ? ["header.logo"] : []),
     ...(!config.ticker.enabled && config.ticker.text ? ["ticker"] : []),
   ];
 

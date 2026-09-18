@@ -129,6 +129,23 @@
   flex: 0 0 auto;
 }
 
+/* The קרובים logo sits beside the name block, the height of the whole block. */
+.tv-header-brand {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 2.4);
+  min-width: 0;
+}
+
+.tv-logo {
+  display: block;
+  flex: 0 0 auto;
+  height: calc(var(--u) * 12.5);
+  width: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 calc(var(--u) * 0.4) calc(var(--u) * 1) color-mix(in srgb, #000 35%, transparent));
+}
+
 .tv-title {
   margin: 0;
   font-family: var(--tv-font-display);
@@ -1301,6 +1318,10 @@
 
   .tv-title {
     font-size: calc(var(--fs) * 4.4);
+  }
+
+  .tv-logo {
+    height: calc(var(--u) * 10);
   }
 
   .tv-clock {
