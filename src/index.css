@@ -748,7 +748,7 @@ html.torah-luxury .community-secondary-nav .community-nav-item {
   padding: 0.28rem 0.5rem;
   border: 1px solid transparent;
   border-radius: 0.65rem;
-  color: #d5aa45;
+  color: hsl(var(--sidebar-primary));
   background: transparent;
   font-size: 0.68rem;
   font-weight: 650;
@@ -765,15 +765,15 @@ html.torah-luxury .community-secondary-nav .community-nav-item {
 }
 
 .primary-destination-item:hover {
-  color: #efc75e;
-  background: rgb(255 255 255 / 0.055);
+  color: hsl(var(--sidebar-accent-foreground));
+  background: hsl(var(--sidebar-accent));
 }
 
 .primary-destination-item-active {
-  color: #efc75e;
-  border-color: rgb(213 170 69 / 0.78);
-  background: rgb(255 255 255 / 0.045);
-  box-shadow: 0 2px 8px rgb(213 170 69 / 0.1);
+  color: hsl(var(--sidebar-accent-foreground));
+  border-color: hsl(var(--sidebar-primary) / 0.78);
+  background: hsl(var(--sidebar-accent));
+  box-shadow: 0 2px 8px hsl(var(--sidebar-primary) / 0.1);
 }
 
 /* In the optional "פאר תורה" theme every destination is an independent
@@ -788,18 +788,18 @@ html.torah-luxury .primary-destination-item,
 html.torah-luxury .primary-destination-item-active {
   position: relative;
   isolation: isolate;
-  color: #172c57;
-  border-color: #e6b82f;
-  background: #fffdfa;
-  box-shadow: 0 3px 10px rgb(213 170 69 / 0.14);
+  color: hsl(var(--sidebar-background));
+  border-color: hsl(var(--sidebar-primary));
+  background: hsl(var(--sidebar-foreground));
+  box-shadow: 0 3px 10px hsl(var(--sidebar-primary) / 0.14);
 }
 
 html.torah-luxury .primary-destination-item:hover,
 html.torah-luxury .primary-destination-item-active {
-  color: #10264f;
-  border-color: #f0b900;
-  background: #fffdf8;
-  box-shadow: 0 4px 13px rgb(213 170 69 / 0.22);
+  color: hsl(var(--sidebar-primary-foreground));
+  border-color: hsl(var(--sidebar-ring));
+  background: hsl(var(--sidebar-primary));
+  box-shadow: 0 4px 13px hsl(var(--sidebar-primary) / 0.22);
 }
 
 @media (min-width: 640px) {

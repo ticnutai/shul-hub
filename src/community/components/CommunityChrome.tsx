@@ -20,8 +20,8 @@ const navItemClass = (isActive: boolean) =>
   cn(
     "community-nav-item flex min-w-0 items-center justify-center gap-1 rounded-lg text-center font-semibold leading-tight transition sm:gap-1.5 sm:px-3",
     isActive
-      ? "text-[#f0c84b] ring-1 ring-[#d4af37]/80"
-      : "text-[#d4af37] hover:bg-white/5 hover:text-[#f0c84b]",
+      ? "bg-sidebar-accent text-sidebar-accent-foreground ring-1 ring-sidebar-primary/80"
+      : "text-sidebar-primary hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
   );
 
 export function GlobalAppHeader() {
@@ -41,8 +41,9 @@ export function GlobalAppHeader() {
   return (
     <header
       data-testid="global-app-header"
+      data-theme-header
       dir="rtl"
-      className="community-header sticky top-0 z-50 border-b border-sidebar-primary/40 bg-sidebar text-sidebar-foreground shadow-lg"
+      className="community-header sticky top-0 z-50 border-b border-sidebar-border bg-sidebar text-sidebar-foreground shadow-lg"
       style={{ paddingTop: "var(--safe-area-inset-top, env(safe-area-inset-top, 0px))" }}
     >
       <div
@@ -56,7 +57,7 @@ export function GlobalAppHeader() {
         <span
           data-testid="community-header-blessing"
           className={cn(
-            "shrink-0 text-sm font-bold text-amber-400",
+            "shrink-0 text-sm font-bold text-sidebar-primary",
             showKarovimLogo && "col-start-1 row-start-1 justify-self-start",
           )}
         >
@@ -82,7 +83,7 @@ export function GlobalAppHeader() {
           ) : (
             <>
               <strong data-testid="community-site-title" className="block whitespace-normal text-base font-bold leading-tight sm:text-xl">{settings?.name ?? "בית הכנסת אושר של יהודי"}</strong>
-              <span data-testid="community-site-address" className="block truncate text-xs text-white/65 sm:text-sm">{settings?.address ?? "מצדה 9, בסר 3, קומה 34, בני ברק"}</span>
+              <span data-testid="community-site-address" className="block truncate text-xs text-sidebar-foreground/65 sm:text-sm">{settings?.address ?? "מצדה 9, בסר 3, קומה 34, בני ברק"}</span>
             </>
           )}
         </Link>
@@ -98,14 +99,14 @@ export function GlobalAppHeader() {
             aria-label={user && !user.is_anonymous ? "כניסה לאזור האישי" : "כניסה או הרשמה למערכת"}
             title={user && !user.is_anonymous ? "האזור האישי" : "כניסה או הרשמה"}
             data-testid="account-entry"
-            className="rounded-full p-2 text-amber-300 transition hover:bg-white/10 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className="rounded-full p-2 text-sidebar-primary transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
             {user && !user.is_anonymous
               ? <UserRoundCheck className="size-5" aria-hidden="true" />
               : <LogIn className="size-5" aria-hidden="true" />}
             <span className="sr-only">{loading ? "בודק חיבור" : "כניסה למערכת"}</span>
           </Link>
-          <Link to="/community/contact" aria-label="הודעה למנהל" title="הודעה למנהל" className="rounded-full p-2 text-white/75 transition hover:bg-white/10 hover:text-white">
+          <Link to="/community/contact" aria-label="הודעה למנהל" title="הודעה למנהל" className="rounded-full p-2 text-sidebar-foreground/75 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
             <MessageSquareText className="size-5" />
           </Link>
           <NotificationCenter />
