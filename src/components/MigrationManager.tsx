@@ -166,7 +166,7 @@ interface ExecResult {
 }
 
 const execSQL = async (sql: string): Promise<ExecResult> => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.rpc as any)("exec_sql", { query: sql });
   if (error) {
     return { success: false, error: error.message, detail: error.code };

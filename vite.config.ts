@@ -69,7 +69,17 @@ export default defineConfig(({ mode }) => ({
         clientsClaim: true,
         skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        globIgnores: ['**/assets/data-*.js'],
+        // Precache the application shell only. The Torah text, the siddurim and
+        // the Sefaria commentaries are all reached through dynamic import(), so
+        // precaching them forced every install and every update to pull ~49 MB
+        // before the app became usable — painful on mobile data and on a TV.
+        // They are cached on first use by the runtimeCaching rule below instead,
+        // which keeps offline reading working without the upfront download.
+        globIgnores: [
+          '**/assets/data-*.js', // chumash: bereishit .. devarim
+          '**/assets/siddur_*.js', // siddur nusachim
+          '**/assets/*_on_*.js', // Sefaria commentaries (Rashi_on_Genesis, ...)
+        ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         // NOTE: Google Fonts (fonts.googleapis.com / fonts.gstatic.com) are intentionally
         // NOT routed through Workbox. The browser HTTP cache + Google CDN already serve
@@ -78,13 +88,22 @@ export default defineConfig(({ mode }) => ({
         // messages) which produced a late font swap and re-render after first paint.
         runtimeCaching: [
           {
-            urlPattern: /\.json$/,
-            handler: 'StaleWhileRevalidate',
+            // The Torah/siddur/commentary payloads are bundled into hashed .js
+            // chunks at build time, so the previous /\.json$/ rule never matched
+            // anything in production. Matching the emitted chunk names instead
+            // means a sefer is downloaded once, on the first time it is opened,
+            // and stays available offline afterwards. The content hash in the
+            // filename makes CacheFirst safe: a new build is a new URL.
+            urlPattern: /\/assets\/(data-|siddur_|[^/]*_on_)[^/]*\.js$/,
+            handler: 'CacheFirst',
             options: {
               cacheName: 'torah-data-cache',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 30
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
               }
             }
           }

@@ -71,7 +71,7 @@ export function installLayoutShiftTracker() {
           to: `${Math.round(s.currentRect.x)},${Math.round(s.currentRect.y)} ${Math.round(s.currentRect.width)}x${Math.round(s.currentRect.height)}`,
           el: s.node,
         }));
-        // eslint-disable-next-line no-console
+         
         console.groupCollapsed(
           `%c[CLS] +${e.value.toFixed(4)} (total ${total.toFixed(4)})`,
           "color:#e36; font-weight:bold",
@@ -106,7 +106,7 @@ export function useRenderTracker(name: string, props?: Record<string, unknown>) 
       }
     }
     const changedKeys = Object.keys(changed);
-    // eslint-disable-next-line no-console
+     
     console.debug(
       `%c[render] ${name} #${n}${changedKeys.length ? ` changed: ${changedKeys.join(", ")}` : " (no prop changes)"}`,
       "color:#369",
@@ -119,7 +119,7 @@ export function useRenderTracker(name: string, props?: Record<string, unknown>) 
 /* ─── Convenience: dump all counters ────────────────────── */
 
 export function dumpRenderCounts() {
-  // eslint-disable-next-line no-console
+   
   console.table(
     Array.from(renderCounters.entries())
       .sort((a, b) => b[1] - a[1])
