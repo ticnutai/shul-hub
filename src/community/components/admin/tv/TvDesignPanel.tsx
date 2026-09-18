@@ -342,7 +342,15 @@ export function TvDesignPanel() {
     setUploading(true);
     try {
       const urls: string[] = [];
-      for (const file of Array.from(files)) urls.push(await uploadTvImage(file));
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadTvImage(file);
+        urls.push(uploaded.url);
+        if (uploaded.lowRes)
+          toast.warning(
+            `"${file.name}" קטנה מדי לטלוויזיה (${uploaded.lowRes.width}×${uploaded.lowRes.height}) ותיראה מעט מטושטשת. לאיכות מלאה העלו תמונה ברוחב 1920 פיקסלים לפחות.`,
+            { duration: 9000 },
+          );
+      }
       if (into === "background") edit("bg", (c) => ({ ...c, backgroundImage: urls[0] }));
       else
         edit("show", (c) => ({
@@ -518,7 +526,7 @@ export function TvDesignPanel() {
           </div>
         </Section>
 
-        <Section title="תמונת רקע" hint="אופציונלי. התמונה מוחשכת כדי שהטקסט יישאר קריא.">
+        <Section title="תמונת רקע" hint="אופציונלי. התמונה מוחשכת כדי שהטקסט יישאר קריא. היא מותאמת אוטומטית לאיכות המלאה של הטלוויזיה; מומלץ לפחות 1920×1080.">
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
               <label className="cursor-pointer">
@@ -709,7 +717,7 @@ export function TvDesignPanel() {
           />
         </Section>
 
-        <Section title="מצגת תמונות" hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת.">
+        <Section title="מצגת תמונות" hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG.">
           <div className="flex flex-wrap items-center gap-3">
             <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
               <label className="cursor-pointer">

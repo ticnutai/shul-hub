@@ -414,7 +414,13 @@ async function captureSnapshot(link: DeviceLink) {
   if (!node) return;
   try {
     const { toJpeg } = await import("html-to-image");
-    const image = await toJpeg(node, { quality: 0.72, pixelRatio: 1, cacheBust: false });
+    // Full screen resolution (1920x1080 on a DPR-2 box), so the admin sees
+    // what the room sees. The server accepts up to 900 KB of data URL; a busy
+    // slide at 0.85 is ~300-500 KB, and a lighter retry covers the rare
+    // photo-heavy one.
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    let image = await toJpeg(node, { quality: 0.85, pixelRatio, cacheBust: false });
+    if (image.length > 880_000) image = await toJpeg(node, { quality: 0.6, pixelRatio, cacheBust: false });
     await link.putSnapshot(image);
     link.log("info", "snapshot", "צילום מסך נשלח", { bytes: image.length });
   } catch (error) {

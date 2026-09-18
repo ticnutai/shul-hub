@@ -82,6 +82,26 @@
   transition: transform 4s ease-in-out;
 }
 
+/*
+ * Dithering. A dark gradient spread over 1080 rows has only ~20 distinct
+ * levels per channel, so an 8-bit screen draws it as visible stripes
+ * (measured on the box: 12-px bands). A fixed tile of faint noise (white,
+ * alpha 0-4 of 255) breaks the band edges without reading as grain.
+ *
+ * It sits on the root, not on .tv-bg, so it never moves: a moving layer
+ * lands on fractional pixels and the filtering would smear the noise away.
+ * The tile is declared 2x so it maps 1:1 to device pixels on the TV (DPR 2).
+ * Painted once, so it costs nothing at idle.
+ */
+.tv-root::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: image-set(url("./assets/dither.png") 2x) repeat;
+}
+
 .tv-root.has-bg-image .tv-bg::before,
 .tv-root.has-bg-image .tv-bg::after {
   content: "";

@@ -290,7 +290,7 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
 function AnnouncementCard({ item, large }: { item: Announcement; large?: boolean }) {
   return (
     <article className={`tv-card${item.pinned ? " is-pinned" : ""}${large ? " is-large" : ""}${item.image_url ? " has-image" : ""}`}>
-      {item.image_url && <img className="tv-card-image" src={item.image_url} alt="" />}
+      {item.image_url && <img className="tv-card-image" src={item.image_url} alt="" decoding="async" />}
       <div className="tv-card-text">
         <h3 className="tv-card-title">{item.title}</h3>
         <p className="tv-card-body">{item.body}</p>
@@ -396,7 +396,7 @@ function SlideshowSlide({
           className={`tv-show-item${i === active ? " is-active" : ""}`}
           style={{ animationDuration: `${slide.secondsPerImage + 2}s` }}
         >
-          <img src={img.url} alt="" />
+          <img src={img.url} alt="" decoding="async" />
           {img.caption && <figcaption>{img.caption}</figcaption>}
         </figure>
       ))}

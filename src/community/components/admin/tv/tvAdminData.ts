@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase as typedClient } from "@community/integrations/supabase/client";
 import { normalizeTvConfig, type TvConfig } from "@/tv/config";
 import type { OutageReason } from "@/tv/device";
+import { prepareTvImage } from "./tvImage";
 
 /**
  * Admin-side access to the TV control center (tables from
@@ -241,13 +242,25 @@ export function useTvEvents(days: number) {
   return query;
 }
 
-/** Uploads an image for the board (slideshow / background) to the public media bucket. */
-export async function uploadTvImage(file: File): Promise<string> {
-  if (!file.type.startsWith("image/")) throw new Error("אפשר להעלות קובץ תמונה בלבד");
-  if (file.size > 5 * 1024 * 1024) throw new Error("התמונה גדולה מדי. הגודל המרבי הוא 5MB");
-  const extension = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-  const path = `tv/${crypto.randomUUID()}.${extension}`;
-  const { error } = await tvDb.storage.from("community-media").upload(path, file, { cacheControl: "31536000", upsert: false });
+export interface UploadedTvImage {
+  url: string;
+  /** Set when the picture is too small to be sharp on the TV. */
+  lowRes: { width: number; height: number } | null;
+}
+
+/**
+ * Uploads an image for the board (slideshow / background) to the public media
+ * bucket, first resampled for the TV (see tvImage.ts).
+ */
+export async function uploadTvImage(file: File): Promise<UploadedTvImage> {
+  const image = await prepareTvImage(file);
+  const path = `tv/${crypto.randomUUID()}.${image.extension}`;
+  const { error } = await tvDb.storage
+    .from("community-media")
+    .upload(path, image.blob, { cacheControl: "31536000", upsert: false, contentType: image.blob.type || file.type });
   if (error) throw new Error(error.message || "העלאת התמונה נכשלה");
-  return tvDb.storage.from("community-media").getPublicUrl(path).data.publicUrl;
+  return {
+    url: tvDb.storage.from("community-media").getPublicUrl(path).data.publicUrl,
+    lowRes: image.lowRes ? { width: image.sourceWidth, height: image.sourceHeight } : null,
+  };
 }
