@@ -1,4 +1,4 @@
-import { LayoutList, PanelsTopLeft, Table2 } from "lucide-react";
+import { Clock4, LayoutGrid, LayoutList, PanelsTopLeft, Table2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export type PrayerLayoutMode = "tabs" | "list" | "table";
+export type PrayerLayoutMode = "tabs" | "list" | "table" | "timeline" | "cards";
 
 export const PRAYER_LAYOUTS: Array<{
   value: PrayerLayoutMode;
@@ -19,10 +19,19 @@ export const PRAYER_LAYOUTS: Array<{
   { value: "tabs", label: "טאבים", description: "תפילה אחת בכל פעם", icon: PanelsTopLeft },
   { value: "list", label: "רשימה מלאה", description: "כל התפילות אחת אחרי השנייה", icon: LayoutList },
   { value: "table", label: "טבלה מרוכזת", description: "כל המניינים במבט אחד", icon: Table2 },
+  { value: "timeline", label: "ציר זמן", description: "לפי סדר השעות, המניין הבא מודגש", icon: Clock4 },
+  { value: "cards", label: "כרטיסיות", description: "ריבועים גדולים עם שעה בולטת", icon: LayoutGrid },
 ];
 
+const VALID_LAYOUTS = new Set<string>(PRAYER_LAYOUTS.map((layout) => layout.value));
+
+/**
+ * Falls back to "tabs" for anything unrecognised. A category saved by a newer
+ * build, or a value the database has but this bundle does not know about, must
+ * still render a schedule rather than an empty panel.
+ */
 export function normalizePrayerLayout(value?: string | null): PrayerLayoutMode {
-  return value === "list" || value === "table" ? value : "tabs";
+  return value && VALID_LAYOUTS.has(value) ? (value as PrayerLayoutMode) : "tabs";
 }
 
 export function PrayerLayoutPicker({

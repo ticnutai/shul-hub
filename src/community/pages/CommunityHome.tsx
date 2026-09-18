@@ -25,6 +25,7 @@ import {
   useShiurim,
   DAYS_HE,
   minyanSubcategories,
+  prayerLabel,
 } from "@community/lib/data";
 import { dayTypeFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
@@ -34,6 +35,7 @@ import {
   normalizePrayerLayout,
   PrayerLayoutPicker,
 } from "@community/components/PrayerLayoutPicker";
+import { CardsLayout, TimelineLayout } from "@community/components/PrayerScheduleLayouts";
 import { useAuth } from "@community/lib/use-auth";
 import { useSaveRow } from "@community/lib/admin";
 
@@ -200,6 +202,8 @@ export function CommunityHome() {
   const prayerLayout = normalizePrayerLayout(selectedCategory?.display_mode);
   const isListView = prayerLayout === "list";
   const isTableView = prayerLayout === "table";
+  const isTimelineView = prayerLayout === "timeline";
+  const isCardsView = prayerLayout === "cards";
 
   useEffect(() => {
     if (prayerTabs.length > 0 && !prayerTabs.some((item) => item.id === prayer)) {
@@ -357,15 +361,19 @@ export function CommunityHome() {
                         עדיין לא הוגדרו מניינים ליום זה.
                       </p>
                     )}
-                  {isTableView && categoryRows.length > 0 ? (
+                  {isTimelineView && categoryRows.length > 0 ? (
+                    <TimelineLayout rows={categoryRows} prayerTabs={prayerTabs} />
+                  ) : isCardsView && categoryRows.length > 0 ? (
+                    <CardsLayout rows={categoryRows} prayerTabs={prayerTabs} />
+                  ) : isTableView && categoryRows.length > 0 ? (
                     <>
                       <div className="divide-y divide-border sm:hidden" data-testid="prayer-table-mobile">
                         {categoryRows.map(({ minyan, time, source }) => {
-                          const prayerLabel = prayerTabs.find((item) => item.id === minyan.prayer)?.label ?? minyan.prayer;
+                          const label = prayerLabel(prayerTabs, minyan.prayer);
                           return (
                             <div key={minyan.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3">
                               <div className="min-w-0">
-                                <p className="text-xs font-semibold text-primary">{prayerLabel}</p>
+                                <p className="text-xs font-semibold text-primary">{label}</p>
                                 <p className="truncate font-medium">
                                   <InlineEdit table="minyanim" id={minyan.id} field="label" value={minyan.label} queryKey="minyanim" />
                                 </p>
@@ -391,7 +399,7 @@ export function CommunityHome() {
                           {categoryRows.map(({ minyan, time, source }) => (
                             <tr key={minyan.id}>
                               <td className="px-4 py-3 font-semibold text-primary">
-                                {prayerTabs.find((item) => item.id === minyan.prayer)?.label ?? minyan.prayer}
+                                {prayerLabel(prayerTabs, minyan.prayer)}
                               </td>
                               <td className="truncate px-4 py-3 font-medium">
                                 <InlineEdit table="minyanim" id={minyan.id} field="label" value={minyan.label} queryKey="minyanim" />

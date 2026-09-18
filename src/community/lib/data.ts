@@ -41,6 +41,23 @@ export function minyanSubcategories(category?: MinyanCategory | null): MinyanSub
   );
 }
 
+/**
+ * Hebrew label for a minyan's prayer.
+ *
+ * A category's own subcategories take priority, since an admin may rename a
+ * prayer for that category. When the category does not list the prayer — a
+ * "סליחות" row stored as `other` under the Friday category, for instance —
+ * the built-in PRAYERS labels are used, so the raw id ("other", "shacharit")
+ * never reaches the page.
+ */
+export function prayerLabel(subcategories: MinyanSubcategory[], prayer: string): string {
+  return (
+    subcategories.find((item) => item.id === prayer)?.label ??
+    PRAYERS.find((item) => item.id === prayer)?.label ??
+    prayer
+  );
+}
+
 export const DAYS_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
 export function useSettings() {

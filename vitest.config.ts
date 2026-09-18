@@ -11,6 +11,12 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    // Must mirror the aliases in vite.config.ts. Without `@community` any test
+    // that reached community code failed at import resolution, before a single
+    // assertion ran.
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      "@community": path.resolve(__dirname, "./src/community"),
+    },
   },
 });
