@@ -16,10 +16,33 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Signing material for the display is kept out of git (see .gitignore) and
+    // is deliberately a different key from the congregant app: the two are
+    // separate packages, and sharing a key would let a mistake in one affect
+    // the update path of the other.
+    signingConfigs {
+        release {
+            def propsFile = file('signing.properties')
+            if (propsFile.exists()) {
+                def props = new Properties()
+                props.load(new FileInputStream(propsFile))
+                storeFile file(props['storeFile'])
+                storePassword props['storePassword']
+                keyAlias props['keyAlias']
+                keyPassword props['keyPassword']
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            // Falls back to an unsigned build when signing.properties is absent,
+            // so a fresh checkout still compiles.
+            if (file('signing.properties').exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

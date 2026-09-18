@@ -21,6 +21,7 @@
     "tv:preview": "vite preview --config vite.config.tv.ts --outDir dist-tv",
     "tv:sync": "npm run tv:build && node scripts/tv-cap.mjs sync android",
     "tv:apk": "npm run tv:sync && cd android-tv && gradlew.bat assembleDebug",
+    "tv:apk:release": "npm run tv:sync && cd android-tv && gradlew.bat assembleRelease",
     "tv:open": "node scripts/tv-cap.mjs open android",
     "android:sync": "vite build && npx cap sync android",
     "android:open": "npx cap open android",

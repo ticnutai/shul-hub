@@ -45,6 +45,21 @@
 
         </activity>
 
+        <!-- Restores the board after a power cut. `directBootAware` lets it run
+             before the device is unlocked, which is when a TV box boots. -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true"
+            android:directBootAware="true">
+            <intent-filter android:priority="1000">
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -65,4 +80,6 @@
     <!-- The board must stay readable indefinitely; without this the system
          dims and then blanks the screen. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- Lets BootReceiver bring the board back after a power cut. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 </manifest>
