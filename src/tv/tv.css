@@ -1179,3 +1179,82 @@
     animation: none;
   }
 }
+
+/* ------------------------------------------------ pairing & admin notices - */
+
+/* Bottom corner, out of the way of the schedule: an unpaired TV still shows
+   the full board, the code only tells the admin how to adopt it. */
+.tv-pairing {
+  position: absolute;
+  z-index: 25;
+  left: var(--tv-safe-x);
+  bottom: calc(var(--u) * 9);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--u) * 0.4);
+  padding: calc(var(--u) * 1.4) calc(var(--u) * 2.6);
+  border-radius: calc(var(--u) * 1.6);
+  background: color-mix(in srgb, var(--tv-bg-a) 92%, transparent);
+  border: calc(var(--u) * 0.2) dashed var(--tv-accent);
+  box-shadow: var(--tv-shadow);
+}
+
+.tv-pairing-label {
+  font-size: calc(var(--fs) * 1.7);
+  color: var(--tv-text-dim);
+}
+
+.tv-pairing-code {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 5);
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--tv-accent);
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-pairing-hint {
+  font-size: calc(var(--fs) * 1.5);
+  color: var(--tv-text-dim);
+}
+
+.tv-notice {
+  max-width: 76cqw;
+  padding: calc(var(--u) * 5) calc(var(--u) * 6);
+  border-radius: calc(var(--u) * 3);
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--tv-highlight), transparent 70%),
+    color-mix(in srgb, var(--tv-bg-a) 94%, var(--tv-accent));
+  border: calc(var(--u) * 0.25) solid var(--tv-accent);
+  box-shadow: 0 0 0 calc(var(--u) * 1.6) var(--tv-highlight), var(--tv-shadow);
+  text-align: center;
+  animation: tv-pop 600ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+.tv-notice-text {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 5.2);
+  font-weight: 800;
+  line-height: 1.3;
+  white-space: pre-wrap;
+}
+
+.tv-notice-kicker {
+  font-size: calc(var(--fs) * 2.6);
+  color: var(--tv-text-dim);
+}
+
+.tv-notice-title {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 9);
+  font-weight: 900;
+  color: var(--tv-accent);
+}
+
+.tv-chip-caption {
+  align-self: center;
+  font-size: calc(var(--fs) * 1.8);
+  color: var(--tv-text-dim);
+}

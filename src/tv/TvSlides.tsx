@@ -117,9 +117,12 @@ function PrayerSlide({
               </>
             )}
             {rest.length > 0 && (
+              // After the last minyan these are the day's earlier ones - seen on
+              // the TV listed under "המניינים הסתיימו" as if still to come.
               <div className="tv-chip-row">
+                {!next && <span className="tv-chip-caption">היום היו:</span>}
                 {rest.map((r) => (
-                  <div key={r.minyan.id} className="tv-chip">
+                  <div key={r.minyan.id} className={`tv-chip${next ? "" : " is-past"}`}>
                     <span className="tv-chip-time">{r.time}</span>
                     <span>{r.minyan.label}</span>
                   </div>

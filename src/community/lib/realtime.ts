@@ -111,7 +111,10 @@ export function useRealtimeSync(tables: SyncedTable[] = ALL_SYNCED_TABLES): Real
       }
 
       next.subscribe((state) => {
-        if (disposed) return;
+        // Ignore reports from a channel that has since been replaced: a
+        // channel removed on purpose (see onOnline) still reports CLOSED, and
+        // acting on it flashed "offline" and opened a second connection.
+        if (disposed || next !== channel) return;
         if (state === "SUBSCRIBED") {
           attempt = 0;
           setStatus("live");
@@ -121,6 +124,7 @@ export function useRealtimeSync(tables: SyncedTable[] = ALL_SYNCED_TABLES): Real
           return;
         }
         if (state === "CHANNEL_ERROR" || state === "TIMED_OUT" || state === "CLOSED") {
+          channel = null;
           setStatus("offline");
           void supabase.removeChannel(next);
           scheduleRetry();
@@ -141,7 +145,9 @@ export function useRealtimeSync(tables: SyncedTable[] = ALL_SYNCED_TABLES): Real
         window.clearTimeout(retryTimer);
         retryTimer = undefined;
       }
-      if (channel) void supabase.removeChannel(channel);
+      const old = channel;
+      channel = null; // detach first, so its CLOSED report is ignored
+      if (old) void supabase.removeChannel(old);
       connect();
     };
     window.addEventListener("online", onOnline);

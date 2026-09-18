@@ -2,13 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
-import { DEFAULT_TV_CONFIG, SLIDE_KIND_LABELS, type TvConfig } from "./config";
+import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
+import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { getTheme, TV_THEMES, type TvThemeId } from "./themes";
 import { TvBoard } from "./TvBoard";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
+import { useDeviceLink, type TvCommand } from "./useDeviceLink";
 
 /**
- * The board as it runs on the TV: owns rotation, pause, and the remote.
+ * The board as it runs on the TV: owns rotation, pause, the remote, and the
+ * link to the admin's control center.
  *
  * Remote control (the WebView receives the D-pad as ordinary key events):
  *   ◀ / ▶      next / previous slide (RTL: left is forward)
@@ -40,12 +43,36 @@ function writeOverride(v: TvThemeId | null) {
   }
 }
 
-export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: TvConfig }) {
+interface Notice {
+  kind: "message" | "identify";
+  text: string;
+  until: number;
+}
+
+export function TvApp() {
   const data = useBoardData({ persist: true, live: true });
   const now = useNow(1000);
   const zmanim = useDayZmanim(now, data.settings);
 
+  // Everything the heartbeat reports is read through this ref (filled below).
+  const stateRef = useRef<Record<string, unknown>>({});
+  const commandRef = useRef<(c: TvCommand, link: DeviceLink) => void>(() => {});
+  const { status: device, link, config: adminConfig, configUpdatedAt } = useDeviceLink({
+    getState: () => stateRef.current,
+    onCommand: (c, l) => commandRef.current(c, l),
+  });
+
   const [themeOverride, setThemeOverride] = useState<TvThemeId | null>(readOverride);
+  // When the admin picks a theme, it wins over whatever the remote chose.
+  const lastAdminTheme = useRef(adminConfig.theme);
+  useEffect(() => {
+    if (adminConfig.theme !== lastAdminTheme.current) {
+      lastAdminTheme.current = adminConfig.theme;
+      setThemeOverride(null);
+      writeOverride(null);
+    }
+  }, [adminConfig.theme]);
+
   const config = useMemo<TvConfig>(
     () => (themeOverride ? { ...adminConfig, theme: themeOverride, themeOverrides: {} } : adminConfig),
     [adminConfig, themeOverride],
@@ -59,10 +86,11 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
 
   const [currentId, setCurrentId] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
-  /** Bumped on every slide start; restarts the CSS progress bar. */
+  /** Bumped on every slide start; drives the background move (burn-in guard). */
   const [cycle, setCycle] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
 
   const found = slides.findIndex((s) => s.id === currentId);
   const index = found >= 0 ? found : 0;
@@ -70,7 +98,7 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
 
   // Rotation is one timeout per slide, not a ticking counter. A 250 ms state
   // tick re-rendered the whole board four times a second, which on the TV box
-  // was a real share of the CPU for nothing but a progress bar (now pure CSS).
+  // was a real share of the CPU for nothing but a progress bar.
   const startedAt = useRef(Date.now());
   const heldMs = useRef(0);
   const lastSlideId = useRef<string | undefined>(undefined);
@@ -86,20 +114,22 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
     setCycle((c) => c + 1);
   }, []);
 
-  const goTo = useCallback((n: number) => {
+  const goTo = useCallback((target: number | string) => {
     const s = live.current.slides;
-    if (n < 0 || n >= s.length) return;
+    const n = typeof target === "number" ? target : s.findIndex((x) => x.id === target || x.kind === target);
+    if (n < 0 || n >= s.length) return false;
     heldMs.current = 0;
     setCurrentId(s[n].id);
     setCycle((c) => c + 1);
+    return true;
   }, []);
 
-  const togglePause = useCallback(() => {
+  const setPausedTo = useCallback((next: boolean) => {
     const wasPaused = live.current.paused;
+    if (next === wasPaused) return;
     // Freeze the elapsed time now, so resuming continues rather than restarts.
-    if (!wasPaused) heldMs.current = Date.now() - startedAt.current;
-    setPaused(!wasPaused);
-    return wasPaused;
+    if (next) heldMs.current = Date.now() - startedAt.current;
+    setPaused(next);
   }, []);
 
   const slideId = slide?.id;
@@ -124,33 +154,121 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
     return () => window.clearTimeout(id);
   }, [toast]);
 
+  useEffect(() => {
+    if (!notice) return;
+    const id = window.setTimeout(() => setNotice(null), Math.max(0, notice.until - Date.now()));
+    return () => window.clearTimeout(id);
+  }, [notice]);
+
+  const applyTheme = useCallback(
+    (id: TvThemeId | null) => {
+      setThemeOverride(id);
+      writeOverride(id);
+      flash(`ערכת נושא: ${getTheme(id ?? adminConfig.theme).name}${id ? "" : " (של המנהל)"}`);
+    },
+    [adminConfig.theme, flash],
+  );
+
   const cycleTheme = useCallback(
     (delta: number) => {
       const currentIdx = TV_THEMES.findIndex((t) => t.id === config.theme);
-      const next = TV_THEMES[(currentIdx + delta + TV_THEMES.length) % TV_THEMES.length];
-      setThemeOverride(next.id);
-      writeOverride(next.id);
-      flash(`ערכת נושא: ${next.name}`);
+      applyTheme(TV_THEMES[(currentIdx + delta + TV_THEMES.length) % TV_THEMES.length].id);
     },
-    [config.theme, flash],
+    [config.theme, applyTheme],
   );
 
-  // Remote / keyboard.
+  // ------------------------------------------------ state for the admin --
+  stateRef.current = {
+    slideId: slide?.id ?? null,
+    slideKind: slide?.kind ?? null,
+    slideIndex: index,
+    slideCount: slides.length,
+    slideSeconds,
+    slideStartedAt: paused ? null : startedAt.current,
+    elapsedMs: paused ? heldMs.current : Date.now() - startedAt.current,
+    slideIds: slides.map((s) => s.id),
+    paused,
+    theme: config.theme,
+    themeOverride,
+    cycle,
+    configUpdatedAt,
+    realtime: data.sync.status,
+    stale: data.stale,
+    version: __APP_VERSION__,
+    uptimeSec: Math.round(performance.now() / 1000),
+    screen: `${innerWidth}x${innerHeight}@${devicePixelRatio}`,
+  };
+
+  // Push state immediately when what the admin mirrors changes.
+  useEffect(() => {
+    link.current?.reportNow();
+  }, [slideId, paused, config.theme, cycle, link]);
+
+  // ------------------------------------------------------ admin commands --
+  commandRef.current = (cmd, l) => {
+    const p = cmd.payload ?? {};
+    switch (cmd.command) {
+      case "pause":
+        setPausedTo(true);
+        flash("⏸ הושהה ע״י המנהל");
+        break;
+      case "resume":
+        setPausedTo(false);
+        flash("▶ ממשיך");
+        break;
+      case "next":
+        go(1);
+        break;
+      case "prev":
+        go(-1);
+        break;
+      case "goto":
+        goTo(typeof p.index === "number" ? p.index : String(p.slideId ?? p.kind ?? ""));
+        break;
+      case "theme": {
+        const id = typeof p.theme === "string" && TV_THEMES.some((t) => t.id === p.theme) ? (p.theme as TvThemeId) : null;
+        applyTheme(id);
+        break;
+      }
+      case "message":
+        setNotice({
+          kind: "message",
+          text: String(p.text ?? "").slice(0, 400),
+          until: Date.now() + Math.min(600, Math.max(5, Number(p.seconds) || 30)) * 1000,
+        });
+        break;
+      case "identify":
+        setNotice({ kind: "identify", text: device?.name || "מסך", until: Date.now() + 12_000 });
+        break;
+      case "snapshot":
+        void captureSnapshot(l);
+        break;
+      case "reload":
+        l.log("info", "command", "טעינה מחדש לפי בקשת המנהל");
+        window.setTimeout(() => window.location.reload(), 500);
+        return;
+    }
+    l.log("info", "command", `פקודה: ${cmd.command}`, { command: cmd.command, payload: p });
+    l.reportNow();
+  };
+
+  // ---------------------------------------------------------------- keys --
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const { slides: s, index: i } = live.current;
+      const { slides: s, index: i, paused: p } = live.current;
       switch (e.key) {
         case "ArrowLeft":
           go(1);
-          flash(`${SLIDE_KIND_LABELS[s[(i + 1) % s.length]?.kind] ?? ""}`);
+          flash(SLIDE_KIND_LABELS[s[(i + 1) % s.length]?.kind] ?? "");
           break;
         case "ArrowRight":
           go(-1);
-          flash(`${SLIDE_KIND_LABELS[s[(i - 1 + s.length) % s.length]?.kind] ?? ""}`);
+          flash(SLIDE_KIND_LABELS[s[(i - 1 + s.length) % s.length]?.kind] ?? "");
           break;
         case "Enter":
         case " ":
-          flash(togglePause() ? "▶ ממשיך" : "⏸ מושהה");
+          setPausedTo(!p);
+          flash(p ? "▶ ממשיך" : "⏸ מושהה");
           break;
         case "ArrowUp":
           cycleTheme(1);
@@ -159,9 +277,7 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
           cycleTheme(-1);
           break;
         case "0":
-          setThemeOverride(null);
-          writeOverride(null);
-          flash(`ערכת נושא: ${getTheme(adminConfig.theme).name} (של המנהל)`);
+          applyTheme(null);
           break;
         case "Escape":
         case "ContextMenu":
@@ -176,7 +292,7 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, goTo, togglePause, cycleTheme, flash, adminConfig.theme]);
+  }, [go, goTo, setPausedTo, cycleTheme, applyTheme, flash]);
 
   // Android Back: open the help card instead of leaving the board.
   useEffect(() => {
@@ -191,9 +307,18 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
   const elapsedMs = paused ? heldMs.current : now.getTime() - startedAt.current;
   const progress = slideSeconds > 0 ? elapsedMs / (slideSeconds * 1000) : 0;
 
+  // The footer reflects the heartbeat as well as the realtime socket. In a
+  // simulated server outage the socket stayed up while every request failed,
+  // and the board kept saying "מעודכן" for three minutes.
+  const deviceOffline = device?.online === false;
+  const boardData = useMemo(
+    () => (deviceOffline && data.sync.status === "live" ? { ...data, sync: { ...data.sync, status: "offline" as const } } : data),
+    [data, deviceOffline],
+  );
+
   return (
     <TvBoard
-      data={data}
+      data={boardData}
       config={config}
       now={now}
       zmanim={zmanim}
@@ -205,6 +330,32 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
       overlay={
         <>
           {toast && <div className="tv-toast">{toast}</div>}
+
+          {device && !device.approved && device.pairingCode && (
+            <div className="tv-pairing">
+              <span className="tv-pairing-label">קוד צימוד</span>
+              <span className="tv-pairing-code">
+                {device.pairingCode.slice(0, 3)} {device.pairingCode.slice(3)}
+              </span>
+              <span className="tv-pairing-hint">באתר: ניהול ← לוח תצוגה ← צימוד מסך</span>
+            </div>
+          )}
+
+          {notice && (
+            <div className="tv-alert-backdrop">
+              <div className={`tv-notice is-${notice.kind}`}>
+                {notice.kind === "identify" ? (
+                  <>
+                    <div className="tv-notice-kicker">זיהוי מסך</div>
+                    <div className="tv-notice-title">{notice.text}</div>
+                  </>
+                ) : (
+                  <div className="tv-notice-text">{notice.text}</div>
+                )}
+              </div>
+            </div>
+          )}
+
           {help && (
             <div className="tv-help" onClick={() => setHelp(false)}>
               <div className="tv-help-card">
@@ -224,6 +375,10 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
                   <dd>סגירת החלון</dd>
                 </dl>
                 <p className="tv-help-foot">
+                  {device?.name ? `${device.name} · ` : ""}
+                  {device?.approved ? "מצומד" : "לא מצומד"} ·{" "}
+                  {device?.online ? "מחובר" : device?.outageReason ? OUTAGE_REASON_LABELS[device.outageReason] : "מתחבר…"}
+                  <br />
                   ערכת נושא: {getTheme(config.theme).name}
                   {themeOverride ? " (נבחרה בשלט)" : ""} · גרסה {__APP_VERSION__}
                 </p>
@@ -234,4 +389,21 @@ export function TvApp({ config: adminConfig = DEFAULT_TV_CONFIG }: { config?: Tv
       }
     />
   );
+}
+
+/**
+ * Renders the board to a JPEG and uploads it. Loaded on demand: html-to-image
+ * is only needed when the admin asks for a picture.
+ */
+async function captureSnapshot(link: DeviceLink) {
+  const node = document.querySelector<HTMLElement>(".tv-frame");
+  if (!node) return;
+  try {
+    const { toJpeg } = await import("html-to-image");
+    const image = await toJpeg(node, { quality: 0.72, pixelRatio: 1, cacheBust: false });
+    await link.putSnapshot(image);
+    link.log("info", "snapshot", "צילום מסך נשלח", { bytes: image.length });
+  } catch (error) {
+    link.log("error", "snapshot", `צילום מסך נכשל: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
