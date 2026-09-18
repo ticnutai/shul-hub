@@ -103,10 +103,19 @@ describe("content edits (records)", () => {
 
   it("moves an announcement even when every sort_order is equal", () => {
     const list = [ann("a", "A"), ann("b", "B"), ann("c", "C")];
-    const c = moveAnnouncement(base(), list, "c", -1);
+    const c = moveAnnouncement(base(), list, list, "c", -1);
     const out = applyRecordEdits(data({ announcements: list }), c._records);
     expect(out.announcements?.map((a) => a.id)).toEqual(["a", "c", "b"]);
-    expect(moveAnnouncement(base(), list, "a", -1)._records).toBeUndefined();
+    expect(moveAnnouncement(base(), list, list, "a", -1)._records).toBeUndefined();
+  });
+
+  it("moving among the board's announcements keeps hidden ones in place on the website", () => {
+    const list = [ann("a", "A"), ann("h", "hidden"), ann("b", "B")];
+    const visible = [list[0], list[2]];
+    const c = moveAnnouncement(base(), list, visible, "b", -1);
+    const out = applyRecordEdits(data({ announcements: list }), c._records);
+    expect(out.announcements?.map((a) => a.id)).toEqual(["b", "h", "a"]);
+    expect(c._records?.filter((r) => r.id === "h")).toEqual([{ table: "announcements", id: "h", field: "sort_order", value: 20 }]);
   });
 
   it("the synagogue name edit reaches the header data", () => {

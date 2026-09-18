@@ -255,7 +255,7 @@ function RecordElement({ k, config, data, onEdit, onClose }: { k: string; config
               variant="outline"
               size="sm"
               disabled={pos <= 0}
-              onClick={() => onEdit(`move:${id}`, (c) => moveAnnouncement(c, ordered, id, -1))}
+              onClick={() => onEdit(`move:${id}`, (c) => moveAnnouncement(c, data.announcements ?? [], ordered, id, -1))}
             >
               <ArrowUp className="size-4" /> הקדמה
             </Button>
@@ -264,7 +264,7 @@ function RecordElement({ k, config, data, onEdit, onClose }: { k: string; config
               variant="outline"
               size="sm"
               disabled={pos < 0 || pos >= ordered.length - 1}
-              onClick={() => onEdit(`move:${id}`, (c) => moveAnnouncement(c, ordered, id, 1))}
+              onClick={() => onEdit(`move:${id}`, (c) => moveAnnouncement(c, data.announcements ?? [], ordered, id, 1))}
             >
               <ArrowDown className="size-4" /> העברה אחורה
             </Button>

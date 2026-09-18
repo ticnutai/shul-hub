@@ -339,20 +339,35 @@ export function TvDesignPanel() {
   const onlineCount = (devices.data ?? []).filter((d) => d.approved && deviceHealth(d, Date.now()).online).length;
 
   const queryClient = useQueryClient();
+  // Latest draft for the save below, which awaits: an edit made while it runs
+  // must survive it.
+  const latestDraft = useRef(draft);
+  latestDraft.current = draft;
+  const [saving, setSaving] = useState(false);
   const save = async () => {
+    if (saving) return; // a double click must not save twice
+    setSaving(true);
+    const snapshot = draft;
     try {
       // Content first (announcements, minyan names, the site name...): if a
       // row fails, nothing is broadcast and the draft keeps every change.
-      const records = await commitRecordEdits(draft._records);
+      const records = await commitRecordEdits(snapshot._records);
       if (records) {
         await Promise.all(
           ["announcements", "shiurim", "minyanim", "settings"].map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
         );
       }
-      const clean = normalizeTvConfig(draft);
+      const clean = normalizeTvConfig(snapshot);
       await saved.save.mutateAsync(clean);
-      // The draft carried the content edits; start clean from what was saved.
-      dispatch({ type: "load", config: clean });
+      const now = latestDraft.current;
+      if (now === snapshot) {
+        // The draft carried the content edits; start clean from what was saved.
+        dispatch({ type: "load", config: clean });
+      } else {
+        // Edited meanwhile: keep those edits, minus the content already written.
+        const done = new Set(snapshot._records ?? []);
+        dispatch({ type: "load", config: { ...now, _records: (now._records ?? []).filter((r) => !done.has(r)) } });
+      }
       toast.success(
         approvedCount
           ? `נשמר ושודר. ${onlineCount} מתוך ${approvedCount} מסכים מחוברים יתעדכנו עכשיו${
@@ -362,6 +377,8 @@ export function TvDesignPanel() {
       );
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "השמירה נכשלה");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -510,9 +527,9 @@ export function TvDesignPanel() {
             </AlertDialogContent>
           </AlertDialog>
           <span className="ms-auto text-xs text-muted-foreground">{dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}</span>
-          <Button type="button" onClick={save} disabled={!dirty || saved.save.isPending}>
+          <Button type="button" onClick={save} disabled={!dirty || saving}>
             {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
-            {saved.save.isPending ? "שומר…" : "שמור ושדר למסכים"}
+            {saving ? "שומר…" : "שמור ושדר למסכים"}
           </Button>
         </div>
 

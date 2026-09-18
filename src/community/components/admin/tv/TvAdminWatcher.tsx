@@ -55,13 +55,21 @@ function Watcher() {
   }, [offlineKey, devices.data]);
 
   // Errors reported by a screen (JS errors, failed snapshots), as they arrive.
+  // The device list is read through a ref: depending on it re-subscribed on
+  // every heartbeat of every TV, and errors arriving in the gap were lost.
+  const devicesRef = useRef(devices.data);
+  devicesRef.current = devices.data;
   useEffect(() => {
     const channel = tvDb
       .channel(`tv-admin-alerts-${Date.now()}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "tv_events" }, (p) => {
         const e = p.new as TvEvent;
         if (e.level !== "error") return;
-        const name = devices.data?.find((d) => d.id === e.device_id)?.name ?? "מסך";
+        // Only paired screens: anyone with the public key can register a
+        // "screen", and its text must not reach admins as an alert.
+        const device = devicesRef.current?.find((d) => d.id === e.device_id);
+        if (!device?.approved) return;
+        const name = device.name;
         toast.error(`שגיאה ב"${name}"`, {
           description: e.message,
           action: { label: "פתח יומן", onClick: () => navigate("/community/admin?tab=tv&tvTab=logs") },
@@ -71,7 +79,7 @@ function Watcher() {
     return () => {
       void tvDb.removeChannel(channel);
     };
-  }, [devices.data, navigate]);
+  }, [navigate]);
 
   const onTvAdmin = location.pathname === "/community/admin" && new URLSearchParams(location.search).get("tab") === "tv";
   if (!offline.length || onTvAdmin || dismissedKey === offlineKey) return null;

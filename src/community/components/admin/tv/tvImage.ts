@@ -57,8 +57,13 @@ export interface PreparedImage {
   lowRes: boolean;
 }
 
-/** Formats passed through untouched: vector art and (possibly animated) GIFs. */
-const PASS_THROUGH: Record<string, string> = { "image/svg+xml": "svg", "image/gif": "gif" };
+/**
+ * Formats passed through untouched: vector art only. A GIF goes through the
+ * resampler like any photo and is stored as its first frame - an animated
+ * GIF would run forever on the TV, and any endless animation costs the box
+ * about 45% CPU.
+ */
+const PASS_THROUGH: Record<string, string> = { "image/svg+xml": "svg" };
 /** Formats the TV displays natively, kept as-is when no resize is needed. */
 const ORIGINAL_OK: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 
@@ -114,7 +119,7 @@ export async function prepareTvImage(file: File): Promise<PreparedImage> {
   // PNGs are usually graphics or flyers with text: keep them lossless so
   // letters stay crisp (JPEG halves colour resolution and rings around
   // edges). Photos go to high-quality JPEG.
-  const lossless = file.type === "image/png" || file.type === "image/webp";
+  const lossless = file.type === "image/png" || file.type === "image/webp" || file.type === "image/gif";
   let blob = lossless ? await toBlob(canvas, "image/png") : null;
   let extension = "png";
   if (!blob || blob.size > STORED_MAX_BYTES) {

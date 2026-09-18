@@ -117,7 +117,13 @@ export function TvLogsPanel() {
     for (const e of visible)
       rows.push([new Date(e.occurred_at).toLocaleString("he-IL"), nameOf(e.device_id), e.level, e.kind, e.message, JSON.stringify(e.details)]);
     // Byte-order mark so Excel opens the Hebrew as UTF-8.
-    const csv = String.fromCharCode(0xfeff) + rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    // Messages come from the screens: a cell starting with = + - @ would run as
+    // a formula when opened in Excel, so it is prefixed with an apostrophe.
+    const cell = (c: unknown) => {
+      const v = String(c);
+      return `"${(/^[=+\-@\t\r]/.test(v) ? `'${v}` : v).replace(/"/g, '""')}"`;
+    };
+    const csv = String.fromCharCode(0xfeff) + rows.map((r) => r.map(cell).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
     a.download = `tv-log-${new Date().toISOString().slice(0, 10)}.csv`;

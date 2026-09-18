@@ -50,16 +50,26 @@ export function useBoardData({ persist, live }: { persist: boolean; live: boolea
   const shiurim = useOfflineSnapshot("shiurim", useShiurim().data, persist);
 
   const parts = [settings, minyanim, categories, announcements, shiurim];
-  return {
-    settings: settings.data ?? null,
-    minyanim: minyanim.data,
-    categories: categories.data,
-    announcements: announcements.data,
-    shiurim: shiurim.data,
-    stale: parts.some((p) => p.isStale),
-    anyLoaded: parts.some((p) => p.data !== null),
-    sync: live ? sync : { status: "live", lastSyncedAt: null },
-  };
+  const stale = parts.some((p) => p.isStale);
+  const anyLoaded = parts.some((p) => p.data !== null);
+  const syncStatus = live ? sync.status : "live";
+  const lastSyncedAt = live ? sync.lastSyncedAt : null;
+  // One stable object until something actually changes. A fresh object on
+  // every render (the TV re-renders each second for the clock) defeated the
+  // once-a-minute slide cache and re-drew the whole slide every second.
+  return useMemo(
+    () => ({
+      settings: settings.data ?? null,
+      minyanim: minyanim.data,
+      categories: categories.data,
+      announcements: announcements.data,
+      shiurim: shiurim.data,
+      stale,
+      anyLoaded,
+      sync: { status: syncStatus, lastSyncedAt },
+    }),
+    [settings.data, minyanim.data, categories.data, announcements.data, shiurim.data, stale, anyLoaded, syncStatus, lastSyncedAt],
+  );
 }
 
 /* ----------------------------------------------------------------- slides */

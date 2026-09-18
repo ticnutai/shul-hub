@@ -26,6 +26,26 @@ export interface TvCommand {
 /** Commands older than this when they arrive (e.g. replayed after a reconnect) are ignored. */
 const COMMAND_MAX_AGE_MS = 90_000;
 
+const SEEN_KEY = "shul-tv-seen-commands";
+
+function loadSeen(): Set<number> {
+  try {
+    const ids = JSON.parse(localStorage.getItem(SEEN_KEY) ?? "[]");
+    return new Set(Array.isArray(ids) ? ids.filter((n): n is number => typeof n === "number") : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveSeen(seen: Set<number>) {
+  try {
+    // Ids only grow; the newest 100 cover far more than the 90 s replay window.
+    localStorage.setItem(SEEN_KEY, JSON.stringify([...seen].sort((a, b) => b - a).slice(0, 100)));
+  } catch {
+    /* no storage: the boot-time guard still stops the reload loop */
+  }
+}
+
 export function useDeviceLink({
   getState,
   onCommand,
@@ -89,7 +109,11 @@ export function useDeviceLink({
 
   // ---------------------------------------- realtime: config + commands --
   useEffect(() => {
-    const seen = new Set<number>();
+    // Commands already run, kept across restarts. On reconnect the last 90 s
+    // of commands are fetched again; without this a "reload" re-ran after
+    // every reload (a loop for 90 s), and messages / snapshots repeated.
+    const seen = loadSeen();
+    const bootAt = Date.now();
     let channel: RealtimeChannel | null = null;
     let retry: number | undefined;
     let disposed = false;
@@ -98,8 +122,13 @@ export function useDeviceLink({
       const link = linkRef.current;
       if (!link || seen.has(row.id)) return;
       seen.add(row.id);
+      saveSeen(seen);
       if (row.device_id && row.device_id !== link.id) return;
-      if (Date.now() - new Date(row.created_at).getTime() > COMMAND_MAX_AGE_MS) return;
+      const createdAt = new Date(row.created_at).getTime();
+      if (Date.now() - createdAt > COMMAND_MAX_AGE_MS) return;
+      // A reload sent before this start is the one that caused it (belt and
+      // braces, for when the storage write above was lost with the process).
+      if (row.command === "reload" && createdAt < bootAt) return;
       if (!approvedRef.current) {
         // A command addressed to this very screen while it still believes it
         // is unpaired means the admin has just paired it. Without this the TV

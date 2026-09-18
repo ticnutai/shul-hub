@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Camera,
   Link2,
@@ -64,6 +65,7 @@ export function TvDevicesPanel() {
   const now = useNow(5000).getTime();
   const approved = (devices.data ?? []).filter((d) => d.approved);
   const pending = (devices.data ?? []).filter((d) => !d.approved);
+  const queryClient = useQueryClient();
 
   return (
     <div className="space-y-5">
@@ -84,9 +86,29 @@ export function TvDevicesPanel() {
       ))}
 
       {pending.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {pending.length} מסכים ממתינים לצימוד (מוצגים בהם קודים). מסך שלא צומד ולא נראה שבוע נמחק אוטומטית.
-        </p>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            {pending.length} מסכים ממתינים לצימוד (מוצגים בהם קודים). מסך שלא צומד ולא נראה שבוע נמחק אוטומטית.
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            title="מוחק רק מסכים שלא צומדו. מסך אמיתי שנמחק יקבל קוד חדש בהפעלה הבאה."
+            onClick={async () => {
+              try {
+                for (const d of pending) await deleteDevice(d.id);
+                await queryClient.invalidateQueries({ queryKey: ["tv_devices"] });
+                toast.success(`נוקו ${pending.length} מסכים שלא צומדו`);
+              } catch {
+                toast.error("הניקוי נכשל");
+              }
+            }}
+          >
+            ניקוי מסכים לא מצומדים
+          </Button>
+        </div>
       )}
     </div>
   );

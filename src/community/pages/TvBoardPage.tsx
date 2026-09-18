@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@community/lib/use-auth";
 import { normalizeTvConfig, type TvConfig } from "@/tv/config";
+import { isAllowedEdit } from "@/tv/records";
 import { TvApp } from "@/tv/TvApp";
 import { TV_DRAFT_CHANNEL, type DraftMessage } from "@community/components/admin/tv/tvDraftChannel";
 import { useTvFonts } from "@community/components/admin/tv/tvFonts";
@@ -88,7 +89,11 @@ function useDraftFromEditor(enabled: boolean): TvConfig | null {
     const channel = new BroadcastChannel(TV_DRAFT_CHANNEL);
     channel.onmessage = (e: MessageEvent<DraftMessage>) => {
       // Same-origin only, but still validated like any stored config.
-      if (e.data?.type === "draft") setDraft(normalizeTvConfig(e.data.config));
+      if (e.data?.type !== "draft") return;
+      // The unsaved content edits ride along (whitelisted), so the window also
+      // shows a renamed minyan or an edited announcement before saving.
+      const records = Array.isArray(e.data.config?._records) ? e.data.config._records.filter(isAllowedEdit).slice(0, 500) : [];
+      setDraft({ ...normalizeTvConfig(e.data.config), _records: records });
     };
     channel.postMessage({ type: "hello" } satisfies DraftMessage);
     return () => channel.close();

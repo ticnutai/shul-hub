@@ -6,6 +6,7 @@ import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { getTheme, TV_THEMES, type TvThemeId } from "./themes";
 import { TvBoard } from "./TvBoard";
+import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
 import { WebControls } from "./TvWebControls";
@@ -81,7 +82,9 @@ export interface TvAppProps {
 
 export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAppProps = {}) {
   const web = mode === "web";
-  const data = useBoardData({ persist: true, live: true });
+  const rawData = useBoardData({ persist: true, live: true });
+  // The editor's unsaved content edits (draft window only), shown as if saved.
+  const data = useMemo(() => applyRecordEdits(rawData, configOverride?._records), [rawData, configOverride?._records]);
   const now = useNow(1000);
   const zmanim = useDayZmanim(now, data.settings);
 
@@ -94,18 +97,21 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     device: !web,
   });
 
-  const [themeOverride, setThemeOverride] = useState<TvThemeId | null>(readOverride);
-  // When the admin picks a theme, it wins over whatever the remote chose.
-  const lastAdminTheme = useRef(adminConfig.theme);
-  useEffect(() => {
-    if (adminConfig.theme !== lastAdminTheme.current) {
-      lastAdminTheme.current = adminConfig.theme;
-      setThemeOverride(null);
-      writeOverride(null);
-    }
-  }, [adminConfig.theme]);
-
+  // The remote's theme choice is kept on the TV. In a browser it lasts only
+  // for the visit, so an admin never keeps seeing a stale local theme.
+  const [themeOverride, setThemeOverride] = useState<TvThemeId | null>(() => (web ? null : readOverride()));
   const baseConfig = configOverride ?? adminConfig;
+  // When the admin picks a theme (saved, or in the editor's draft), it wins
+  // over whatever the remote chose.
+  const lastAdminTheme = useRef(baseConfig.theme);
+  useEffect(() => {
+    if (baseConfig.theme !== lastAdminTheme.current) {
+      lastAdminTheme.current = baseConfig.theme;
+      setThemeOverride(null);
+      if (!web) writeOverride(null);
+    }
+  }, [baseConfig.theme, web]);
+
   const config = useMemo<TvConfig>(
     () => (themeOverride ? { ...baseConfig, theme: themeOverride, themeOverrides: {} } : baseConfig),
     [baseConfig, themeOverride],
@@ -196,10 +202,10 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const applyTheme = useCallback(
     (id: TvThemeId | null) => {
       setThemeOverride(id);
-      writeOverride(id);
-      flash(`ערכת נושא: ${getTheme(id ?? adminConfig.theme).name}${id ? "" : " (של המנהל)"}`);
+      if (!web) writeOverride(id);
+      flash(`ערכת נושא: ${getTheme(id ?? baseConfig.theme).name}${id ? "" : " (של המנהל)"}`);
     },
-    [adminConfig.theme, flash],
+    [baseConfig.theme, flash, web],
   );
 
   const cycleTheme = useCallback(
@@ -286,6 +292,11 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   // ---------------------------------------------------------------- keys --
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // In a browser the control bar has real buttons and a link: Enter /
+      // Space on them must press them, not pause the board.
+      // Arrows and the other shortcuts keep working with a button focused.
+      if ((e.key === "Enter" || e.key === " ") && e.target instanceof Element && e.target.closest("button, a, input, textarea, select"))
+        return;
       const { slides: s, index: i, paused: p } = live.current;
       switch (e.key) {
         case "ArrowLeft":
