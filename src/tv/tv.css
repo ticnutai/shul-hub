@@ -1190,6 +1190,258 @@
   line-height: 1.5;
 }
 
+/* --------------------------------------- browser controls (web mode only) - */
+
+.tv-frame.is-idle,
+.tv-frame.is-idle * {
+  cursor: none;
+}
+
+.tv-web-bar {
+  position: absolute;
+  z-index: 35;
+  top: calc(var(--u) * 1.2);
+  /* Centred without left:50% - that would cap the width at half the screen
+     and wrap the buttons on a phone. */
+  inset-inline: 0;
+  margin-inline: auto;
+  width: fit-content;
+  max-width: 94cqw;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--u) * 0.6);
+  padding: calc(var(--u) * 0.6);
+  border-radius: calc(var(--u) * 1.4);
+  background: color-mix(in srgb, var(--tv-bg-a) 90%, transparent);
+  border: 1px solid var(--tv-border);
+  box-shadow: var(--tv-shadow);
+  transition: opacity 300ms ease;
+}
+
+.tv-web-bar.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tv-web-btn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  min-height: max(36px, calc(var(--u) * 3.6));
+  padding: 0 max(10px, calc(var(--u) * 1.4));
+  border-radius: calc(var(--u) * 0.9);
+  border: 1px solid var(--tv-border);
+  background: var(--tv-panel);
+  color: var(--tv-text);
+  font: inherit;
+  font-size: max(13px, calc(var(--fs) * 1.7));
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tv-web-btn:hover,
+.tv-web-btn:focus-visible {
+  border-color: var(--tv-accent);
+  outline: none;
+}
+
+.tv-web-btn.is-main {
+  background: var(--tv-accent);
+  border-color: var(--tv-accent);
+  color: var(--tv-on-accent);
+}
+
+/* ------------------------------------------------ portrait (phone, tablet) - */
+
+/*
+ * The same board opened on a phone or a tablet held upright (admin preview,
+ * or /admin/tv-board in a browser). Everything above is sized from the
+ * frame's HEIGHT for a 16:9 wall; on a tall screen that would give huge type
+ * on a narrow column. Here the unit follows the WIDTH (capped by the height
+ * for tablets), every grid collapses to one column, and a slide that is
+ * taller than the screen scrolls instead of being cut.
+ *
+ * The TV never matches this query (its frame is 16:9), so nothing here can
+ * change the wall display.
+ */
+@container (max-aspect-ratio: 1/1) {
+  .tv-root {
+    --u: min(1.75cqw, 0.9cqh);
+    --tv-safe-x: 4.5cqw;
+    --tv-safe-y: 2.4cqh;
+  }
+
+  .tv-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: calc(var(--u) * 1.2);
+  }
+
+  .tv-title {
+    font-size: calc(var(--fs) * 4.4);
+  }
+
+  .tv-clock {
+    order: -1;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: calc(var(--u) * 1.5);
+    text-align: right;
+  }
+
+  .tv-clock-time {
+    font-size: calc(var(--fs) * 5.6);
+  }
+
+  .tv-clock-date {
+    margin-top: 0;
+    min-width: 0;
+    text-align: left;
+    font-size: calc(var(--fs) * 1.9);
+  }
+
+  .tv-stage {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .tv-stage::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tv-slide {
+    flex: 0 0 auto;
+    min-height: 100%;
+  }
+
+  .tv-slide-heading {
+    flex-wrap: wrap;
+    font-size: calc(var(--fs) * 3.8);
+    row-gap: calc(var(--u) * 0.4);
+  }
+
+  .tv-prayer-grid,
+  .tv-next-grid,
+  .tv-learning-grid,
+  .tv-cards,
+  .tv-shiur-cards {
+    flex: 0 0 auto;
+    grid-template-columns: 1fr;
+    grid-auto-rows: auto;
+  }
+
+  .tv-cards[data-count] {
+    grid-template-columns: 1fr;
+  }
+
+  .tv-minyan-list,
+  .tv-zman-list,
+  .tv-timeline,
+  .tv-shiur-list,
+  .tv-upcoming ul {
+    justify-content: flex-start;
+  }
+
+  .tv-minyan-list.is-two-col,
+  .tv-timeline.is-two-col {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .tv-hero {
+    padding: calc(var(--u) * 2.6);
+  }
+
+  .tv-hero-time {
+    font-size: calc(var(--fs) * 11);
+  }
+
+  .tv-parasha-huge {
+    font-size: calc(var(--fs) * 11);
+  }
+
+  .tv-feature {
+    padding-block: calc(var(--u) * 3);
+  }
+
+  .tv-card.is-large.has-image {
+    flex-direction: column;
+  }
+
+  .tv-card.is-large .tv-card-image {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .tv-card-image {
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  .tv-card.is-large .tv-card-text {
+    padding: calc(var(--u) * 2.6);
+  }
+
+  .tv-card.is-large .tv-card-title {
+    font-size: calc(var(--fs) * 4.2);
+  }
+
+  .tv-shiur-row {
+    grid-template-columns: auto 1fr;
+    row-gap: calc(var(--u) * 0.3);
+  }
+
+  .tv-shiur-row .tv-shiur-teacher {
+    grid-column: 2;
+    text-align: right;
+    white-space: normal;
+  }
+
+  .tv-slideshow {
+    flex: 1 1 auto;
+    min-height: 60cqh;
+  }
+
+  .tv-alert-card,
+  .tv-help-card {
+    min-width: 0;
+    width: 88cqw;
+    padding: calc(var(--u) * 3.4) calc(var(--u) * 3);
+  }
+
+  .tv-alert-countdown {
+    font-size: calc(var(--fs) * 12);
+  }
+
+  .tv-notice {
+    max-width: 90cqw;
+    padding: calc(var(--u) * 3.4) calc(var(--u) * 3);
+  }
+
+  .tv-footer {
+    flex-wrap: wrap;
+    row-gap: calc(var(--u) * 0.8);
+  }
+
+  .tv-pairing {
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  /* The clock is at the top here; keep the chip off it. */
+  .tv-paused {
+    top: auto;
+    bottom: calc(var(--u) * 7);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .tv-bg,
   .tv-slide,

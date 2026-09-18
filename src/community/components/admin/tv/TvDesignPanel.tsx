@@ -5,6 +5,7 @@ import {
   ArrowUp,
   BellRing,
   Check,
+  ExternalLink,
   ImagePlus,
   Minus,
   Pause,
@@ -44,7 +45,8 @@ import {
 } from "@/tv/config";
 import { getTheme, isSafeCssValue, THEME_VAR_LABELS, THEME_VARS, TV_FONTS, TV_THEMES, type ThemeVar } from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
-import { SlideStrip, TvPreview } from "./TvPreview";
+import { SlideStrip, TvDeviceStudio } from "./TvPreview";
+import { useBroadcastDraft } from "./tvDraftChannel";
 import { useTvSlides } from "./tvPreviewData";
 import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdminData";
 
@@ -266,6 +268,9 @@ export function TvDesignPanel() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
+  // Feeds /admin/tv-board?draft=1 open in another window of this browser.
+  useBroadcastDraft(draft);
+
   const edit = useCallback((key: string, update: (c: TvConfig) => TvConfig) => dispatch({ type: "edit", key, update }), []);
 
   // Keyboard undo/redo while the panel is open.
@@ -379,7 +384,7 @@ export function TvDesignPanel() {
       {/* ------------------------------------------------ preview column -- */}
       <div className="order-1 space-y-3 lg:order-2">
         <div className="lg:sticky lg:top-4 lg:space-y-3">
-          <TvPreview {...board} config={draft} index={index} cycle={cycle} progress={0} paused={!autoplay} />
+          <TvDeviceStudio {...board} config={draft} index={index} cycle={cycle} progress={0} paused={!autoplay} />
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setAutoplay((a) => !a)}>
               {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
@@ -389,6 +394,26 @@ export function TvDesignPanel() {
               <BellRing className="size-4" /> דוגמת התראת זמנים
             </Button>
             {simulatedNow && <span className="text-xs text-muted-foreground">מדמה את השעה {simulatedNow.toTimeString().slice(0, 5)}</span>}
+            <span className="ms-auto flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                title="פותח את הלוח בחלון נפרד שמתעדכן בכל שינוי כאן, עוד לפני השמירה. אפשר לגרור אותו למסך שני או לטלוויזיה שמחוברת למחשב."
+                onClick={() => window.open("/admin/tv-board?draft=1", "shul-tv-draft")}
+              >
+                <ExternalLink className="size-4" /> חלון חי (טיוטה)
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                title="הלוח במסך מלא בעיצוב השמור, בדיוק כמו בטלוויזיות. מתאים גם כדי להשתמש במחשב כמסך תצוגה."
+                onClick={() => window.open("/admin/tv-board", "_blank")}
+              >
+                <ExternalLink className="size-4" /> לוח במסך מלא
+              </Button>
+            </span>
           </div>
           <div className="mt-2">
             <SlideStrip

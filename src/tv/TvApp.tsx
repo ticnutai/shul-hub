@@ -8,6 +8,7 @@ import { getTheme, TV_THEMES, type TvThemeId } from "./themes";
 import { TvBoard } from "./TvBoard";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
+import { WebControls } from "./TvWebControls";
 
 /**
  * The board as it runs on the TV: owns rotation, pause, the remote, and the
@@ -63,7 +64,23 @@ interface Notice {
   until: number;
 }
 
-export function TvApp() {
+export interface TvAppProps {
+  /**
+   * "device" (default): the Android TV app - registers as a screen, pairs,
+   * obeys admin commands.
+   * "web": the same board opened in a browser by an admin (/admin/tv-board):
+   * follows the saved design but is not a screen, and gets mouse/touch
+   * controls instead of the remote-only interface.
+   */
+  mode?: "device" | "web";
+  /** Web mode: show this design instead of the saved one (the editor's unsaved draft). */
+  configOverride?: TvConfig | null;
+  /** Web mode: where the "exit" button leads. */
+  exitHref?: string;
+}
+
+export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAppProps = {}) {
+  const web = mode === "web";
   const data = useBoardData({ persist: true, live: true });
   const now = useNow(1000);
   const zmanim = useDayZmanim(now, data.settings);
@@ -74,6 +91,7 @@ export function TvApp() {
   const { status: device, link, config: adminConfig, configUpdatedAt } = useDeviceLink({
     getState: () => stateRef.current,
     onCommand: (c, l) => commandRef.current(c, l),
+    device: !web,
   });
 
   const [themeOverride, setThemeOverride] = useState<TvThemeId | null>(readOverride);
@@ -87,9 +105,10 @@ export function TvApp() {
     }
   }, [adminConfig.theme]);
 
+  const baseConfig = configOverride ?? adminConfig;
   const config = useMemo<TvConfig>(
-    () => (themeOverride ? { ...adminConfig, theme: themeOverride, themeOverrides: {} } : adminConfig),
-    [adminConfig, themeOverride],
+    () => (themeOverride ? { ...baseConfig, theme: themeOverride, themeOverrides: {} } : baseConfig),
+    [baseConfig, themeOverride],
   );
 
   // Slides change at most once a minute (expiring notices, the day rolling
@@ -370,14 +389,27 @@ export function TvApp() {
             </div>
           )}
 
+          {web && (
+            <WebControls
+              paused={paused}
+              themeName={getTheme(config.theme).name}
+              exitHref={exitHref}
+              onPrev={() => go(-1)}
+              onNext={() => go(1)}
+              onPause={() => setPausedTo(!paused)}
+              onTheme={() => cycleTheme(1)}
+              onHelp={() => setHelp((h) => !h)}
+            />
+          )}
+
           {help && (
             <div className="tv-help" onClick={() => setHelp(false)}>
               <div className="tv-help-card">
-                <h2>שליטה בשלט</h2>
+                <h2>{web ? "קיצורי מקלדת" : "שליטה בשלט"}</h2>
                 <dl>
                   <dt>◀ ▶</dt>
                   <dd>שקופית הבאה / הקודמת</dd>
-                  <dt>OK</dt>
+                  <dt>{web ? "רווח" : "OK"}</dt>
                   <dd>עצירה / המשך</dd>
                   <dt>▲ ▼</dt>
                   <dd>החלפת ערכת נושא</dd>
@@ -385,13 +417,19 @@ export function TvApp() {
                   <dd>חזרה לערכת הנושא של המנהל</dd>
                   <dt>1–9</dt>
                   <dd>מעבר ישיר לשקופית</dd>
-                  <dt>חזור</dt>
+                  <dt>{web ? "Esc" : "חזור"}</dt>
                   <dd>סגירת החלון</dd>
                 </dl>
                 <p className="tv-help-foot">
-                  {device?.name ? `${device.name} · ` : ""}
-                  {device?.approved ? "מצומד" : "לא מצומד"} ·{" "}
-                  {device?.online ? "מחובר" : device?.outageReason ? OUTAGE_REASON_LABELS[device.outageReason] : "מתחבר…"}
+                  {web ? (
+                    "תצוגה בדפדפן (לא נספרת כמסך)"
+                  ) : (
+                    <>
+                      {device?.name ? `${device.name} · ` : ""}
+                      {device?.approved ? "מצומד" : "לא מצומד"} ·{" "}
+                      {device?.online ? "מחובר" : device?.outageReason ? OUTAGE_REASON_LABELS[device.outageReason] : "מתחבר…"}
+                    </>
+                  )}
                   <br />
                   ערכת נושא: {getTheme(config.theme).name}
                   {themeOverride ? " (נבחרה בשלט)" : ""} · גרסה {__APP_VERSION__}

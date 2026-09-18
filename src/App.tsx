@@ -56,6 +56,7 @@ const CommunityAdmin = lazy(() => import("@community/pages/Admin").then(m => ({ 
 const YamimNoraimEvent = lazy(() => import("./pages/YamimNoraimEvent"));
 // Admin-only alerts about the TV screens; renders nothing for other users.
 const TvAdminWatcher = lazy(() => import("@community/components/admin/tv/TvAdminWatcher"));
+const TvBoardPage = lazy(() => import("@community/pages/TvBoardPage"));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen">
@@ -180,6 +181,7 @@ const App = () => {
                               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                               <Route path="/layout-editor" element={<LayoutEditor />} />
                               <Route path="/admin/permissions" element={<AdminPermissions />} />
+                              <Route path="/admin/tv-board" element={<TvBoardPage />} />
                               <Route path="/events/yamim-noraim-concord-2026" element={<YamimNoraimEvent />} />
                               <Route element={<GlobalAppShell />}>
                                 <Route path="/chumash" element={<Index />} />

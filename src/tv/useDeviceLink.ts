@@ -29,9 +29,16 @@ const COMMAND_MAX_AGE_MS = 90_000;
 export function useDeviceLink({
   getState,
   onCommand,
+  device = true,
 }: {
   getState: () => Record<string, unknown>;
   onCommand: (command: TvCommand, link: DeviceLink) => void;
+  /**
+   * false: follow the admin's config only, without registering as a screen.
+   * Used by the board opened in a browser (/admin/tv-board), which must not
+   * show up as an unpaired TV or count in the uptime reports.
+   */
+  device?: boolean;
 }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<DeviceStatus | null>(null);
@@ -46,6 +53,7 @@ export function useDeviceLink({
   approvedRef.current = Boolean(status?.approved);
 
   useEffect(() => {
+    if (!device) return;
     const link = new DeviceLink(
       () => getStateRef.current(),
       (s) => setStatus(s),
@@ -62,7 +70,7 @@ export function useDeviceLink({
       link.stop();
       linkRef.current = null;
     };
-  }, []);
+  }, [device]);
 
   // ------------------------------------------------------------- config --
   const configQuery = useQuery({
