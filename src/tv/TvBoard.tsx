@@ -1,4 +1,4 @@
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HDate } from "@hebcal/core";
 import { DAYS_HE } from "@community/lib/data";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
@@ -50,6 +50,7 @@ const DRIFT = [
 
 export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className, editing = false }: TvBoardProps) {
   const edit = useMemo(() => makeBoardEdit(config, editing), [config, editing]);
+  const pauseChip = usePauseChip(paused);
   const slide = slides[Math.min(index, slides.length - 1)];
   // Slide bodies only need minute precision; handing them the per-second
   // clock would re-render every panel every second on a weak TV CPU.
@@ -145,7 +146,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           </div>
         )}
 
-        {paused && <div className="tv-paused">⏸ מושהה</div>}
+        {pauseChip && <div className="tv-paused">{pauseChip === "paused" ? "⏸ מושהה" : "▶ ממשיך"}</div>}
         {overlay}
       </div>
     </div>
@@ -154,6 +155,29 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 }
 
 const MemoSlideView = memo(SlideView);
+
+/** How long the pause / resume icon stays up before it hides itself. */
+const PAUSE_CHIP_MS = 3000;
+
+/**
+ * The pause icon appears only when the state changes - "⏸ מושהה" on pause,
+ * "▶ ממשיך" on resume - and hides after 3 s, so a paused board is not
+ * covered by a permanent badge. (A board that loads already paused shows it
+ * once, too.) The stopped progress bar still shows that it is paused.
+ */
+function usePauseChip(paused: boolean): "paused" | "resumed" | null {
+  const [chip, setChip] = useState<"paused" | "resumed" | null>(null);
+  const first = useRef(true);
+  useEffect(() => {
+    const initial = first.current;
+    first.current = false;
+    if (initial && !paused) return;
+    setChip(paused ? "paused" : "resumed");
+    const id = window.setTimeout(() => setChip(null), PAUSE_CHIP_MS);
+    return () => window.clearTimeout(id);
+  }, [paused]);
+  return chip;
+}
 
 function TvHeader({ settings, now, config }: { settings: Settings | null; now: Date; config: TvConfig }) {
   const dayKey = now.toDateString();

@@ -243,11 +243,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     switch (cmd.command) {
       case "pause":
         setPausedTo(true);
-        flash("⏸ הושהה ע״י המנהל");
         break;
       case "resume":
         setPausedTo(false);
-        flash("▶ ממשיך");
         break;
       case "next":
         go(1);
@@ -300,8 +298,8 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
           break;
         case "Enter":
         case " ":
+          // The board shows the pause / resume icon itself, for 3 seconds.
           setPausedTo(!p);
-          flash(p ? "▶ ממשיך" : "⏸ מושהה");
           break;
         case "ArrowUp":
           cycleTheme(1);
