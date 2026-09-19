@@ -39,6 +39,14 @@ export const SHOWN_ZMANIM: SolarEvent[] = ["alot", "sunrise", "sof_zman_shma", "
 
 export const EDITABLE: Record<string, EditableSpec> = {
   "header.logo": { label: "לוגו קרובים", hideable: true, flip: "header" },
+  "dash.prayers": { label: "לוח מלא: כותרת זמני התפילות", text: "זמני התפילות" },
+  "dash.zmanim": { label: "לוח מלא: כותרת זמני היום", text: "זמני היום" },
+  "dash.announcement": { label: "לוח מלא: כותרת ההודעות", text: "הודעות", hideable: true },
+  "dash.shiurim": { label: "לוח מלא: כותרת השיעורים", text: "שיעורים", hideable: true },
+  "dash.clock": { label: "לוח מלא: השעון", hideable: true },
+  "dash.strip": { label: "לוח מלא: שורת הפרשה והדף היומי", hideable: true },
+  "dash.seasonal": { label: "משיב הרוח / מוריד הטל", hideable: true },
+  "split.next": { label: "מפוצל: המניין הבא", text: "המניין הבא", hideable: true },
   "header.title": { label: "שם בית הכנסת", text: "", hideable: true, flip: "header", siteField: "name" },
   "header.weekday": { label: "היום בשבוע", hideable: true },
   "header.address": { label: "כתובת", text: "", hideable: true, siteField: "address" },
@@ -104,6 +112,9 @@ export function setElementStyle(config: TvConfig, key: string, patch: Partial<El
   // Defaults are dropped so an untouched element carries no entry.
   if (next.scale === 1 || next.scale === undefined) delete next.scale;
   if (!next.color) delete next.color;
+  if (!next.bg) delete next.bg;
+  if (!next.weight) delete next.weight;
+  if (next.opacity === undefined || next.opacity >= 1) delete next.opacity;
   if (!next.x) delete next.x;
   if (!next.y) delete next.y;
   if (Object.keys(next).length) styles[key] = next;
@@ -125,6 +136,14 @@ export function elementStyleCss(s: ElementStyle | undefined): CSSProperties | un
     css["--es"] = String(s.scale);
   }
   if (s.color) css.color = s.color;
+  if (s.bg) {
+    css.backgroundColor = s.bg;
+    css.borderRadius = "calc(var(--u) * 0.8)";
+    // Some breathing room, without shifting the layout around it.
+    css.boxShadow = `0 0 0 calc(var(--u) * 0.5) ${s.bg}`;
+  }
+  if (s.weight) css.fontWeight = String(s.weight);
+  if (s.opacity !== undefined && s.opacity < 1) css.opacity = String(s.opacity);
   if (s.x || s.y) css.transform = `translate(${s.x ?? 0}cqw, ${s.y ?? 0}cqh)`;
   return css as CSSProperties;
 }

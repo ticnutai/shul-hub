@@ -1226,6 +1226,327 @@
   line-height: 1.5;
 }
 
+/* ---------------------------------------------------------- clock styles - */
+
+/* ClockFace (TvLayouts.tsx): digits, an analog dial, or the dial beside the
+   digits. The dial is SVG in the theme colours and moves once a second. */
+.tv-clockface {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.6);
+}
+
+.tv-header .tv-clockface.is-analog .tv-analog,
+.tv-header .tv-clockface.is-both .tv-analog {
+  width: calc(var(--u) * 11);
+  height: calc(var(--u) * 11);
+}
+
+.tv-header .tv-clockface.is-both .tv-clock-time {
+  font-size: calc(var(--fs) * 6);
+}
+
+.tv-analog {
+  display: block;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+
+.tv-analog-face {
+  fill: color-mix(in srgb, var(--tv-bg-a) 70%, var(--tv-panel));
+}
+
+.tv-analog-rim {
+  stroke: var(--tv-accent);
+  stroke-width: 3.5;
+}
+
+.tv-analog-tick {
+  stroke: var(--tv-text-dim);
+  stroke-width: 1.2;
+}
+
+.tv-analog-tick.is-hour {
+  stroke: var(--tv-text);
+  stroke-width: 3;
+}
+
+.tv-analog-num {
+  fill: var(--tv-text);
+  font-family: var(--tv-font-display);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.tv-analog-hour,
+.tv-analog-minute {
+  stroke: var(--tv-text);
+}
+
+.tv-analog-second {
+  stroke: var(--tv-accent);
+}
+
+.tv-analog-pin {
+  fill: var(--tv-accent);
+}
+
+/* ------------------------------------------------------ dashboard layout - */
+
+/* Everything at once (like a printed synagogue board): prayer times on the
+   right, the clock and one announcement in the middle, zmanim and lessons on
+   the left, and a strip of parasha / daf yomi / season along the bottom. */
+.tv-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: calc(var(--u) * 2);
+  animation: none;
+}
+
+.tv-dash-col {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 2);
+  min-height: 0;
+  min-width: 0;
+}
+
+.tv-dash-col > .tv-panel {
+  flex: 1 1 0;
+  overflow: hidden;
+}
+
+/* the day's main schedule and the zmanim get the larger share of a column */
+.tv-dash-col > .tv-dash-prayers:first-child:not(:last-child),
+.tv-dash-col > .tv-panel:has(.tv-zman-list) {
+  flex-grow: 1.6;
+}
+
+.tv-dash-center .tv-dash-clock {
+  flex: 0 0 auto;
+  align-items: center;
+  text-align: center;
+  gap: calc(var(--u) * 1);
+}
+
+.tv-dash-clock .tv-clockface {
+  flex-direction: column;
+}
+
+.tv-dash-clock .tv-analog {
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 24);
+}
+
+.tv-dash-clock .tv-clockface.is-digital .tv-clock-time {
+  font-size: calc(var(--fs) * 12);
+}
+
+.tv-dash-clock .tv-clockface.is-both .tv-analog {
+  width: calc(var(--u) * 18);
+  height: calc(var(--u) * 18);
+}
+
+.tv-dash-clock .tv-clockface.is-both .tv-clock-time {
+  font-size: calc(var(--fs) * 5.4);
+}
+
+.tv-dash-clock .tv-clock-date {
+  margin-top: 0;
+}
+
+.tv-dash-ann {
+  overflow: hidden;
+}
+
+.tv-dash-ann-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  animation: tv-shabbat-fade 900ms ease-out both;
+}
+
+.tv-dash-ann-body .tv-card {
+  flex: 1 1 auto;
+  background: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.tv-dash-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tv-dash-list.is-two-col {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(var(--rows, 8), auto);
+  column-gap: calc(var(--u) * 1.6);
+}
+
+.tv-dash-list.is-two-col .tv-dash-row {
+  font-size: calc(var(--fs) * 2);
+  padding-inline: calc(var(--u) * 0.6);
+}
+
+/* long names ("מנחה 10 דקות לפני השקיעה") stay on one line */
+.tv-dash-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tv-dash-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--u) * 1.2);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 1);
+  border-bottom: 1px solid var(--tv-divider);
+  font-size: calc(var(--fs) * 2.2);
+  border-radius: calc(var(--u) * 0.5);
+}
+
+.tv-dash-row:last-child {
+  border-bottom-color: transparent;
+}
+
+.tv-dash-row.is-past {
+  opacity: 0.5;
+}
+
+.tv-dash-row.is-next {
+  background: linear-gradient(270deg, var(--tv-highlight), transparent 85%);
+  border-bottom-color: transparent;
+  opacity: 1;
+}
+
+.tv-dash-name {
+  min-width: 0;
+  font-weight: 600;
+}
+
+.tv-dash-ann .tv-card-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tv-dash-sub {
+  margin-inline-start: calc(var(--u) * 1);
+  font-size: 0.72em;
+  font-weight: 400;
+  color: var(--tv-text-dim);
+}
+
+.tv-dash-time {
+  flex: 0 0 auto;
+  font-family: var(--tv-font-display);
+  font-weight: 800;
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* the zmanim panel is reused as-is; it only needs to fit its column */
+.tv-dash .tv-zman-row {
+  font-size: calc(var(--fs) * 2.05);
+  padding-block: calc(var(--u) * 0.35);
+}
+
+.tv-dash-strip {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: calc(var(--u) * 1) calc(var(--u) * 3.2);
+  margin-top: calc(var(--u) * 0.6);
+  padding: calc(var(--u) * 1) calc(var(--u) * 2);
+  border-radius: calc(var(--u) * 1.2);
+  background: var(--tv-highlight);
+  border: 1px solid var(--tv-border);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 2.4);
+  font-weight: 700;
+  color: var(--tv-text);
+}
+
+.tv-dash-strip span + span::before {
+  content: "◆";
+  margin-inline-end: calc(var(--u) * 3.2);
+  margin-inline-start: calc(var(--u) * -2);
+  color: var(--tv-accent);
+  font-size: 0.6em;
+  vertical-align: middle;
+}
+
+/* ---------------------------------------------------------- split layout - */
+
+.tv-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 2.4fr);
+  gap: calc(var(--u) * 2.4);
+}
+
+.tv-split-side {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 2);
+  min-height: 0;
+}
+
+.tv-split-side > .tv-panel:last-child {
+  flex: 1 1 0;
+}
+
+.tv-split-main {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tv-split-next {
+  align-items: center;
+  text-align: center;
+  gap: calc(var(--u) * 0.6);
+  background: linear-gradient(160deg, var(--tv-highlight), var(--tv-panel));
+}
+
+.tv-split-next-name {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 3.6);
+  font-weight: 800;
+}
+
+.tv-split-next-time {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 7.5);
+  font-weight: 900;
+  line-height: 1;
+  color: var(--tv-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-split .tv-zman-row {
+  font-size: calc(var(--fs) * 2.1);
+}
+
+/* the slide heading is smaller beside a side column */
+.tv-split-main .tv-slide-heading {
+  font-size: calc(var(--fs) * 3.6);
+}
+
 /* ---------------------------------------------------------------- shabbat - */
 
 /*
@@ -1481,6 +1802,42 @@
 
   .tv-logo {
     height: calc(var(--u) * 10 * var(--es, 1));
+  }
+
+  /* Portrait full board: the clock and the announcement across the top,
+     prayer times and zmanim side by side below (lessons give way first). */
+  .tv-dash {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .tv-dash-center {
+    grid-column: 1 / -1;
+    order: -1;
+    flex-direction: row;
+  }
+
+  .tv-dash-center > .tv-panel {
+    flex: 1 1 0;
+  }
+
+  .tv-dash-clock .tv-analog {
+    width: calc(var(--u) * 12);
+    height: calc(var(--u) * 12);
+  }
+
+  .tv-dash-shiurim {
+    display: none;
+  }
+
+  /* Portrait split: the next minyan on top, the slides below. */
+  .tv-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .tv-split-side > .tv-panel:last-child {
+    display: none;
   }
 
   .tv-shabbat {

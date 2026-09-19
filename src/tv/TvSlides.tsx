@@ -239,14 +239,16 @@ function PrayerSlide({
   );
 }
 
-function ZmanimPanel({ zmanim, now }: { zmanim: Zmanim; now: Date }) {
+export function ZmanimPanel({ zmanim, now, titleKey = "panel.zmanim" }: { zmanim: Zmanim; now: Date; titleKey?: string }) {
   const edit = useBoardEdit();
   const nowMs = now.getTime();
   const shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
   const nextEvent = shown.find((e) => (zmanim[e]?.getTime() ?? 0) > nowMs);
   return (
     <div className="tv-panel" {...edit.attr("panel.zmanim")}>
-      <h3 className="tv-panel-title">{edit.text("panel.zmanim", "זמני היום")}</h3>
+      <h3 className="tv-panel-title" {...(titleKey !== "panel.zmanim" ? edit.attr(titleKey) : {})}>
+        {edit.text(titleKey, "זמני היום")}
+      </h3>
       <dl className="tv-zman-list">
         {shown.map((event) => {
           const t = zmanim[event];
@@ -377,7 +379,7 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
 
 /* ----------------------------------------------------------- announcements */
 
-function AnnouncementCard({ item, large }: { item: Announcement; large?: boolean }) {
+export function AnnouncementCard({ item, large }: { item: Announcement; large?: boolean }) {
   const edit = useBoardEdit();
   return (
     <article

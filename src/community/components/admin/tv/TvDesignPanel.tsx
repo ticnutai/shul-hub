@@ -62,12 +62,63 @@ import {
 } from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
 import { nextCandleLighting, SHABBAT_ART } from "@/tv/shabbat";
+import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 import { ShabbatPicture } from "@/tv/ShabbatScene";
+
+/** The screen layouts, with a small sketch of each for the picker. */
+const LAYOUT_CHOICES: Array<{ id: TvConfig["screenLayout"]; name: string; hint: string; sketch: ReactNode }> = [
+  {
+    id: "rotate",
+    name: "סבב שקפים",
+    hint: "שקף אחד בכל פעם על כל המסך, מתחלף לפי הזמנים שקבעתם",
+    sketch: (
+      <>
+        <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
+        <i className="col-span-3 row-span-3 rounded-sm bg-current opacity-30" />
+      </>
+    ),
+  },
+  {
+    id: "split",
+    name: "מפוצל",
+    hint: "טור קבוע עם המניין הבא וזמני היום, ולידו השקפים מתחלפים",
+    sketch: (
+      <>
+        <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
+        <i className="col-span-2 row-span-3 rounded-sm bg-current opacity-30" />
+        <i className="row-span-3 rounded-sm bg-current opacity-55" />
+      </>
+    ),
+  },
+  {
+    id: "dashboard",
+    name: "לוח מלא",
+    hint: "הכל בבת אחת, בלי החלפות: תפילות, שעון, זמנים, הודעות ושיעורים",
+    sketch: (
+      <>
+        <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
+        <i className="row-span-2 rounded-sm bg-current opacity-40" />
+        <i className="rounded-sm bg-current opacity-55" />
+        <i className="row-span-2 rounded-sm bg-current opacity-40" />
+        <i className="rounded-sm bg-current opacity-30" />
+        <i className="col-span-3 h-1.5 rounded-sm bg-current opacity-60" />
+      </>
+    ),
+  },
+];
+
+const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
+  { id: "digital", name: "ספרות" },
+  { id: "analog", name: "שעון מחוגים" },
+  { id: "both", name: "שניהם" },
+];
 
 const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600];
 const intervalLabel = (s: number) => (s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה");
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
-import { useBroadcastDraft } from "./tvDraftChannel";
+import { useDraftSync } from "./tvDraftChannel";
+import { StudioPanel } from "./StudioPanel";
+import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
 import { commitRecordEdits } from "./tvRecords";
 import { useQueryClient } from "@tanstack/react-query";
@@ -92,20 +143,27 @@ interface DraftState {
   future: TvConfig[];
   lastKey: string | null;
   lastAt: number;
+  /** When the draft was last changed here or in another window (0 = as loaded). */
+  editedAt: number;
 }
 
 type DraftAction =
   | { type: "load"; config: TvConfig }
   | { type: "edit"; key: string; update: (c: TvConfig) => TvConfig }
   | { type: "undo" }
-  | { type: "redo" };
+  | { type: "redo" }
+  /** A newer draft from the other editor window (tvDraftChannel). */
+  | { type: "adopt"; config: TvConfig; editedAt: number };
 
 const COALESCE_MS = 800;
 
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
   switch (action.type) {
     case "load":
-      return { past: [], present: action.config, future: [], lastKey: null, lastAt: 0 };
+      return { past: [], present: action.config, future: [], lastKey: null, lastAt: 0, editedAt: 0 };
+    case "adopt":
+      if (JSON.stringify(action.config) === JSON.stringify(state.present)) return { ...state, editedAt: action.editedAt };
+      return { past: [...state.past.slice(-60), state.present], present: action.config, future: [], lastKey: null, lastAt: 0, editedAt: action.editedAt };
     case "edit": {
       const next = action.update(state.present);
       if (JSON.stringify(next) === JSON.stringify(state.present)) return state;
@@ -117,17 +175,18 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
         future: [],
         lastKey: action.key,
         lastAt: now,
+        editedAt: now,
       };
     }
     case "undo": {
       if (!state.past.length) return state;
       const previous = state.past[state.past.length - 1];
-      return { past: state.past.slice(0, -1), present: previous, future: [state.present, ...state.future], lastKey: null, lastAt: 0 };
+      return { past: state.past.slice(0, -1), present: previous, future: [state.present, ...state.future], lastKey: null, lastAt: 0, editedAt: Date.now() };
     }
     case "redo": {
       if (!state.future.length) return state;
       const [next, ...rest] = state.future;
-      return { past: [...state.past, state.present], present: next, future: rest, lastKey: null, lastAt: 0 };
+      return { past: [...state.past, state.present], present: next, future: rest, lastKey: null, lastAt: 0, editedAt: Date.now() };
     }
   }
 }
@@ -257,7 +316,13 @@ function ColorField({
 
 /* ---------------------------------------------------------------- panel -- */
 
-export function TvDesignPanel() {
+/**
+ * `studio`: the live editor window (/admin/tv-board?draft=1) - the board on
+ * the whole screen, with every control of this panel in a floating panel
+ * over it. It is the same editor (one draft, one save), kept in step with an
+ * editor open on the admin page through tvDraftChannel.
+ */
+export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const saved = useTvConfig();
   const devices = useTvDevices();
   const [state, dispatch] = useReducer(draftReducer, {
@@ -266,6 +331,7 @@ export function TvDesignPanel() {
     future: [],
     lastKey: null,
     lastAt: 0,
+    editedAt: 0,
   });
   const draft = state.present;
   const loadedRef = useRef(false);
@@ -273,9 +339,15 @@ export function TvDesignPanel() {
   const dirty = savedJson !== null && JSON.stringify(draft) !== savedJson;
 
   // Load the saved config into the draft once, and again after a save.
+  // A draft already adopted from the other editor window (it can arrive
+  // before the saved row does) is newer than the saved row: keep it.
+  const editedAtRef = useRef(0);
+  editedAtRef.current = state.editedAt;
   useEffect(() => {
     if (saved.data && (!loadedRef.current || !dirty)) {
+      const first = !loadedRef.current;
       loadedRef.current = true;
+      if (first && editedAtRef.current > 0) return;
       dispatch({ type: "load", config: saved.data.config });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the saved row changes
@@ -292,8 +364,16 @@ export function TvDesignPanel() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, [dirty]);
 
-  // Feeds /admin/tv-board?draft=1 open in another window of this browser.
-  useBroadcastDraft(draft);
+  // In step with the other editor window of this browser (admin page <-> live window).
+  const queryClientForSync = useQueryClient();
+  const sync = useDraftSync(draft, state.editedAt, {
+    onRemoteDraft: (config, editedAt) => {
+      // Validated like any stored config; content edits ride along, whitelisted.
+      const records = Array.isArray(config?._records) ? config._records.filter(isAllowedEdit).slice(0, 500) : [];
+      dispatch({ type: "adopt", config: { ...normalizeTvConfig(config), _records: records }, editedAt });
+    },
+    onSaved: () => void queryClientForSync.invalidateQueries({ queryKey: ["tv_config_admin"] }),
+  });
 
   const edit = useCallback((key: string, update: (c: TvConfig) => TvConfig) => dispatch({ type: "edit", key, update }), []);
 
@@ -321,8 +401,23 @@ export function TvDesignPanel() {
   const [previewIndex, setPreviewIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
   // Click-to-edit on the board itself (see boardEdit.ts / TvEditInspector).
-  const [editing, setEditing] = useState(false);
+  // The live window opens ready to click on the board.
+  const [editing, setEditing] = useState(studio);
   const [selected, setSelected] = useState<string | null>(null);
+  // Esc in the live window: drop the selection first; with nothing selected,
+  // stop editing on the board (clicks then work on it normally).
+  useEffect(() => {
+    if (!studio) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("[role=alertdialog], [role=menu]")) return;
+      if (selected) setSelected(null);
+      else setEditing(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [studio, selected]);
   // A bigger preview: "wide" stacks the controls under a full-width preview;
   // fullscreen puts the preview column alone on the whole screen.
   const [wide, setWide] = useState(false);
@@ -358,8 +453,13 @@ export function TvDesignPanel() {
 
   const zmanimToday = useDayZmanim(new Date(), board.data.settings);
   const showAlertExample = () => {
-    const event = draft.alerts.events.find((e) => e !== "candle" && zmanimToday[e]) ?? "sunset";
-    const at = zmanimToday[event as AlertEvent];
+    // On Friday and Saturday the simulated moment could fall inside Shabbat,
+    // where the board shows the Shabbat screen and no alerts - so the demo
+    // uses the coming Sunday instead.
+    const weekday = jerusalemWeekday(new Date());
+    const day = weekday >= 5 ? zmanimFor(new Date(Date.now() + (7 - weekday) * 86_400_000), board.data.settings) : zmanimToday;
+    const event = draft.alerts.events.find((e) => e !== "candle" && day[e]) ?? "sunset";
+    const at = day[event as AlertEvent];
     const lead = draft.alerts.leadMinutes[draft.alerts.leadMinutes.length - 1] ?? 15;
     if (!at) return toast.error("אין זמן מתאים היום להדגמה");
     setSimulatedNow(new Date(at.getTime() - lead * 60_000 + 2000));
@@ -454,6 +554,7 @@ export function TvDesignPanel() {
       }
       const clean = normalizeTvConfig(snapshot);
       await saved.save.mutateAsync(clean);
+      sync.announceSaved();
       const now = latestDraft.current;
       if (now === snapshot) {
         // The draft carried the content edits; start clean from what was saved.
@@ -551,6 +652,707 @@ export function TvDesignPanel() {
       </p>
     );
 
+  // The buttons under the preview, shared by the admin page and the live window.
+  const previewActions = (
+    <>
+      <Button
+        type="button"
+        variant={editing ? "default" : "outline"}
+        size="sm"
+        aria-pressed={editing}
+        onClick={() => {
+          setEditing((v) => !v);
+          setSelected(null);
+          setAutoplay(false);
+        }}
+      >
+        <Pencil className="size-4" /> {editing ? "סיום עריכה בלוח" : "עריכה ישירה בלוח"}
+      </Button>
+      <Button type="button" variant="outline" size="sm" onClick={() => setAutoplay((a) => !a)}>
+        {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
+        {autoplay ? "עצירת הסבב" : "הפעלת סבב"}
+      </Button>
+      <Button type="button" variant="outline" size="sm" onClick={showAlertExample} disabled={!draft.alerts.enabled}>
+        <BellRing className="size-4" /> דוגמת התראת זמנים
+      </Button>
+      <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} onClick={toggleShabbatPreview}>
+        🕯️ {shabbatPreview ? "חזרה לזמן אמת" : "תצוגת מסך שבת"}
+      </Button>
+      {simulatedNow && (
+        <span className="text-xs text-muted-foreground">
+          מדמה {shabbatPreview ? "ערב שבת, " : "את השעה "}
+          {simulatedNow.toTimeString().slice(0, 5)}
+        </span>
+      )}
+    </>
+  );
+
+  // Every design control, shared by the admin page and the live window's panel.
+  const controls = (
+    <>
+      <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur">
+        <Button type="button" variant="ghost" size="icon" aria-label="ביטול (Ctrl+Z)" title="ביטול (Ctrl+Z)" disabled={!state.past.length} onClick={() => dispatch({ type: "undo" })}>
+          <Undo2 className="size-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="icon" aria-label="חזרה (Ctrl+Y)" title="חזרה (Ctrl+Y)" disabled={!state.future.length} onClick={() => dispatch({ type: "redo" })}>
+          <Redo2 className="size-4" />
+        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button type="button" variant="ghost" size="sm" disabled={!dirty}>
+              ביטול שינויים
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>לבטל את כל השינויים שלא נשמרו?</AlertDialogTitle>
+              <AlertDialogDescription>התצוגה תחזור לעיצוב השמור, שהוא מה שמוצג כעת על המסכים.</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>המשך לערוך</AlertDialogCancel>
+              <AlertDialogAction onClick={() => saved.data && dispatch({ type: "load", config: saved.data.config })}>
+                בטל שינויים
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <span className="ms-auto text-xs text-muted-foreground">{dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}</span>
+        <Button type="button" onClick={save} disabled={!dirty || saving}>
+          {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
+          {saving ? "שומר…" : "שמור ושדר למסכים"}
+        </Button>
+      </div>
+
+      <Section title="פריסת מסך" hint="איך המסך כולו מסודר. מסך השבת תמיד מוצג על כל המסך.">
+        <div className="grid grid-cols-3 gap-2">
+          {LAYOUT_CHOICES.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              aria-pressed={draft.screenLayout === l.id}
+              onClick={() => edit("layout", (c) => ({ ...c, screenLayout: l.id }))}
+              className={`rounded-lg border p-2 text-right transition ${draft.screenLayout === l.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`}
+            >
+              <span className="mb-2 grid aspect-video grid-cols-3 grid-rows-[auto_1fr_1fr_1fr] gap-1 rounded-md bg-[#0b1628] p-1.5 text-[#f0c35c]" aria-hidden>
+                {l.sketch}
+              </span>
+              <span className="block text-sm font-medium">{l.name}</span>
+              <span className="block text-[11px] leading-tight text-muted-foreground">{l.hint}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          שעון:
+          {CLOCK_CHOICES.map((c) => (
+            <Button
+              key={c.id}
+              type="button"
+              size="sm"
+              variant={draft.clockStyle === c.id ? "default" : "outline"}
+              aria-pressed={draft.clockStyle === c.id}
+              onClick={() => edit("clock", (cfg) => ({ ...cfg, clockStyle: c.id }))}
+            >
+              {c.name}
+            </Button>
+          ))}
+        </div>
+      </Section>
+
+      <Section title="ערכת נושא" hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה.">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {themes.map((t) => {
+            const custom = !TV_THEMES.some((b) => b.id === t.id);
+            return (
+              <div
+                key={t.id}
+                className={`relative overflow-hidden rounded-lg border text-right transition ${
+                  draft.theme === t.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
+                }`}
+              >
+                <button
+                  type="button"
+                  aria-pressed={draft.theme === t.id}
+                  onClick={() => edit("theme", (c) => ({ ...c, theme: t.id, themeOverrides: {} }))}
+                  className="block w-full text-right"
+                >
+                  <div
+                    className="flex h-12 items-end gap-1 p-2"
+                    style={{
+                      background: `radial-gradient(ellipse at 20% 0%, ${t.vars["--tv-bg-b"]}, transparent 70%), ${t.vars["--tv-bg-a"]}`,
+                    }}
+                  >
+                    <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent"] }} />
+                    <span className="size-4 rounded-full" style={{ background: t.vars["--tv-text"] }} />
+                    <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent-2"] }} />
+                  </div>
+                  <div className="p-2 pb-1">
+                    <div className="text-sm font-medium">
+                      {t.name}
+                      {custom && <span className="ms-1 rounded bg-secondary px-1 text-[10px] font-normal text-muted-foreground">שלי</span>}
+                    </div>
+                    <div className="text-[11px] leading-tight text-muted-foreground">{t.description}</div>
+                  </div>
+                </button>
+                {custom && (
+                  <div className="flex gap-1 px-1 pb-1">
+                    <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setNaming({ mode: "rename", id: t.id, value: t.name })}>
+                      שינוי שם
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] text-destructive">
+                          מחיקה
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent dir="rtl">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>למחוק את הערכה "{t.name}"?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {draft.theme === t.id ? "היא בשימוש כרגע; הלוח יחזור ל\"לילה כחול\". " : ""}
+                            המחיקה תגיע למסכים ב"שמור ושדר", ועד אז אפשר לבטל (Ctrl+Z).
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>ביטול</AlertDialogCancel>
+                          <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteTheme(t.id)}>
+                            מחיקה
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {naming ? (
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              commitName();
+            }}
+          >
+            <Input
+              autoFocus
+              aria-label="שם הערכה"
+              value={naming.value}
+              maxLength={40}
+              placeholder={naming.mode === "new" ? "שם לערכה החדשה, למשל: חגים" : "שם חדש"}
+              className="h-9 w-56"
+              onChange={(e) => setNaming({ ...naming, value: e.target.value })}
+            />
+            <Button type="submit" size="sm">
+              {naming.mode === "new" ? "שמירת הערכה" : "שינוי השם"}
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(null)}>
+              ביטול
+            </Button>
+          </form>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => setNaming({ mode: "new", value: hasOverrides ? `${theme.name} (מותאם)` : "" })}>
+              <Plus className="size-4" /> שמירה כערכה חדשה
+            </Button>
+            {isCustom && (
+              <Button type="button" variant="outline" size="sm" disabled={!hasOverrides} onClick={updateTheme} title={hasOverrides ? "שומר את שינויי הצבע שלמטה לתוך הערכה" : "שנו צבעים למטה ואז עדכנו"}>
+                <Save className="size-4" /> עדכון הערכה "{theme.name}"
+              </Button>
+            )}
+            <span className="text-xs text-muted-foreground">
+              {isCustom
+                ? "ערכה שלכם: שנו צבעים למטה ולחצו \"עדכון הערכה\"."
+                : "ערכה מובנית: שנו צבעים למטה ושמרו כערכה חדשה כדי לערוך אותה."}
+              {draft.customThemes.length >= 24 ? " הגעתם למספר הערכות המרבי (24)." : ""}
+            </span>
+          </div>
+        )}
+        {hasOverrides && <p className="text-xs text-muted-foreground">בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.</p>}
+      </Section>
+
+      <Section title="גופן וגודל טקסט">
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="space-y-1">
+            <Label htmlFor="tv-font">גופן</Label>
+            <select
+              id="tv-font"
+              value={draft.font}
+              onChange={(e) => edit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))}
+              className="block h-9 rounded-md border bg-background px-2 text-sm"
+            >
+              {TV_FONTS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label>גודל טקסט</Label>
+            <Stepper
+              label="גודל טקסט"
+              value={Math.round(draft.textScale * 100)}
+              min={80}
+              max={130}
+              step={5}
+              format={(v) => `${v}%`}
+              onChange={(v) => edit("scale", (c) => ({ ...c, textScale: v / 100 }))}
+            />
+          </div>
+        </div>
+      </Section>
+
+      <Section title="צבעים (עריכה חיה)" hint={`מתחיל מ"${theme.name}". כל שינוי מופיע מיד בתצוגה; ↺ מחזיר לערך הערכה.`}>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {THEME_VARS.map((v: ThemeVar) => (
+            <ColorField
+              key={v}
+              label={THEME_VAR_LABELS[v]}
+              value={draft.themeOverrides[v] ?? theme.vars[v]}
+              themeValue={theme.vars[v]}
+              overridden={v in draft.themeOverrides}
+              onChange={(value) => edit(`color:${v}`, (c) => ({ ...c, themeOverrides: { ...c.themeOverrides, [v]: value } }))}
+              onReset={() =>
+                edit(`reset:${v}`, (c) => {
+                  const next = { ...c.themeOverrides };
+                  delete next[v];
+                  return { ...c, themeOverrides: next };
+                })
+              }
+            />
+          ))}
+        </div>
+      </Section>
+
+      <Section title="תמונת רקע" hint="אופציונלי. התמונה מוחשכת כדי שהטקסט יישאר קריא. היא מותאמת אוטומטית לאיכות המלאה של הטלוויזיה; מומלץ לפחות 1920×1080.">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
+            <label className="cursor-pointer">
+              <ImagePlus className="size-4" /> {draft.backgroundImage ? "החלפת תמונה" : "העלאת תמונה"}
+              <input type="file" accept="image/*" className="sr-only" onChange={(e) => void upload(e.target.files, "background")} />
+            </label>
+          </Button>
+          {draft.backgroundImage && (
+            <>
+              <img src={draft.backgroundImage} alt="" className="h-10 w-16 rounded object-cover" />
+              <Button type="button" variant="ghost" size="sm" onClick={() => edit("bg", (c) => ({ ...c, backgroundImage: null }))}>
+                <Trash2 className="size-4" /> הסרה
+              </Button>
+            </>
+          )}
+        </div>
+        {draft.backgroundImage && (
+          <div className="space-y-1">
+            <Label>החשכה: {Math.round(draft.backgroundDim * 100)}%</Label>
+            <Slider
+              value={[draft.backgroundDim * 100]}
+              min={0}
+              max={95}
+              step={5}
+              onValueChange={([v]) => edit("dim", (c) => ({ ...c, backgroundDim: v / 100 }))}
+              aria-label="החשכת תמונת הרקע"
+            />
+          </div>
+        )}
+      </Section>
+
+      <Section title="שקופיות ופריסות" hint="הסדר, משך הזמן והפריסה של כל שקופית. החצים משנים סדר.">
+        <ul className="space-y-2">
+          {draft.slides.map((s, i) => (
+            <li key={s.kind} className={`rounded-lg border p-3 ${s.enabled ? "" : "opacity-60"}`}>
+              <div className="flex flex-wrap items-center gap-3">
+                <Switch
+                  checked={s.enabled}
+                  aria-label={`הצגת ${SLIDE_KIND_LABELS[s.kind]}`}
+                  onCheckedChange={(on) =>
+                    edit(`slide-on:${s.kind}`, (c) => ({ ...c, slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, enabled: on } : x)) }))
+                  }
+                />
+                <span className="min-w-28 font-medium">{SLIDE_KIND_LABELS[s.kind]}</span>
+                <select
+                  aria-label={`פריסת ${SLIDE_KIND_LABELS[s.kind]}`}
+                  value={s.layout}
+                  onChange={(e) =>
+                    edit(`slide-layout:${s.kind}`, (c) => ({
+                      ...c,
+                      slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, layout: e.target.value } : x)),
+                    }))
+                  }
+                  className="h-8 rounded-md border bg-background px-2 text-sm"
+                >
+                  {SLIDE_LAYOUTS[s.kind].map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.label}
+                    </option>
+                  ))}
+                </select>
+                {s.kind !== "slideshow" && (
+                  <Stepper
+                    label={`משך ${SLIDE_KIND_LABELS[s.kind]}`}
+                    value={s.seconds}
+                    min={5}
+                    max={120}
+                    step={1}
+                    format={(v) => `${v} שנ׳`}
+                    onChange={(v) =>
+                      edit(`slide-sec:${s.kind}`, (c) => ({ ...c, slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, seconds: v } : x)) }))
+                    }
+                  />
+                )}
+                <div className="ms-auto flex">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    aria-label="הזזה למעלה"
+                    disabled={i === 0}
+                    onClick={() =>
+                      edit("order", (c) => {
+                        const slides = [...c.slides];
+                        [slides[i - 1], slides[i]] = [slides[i], slides[i - 1]];
+                        return { ...c, slides };
+                      })
+                    }
+                  >
+                    <ArrowUp className="size-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-8"
+                    aria-label="הזזה למטה"
+                    disabled={i === draft.slides.length - 1}
+                    onClick={() =>
+                      edit("order", (c) => {
+                        const slides = [...c.slides];
+                        [slides[i], slides[i + 1]] = [slides[i + 1], slides[i]];
+                        return { ...c, slides };
+                      })
+                    }
+                  >
+                    <ArrowDown className="size-4" />
+                  </Button>
+                </div>
+              </div>
+              {s.kind === "slideshow" && (
+                <p className="mt-2 text-xs text-muted-foreground">המשך נקבע לפי מספר התמונות × זמן לתמונה (בהגדרות המצגת).</p>
+              )}
+            </li>
+          ))}
+        </ul>
+      </Section>
+
+      <Section
+        title="מסך שבת"
+        hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי הגדרות בית הכנסת."
+      >
+        <label className="flex items-center gap-3">
+          <Switch
+            checked={draft.shabbat.enabled}
+            onCheckedChange={(on) => edit("sb-on", (c) => ({ ...c, shabbat: { ...c.shabbat, enabled: on } }))}
+          />
+          מסך שבת פעיל
+        </label>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          צאת השבת:
+          <Stepper
+            label="דקות אחרי השקיעה"
+            value={draft.shabbat.endMinutesAfterSunset}
+            min={18}
+            max={90}
+            step={1}
+            format={(v) => `${v} דק׳`}
+            onChange={(v) => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: v } }))}
+          />
+          <span className="text-xs text-muted-foreground">אחרי השקיעה</span>
+          {[40, 72].map((m) => (
+            <Button
+              key={m}
+              type="button"
+              size="sm"
+              variant={draft.shabbat.endMinutesAfterSunset === m ? "default" : "outline"}
+              className="h-7 px-2 text-xs"
+              onClick={() => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: m } }))}
+            >
+              {m === 72 ? "72 (ר״ת)" : `${m} (מקובל)`}
+            </Button>
+          ))}
+        </div>
+        <div className="space-y-2 rounded-lg border p-3">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="text-sm font-medium">תמונת השבת</span>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={sb.rotate}
+                onCheckedChange={(on) =>
+                  edit("sb-rotate", (c) => ({ ...c, shabbat: { ...c.shabbat, rotate: on, scenes: on ? c.shabbat.scenes : c.shabbat.scenes.slice(0, 1) } }))
+                }
+              />
+              מצגת: החלפת תמונות
+            </label>
+            {sb.rotate && (
+              <label className="flex items-center gap-2 text-sm">
+                כל
+                <select
+                  aria-label="זמן לכל תמונה"
+                  value={sb.secondsPerScene}
+                  onChange={(e) => edit("sb-secs", (c) => ({ ...c, shabbat: { ...c.shabbat, secondsPerScene: Number(e.target.value) } }))}
+                  className="h-8 rounded-md border bg-background px-2 text-sm"
+                >
+                  {(SCENE_INTERVALS.includes(sb.secondsPerScene) ? SCENE_INTERVALS : [...SCENE_INTERVALS, sb.secondsPerScene].sort((a, b) => a - b)).map((s) => (
+                    <option key={s} value={s}>
+                      {intervalLabel(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {sb.rotate
+              ? `לחצו על תמונות כדי להוסיף או להוציא מהמצגת; המספר הוא הסדר. נבחרו ${sb.scenes.length}.`
+              : "לחצו על תמונה כדי לבחור אותה. להחלפת תמונות לפי זמן - הפעילו \"מצגת\"."}
+          </p>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {[...SHABBAT_ART.map((a) => ({ scene: `art:${a.id}`, label: a.label, photo: false })), ...sb.photos.map((p, i) => ({ scene: p, label: `תמונה ${i + 1}`, photo: true }))].map(
+              ({ scene, label, photo }) => {
+                const order = sb.scenes.indexOf(scene);
+                const chosen = order >= 0;
+                return (
+                  <div key={scene} className={`relative overflow-hidden rounded-lg border bg-[#0b1628] transition ${chosen ? "ring-2 ring-primary ring-offset-2" : "opacity-80 hover:opacity-100"}`}>
+                    <button type="button" aria-pressed={chosen} aria-label={label} onClick={() => pickScene(scene)} className="block w-full">
+                      <div className="pointer-events-none aspect-[900/520] p-1 [&_.tv-shabbat-photo]:max-h-none [&_.tv-shabbat-photo]:shadow-none [&_svg]:h-full [&_svg]:w-full">
+                        <ShabbatPicture scene={scene} />
+                      </div>
+                      <div className="bg-background/95 px-2 py-1 text-right text-xs font-medium">{label}</div>
+                    </button>
+                    {chosen && sb.rotate && (
+                      <span className="absolute start-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{order + 1}</span>
+                    )}
+                    {photo && (
+                      <Button type="button" variant="secondary" size="icon" className="absolute end-1.5 top-1.5 size-7" aria-label={`הסרת ${label}`} onClick={() => removeShabbatPhoto(scene)}>
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                );
+              },
+            )}
+          </div>
+          <Button type="button" variant="outline" size="sm" asChild disabled={sbUploading}>
+            <label className="cursor-pointer">
+              <ImagePlus className="size-4" /> {sbUploading ? "מעלה…" : "העלאת תמונות משלכם"}
+              <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void uploadShabbat(e.target.files)} />
+            </label>
+          </Button>
+          <span className="ms-2 text-xs text-muted-foreground">מומלץ 1920×1080 ומעלה; התמונה מותאמת אוטומטית לטלוויזיה.</span>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          אפשר לשנות את הכיתוב, להסתיר חלקים ולהזיז בעריכה ישירה: לחצו "תצוגת מסך שבת" ואז "עריכה ישירה בלוח".
+        </p>
+      </Section>
+
+      <Section title="ראש המסך">
+        <label className="flex items-center gap-3">
+          <Switch checked={draft.header.logo} onCheckedChange={(on) => edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))} />
+          לוגו קרובים ליד שם בית הכנסת
+        </label>
+        <label className="flex items-center gap-3">
+          <Switch checked={draft.header.parasha} onCheckedChange={(on) => edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))} />
+          פרשת השבוע
+        </label>
+        <label className="flex items-center gap-3">
+          <Switch checked={draft.header.dafYomi} onCheckedChange={(on) => edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))} />
+          הדף היומי
+        </label>
+      </Section>
+
+      <Section title="התראות לפני סוף זמן" hint="ספירה לאחור בתחתית המסך, וכרטיס גדול בכל אחת מהדקות שנבחרו.">
+        <label className="flex items-center gap-3">
+          <Switch checked={draft.alerts.enabled} onCheckedChange={(on) => edit("al-on", (c) => ({ ...c, alerts: { ...c.alerts, enabled: on } }))} />
+          התראות פעילות
+        </label>
+        <div className="flex flex-wrap gap-x-5 gap-y-2">
+          {(Object.keys(ALERT_EVENT_LABELS) as AlertEvent[]).map((e) => (
+            <label key={e} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="size-4 accent-primary"
+                checked={draft.alerts.events.includes(e)}
+                onChange={(ev) =>
+                  edit(`al-ev:${e}`, (c) => ({
+                    ...c,
+                    alerts: {
+                      ...c.alerts,
+                      events: ev.target.checked ? [...c.alerts.events, e] : c.alerts.events.filter((x) => x !== e),
+                    },
+                  }))
+                }
+              />
+              {ALERT_EVENT_LABELS[e]}
+            </label>
+          ))}
+        </div>
+        <LeadMinutesEditor
+          value={draft.alerts.leadMinutes}
+          onChange={(leads) => edit("al-leads", (c) => ({ ...c, alerts: { ...c.alerts, leadMinutes: leads } }))}
+        />
+        <div className="flex items-center gap-3 text-sm">
+          משך הצגת הכרטיס:
+          <Stepper
+            label="משך הצגת התראה"
+            value={draft.alerts.popupSeconds}
+            min={10}
+            max={180}
+            step={5}
+            format={(v) => `${v} שנ׳`}
+            onChange={(v) => edit("al-sec", (c) => ({ ...c, alerts: { ...c.alerts, popupSeconds: v } }))}
+          />
+        </div>
+      </Section>
+
+      <Section
+        title="סרגל הודעה רץ"
+        hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (~45%) כל עוד הסרגל פעיל."
+      >
+        <label className="flex items-center gap-3">
+          <Switch checked={draft.ticker.enabled} onCheckedChange={(on) => edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))} />
+          הצגת סרגל
+        </label>
+        <Textarea
+          value={draft.ticker.text}
+          maxLength={400}
+          placeholder="למשל: ברוכים הבאים · שיעור העמוד היומי בכל יום ב-16:15"
+          onChange={(e) => edit("tk-text", (c) => ({ ...c, ticker: { ...c.ticker, text: e.target.value } }))}
+        />
+      </Section>
+
+      <Section title="מצגת תמונות" hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG.">
+        <div className="flex flex-wrap items-center gap-3">
+          <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
+            <label className="cursor-pointer">
+              <ImagePlus className="size-4" /> {uploading ? "מעלה…" : "הוספת תמונות"}
+              <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void upload(e.target.files, "slideshow")} />
+            </label>
+          </Button>
+          <span className="flex items-center gap-2 text-sm">
+            זמן לתמונה:
+            <Stepper
+              label="זמן לתמונה"
+              value={draft.slideshow.secondsPerImage}
+              min={3}
+              max={60}
+              step={1}
+              format={(v) => `${v} שנ׳`}
+              onChange={(v) => edit("sh-sec", (c) => ({ ...c, slideshow: { ...c.slideshow, secondsPerImage: v } }))}
+            />
+          </span>
+        </div>
+        {draft.slideshow.images.length > 0 && (
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {draft.slideshow.images.map((img, i) => (
+              <li key={img.url + i} className="flex items-center gap-2 rounded-lg border p-2">
+                <img src={img.url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
+                <Input
+                  value={img.caption ?? ""}
+                  placeholder="כיתוב (לא חובה)"
+                  className="h-8 text-sm"
+                  onChange={(e) =>
+                    edit(`sh-cap:${i}`, (c) => ({
+                      ...c,
+                      slideshow: {
+                        ...c.slideshow,
+                        images: c.slideshow.images.map((x, j) => (j === i ? { ...x, caption: e.target.value || undefined } : x)),
+                      },
+                    }))
+                  }
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 shrink-0"
+                  aria-label="הסרת תמונה"
+                  onClick={() =>
+                    edit("sh-del", (c) => ({ ...c, slideshow: { ...c.slideshow, images: c.slideshow.images.filter((_, j) => j !== i) } }))
+                  }
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Section>
+
+      <AlertDialog>
+        <AlertDialogTrigger asChild>
+          <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
+            <RotateCcw className="size-4" /> איפוס לעיצוב ברירת המחדל
+          </Button>
+        </AlertDialogTrigger>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>לאפס את כל העיצוב לברירת המחדל?</AlertDialogTitle>
+            <AlertDialogDescription>
+              ערכת הנושא, הצבעים, השקופיות וההתראות יחזרו להגדרות המקוריות בתצוגה המקדימה. שום דבר לא ישתנה במסכים עד
+              שתלחצו "שמור ושדר".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+            <AlertDialogAction onClick={() => edit("reset-all", () => structuredClone(DEFAULT_TV_CONFIG))}>אפס</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+
+  if (studio) {
+    return (
+      <>
+        <TvDeviceStudio
+          {...board}
+          fullscreen
+          config={draft}
+          index={index}
+          cycle={cycle}
+          progress={0}
+          paused={!autoplay}
+          editing={editing}
+          selected={selected}
+          onSelect={setSelected}
+          onEdit={edit}
+        />
+        <StudioPanel
+          title="עורך חי"
+          status={dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}
+        >
+          <div className="space-y-3">
+            <p className="rounded-md bg-muted/60 p-2 text-xs leading-relaxed text-muted-foreground">
+              לחצו על כל רכיב בלוח כדי לערוך אותו; גררו אותו כדי להזיז. <b>Alt + לחיצה</b> מפעילה את הלוח כרגיל בלי לבחור,
+              ו-<b>Esc</b> מבטל את הבחירה (לחיצה נוספת: עוצרת את העריכה בלוח). הכל נשאר טיוטה עד "שמור ושדר" - ומתעדכן גם בעורך שבעמוד הניהול.
+            </p>
+            <div className="flex flex-wrap items-center gap-2">{previewActions}</div>
+            <SlideStrip
+              slides={board.slides}
+              index={index}
+              onPick={(i) => {
+                setPreviewIndex(i);
+                setCycle((c) => c + 1);
+              }}
+            />
+            {editing && <TvEditInspector selected={selected} config={draft} data={board.data} onEdit={edit} onSelect={setSelected} />}
+            {controls}
+          </div>
+        </StudioPanel>
+      </>
+    );
+  }
+
   return (
     <div className={`grid gap-5 ${wide ? "" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"}`}>
       {/* ------------------------------------------------ preview column -- */}
@@ -583,44 +1385,16 @@ export function TvDesignPanel() {
             </div>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant={editing ? "default" : "outline"}
-              size="sm"
-              aria-pressed={editing}
-              onClick={() => {
-                setEditing((v) => !v);
-                setSelected(null);
-                setAutoplay(false);
-              }}
-            >
-              <Pencil className="size-4" /> {editing ? "סיום עריכה בלוח" : "עריכה ישירה בלוח"}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setAutoplay((a) => !a)}>
-              {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
-              {autoplay ? "עצירת הסבב" : "הפעלת סבב"}
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={showAlertExample} disabled={!draft.alerts.enabled}>
-              <BellRing className="size-4" /> דוגמת התראת זמנים
-            </Button>
-            <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} onClick={toggleShabbatPreview}>
-              🕯️ {shabbatPreview ? "חזרה לזמן אמת" : "תצוגת מסך שבת"}
-            </Button>
-            {simulatedNow && (
-              <span className="text-xs text-muted-foreground">
-                מדמה {shabbatPreview ? "ערב שבת, " : "את השעה "}
-                {simulatedNow.toTimeString().slice(0, 5)}
-              </span>
-            )}
+            {previewActions}
             <span className="ms-auto flex flex-wrap gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                title="פותח את הלוח בחלון נפרד שמתעדכן בכל שינוי כאן, עוד לפני השמירה. אפשר לגרור אותו למסך שני או לטלוויזיה שמחוברת למחשב."
+                title="פותח את הלוח על כל המסך בחלון נפרד, עם כל כלי העריכה בחלונית צפה. השינויים עוברים בין החלון לכאן בשני הכיוונים, ונשמרים רק ב'שמור ושדר'. אפשר לגרור אותו למסך שני או לטלוויזיה שמחוברת למחשב."
                 onClick={() => window.open("/admin/tv-board?draft=1", "shul-tv-draft")}
               >
-                <ExternalLink className="size-4" /> חלון חי (טיוטה)
+                <ExternalLink className="size-4" /> עורך חי בחלון נפרד
               </Button>
               <Button
                 type="button"
@@ -648,589 +1422,7 @@ export function TvDesignPanel() {
 
       {/* ----------------------------------------------- controls column -- */}
       <div className="order-2 space-y-4 lg:order-1">
-        <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur">
-          <Button type="button" variant="ghost" size="icon" aria-label="ביטול (Ctrl+Z)" title="ביטול (Ctrl+Z)" disabled={!state.past.length} onClick={() => dispatch({ type: "undo" })}>
-            <Undo2 className="size-4" />
-          </Button>
-          <Button type="button" variant="ghost" size="icon" aria-label="חזרה (Ctrl+Y)" title="חזרה (Ctrl+Y)" disabled={!state.future.length} onClick={() => dispatch({ type: "redo" })}>
-            <Redo2 className="size-4" />
-          </Button>
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" disabled={!dirty}>
-                ביטול שינויים
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>לבטל את כל השינויים שלא נשמרו?</AlertDialogTitle>
-                <AlertDialogDescription>התצוגה תחזור לעיצוב השמור, שהוא מה שמוצג כעת על המסכים.</AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>המשך לערוך</AlertDialogCancel>
-                <AlertDialogAction onClick={() => saved.data && dispatch({ type: "load", config: saved.data.config })}>
-                  בטל שינויים
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-          <span className="ms-auto text-xs text-muted-foreground">{dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}</span>
-          <Button type="button" onClick={save} disabled={!dirty || saving}>
-            {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
-            {saving ? "שומר…" : "שמור ושדר למסכים"}
-          </Button>
-        </div>
-
-        <Section title="ערכת נושא" hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה.">
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {themes.map((t) => {
-              const custom = !TV_THEMES.some((b) => b.id === t.id);
-              return (
-                <div
-                  key={t.id}
-                  className={`relative overflow-hidden rounded-lg border text-right transition ${
-                    draft.theme === t.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    aria-pressed={draft.theme === t.id}
-                    onClick={() => edit("theme", (c) => ({ ...c, theme: t.id, themeOverrides: {} }))}
-                    className="block w-full text-right"
-                  >
-                    <div
-                      className="flex h-12 items-end gap-1 p-2"
-                      style={{
-                        background: `radial-gradient(ellipse at 20% 0%, ${t.vars["--tv-bg-b"]}, transparent 70%), ${t.vars["--tv-bg-a"]}`,
-                      }}
-                    >
-                      <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent"] }} />
-                      <span className="size-4 rounded-full" style={{ background: t.vars["--tv-text"] }} />
-                      <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent-2"] }} />
-                    </div>
-                    <div className="p-2 pb-1">
-                      <div className="text-sm font-medium">
-                        {t.name}
-                        {custom && <span className="ms-1 rounded bg-secondary px-1 text-[10px] font-normal text-muted-foreground">שלי</span>}
-                      </div>
-                      <div className="text-[11px] leading-tight text-muted-foreground">{t.description}</div>
-                    </div>
-                  </button>
-                  {custom && (
-                    <div className="flex gap-1 px-1 pb-1">
-                      <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setNaming({ mode: "rename", id: t.id, value: t.name })}>
-                        שינוי שם
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] text-destructive">
-                            מחיקה
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent dir="rtl">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>למחוק את הערכה "{t.name}"?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              {draft.theme === t.id ? "היא בשימוש כרגע; הלוח יחזור ל\"לילה כחול\". " : ""}
-                              המחיקה תגיע למסכים ב"שמור ושדר", ועד אז אפשר לבטל (Ctrl+Z).
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>ביטול</AlertDialogCancel>
-                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteTheme(t.id)}>
-                              מחיקה
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {naming ? (
-            <form
-              className="flex flex-wrap items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                commitName();
-              }}
-            >
-              <Input
-                autoFocus
-                aria-label="שם הערכה"
-                value={naming.value}
-                maxLength={40}
-                placeholder={naming.mode === "new" ? "שם לערכה החדשה, למשל: חגים" : "שם חדש"}
-                className="h-9 w-56"
-                onChange={(e) => setNaming({ ...naming, value: e.target.value })}
-              />
-              <Button type="submit" size="sm">
-                {naming.mode === "new" ? "שמירת הערכה" : "שינוי השם"}
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(null)}>
-                ביטול
-              </Button>
-            </form>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setNaming({ mode: "new", value: hasOverrides ? `${theme.name} (מותאם)` : "" })}>
-                <Plus className="size-4" /> שמירה כערכה חדשה
-              </Button>
-              {isCustom && (
-                <Button type="button" variant="outline" size="sm" disabled={!hasOverrides} onClick={updateTheme} title={hasOverrides ? "שומר את שינויי הצבע שלמטה לתוך הערכה" : "שנו צבעים למטה ואז עדכנו"}>
-                  <Save className="size-4" /> עדכון הערכה "{theme.name}"
-                </Button>
-              )}
-              <span className="text-xs text-muted-foreground">
-                {isCustom
-                  ? "ערכה שלכם: שנו צבעים למטה ולחצו \"עדכון הערכה\"."
-                  : "ערכה מובנית: שנו צבעים למטה ושמרו כערכה חדשה כדי לערוך אותה."}
-                {draft.customThemes.length >= 24 ? " הגעתם למספר הערכות המרבי (24)." : ""}
-              </span>
-            </div>
-          )}
-          {hasOverrides && <p className="text-xs text-muted-foreground">בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.</p>}
-        </Section>
-
-        <Section title="גופן וגודל טקסט">
-          <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="tv-font">גופן</Label>
-              <select
-                id="tv-font"
-                value={draft.font}
-                onChange={(e) => edit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))}
-                className="block h-9 rounded-md border bg-background px-2 text-sm"
-              >
-                {TV_FONTS.map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label>גודל טקסט</Label>
-              <Stepper
-                label="גודל טקסט"
-                value={Math.round(draft.textScale * 100)}
-                min={80}
-                max={130}
-                step={5}
-                format={(v) => `${v}%`}
-                onChange={(v) => edit("scale", (c) => ({ ...c, textScale: v / 100 }))}
-              />
-            </div>
-          </div>
-        </Section>
-
-        <Section title="צבעים (עריכה חיה)" hint={`מתחיל מ"${theme.name}". כל שינוי מופיע מיד בתצוגה; ↺ מחזיר לערך הערכה.`}>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {THEME_VARS.map((v: ThemeVar) => (
-              <ColorField
-                key={v}
-                label={THEME_VAR_LABELS[v]}
-                value={draft.themeOverrides[v] ?? theme.vars[v]}
-                themeValue={theme.vars[v]}
-                overridden={v in draft.themeOverrides}
-                onChange={(value) => edit(`color:${v}`, (c) => ({ ...c, themeOverrides: { ...c.themeOverrides, [v]: value } }))}
-                onReset={() =>
-                  edit(`reset:${v}`, (c) => {
-                    const next = { ...c.themeOverrides };
-                    delete next[v];
-                    return { ...c, themeOverrides: next };
-                  })
-                }
-              />
-            ))}
-          </div>
-        </Section>
-
-        <Section title="תמונת רקע" hint="אופציונלי. התמונה מוחשכת כדי שהטקסט יישאר קריא. היא מותאמת אוטומטית לאיכות המלאה של הטלוויזיה; מומלץ לפחות 1920×1080.">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
-              <label className="cursor-pointer">
-                <ImagePlus className="size-4" /> {draft.backgroundImage ? "החלפת תמונה" : "העלאת תמונה"}
-                <input type="file" accept="image/*" className="sr-only" onChange={(e) => void upload(e.target.files, "background")} />
-              </label>
-            </Button>
-            {draft.backgroundImage && (
-              <>
-                <img src={draft.backgroundImage} alt="" className="h-10 w-16 rounded object-cover" />
-                <Button type="button" variant="ghost" size="sm" onClick={() => edit("bg", (c) => ({ ...c, backgroundImage: null }))}>
-                  <Trash2 className="size-4" /> הסרה
-                </Button>
-              </>
-            )}
-          </div>
-          {draft.backgroundImage && (
-            <div className="space-y-1">
-              <Label>החשכה: {Math.round(draft.backgroundDim * 100)}%</Label>
-              <Slider
-                value={[draft.backgroundDim * 100]}
-                min={0}
-                max={95}
-                step={5}
-                onValueChange={([v]) => edit("dim", (c) => ({ ...c, backgroundDim: v / 100 }))}
-                aria-label="החשכת תמונת הרקע"
-              />
-            </div>
-          )}
-        </Section>
-
-        <Section title="שקופיות ופריסות" hint="הסדר, משך הזמן והפריסה של כל שקופית. החצים משנים סדר.">
-          <ul className="space-y-2">
-            {draft.slides.map((s, i) => (
-              <li key={s.kind} className={`rounded-lg border p-3 ${s.enabled ? "" : "opacity-60"}`}>
-                <div className="flex flex-wrap items-center gap-3">
-                  <Switch
-                    checked={s.enabled}
-                    aria-label={`הצגת ${SLIDE_KIND_LABELS[s.kind]}`}
-                    onCheckedChange={(on) =>
-                      edit(`slide-on:${s.kind}`, (c) => ({ ...c, slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, enabled: on } : x)) }))
-                    }
-                  />
-                  <span className="min-w-28 font-medium">{SLIDE_KIND_LABELS[s.kind]}</span>
-                  <select
-                    aria-label={`פריסת ${SLIDE_KIND_LABELS[s.kind]}`}
-                    value={s.layout}
-                    onChange={(e) =>
-                      edit(`slide-layout:${s.kind}`, (c) => ({
-                        ...c,
-                        slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, layout: e.target.value } : x)),
-                      }))
-                    }
-                    className="h-8 rounded-md border bg-background px-2 text-sm"
-                  >
-                    {SLIDE_LAYOUTS[s.kind].map((l) => (
-                      <option key={l.id} value={l.id}>
-                        {l.label}
-                      </option>
-                    ))}
-                  </select>
-                  {s.kind !== "slideshow" && (
-                    <Stepper
-                      label={`משך ${SLIDE_KIND_LABELS[s.kind]}`}
-                      value={s.seconds}
-                      min={5}
-                      max={120}
-                      step={1}
-                      format={(v) => `${v} שנ׳`}
-                      onChange={(v) =>
-                        edit(`slide-sec:${s.kind}`, (c) => ({ ...c, slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, seconds: v } : x)) }))
-                      }
-                    />
-                  )}
-                  <div className="ms-auto flex">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      aria-label="הזזה למעלה"
-                      disabled={i === 0}
-                      onClick={() =>
-                        edit("order", (c) => {
-                          const slides = [...c.slides];
-                          [slides[i - 1], slides[i]] = [slides[i], slides[i - 1]];
-                          return { ...c, slides };
-                        })
-                      }
-                    >
-                      <ArrowUp className="size-4" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      aria-label="הזזה למטה"
-                      disabled={i === draft.slides.length - 1}
-                      onClick={() =>
-                        edit("order", (c) => {
-                          const slides = [...c.slides];
-                          [slides[i], slides[i + 1]] = [slides[i + 1], slides[i]];
-                          return { ...c, slides };
-                        })
-                      }
-                    >
-                      <ArrowDown className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-                {s.kind === "slideshow" && (
-                  <p className="mt-2 text-xs text-muted-foreground">המשך נקבע לפי מספר התמונות × זמן לתמונה (בהגדרות המצגת).</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Section>
-
-        <Section
-          title="מסך שבת"
-          hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי הגדרות בית הכנסת."
-        >
-          <label className="flex items-center gap-3">
-            <Switch
-              checked={draft.shabbat.enabled}
-              onCheckedChange={(on) => edit("sb-on", (c) => ({ ...c, shabbat: { ...c.shabbat, enabled: on } }))}
-            />
-            מסך שבת פעיל
-          </label>
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            צאת השבת:
-            <Stepper
-              label="דקות אחרי השקיעה"
-              value={draft.shabbat.endMinutesAfterSunset}
-              min={18}
-              max={90}
-              step={1}
-              format={(v) => `${v} דק׳`}
-              onChange={(v) => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: v } }))}
-            />
-            <span className="text-xs text-muted-foreground">אחרי השקיעה</span>
-            {[40, 72].map((m) => (
-              <Button
-                key={m}
-                type="button"
-                size="sm"
-                variant={draft.shabbat.endMinutesAfterSunset === m ? "default" : "outline"}
-                className="h-7 px-2 text-xs"
-                onClick={() => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: m } }))}
-              >
-                {m === 72 ? "72 (ר״ת)" : `${m} (מקובל)`}
-              </Button>
-            ))}
-          </div>
-          <div className="space-y-2 rounded-lg border p-3">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-              <span className="text-sm font-medium">תמונת השבת</span>
-              <label className="flex items-center gap-2 text-sm">
-                <Switch
-                  checked={sb.rotate}
-                  onCheckedChange={(on) =>
-                    edit("sb-rotate", (c) => ({ ...c, shabbat: { ...c.shabbat, rotate: on, scenes: on ? c.shabbat.scenes : c.shabbat.scenes.slice(0, 1) } }))
-                  }
-                />
-                מצגת: החלפת תמונות
-              </label>
-              {sb.rotate && (
-                <label className="flex items-center gap-2 text-sm">
-                  כל
-                  <select
-                    aria-label="זמן לכל תמונה"
-                    value={sb.secondsPerScene}
-                    onChange={(e) => edit("sb-secs", (c) => ({ ...c, shabbat: { ...c.shabbat, secondsPerScene: Number(e.target.value) } }))}
-                    className="h-8 rounded-md border bg-background px-2 text-sm"
-                  >
-                    {(SCENE_INTERVALS.includes(sb.secondsPerScene) ? SCENE_INTERVALS : [...SCENE_INTERVALS, sb.secondsPerScene].sort((a, b) => a - b)).map((s) => (
-                      <option key={s} value={s}>
-                        {intervalLabel(s)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {sb.rotate
-                ? `לחצו על תמונות כדי להוסיף או להוציא מהמצגת; המספר הוא הסדר. נבחרו ${sb.scenes.length}.`
-                : "לחצו על תמונה כדי לבחור אותה. להחלפת תמונות לפי זמן - הפעילו \"מצגת\"."}
-            </p>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {[...SHABBAT_ART.map((a) => ({ scene: `art:${a.id}`, label: a.label, photo: false })), ...sb.photos.map((p, i) => ({ scene: p, label: `תמונה ${i + 1}`, photo: true }))].map(
-                ({ scene, label, photo }) => {
-                  const order = sb.scenes.indexOf(scene);
-                  const chosen = order >= 0;
-                  return (
-                    <div key={scene} className={`relative overflow-hidden rounded-lg border bg-[#0b1628] transition ${chosen ? "ring-2 ring-primary ring-offset-2" : "opacity-80 hover:opacity-100"}`}>
-                      <button type="button" aria-pressed={chosen} aria-label={label} onClick={() => pickScene(scene)} className="block w-full">
-                        <div className="pointer-events-none aspect-[900/520] p-1 [&_.tv-shabbat-photo]:max-h-none [&_.tv-shabbat-photo]:shadow-none [&_svg]:h-full [&_svg]:w-full">
-                          <ShabbatPicture scene={scene} />
-                        </div>
-                        <div className="bg-background/95 px-2 py-1 text-right text-xs font-medium">{label}</div>
-                      </button>
-                      {chosen && sb.rotate && (
-                        <span className="absolute start-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{order + 1}</span>
-                      )}
-                      {photo && (
-                        <Button type="button" variant="secondary" size="icon" className="absolute end-1.5 top-1.5 size-7" aria-label={`הסרת ${label}`} onClick={() => removeShabbatPhoto(scene)}>
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                },
-              )}
-            </div>
-            <Button type="button" variant="outline" size="sm" asChild disabled={sbUploading}>
-              <label className="cursor-pointer">
-                <ImagePlus className="size-4" /> {sbUploading ? "מעלה…" : "העלאת תמונות משלכם"}
-                <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void uploadShabbat(e.target.files)} />
-              </label>
-            </Button>
-            <span className="ms-2 text-xs text-muted-foreground">מומלץ 1920×1080 ומעלה; התמונה מותאמת אוטומטית לטלוויזיה.</span>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            אפשר לשנות את הכיתוב, להסתיר חלקים ולהזיז בעריכה ישירה: לחצו "תצוגת מסך שבת" ואז "עריכה ישירה בלוח".
-          </p>
-        </Section>
-
-        <Section title="ראש המסך">
-          <label className="flex items-center gap-3">
-            <Switch checked={draft.header.logo} onCheckedChange={(on) => edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))} />
-            לוגו קרובים ליד שם בית הכנסת
-          </label>
-          <label className="flex items-center gap-3">
-            <Switch checked={draft.header.parasha} onCheckedChange={(on) => edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))} />
-            פרשת השבוע
-          </label>
-          <label className="flex items-center gap-3">
-            <Switch checked={draft.header.dafYomi} onCheckedChange={(on) => edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))} />
-            הדף היומי
-          </label>
-        </Section>
-
-        <Section title="התראות לפני סוף זמן" hint="ספירה לאחור בתחתית המסך, וכרטיס גדול בכל אחת מהדקות שנבחרו.">
-          <label className="flex items-center gap-3">
-            <Switch checked={draft.alerts.enabled} onCheckedChange={(on) => edit("al-on", (c) => ({ ...c, alerts: { ...c.alerts, enabled: on } }))} />
-            התראות פעילות
-          </label>
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            {(Object.keys(ALERT_EVENT_LABELS) as AlertEvent[]).map((e) => (
-              <label key={e} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={draft.alerts.events.includes(e)}
-                  onChange={(ev) =>
-                    edit(`al-ev:${e}`, (c) => ({
-                      ...c,
-                      alerts: {
-                        ...c.alerts,
-                        events: ev.target.checked ? [...c.alerts.events, e] : c.alerts.events.filter((x) => x !== e),
-                      },
-                    }))
-                  }
-                />
-                {ALERT_EVENT_LABELS[e]}
-              </label>
-            ))}
-          </div>
-          <LeadMinutesEditor
-            value={draft.alerts.leadMinutes}
-            onChange={(leads) => edit("al-leads", (c) => ({ ...c, alerts: { ...c.alerts, leadMinutes: leads } }))}
-          />
-          <div className="flex items-center gap-3 text-sm">
-            משך הצגת הכרטיס:
-            <Stepper
-              label="משך הצגת התראה"
-              value={draft.alerts.popupSeconds}
-              min={10}
-              max={180}
-              step={5}
-              format={(v) => `${v} שנ׳`}
-              onChange={(v) => edit("al-sec", (c) => ({ ...c, alerts: { ...c.alerts, popupSeconds: v } }))}
-            />
-          </div>
-        </Section>
-
-        <Section
-          title="סרגל הודעה רץ"
-          hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (~45%) כל עוד הסרגל פעיל."
-        >
-          <label className="flex items-center gap-3">
-            <Switch checked={draft.ticker.enabled} onCheckedChange={(on) => edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))} />
-            הצגת סרגל
-          </label>
-          <Textarea
-            value={draft.ticker.text}
-            maxLength={400}
-            placeholder="למשל: ברוכים הבאים · שיעור העמוד היומי בכל יום ב-16:15"
-            onChange={(e) => edit("tk-text", (c) => ({ ...c, ticker: { ...c.ticker, text: e.target.value } }))}
-          />
-        </Section>
-
-        <Section title="מצגת תמונות" hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG.">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
-              <label className="cursor-pointer">
-                <ImagePlus className="size-4" /> {uploading ? "מעלה…" : "הוספת תמונות"}
-                <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void upload(e.target.files, "slideshow")} />
-              </label>
-            </Button>
-            <span className="flex items-center gap-2 text-sm">
-              זמן לתמונה:
-              <Stepper
-                label="זמן לתמונה"
-                value={draft.slideshow.secondsPerImage}
-                min={3}
-                max={60}
-                step={1}
-                format={(v) => `${v} שנ׳`}
-                onChange={(v) => edit("sh-sec", (c) => ({ ...c, slideshow: { ...c.slideshow, secondsPerImage: v } }))}
-              />
-            </span>
-          </div>
-          {draft.slideshow.images.length > 0 && (
-            <ul className="grid gap-2 sm:grid-cols-2">
-              {draft.slideshow.images.map((img, i) => (
-                <li key={img.url + i} className="flex items-center gap-2 rounded-lg border p-2">
-                  <img src={img.url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
-                  <Input
-                    value={img.caption ?? ""}
-                    placeholder="כיתוב (לא חובה)"
-                    className="h-8 text-sm"
-                    onChange={(e) =>
-                      edit(`sh-cap:${i}`, (c) => ({
-                        ...c,
-                        slideshow: {
-                          ...c.slideshow,
-                          images: c.slideshow.images.map((x, j) => (j === i ? { ...x, caption: e.target.value || undefined } : x)),
-                        },
-                      }))
-                    }
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 shrink-0"
-                    aria-label="הסרת תמונה"
-                    onClick={() =>
-                      edit("sh-del", (c) => ({ ...c, slideshow: { ...c.slideshow, images: c.slideshow.images.filter((_, j) => j !== i) } }))
-                    }
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Section>
-
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
-              <RotateCcw className="size-4" /> איפוס לעיצוב ברירת המחדל
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent dir="rtl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>לאפס את כל העיצוב לברירת המחדל?</AlertDialogTitle>
-              <AlertDialogDescription>
-                ערכת הנושא, הצבעים, השקופיות וההתראות יחזרו להגדרות המקוריות בתצוגה המקדימה. שום דבר לא ישתנה במסכים עד
-                שתלחצו "שמור ושדר".
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>ביטול</AlertDialogCancel>
-              <AlertDialogAction onClick={() => edit("reset-all", () => structuredClone(DEFAULT_TV_CONFIG))}>אפס</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {controls}
       </div>
     </div>
   );

@@ -131,8 +131,11 @@ export function TvDeviceStudio({
   onSelect,
   onEdit,
   large = false,
+  fullscreen = false,
   ...props
 }: BoardProps & {
+  /** The live editor window: the board alone on the whole screen, no device frame. */
+  fullscreen?: boolean;
   selected?: string | null;
   onSelect?: (key: string | null) => void;
   /** The editor's draft updater; enables drag-to-move of the selected element. */
@@ -152,14 +155,16 @@ export function TvDeviceStudio({
   // relative place on every device - whatever scale the preview is drawn at.
   const drag = useRef<{ key: string; frame: DOMRect; startX: number; startY: number; x0: number; y0: number; moved: boolean } | null>(null);
   const onPointerDown = (e: PointerEvent) => {
-    if (!editing || !onEdit || e.button !== 0) return;
+    // Alt + click is an ordinary click on the board (the skill's escape hatch).
+    if (!editing || !onEdit || e.button !== 0 || e.altKey) return;
     const el = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-edit]") : null;
     const frame = el?.closest<HTMLElement>(".tv-frame");
     if (!el || !frame) return;
     const key = el.dataset.edit!;
     const s = props.config.styles[key];
+    // No pointer capture yet: a captured pointer retargets the click to the
+    // wrapper, and a plain click must still select the element under it.
     drag.current = { key, frame: frame.getBoundingClientRect(), startX: e.clientX, startY: e.clientY, x0: s?.x ?? 0, y0: s?.y ?? 0, moved: false };
-    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
   const onPointerMove = (e: PointerEvent) => {
     const d = drag.current;
@@ -167,6 +172,14 @@ export function TvDeviceStudio({
     const dx = e.clientX - d.startX;
     const dy = e.clientY - d.startY;
     if (!d.moved && Math.hypot(dx, dy) < 4) return;
+    if (!d.moved) {
+      // A real drag from here on: keep the pointer even if it leaves the board.
+      try {
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+      } catch {
+        /* already released */
+      }
+    }
     d.moved = true;
     const x = Math.round((d.x0 + (dx / d.frame.width) * 100) * 10) / 10;
     const y = Math.round((d.y0 + (dy / d.frame.height) * 100) * 10) / 10;
@@ -176,7 +189,7 @@ export function TvDeviceStudio({
     const d = drag.current;
     drag.current = null;
     if (!d) return;
-    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    if ((e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     if (d.moved) {
       // The click that ends a drag must not change the selection.
       onSelect?.(d.key);
@@ -192,6 +205,7 @@ export function TvDeviceStudio({
   const editHandlers = editing
     ? {
         onClickCapture: (e: MouseEvent) => {
+          if (e.altKey) return;
           const key = keyAt(e.target);
           if (!key) return;
           e.preventDefault();
@@ -212,6 +226,15 @@ export function TvDeviceStudio({
         onMouseLeave: () => setHovered(null),
       }
     : {};
+
+  if (fullscreen) {
+    return (
+      <div className={`fixed inset-0 z-[60] bg-black${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
+        {editing && <EditHighlight hovered={hovered} selected={selected} />}
+        <BoardInFrame {...props} editing={editing} />
+      </div>
+    );
+  }
 
   return (
     <div className={`space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>

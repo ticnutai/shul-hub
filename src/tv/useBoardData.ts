@@ -108,7 +108,7 @@ function jerusalemDateKey(date: Date): string {
  * `day_type` only, so a category like סליחות - whose minyanim are stored as
  * `custom` - never appeared on the wall at all.
  */
-function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidden: Set<string>) {
+export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidden: Set<string>) {
   const dayType = dayTypeFor(now);
   // Hidden from the board by the admin (the website still lists them).
   const minyanim = (data.minyanim ?? []).filter((m) => !hidden.has(`minyan:${m.id}`));
@@ -163,7 +163,9 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
 
   for (const sc of config.slides) {
     if (!sc.enabled) continue;
-    const base = { seconds: sc.seconds, layout: sc.layout };
+    // Split screen: the side column already shows the zmanim, so the prayer
+    // slide uses its timeline layout (the one without a zmanim panel).
+    const base = { seconds: sc.seconds, layout: config.screenLayout === "split" && sc.kind === "prayer" ? "timeline" : sc.layout };
 
     if (sc.kind === "prayer") {
       const schedules = prayerSchedules(data, now, zmanim, hidden);

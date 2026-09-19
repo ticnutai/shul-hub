@@ -9,6 +9,8 @@ import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
 import { themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
+import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
+import { ClockContext } from "./clockContext";
 import type { BoardData, BoardSlide } from "./useBoardData";
 import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
 import karovimLogo from "./assets/karovim-logo.png";
@@ -72,14 +74,17 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   );
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   const shabbat = slides[0]?.kind === "shabbat";
+  // The Shabbat screen always takes the whole stage, whatever the layout.
+  const layout = shabbat ? "rotate" : config.screenLayout;
+  const dashboard = layout === "dashboard";
   const alert = shabbat ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
     <BoardEditContext.Provider value={edit}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
-      <div className={`tv-root${config.backgroundImage ? " has-bg-image" : ""}`} style={style}>
+      <div className={`tv-root is-layout-${layout}${config.backgroundImage ? " has-bg-image" : ""}`} style={style}>
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
-        <TvHeader settings={data.settings} now={now} config={config} />
+        <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />
 
         <main className="tv-stage">
           {!data.anyLoaded ? (
@@ -93,6 +98,17 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
                   : "מתחבר לשרת בית הכנסת."}
               </p>
             </div>
+          ) : dashboard ? (
+            <ClockContext.Provider value={now}>
+              <MemoDashboard slides={slides} now={minuteNow} zmanim={zmanim} index={index} clockStyle={config.clockStyle} />
+            </ClockContext.Provider>
+          ) : layout === "split" ? (
+            <div className="tv-split">
+              <SplitSide slides={slides} now={minuteNow} zmanim={zmanim} />
+              <div className="tv-split-main">
+                {slide && <MemoSlideView key={`${slide.id}#${cycle}`} slide={slide} now={minuteNow} zmanim={zmanim} paused={paused} />}
+              </div>
+            </div>
           ) : (
             slide && (
               <MemoSlideView key={`${slide.id}#${cycle}`} slide={slide} now={minuteNow} zmanim={zmanim} paused={paused} />
@@ -100,7 +116,9 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           )}
         </main>
 
-        {config.ticker.enabled && config.ticker.text.trim() && (
+        {dashboard && <DashboardStrip now={minuteNow} extra={config.ticker.enabled ? config.ticker.text : ""} />}
+
+        {!dashboard && config.ticker.enabled && config.ticker.text.trim() && (
           <div className="tv-ticker" {...edit.attr("ticker")}>
             <span
               className="tv-ticker-text"
@@ -112,7 +130,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         <footer className="tv-footer">
-          {edit.hidden("footer.dots") || shabbat ? (
+          {edit.hidden("footer.dots") || shabbat || dashboard ? (
             <span />
           ) : (
             <div className="tv-footer-slides" {...edit.attr("footer.dots")}>
@@ -159,6 +177,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 }
 
 const MemoSlideView = memo(SlideView);
+const MemoDashboard = memo(DashboardStage);
 
 /** How long the pause / resume icon stays up before it hides itself. */
 const PAUSE_CHIP_MS = 3000;
@@ -183,7 +202,7 @@ function usePauseChip(paused: boolean): "paused" | "resumed" | null {
   return chip;
 }
 
-function TvHeader({ settings, now, config }: { settings: Settings | null; now: Date; config: TvConfig }) {
+function TvHeader({ settings, now, config, clock = true }: { settings: Settings | null; now: Date; config: TvConfig; clock?: boolean }) {
   const dayKey = now.toDateString();
   const day = useMemo(() => {
     const d = new Date(dayKey);
@@ -247,9 +266,9 @@ function TvHeader({ settings, now, config }: { settings: Settings | null; now: D
           )}
         </div>
       </div>
-      {!edit.hidden("header.clock") && (
+      {clock && !edit.hidden("header.clock") && (
         <div className="tv-clock" {...edit.attr("header.clock")}>
-          <div className="tv-clock-time">{formatTime(now)}</div>
+          <ClockFace now={now} style={config.clockStyle} />
           {!edit.hidden("header.date") && (
             <div className="tv-clock-date" {...edit.attr("header.date")}>
               {day.hebrew} · {gregorian}

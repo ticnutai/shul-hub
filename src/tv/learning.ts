@@ -138,3 +138,24 @@ export function upcomingDays(date: Date, days = 21, limit = 6): UpcomingDay[] {
     })
     .slice(0, limit);
 }
+
+/**
+ * The seasonal insertions in the Amidah, as said in Eretz Yisrael:
+ * "משיב הרוח ומוריד הגשם" from Shemini Atzeret (22 Tishrei) until the first
+ * day of Pesach, otherwise "מוריד הטל"; "ותן טל ומטר לברכה" from 7
+ * Cheshvan until Pesach, otherwise "ותן ברכה".
+ */
+export function seasonalPrayers(date: Date): { geshem: boolean; talUmatar: boolean; text: string } {
+  const h = new HDate(date);
+  const m = h.getMonth();
+  const d = h.getDate();
+  // Hebcal months: NISAN = 1 ... ELUL = 6, TISHREI = 7, CHESHVAN = 8 ... ADAR II = 13.
+  const beforePesach = m === 1 && d < 15;
+  const geshem = (m === 7 && d >= 22) || m >= 8 || beforePesach;
+  const talUmatar = (m === 8 && d >= 7) || m >= 9 || beforePesach;
+  return {
+    geshem,
+    talUmatar,
+    text: `${geshem ? "משיב הרוח ומוריד הגשם" : "מוריד הטל"} · ${talUmatar ? "ותן טל ומטר לברכה" : "ותן ברכה"}`,
+  };
+}

@@ -1,5 +1,22 @@
-import { ArrowDown, ArrowLeftRight, ArrowUp, Eye, EyeOff, Globe, Minus, Move, MousePointerClick, Plus, RotateCcw, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowLeftRight,
+  ArrowRight,
+  ArrowUp,
+  Crosshair,
+  Eye,
+  EyeOff,
+  Globe,
+  Minus,
+  Move,
+  MousePointerClick,
+  Plus,
+  RotateCcw,
+  Trash2,
+  X,
+} from "lucide-react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -178,6 +195,35 @@ function ElementLook({ k, style, onEdit }: { k: string; style: ElementStyle | un
   const set = (patch: Partial<ElementStyle>, group = "look") => onEdit(`style:${group}:${k}`, (c) => setElementStyle(c, k, patch));
   const changed = Boolean(style && Object.keys(style).length);
   const isHex = /^#[0-9a-f]{6}$/i.test(style?.color ?? "");
+  const bgHex = /^#[0-9a-f]{6}$/i.test(style?.bg ?? "");
+  const [step, setStep] = useState(1);
+  // Moves read the latest draft, so a held joystick or key accumulates.
+  const nudge = (dx: number, dy: number) =>
+    onEdit(`style:pos:${k}`, (c) => {
+      const cur = c.styles[k];
+      const clamp = (v: number) => Math.round(Math.min(50, Math.max(-50, v)) * 10) / 10;
+      return setElementStyle(c, k, { x: clamp((cur?.x ?? 0) + dx), y: clamp((cur?.y ?? 0) + dy) });
+    });
+
+  // Keyboard: arrows move the selected element (Shift: 4x), unless typing.
+  const nudgeRef = useRef(nudge);
+  nudgeRef.current = nudge;
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+      const d = stepRef.current * (e.shiftKey ? 4 : 1);
+      const move: Record<string, [number, number]> = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] };
+      const m = move[e.key];
+      if (!m) return;
+      e.preventDefault();
+      nudgeRef.current(m[0], m[1]);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   return (
     <div className="space-y-2 border-t pt-3">
@@ -218,15 +264,166 @@ function ElementLook({ k, style, onEdit }: { k: string; style: ElementStyle | un
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <label className="flex items-center gap-2">
-          ימין/שמאל
-          <NumStep label="הזזה אופקית" value={style?.x ?? 0} min={-50} max={50} step={0.5} format={(v) => `${v}%`} onChange={(v) => set({ x: v }, "pos")} />
+          משקל
+          <select
+            aria-label="עובי הגופן של הרכיב"
+            value={style?.weight ?? ""}
+            onChange={(e) => set({ weight: e.target.value ? Number(e.target.value) : undefined }, "weight")}
+            className="h-8 rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="">כמו בעיצוב</option>
+            <option value="300">דק</option>
+            <option value="400">רגיל</option>
+            <option value="600">בינוני</option>
+            <option value="800">מודגש</option>
+            <option value="900">שחור</option>
+          </select>
         </label>
         <label className="flex items-center gap-2">
-          למעלה/למטה
-          <NumStep label="הזזה אנכית" value={style?.y ?? 0} min={-50} max={50} step={0.5} format={(v) => `${v}%`} onChange={(v) => set({ y: v }, "pos")} />
+          רקע
+          <input
+            type="color"
+            aria-label="צבע רקע לרכיב"
+            value={bgHex ? style!.bg! : "#000000"}
+            onChange={(e) => set({ bg: e.target.value }, "bg")}
+            className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
+          />
+          {style?.bg && (
+            <Button type="button" variant="ghost" size="sm" className="h-7 px-1.5 text-xs" onClick={() => set({ bg: undefined }, "bg")}>
+              בלי רקע
+            </Button>
+          )}
         </label>
-        <span className="text-xs text-muted-foreground">אפשר גם לגרור את הרכיב בתצוגה. ההזזה באחוזי מסך, כך שהיא נשמרת בכל גודל מסך.</span>
+        <label className="flex items-center gap-2">
+          שקיפות
+          <NumStep label="אטימות הרכיב" value={Math.round((style?.opacity ?? 1) * 100)} min={15} max={100} step={5} format={(v) => `${v}%`} onChange={(v) => set({ opacity: v / 100 }, "opacity")} />
+        </label>
       </div>
+      <div className="flex flex-wrap items-center gap-4 text-sm">
+        <Joystick onNudge={nudge} step={step} onReset={() => set({ x: 0, y: 0 }, "pos")} />
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            מיקום:
+            <span className="font-mono text-xs tabular-nums" aria-live="polite">
+              {style?.x ?? 0}% , {style?.y ?? 0}%
+            </span>
+          </div>
+          <div className="flex items-center gap-1 text-xs">
+            צעד:
+            {[0.5, 1, 5].map((s) => (
+              <Button key={s} type="button" size="sm" variant={step === s ? "default" : "outline"} className="h-7 px-2 text-xs" onClick={() => setStep(s)}>
+                {s}%
+              </Button>
+            ))}
+          </div>
+          <p className="max-w-56 text-xs text-muted-foreground">
+            גררו את הכפתור שבמרכז הג׳ויסטיק (רחוק יותר = מהר יותר), לחצו על החצים, השתמשו בחצי המקלדת (Shift = צעד גדול) או גררו את הרכיב עצמו בלוח. ההזזה באחוזי מסך, כך שהיא נכונה בכל גודל מסך.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A joystick for moving the selected element: drag the knob and the element
+ * glides in that direction - the further from the centre, the faster - and
+ * the knob springs back on release. The arrows step once per click (and keep
+ * stepping while held); the centre resets the position.
+ */
+function Joystick({ onNudge, step, onReset }: { onNudge: (dx: number, dy: number) => void; step: number; onReset: () => void }) {
+  const RADIUS = 34;
+  const MAX_SPEED = 18; // % of the screen per second at full deflection
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const knobRef = useRef(knob);
+  const nudgeRef = useRef(onNudge);
+  nudgeRef.current = onNudge;
+  const frame = useRef<number | null>(null);
+  const origin = useRef<{ x: number; y: number } | null>(null);
+
+  const stopLoop = () => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+  };
+  useEffect(() => stopLoop, []);
+
+  const loop = (last: number) => (t: number) => {
+    const dt = Math.min(0.1, (t - last) / 1000);
+    const { x, y } = knobRef.current;
+    if (x || y) nudgeRef.current(((x / RADIUS) * MAX_SPEED * dt), ((y / RADIUS) * MAX_SPEED * dt));
+    frame.current = requestAnimationFrame(loop(t));
+  };
+
+  const onDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      /* the pointer is already gone; the drag still works without capture */
+    }
+    origin.current = { x: e.clientX, y: e.clientY };
+    stopLoop();
+    frame.current = requestAnimationFrame(loop(performance.now()));
+  };
+  const onMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!origin.current) return;
+    let x = e.clientX - origin.current.x;
+    let y = e.clientY - origin.current.y;
+    const len = Math.hypot(x, y);
+    if (len > RADIUS) {
+      x = (x / len) * RADIUS;
+      y = (y / len) * RADIUS;
+    }
+    knobRef.current = { x, y };
+    setKnob({ x, y });
+  };
+  const onUp = () => {
+    origin.current = null;
+    knobRef.current = { x: 0, y: 0 };
+    setKnob({ x: 0, y: 0 });
+    stopLoop();
+  };
+
+  // Arrow buttons: one step per click, repeating while held.
+  const repeat = useRef<number | null>(null);
+  const hold = (dx: number, dy: number) => ({
+    onPointerDown: () => {
+      nudgeRef.current(dx * step, dy * step);
+      repeat.current = window.setInterval(() => nudgeRef.current(dx * step, dy * step), 120);
+    },
+    onPointerUp: () => repeat.current !== null && window.clearInterval(repeat.current),
+    onPointerLeave: () => repeat.current !== null && window.clearInterval(repeat.current),
+  });
+  const arrow = "absolute grid size-8 place-items-center rounded-full bg-background/90 text-foreground shadow ring-1 ring-border hover:bg-secondary";
+
+  return (
+    <div className="relative size-36 shrink-0 select-none rounded-full bg-gradient-to-b from-muted to-muted/40 ring-1 ring-border" role="group" aria-label="ג׳ויסטיק להזזת הרכיב">
+      <button type="button" aria-label="הזזה למעלה" className={`${arrow} left-1/2 top-1 -translate-x-1/2`} {...hold(0, -1)}>
+        <ArrowUp className="size-4" />
+      </button>
+      <button type="button" aria-label="הזזה למטה" className={`${arrow} bottom-1 left-1/2 -translate-x-1/2`} {...hold(0, 1)}>
+        <ArrowDown className="size-4" />
+      </button>
+      <button type="button" aria-label="הזזה שמאלה" className={`${arrow} left-1 top-1/2 -translate-y-1/2`} {...hold(-1, 0)}>
+        <ArrowLeft className="size-4" />
+      </button>
+      <button type="button" aria-label="הזזה ימינה" className={`${arrow} right-1 top-1/2 -translate-y-1/2`} {...hold(1, 0)}>
+        <ArrowRight className="size-4" />
+      </button>
+      <button
+        type="button"
+        aria-label="ידית הג׳ויסטיק - גררו כדי להזיז; לחיצה כפולה מאפסת את המיקום"
+        title="גררו כדי להזיז · לחיצה כפולה: חזרה למקום המקורי"
+        className="absolute left-1/2 top-1/2 grid size-12 cursor-grab touch-none place-items-center rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-primary/25 active:cursor-grabbing"
+        style={{ transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`, transition: origin.current ? "none" : "transform 160ms ease-out" }}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerUp={onUp}
+        onPointerCancel={onUp}
+        onDoubleClick={onReset}
+      >
+        <Crosshair className="size-5" />
+      </button>
     </div>
   );
 }

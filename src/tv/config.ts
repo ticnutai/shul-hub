@@ -80,12 +80,32 @@ export interface ElementStyle {
   scale?: number;
   /** A safe colour (hex / rgb / hsl). */
   color?: string;
+  /** Background colour behind the element (safe colour). */
+  bg?: string;
+  /** Font weight, 300-900. */
+  weight?: number;
+  /** 0.15-1. */
+  opacity?: number;
   /** Offset in percent of the screen width / height, -50..50. */
   x?: number;
   y?: number;
 }
 
+/**
+ * How the whole screen is arranged:
+ *   rotate     one slide at a time, full width (the original board)
+ *   split      a fixed side column (next minyan + zmanim) beside the slides
+ *   dashboard  everything at once, no rotation - prayer times, a large clock,
+ *              zmanim, an announcement and lessons, with a strip at the bottom
+ */
+export type ScreenLayout = "rotate" | "split" | "dashboard";
+export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard"];
+export type ClockStyle = "digital" | "analog" | "both";
+export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
+
 export interface TvConfig {
+  screenLayout: ScreenLayout;
+  clockStyle: ClockStyle;
   /** A built-in theme id, or the id of one of `customThemes`. */
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
@@ -183,6 +203,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   flipped: [],
   customThemes: [],
   styles: {},
+  screenLayout: "rotate",
+  clockStyle: "digital",
 };
 
 const KINDS = Object.keys(SLIDE_LAYOUTS) as SlideKind[];
@@ -244,6 +266,9 @@ export function normalizeElementStyle(raw: unknown): ElementStyle | null {
   const s: ElementStyle = {};
   if (typeof raw.scale === "number" && Number.isFinite(raw.scale) && raw.scale !== 1) s.scale = Math.min(2, Math.max(0.5, raw.scale));
   if (typeof raw.color === "string" && isSafeCssValue(raw.color)) s.color = raw.color.trim();
+  if (typeof raw.bg === "string" && isSafeCssValue(raw.bg)) s.bg = raw.bg.trim();
+  if (typeof raw.weight === "number" && Number.isFinite(raw.weight)) s.weight = Math.round(Math.min(900, Math.max(300, raw.weight)) / 100) * 100;
+  if (typeof raw.opacity === "number" && Number.isFinite(raw.opacity) && raw.opacity < 1) s.opacity = Math.round(Math.min(1, Math.max(0.15, raw.opacity)) * 100) / 100;
   if (typeof raw.x === "number" && Number.isFinite(raw.x) && raw.x !== 0) s.x = Math.min(50, Math.max(-50, Math.round(raw.x * 10) / 10));
   if (typeof raw.y === "number" && Number.isFinite(raw.y) && raw.y !== 0) s.y = Math.min(50, Math.max(-50, Math.round(raw.y * 10) / 10));
   return Object.keys(s).length ? s : null;
@@ -349,5 +374,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
     customThemes,
     styles: normalizeStyles(raw.styles),
+    screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
+    clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
   };
 }
