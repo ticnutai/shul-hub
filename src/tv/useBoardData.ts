@@ -88,7 +88,7 @@ export type BoardSlide =
   | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
   | (SlideBase & { kind: "shiurim"; items: Shiur[] })
   | (SlideBase & { kind: "slideshow"; images: TvConfig["slideshow"]["images"]; secondsPerImage: number })
-  | (SlideBase & { kind: "shabbat"; times: ShabbatTimes });
+  | (SlideBase & { kind: "shabbat"; times: ShabbatTimes; scenes: string[]; secondsPerScene: number });
 
 const ANNOUNCEMENTS_PER_PAGE = 4;
 
@@ -152,7 +152,10 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
   // Shabbat: one screen, no rotation, from candle lighting until it ends.
   if (config.shabbat.enabled) {
     const times = shabbatNow(now, data.settings, config.shabbat.endMinutesAfterSunset);
-    if (times) return [{ id: "shabbat", kind: "shabbat", seconds: 3600, layout: "scene", times }];
+    if (times) {
+      const { scenes, rotate, secondsPerScene } = config.shabbat;
+      return [{ id: "shabbat", kind: "shabbat", seconds: 3600, layout: "scene", times, scenes: rotate ? scenes : scenes.slice(0, 1), secondsPerScene }];
+    }
   }
   const slides: BoardSlide[] = [];
   const nowMs = now.getTime();

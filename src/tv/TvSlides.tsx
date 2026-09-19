@@ -86,7 +86,7 @@ export function SlideView({
     case "slideshow":
       return <SlideshowSlide slide={slide} paused={paused} />;
     case "shabbat":
-      return <ShabbatSlide times={slide.times} now={now} />;
+      return <ShabbatSlide times={slide.times} now={now} scenes={slide.scenes} secondsPerScene={slide.secondsPerScene} paused={paused} />;
   }
 }
 

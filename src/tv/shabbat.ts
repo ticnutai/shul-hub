@@ -35,14 +35,25 @@ function dayAt(now: Date, offsetDays: number): Date {
  * The Shabbat times if `now` is inside Shabbat (candle lighting .. end),
  * otherwise null.
  */
-export function shabbatNow(now: Date, settings: Settings | null | undefined, endMinutesAfterSunset: number): ShabbatTimes | null {
+export function shabbatNow(
+  now: Date,
+  settings: Settings | null | undefined,
+  endMinutesAfterSunset: number,
+): ShabbatTimes | null {
   const weekday = jerusalemWeekday(now);
   if (weekday !== 5 && weekday !== 6) return null;
 
   const friday = zmanimFor(dayAt(now, weekday === 5 ? 0 : -1), settings);
   const saturday = zmanimFor(dayAt(now, weekday === 5 ? 1 : 0), settings);
-  const end = saturday.sunset ? new Date(saturday.sunset.getTime() + endMinutesAfterSunset * 60_000) : null;
-  const times: ShabbatTimes = { candle: friday.candle, sunset: friday.sunset, shma: saturday.sof_zman_shma, end };
+  const end = saturday.sunset
+    ? new Date(saturday.sunset.getTime() + endMinutesAfterSunset * 60_000)
+    : null;
+  const times: ShabbatTimes = {
+    candle: friday.candle,
+    sunset: friday.sunset,
+    shma: saturday.sof_zman_shma,
+    end,
+  };
 
   if (weekday === 5) return friday.candle && now >= friday.candle ? times : null;
   return end && now < end ? times : null;
@@ -54,3 +65,20 @@ export function nextCandleLighting(now: Date, settings: Settings | null | undefi
   const daysToFriday = (5 - weekday + 7) % 7;
   return zmanimFor(dayAt(now, daysToFriday), settings).candle;
 }
+
+/** Built-in Shabbat pictures: drawn, so they are sharp on any screen and cost no download. */
+export const SHABBAT_ART = [
+  { id: "classic", label: "חלות ונרות", description: "חלות קלועות תחת מפת קטיפה, נרות בפמוטי כסף" },
+  { id: "kiddush", label: "כוס קידוש", description: "גביע כסף מלא יין, נרות וחלה" },
+  {
+    id: "jerusalem",
+    label: "ירושלים בערב שבת",
+    description: "חומות העיר העתיקה בשקיעה ונרות על אדן אבן",
+  },
+  {
+    id: "candles",
+    label: "נרות על מפה לבנה",
+    description: "נרות דולקים על מפת שבת לבנה, 'לכבוד שבת קודש'",
+  },
+] as const;
+export type ShabbatArtId = (typeof SHABBAT_ART)[number]["id"];

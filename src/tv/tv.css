@@ -1330,9 +1330,42 @@
 }
 
 /* A finite flicker (~90 s), replayed when the flame is re-keyed every 10
-   minutes; at rest the flame is still, so the idle board costs no CPU. */
+   minutes; at rest the flame is still, so the idle board costs no CPU.
+   The origin is the flame's own base, so it holds in a scaled candle too. */
 .tv-flame {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
   animation: tv-flame 1.9s ease-in-out 48;
+}
+
+/* One picture of the Shabbat slideshow; each switch fades in once. */
+.tv-shabbat-scene {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  animation: tv-shabbat-fade 1.4s ease-out both;
+}
+
+@keyframes tv-shabbat-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* An uploaded photo, framed like the drawings (16:9-ish, rounded, warm edge). */
+.tv-shabbat-photo {
+  display: block;
+  width: 100%;
+  max-height: 62cqh;
+  aspect-ratio: 900 / 520;
+  object-fit: cover;
+  border-radius: calc(var(--u) * 1.8);
+  box-shadow:
+    0 0 0 max(1px, calc(var(--u) * 0.25)) color-mix(in srgb, #e8c874 55%, transparent),
+    0 calc(var(--u) * 1) calc(var(--u) * 3) color-mix(in srgb, #000 40%, transparent);
 }
 
 @keyframes tv-flame {
@@ -1651,6 +1684,7 @@
   .tv-bg,
   .tv-slide,
   .tv-flame,
+  .tv-shabbat-scene,
   .tv-ticker-text,
   .tv-alert-card,
   .tv-slideshow.is-kenburns .tv-show-item.is-active img {

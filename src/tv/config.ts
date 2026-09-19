@@ -112,7 +112,21 @@ export interface TvConfig {
    * The Shabbat screen: from candle lighting on Friday until the end of
    * Shabbat the board shows only it (see shabbat.ts).
    */
-  shabbat: { enabled: boolean; endMinutesAfterSunset: number };
+  shabbat: {
+    enabled: boolean;
+    endMinutesAfterSunset: number;
+    /**
+     * The pictures to show, in order: "art:<id>" for a built-in drawing
+     * (ShabbatScene.SHABBAT_ART) or an https URL of an uploaded photo.
+     * Never empty.
+     */
+    scenes: string[];
+    /** Photos the admin uploaded for Shabbat (https URLs), selectable in `scenes`. */
+    photos: string[];
+    /** Rotate through `scenes`; otherwise only the first one is shown. */
+    rotate: boolean;
+    secondsPerScene: number;
+  };
   slideshow: { images: Array<{ url: string; caption?: string }>; secondsPerImage: number };
   /**
    * Board-only wording, keyed by element (see EDITABLE in boardEdit.tsx):
@@ -162,7 +176,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
     popupSeconds: 40,
   },
   ticker: { enabled: false, text: "" },
-  shabbat: { enabled: true, endMinutesAfterSunset: 40 },
+  shabbat: { enabled: true, endMinutesAfterSunset: 40, scenes: ["art:classic"], photos: [], rotate: false, secondsPerScene: 60 },
   slideshow: { images: [], secondsPerImage: 8 },
   texts: {},
   hidden: [],
@@ -208,6 +222,21 @@ function normalizeCustomThemes(raw: unknown): TvTheme[] {
     if (out.length >= 24) break;
   }
   return out;
+}
+
+/** Built-in Shabbat drawings (ids of ShabbatScene.SHABBAT_ART). */
+export const SHABBAT_ART_IDS = ["classic", "kiddush", "jerusalem", "candles"] as const;
+
+function normalizeShabbatScenes(raw: unknown): string[] {
+  const out: string[] = [];
+  for (const s of Array.isArray(raw) ? raw : []) {
+    if (typeof s !== "string" || out.includes(s)) continue;
+    const art = s.startsWith("art:") && (SHABBAT_ART_IDS as readonly string[]).includes(s.slice(4));
+    const photo = /^https:\/\/[^\s"'()<>]+$/i.test(s) && s.length <= 600;
+    if (art || photo) out.push(s);
+    if (out.length >= 30) break;
+  }
+  return out.length ? out : ["art:classic"];
 }
 
 export function normalizeElementStyle(raw: unknown): ElementStyle | null {
@@ -298,6 +327,10 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     shabbat: {
       enabled: bool(shabbat.enabled, d.shabbat.enabled),
       endMinutesAfterSunset: Math.round(num(shabbat.endMinutesAfterSunset, d.shabbat.endMinutesAfterSunset, 18, 90)),
+      scenes: normalizeShabbatScenes(shabbat.scenes),
+      photos: normalizeShabbatScenes(shabbat.photos).filter((s) => !s.startsWith("art:")),
+      rotate: bool(shabbat.rotate, d.shabbat.rotate),
+      secondsPerScene: Math.round(num(shabbat.secondsPerScene, d.shabbat.secondsPerScene, 10, 3600)),
     },
     slideshow: {
       images: (Array.isArray(slideshow.images) ? slideshow.images : [])

@@ -19,7 +19,10 @@ const data: BoardData = {
   anyLoaded: true,
   sync: { status: "live", lastSyncedAt: null },
 };
-const cfg = (over: Partial<TvConfig> = {}): TvConfig => ({ ...structuredClone(DEFAULT_TV_CONFIG), ...over });
+const cfg = (over: Partial<TvConfig> = {}): TvConfig => ({
+  ...structuredClone(DEFAULT_TV_CONFIG),
+  ...over,
+});
 
 describe("Shabbat window", () => {
   it("starts exactly at candle lighting on Friday", () => {
@@ -45,7 +48,9 @@ describe("Shabbat window", () => {
   });
 
   it("the next candle lighting from a weekday is this Friday's", () => {
-    expect(nextCandleLighting(at("2026-09-16T10:00:00+03:00"), null)?.getTime()).toBe(friday.candle!.getTime());
+    expect(nextCandleLighting(at("2026-09-16T10:00:00+03:00"), null)?.getTime()).toBe(
+      friday.candle!.getTime(),
+    );
   });
 });
 
@@ -58,13 +63,70 @@ describe("the board on Shabbat", () => {
   });
 
   it("rotates as usual when the Shabbat screen is switched off", () => {
-    const slides = buildSlides(data, cfg({ shabbat: { enabled: false, endMinutesAfterSunset: 40 } }), shabbatTime, saturday);
+    const slides = buildSlides(
+      data,
+      cfg({ shabbat: { ...DEFAULT_TV_CONFIG.shabbat, enabled: false } }),
+      shabbatTime,
+      saturday,
+    );
     expect(slides.some((s) => s.kind === "shabbat")).toBe(false);
     expect(slides.length).toBeGreaterThan(0);
   });
 
   it("an older saved config (no shabbat field) gets the Shabbat screen on, ending 40 minutes after sunset", () => {
-    expect(normalizeTvConfig({ theme: "navy" }).shabbat).toEqual({ enabled: true, endMinutesAfterSunset: 40 });
-    expect(normalizeTvConfig({ shabbat: { enabled: false, endMinutesAfterSunset: 500 } }).shabbat).toEqual({ enabled: false, endMinutesAfterSunset: 90 });
+    expect(normalizeTvConfig({ theme: "navy" }).shabbat).toEqual({
+      enabled: true,
+      endMinutesAfterSunset: 40,
+      scenes: ["art:classic"],
+      photos: [],
+      rotate: false,
+      secondsPerScene: 60,
+    });
+    expect(
+      normalizeTvConfig({ shabbat: { enabled: false, endMinutesAfterSunset: 500 } }).shabbat,
+    ).toMatchObject({ enabled: false, endMinutesAfterSunset: 90 });
+  });
+});
+
+describe("Shabbat pictures", () => {
+  const shabbatTime = at("2026-09-19T11:00:00+03:00");
+  const photo = "https://example.supabase.co/storage/v1/object/public/tv/a.jpg";
+
+  it("keeps built-in drawings and https photos, drops the rest, never empty", () => {
+    const c = normalizeTvConfig({
+      shabbat: {
+        scenes: ["art:kiddush", "art:nope", "javascript:alert(1)", "http://x/a.jpg", photo, photo],
+        rotate: true,
+        secondsPerScene: 2,
+      },
+    });
+    expect(c.shabbat.scenes).toEqual(["art:kiddush", photo]);
+    expect(c.shabbat.secondsPerScene).toBe(10);
+    expect(normalizeTvConfig({ shabbat: { scenes: ["bad"] } }).shabbat.scenes).toEqual([
+      "art:classic",
+    ]);
+  });
+
+  it("a slideshow passes every picture to the slide; without it only the first", () => {
+    const shabbat = {
+      ...DEFAULT_TV_CONFIG.shabbat,
+      scenes: ["art:jerusalem", photo],
+      secondsPerScene: 30,
+    };
+    const on = buildSlides(
+      data,
+      cfg({ shabbat: { ...shabbat, rotate: true } }),
+      shabbatTime,
+      saturday,
+    )[0];
+    const off = buildSlides(
+      data,
+      cfg({ shabbat: { ...shabbat, rotate: false } }),
+      shabbatTime,
+      saturday,
+    )[0];
+    expect(on.kind === "shabbat" && on.scenes).toEqual(["art:jerusalem", photo]);
+    expect(on.kind === "shabbat" && on.secondsPerScene).toBe(30);
+    expect(off.kind === "shabbat" && off.scenes).toEqual(["art:jerusalem"]);
   });
 });

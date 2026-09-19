@@ -61,7 +61,11 @@ import {
   type TvTheme,
 } from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
-import { nextCandleLighting } from "@/tv/shabbat";
+import { nextCandleLighting, SHABBAT_ART } from "@/tv/shabbat";
+import { ShabbatPicture } from "@/tv/ShabbatScene";
+
+const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600];
+const intervalLabel = (s: number) => (s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה");
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useBroadcastDraft } from "./tvDraftChannel";
 import { TvEditInspector } from "./TvEditInspector";
@@ -366,6 +370,50 @@ export function TvDesignPanel() {
   // Preview the Shabbat screen: jump the preview clock to 20 minutes after
   // the next candle lighting, until the admin goes back to real time.
   const [shabbatPreview, setShabbatPreview] = useState(false);
+  // Shabbat pictures: pick one, or several for a slideshow.
+  const sb = draft.shabbat;
+  const pickScene = (scene: string) =>
+    edit("sb-scene", (c) => {
+      const cur = c.shabbat.scenes;
+      if (!c.shabbat.rotate) return { ...c, shabbat: { ...c.shabbat, scenes: [scene] } };
+      const has = cur.includes(scene);
+      if (has && cur.length === 1) return c; // at least one picture
+      return { ...c, shabbat: { ...c.shabbat, scenes: has ? cur.filter((s) => s !== scene) : [...cur, scene] } };
+    });
+  const [sbUploading, setSbUploading] = useState(false);
+  const uploadShabbat = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setSbUploading(true);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadTvImage(file);
+        urls.push(uploaded.url);
+        if (uploaded.lowRes)
+          toast.warning(`"${file.name}" קטנה מדי לטלוויזיה (${uploaded.lowRes.width}×${uploaded.lowRes.height}) ותיראה מעט מטושטשת.`, { duration: 9000 });
+      }
+      edit("sb-upload", (c) => ({
+        ...c,
+        shabbat: {
+          ...c.shabbat,
+          photos: [...c.shabbat.photos, ...urls].slice(0, 30),
+          // A new photo is shown right away: alone, or added to the slideshow.
+          scenes: c.shabbat.rotate ? [...c.shabbat.scenes, ...urls].slice(0, 30) : [urls[0]],
+        },
+      }));
+      toast.success(urls.length > 1 ? `${urls.length} תמונות נוספו` : "התמונה נוספה ונבחרה");
+    } catch (e) {
+      toast.error(`ההעלאה נכשלה: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSbUploading(false);
+    }
+  };
+  const removeShabbatPhoto = (url: string) =>
+    edit("sb-photo-del", (c) => {
+      const scenes = c.shabbat.scenes.filter((s) => s !== url);
+      return { ...c, shabbat: { ...c.shabbat, photos: c.shabbat.photos.filter((p) => p !== url), scenes: scenes.length ? scenes : ["art:classic"] } };
+    });
+
   const toggleShabbatPreview = () => {
     if (shabbatPreview) {
       setShabbatPreview(false);
@@ -955,6 +1003,75 @@ export function TvDesignPanel() {
                 {m === 72 ? "72 (ר״ת)" : `${m} (מקובל)`}
               </Button>
             ))}
+          </div>
+          <div className="space-y-2 rounded-lg border p-3">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              <span className="text-sm font-medium">תמונת השבת</span>
+              <label className="flex items-center gap-2 text-sm">
+                <Switch
+                  checked={sb.rotate}
+                  onCheckedChange={(on) =>
+                    edit("sb-rotate", (c) => ({ ...c, shabbat: { ...c.shabbat, rotate: on, scenes: on ? c.shabbat.scenes : c.shabbat.scenes.slice(0, 1) } }))
+                  }
+                />
+                מצגת: החלפת תמונות
+              </label>
+              {sb.rotate && (
+                <label className="flex items-center gap-2 text-sm">
+                  כל
+                  <select
+                    aria-label="זמן לכל תמונה"
+                    value={sb.secondsPerScene}
+                    onChange={(e) => edit("sb-secs", (c) => ({ ...c, shabbat: { ...c.shabbat, secondsPerScene: Number(e.target.value) } }))}
+                    className="h-8 rounded-md border bg-background px-2 text-sm"
+                  >
+                    {(SCENE_INTERVALS.includes(sb.secondsPerScene) ? SCENE_INTERVALS : [...SCENE_INTERVALS, sb.secondsPerScene].sort((a, b) => a - b)).map((s) => (
+                      <option key={s} value={s}>
+                        {intervalLabel(s)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {sb.rotate
+                ? `לחצו על תמונות כדי להוסיף או להוציא מהמצגת; המספר הוא הסדר. נבחרו ${sb.scenes.length}.`
+                : "לחצו על תמונה כדי לבחור אותה. להחלפת תמונות לפי זמן - הפעילו \"מצגת\"."}
+            </p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {[...SHABBAT_ART.map((a) => ({ scene: `art:${a.id}`, label: a.label, photo: false })), ...sb.photos.map((p, i) => ({ scene: p, label: `תמונה ${i + 1}`, photo: true }))].map(
+                ({ scene, label, photo }) => {
+                  const order = sb.scenes.indexOf(scene);
+                  const chosen = order >= 0;
+                  return (
+                    <div key={scene} className={`relative overflow-hidden rounded-lg border bg-[#0b1628] transition ${chosen ? "ring-2 ring-primary ring-offset-2" : "opacity-80 hover:opacity-100"}`}>
+                      <button type="button" aria-pressed={chosen} aria-label={label} onClick={() => pickScene(scene)} className="block w-full">
+                        <div className="pointer-events-none aspect-[900/520] p-1 [&_.tv-shabbat-photo]:max-h-none [&_.tv-shabbat-photo]:shadow-none [&_svg]:h-full [&_svg]:w-full">
+                          <ShabbatPicture scene={scene} />
+                        </div>
+                        <div className="bg-background/95 px-2 py-1 text-right text-xs font-medium">{label}</div>
+                      </button>
+                      {chosen && sb.rotate && (
+                        <span className="absolute start-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{order + 1}</span>
+                      )}
+                      {photo && (
+                        <Button type="button" variant="secondary" size="icon" className="absolute end-1.5 top-1.5 size-7" aria-label={`הסרת ${label}`} onClick={() => removeShabbatPhoto(scene)}>
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  );
+                },
+              )}
+            </div>
+            <Button type="button" variant="outline" size="sm" asChild disabled={sbUploading}>
+              <label className="cursor-pointer">
+                <ImagePlus className="size-4" /> {sbUploading ? "מעלה…" : "העלאת תמונות משלכם"}
+                <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void uploadShabbat(e.target.files)} />
+              </label>
+            </Button>
+            <span className="ms-2 text-xs text-muted-foreground">מומלץ 1920×1080 ומעלה; התמונה מותאמת אוטומטית לטלוויזיה.</span>
           </div>
           <p className="text-xs text-muted-foreground">
             אפשר לשנות את הכיתוב, להסתיר חלקים ולהזיז בעריכה ישירה: לחצו "תצוגת מסך שבת" ואז "עריכה ישירה בלוח".
