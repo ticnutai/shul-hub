@@ -829,7 +829,14 @@ html.torah-luxury .card-elev {
     direction: rtl;
     font-family: 'Heebo', 'Rubik', 'Arial', 'Tahoma', sans-serif;
     max-width: 100%;
-    overflow-x: hidden;
+    /*
+     * clip, not hidden. "overflow-x: hidden" turns the body into a scroll
+     * container, and every "position: sticky" inside the site then stops
+     * sticking - which is what left the editor's preview scrolling away and
+     * the whole side of the page empty. "clip" cuts sideways overflow the
+     * same way without creating a scroll container.
+     */
+    overflow-x: clip;
   }
 
   body.has-bottom-system-bar #root {

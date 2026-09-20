@@ -47,7 +47,12 @@ export function AdminPage() {
   return (
     <div className="min-h-screen">
       <CommunityHeader />
-      <main dir="rtl" className="mx-auto max-w-5xl px-3 py-5 text-right sm:px-4 sm:py-8">
+      {/* Forms read better in a narrow column; the TV editor is a preview
+          beside its controls and needs the whole screen. */}
+      <main
+        dir="rtl"
+        className={`mx-auto px-3 py-5 text-right sm:px-4 sm:py-8 ${activeTab === "tv" ? "max-w-[1800px]" : "max-w-5xl"}`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>

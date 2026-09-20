@@ -943,7 +943,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           <TabsTrigger value="content">תוכן</TabsTrigger>
           <TabsTrigger value="tools">כלים</TabsTrigger>
         </TabsList>
-        <TabsContent value="design" className="mt-3 space-y-4">
+        <TabsContent value="design" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
           <Section
             title="ערכת נושא"
             hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה."
@@ -1273,7 +1273,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </div>
           </Section>
         </TabsContent>
-        <TabsContent value="layout" className="mt-3 space-y-4">
+        <TabsContent value="layout" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. מסך השבת תמיד מוצג על כל המסך.">
             <div className="grid grid-cols-3 gap-2">
               {LAYOUT_CHOICES.map((l) => (
@@ -1456,7 +1456,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </ul>
           </Section>
         </TabsContent>
-        <TabsContent value="content" className="mt-3 space-y-4">
+        <TabsContent value="content" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
           <Section
             title="מסך שבת"
             hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי הגדרות בית הכנסת."
@@ -1793,7 +1793,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </div>
           </Section>
         </TabsContent>
-        <TabsContent value="tools" className="mt-3 space-y-4">
+        <TabsContent value="tools" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
           <Section
             title="ייבוא וייצוא"
             hint="גיבוי של ערכות הנושא והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
@@ -1879,7 +1879,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   }
 
   return (
-    <div className={`grid gap-5 ${wide ? "" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"}`}>
+    <div className={`grid gap-5 ${wide ? "" : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]"}`}>
       {/* ------------------------------------------------ preview column -- */}
       <div
         ref={previewColumn}
@@ -1887,7 +1887,17 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           fullscreen ? "overflow-auto bg-background p-4" : ""
         }`}
       >
-        <div className={wide || fullscreen ? "space-y-3" : "lg:sticky lg:top-4 lg:space-y-3"}>
+        {/* Pinned while the controls scroll. It is capped to the window
+            height and scrolls inside itself, because a sticky block taller
+            than the window simply scrolls away - which left the whole left
+            side of a wide screen empty. */}
+        <div
+          className={
+            wide || fullscreen
+              ? "space-y-3"
+              : "lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:space-y-3 lg:overflow-y-auto lg:pe-1"
+          }
+        >
           <div className="flex flex-wrap items-center gap-2">
             <Button
               type="button"
