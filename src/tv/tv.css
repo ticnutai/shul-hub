@@ -1474,6 +1474,617 @@
   text-shadow: 0 calc(var(--u) * 0.25) calc(var(--u) * 0.8) rgba(0, 0, 0, 0.55);
 }
 
+/* --- marble pillars: an arched board between two gold columns ---------- */
+
+.tv-root.is-skin-pillars .tv-bg {
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 0%, rgba(255, 255, 255, 0.1), transparent 70%),
+    linear-gradient(120deg, #efe7d8 0%, #f7f2e7 25%, #e7dcc7 50%, #f7f2e7 75%, #eae0cd 100%);
+}
+
+/* the two fluted columns, drawn as one layer on each side */
+.tv-root.is-skin-pillars::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, #c9a227 0 2px, #f6e3a8 2px 7px, #b8912f 7px 9px, #f6e3a8 9px 14px) left / calc(var(--u) * 5) 100% no-repeat,
+    repeating-linear-gradient(90deg, #c9a227 0 2px, #f6e3a8 2px 7px, #b8912f 7px 9px, #f6e3a8 9px 14px) right / calc(var(--u) * 5) 100% no-repeat;
+}
+
+.tv-root.is-skin-pillars {
+  padding-inline: calc(var(--u) * 7);
+}
+
+/* the drifting background layer must sit behind the columns, not over them */
+.tv-root.is-skin-pillars .tv-bg,
+.tv-root.is-skin-curtain .tv-bg,
+.tv-root.is-skin-arch .tv-bg,
+.tv-root.is-skin-hall .tv-bg {
+  z-index: -2;
+}
+
+.tv-root.is-skin-pillars .tv-panel {
+  border: max(2px, calc(var(--u) * 0.34)) solid #c9a227;
+  border-radius: calc(var(--u) * 7) calc(var(--u) * 7) calc(var(--u) * 1.2) calc(var(--u) * 1.2);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tv-bg-b) 92%, #000), color-mix(in srgb, var(--tv-bg-a) 96%, #000));
+  box-shadow:
+    inset 0 0 0 max(1px, calc(var(--u) * 0.16)) rgba(246, 227, 168, 0.55),
+    0 calc(var(--u) * 0.8) calc(var(--u) * 2.4) rgba(0, 0, 0, 0.35);
+  padding-top: calc(var(--u) * 3);
+}
+
+.tv-root.is-skin-pillars .tv-panel-title {
+  text-align: center;
+  color: #f6e3a8;
+}
+
+/* the header sits on marble, so it needs its own dark plate */
+.tv-root.is-skin-pillars .tv-header {
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2);
+  border: max(2px, calc(var(--u) * 0.3)) solid #c9a227;
+  border-radius: calc(var(--u) * 1.2);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tv-bg-b) 92%, #000), color-mix(in srgb, var(--tv-bg-a) 96%, #000));
+}
+
+.tv-root.is-skin-pillars .tv-dash-strip,
+.tv-root.is-skin-pillars .tv-ticker {
+  border: max(1px, calc(var(--u) * 0.2)) solid #c9a227;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tv-bg-b) 92%, #000), color-mix(in srgb, var(--tv-bg-a) 96%, #000));
+  color: #f6e3a8;
+}
+
+/* --- velvet curtain: a draped valance over the whole board ------------- */
+
+.tv-root.is-skin-curtain::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: calc(var(--u) * 7);
+  z-index: -1;
+  pointer-events: none;
+  background:
+    /* the scalloped hem */
+    radial-gradient(circle at 50% 0, #7a1226 0 calc(var(--u) * 2.6), transparent calc(var(--u) * 2.6)) 0 100% / calc(var(--u) * 6) calc(var(--u) * 3) repeat-x,
+    /* the drape itself */
+    repeating-linear-gradient(90deg, #5c0d1c 0 calc(var(--u) * 1.6), #8a1a30 calc(var(--u) * 1.6) calc(var(--u) * 3.2)),
+    #6d1026;
+  border-bottom: max(2px, calc(var(--u) * 0.3)) solid var(--tv-accent);
+}
+
+.tv-root.is-skin-curtain {
+  padding-top: calc(var(--u) * 8.5);
+}
+
+.tv-root.is-skin-curtain .tv-panel,
+.tv-root.is-skin-curtain .tv-card {
+  border: max(2px, calc(var(--u) * 0.3)) solid var(--tv-accent);
+  border-radius: calc(var(--u) * 1);
+  background: linear-gradient(180deg, color-mix(in srgb, #2a0d12 80%, var(--tv-panel)), color-mix(in srgb, #1a070b 85%, var(--tv-panel)));
+  box-shadow: inset 0 0 calc(var(--u) * 3) rgba(0, 0, 0, 0.5), var(--tv-shadow);
+}
+
+/* the title on a ribbon banner, notched at both ends */
+.tv-root.is-skin-curtain .tv-panel-title {
+  margin-inline: calc(var(--u) * -1);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 2);
+  background: linear-gradient(180deg, #f6e3a8, #c9a227);
+  color: #3a1206;
+  text-align: center;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--u) * 1.4) 50%, 100% 100%, 0 100%, calc(var(--u) * 1.4) 50%);
+  border-radius: 0;
+}
+
+/* The ribbon title is taller than a plain one; give the panel its height
+   back so the last rows are not clipped. */
+.tv-root.is-skin-curtain .tv-panel,
+.tv-root.is-skin-wood .tv-panel {
+  padding-top: calc(var(--u) * 1.1);
+}
+
+.tv-root.is-skin-curtain .tv-panel-title,
+.tv-root.is-skin-wood .tv-panel-title {
+  margin-bottom: calc(var(--u) * 1);
+}
+
+/* --- sky: a light board for a bright room ------------------------------ */
+
+.tv-root.is-skin-sky .tv-bg {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(255, 255, 255, 0.95) 0 calc(var(--u) * 6), transparent calc(var(--u) * 6.5)),
+    radial-gradient(circle at 26% 26%, rgba(255, 255, 255, 0.9) 0 calc(var(--u) * 4.5), transparent calc(var(--u) * 5)),
+    radial-gradient(circle at 78% 16%, rgba(255, 255, 255, 0.85) 0 calc(var(--u) * 5), transparent calc(var(--u) * 5.5)),
+    linear-gradient(180deg, #bfe0f5 0%, #dcf0fb 55%, #f2f8fc 100%);
+}
+
+.tv-root.is-skin-sky .tv-panel,
+.tv-root.is-skin-sky .tv-card {
+  border: max(2px, calc(var(--u) * 0.3)) solid #c9a227;
+  border-radius: calc(var(--u) * 1);
+  background: linear-gradient(180deg, #fffdf7, #f4ecd8);
+  box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 0.16)) #fffdf7, 0 calc(var(--u) * 0.6) calc(var(--u) * 1.8) rgba(60, 80, 110, 0.25);
+  color: #24303f;
+}
+
+.tv-root.is-skin-sky .tv-panel-title {
+  padding: calc(var(--u) * 0.4) calc(var(--u) * 1.6);
+  margin-inline: auto;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6e3a8, #d9b45a);
+  color: #3a2a12;
+  text-align: center;
+}
+
+.tv-root.is-skin-sky .tv-header,
+.tv-root.is-skin-sky .tv-footer,
+.tv-root.is-skin-sky .tv-slide-heading {
+  color: #1c2b3a;
+}
+
+.tv-root.is-skin-sky .tv-title,
+.tv-root.is-skin-sky .tv-clock-time {
+  color: #143a5c;
+}
+
+.tv-root.is-skin-sky .tv-subtitle,
+.tv-root.is-skin-sky .tv-clock-date,
+.tv-root.is-skin-sky .tv-status {
+  color: #3d5a75;
+}
+
+.tv-root.is-skin-sky .tv-header {
+  border-bottom-color: #c9a227;
+}
+
+.tv-root.is-skin-sky .tv-ribbon span {
+  background: rgba(255, 255, 255, 0.75);
+  border-color: #c9a227;
+  color: #24303f;
+}
+
+/* --- walnut: dark wood panels with gold banners ------------------------ */
+
+.tv-root.is-skin-wood .tv-bg {
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.22) 0 2px, transparent 2px 9px),
+    linear-gradient(160deg, #3e2312 0%, #5a3418 45%, #2e1a0d 100%);
+}
+
+.tv-root.is-skin-wood .tv-panel,
+.tv-root.is-skin-wood .tv-card {
+  border: max(2px, calc(var(--u) * 0.34)) solid #c9a227;
+  border-radius: calc(var(--u) * 0.8);
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 10px),
+    linear-gradient(180deg, #5b3419, #3a2010);
+  box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 0.14)) rgba(246, 227, 168, 0.4), var(--tv-shadow);
+  color: #f7ecd4;
+}
+
+.tv-root.is-skin-wood .tv-panel-title {
+  margin-inline: calc(var(--u) * -1.2);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 2);
+  background: linear-gradient(180deg, #f6e3a8, #c9a227);
+  color: #3a1206;
+  text-align: center;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--u) * 1.4) 50%, 100% 100%, 0 100%, calc(var(--u) * 1.4) 50%);
+}
+
+.tv-root.is-skin-wood .tv-panel dt,
+.tv-root.is-skin-wood .tv-panel .tv-minyan-source,
+.tv-root.is-skin-wood .tv-panel .tv-dash-sub,
+.tv-root.is-skin-wood .tv-panel .tv-shiur-meta,
+.tv-root.is-skin-wood .tv-panel .tv-clock-date {
+  color: #d8c49a;
+}
+
+.tv-root.is-skin-wood .tv-panel dd,
+.tv-root.is-skin-wood .tv-panel .tv-minyan-time,
+.tv-root.is-skin-wood .tv-panel .tv-dash-time,
+.tv-root.is-skin-wood .tv-panel .tv-shiur-time,
+.tv-root.is-skin-wood .tv-panel .tv-clock-time {
+  color: #f6e3a8;
+}
+
+.tv-root.is-skin-wood .tv-panel .tv-zman-row,
+.tv-root.is-skin-wood .tv-panel .tv-minyan-row,
+.tv-root.is-skin-wood .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(246, 227, 168, 0.18);
+}
+
+.tv-root.is-skin-wood .tv-dash-strip,
+.tv-root.is-skin-wood .tv-ticker {
+  border: max(1px, calc(var(--u) * 0.18)) solid #c9a227;
+  background: linear-gradient(180deg, #5b3419, #3a2010);
+  color: #f6e3a8;
+}
+
+/* ------------------------------------------------------------ ornaments - */
+
+/*
+ * The carved parts of the ornate skins: a frame with corner scrollwork, a
+ * crown over an arch, and column capitals. They are small SVGs written
+ * inline as data URIs, so they scale to any screen, need no download, and
+ * can be reused by several skins.
+ *
+ * Colours are fixed gold rather than theme variables: a data URI cannot read
+ * a CSS variable, and these skins are gold by definition.
+ */
+
+.tv-root {
+  /* A carved frame: heavy outer line, thin inner line, scrollwork corners.
+     Used with border-image, so a panel of any size keeps sharp corners. */
+  --orn-frame: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><g fill="none" stroke="%23c9a227" stroke-width="4"><rect x="2" y="2" width="116" height="116" rx="6"/><rect x="11" y="11" width="98" height="98" rx="4" stroke-width="2" stroke="%23f6e3a8"/></g><g fill="%23c9a227"><path d="M2 2h34v4H6v30H2z"/><path d="M118 2h-34v4h30v30h4z"/><path d="M2 118h34v-4H6V84H2z"/><path d="M118 118h-34v-4h30V84h4z"/></g><g fill="none" stroke="%23f6e3a8" stroke-width="2.5" stroke-linecap="round"><path d="M14 30c0-9 7-16 16-16 5 0 8 3 8 7s-3 6-6 6-5-2-5-4"/><path d="M106 30c0-9-7-16-16-16-5 0-8 3-8 7s3 6 6 6 5-2 5-4"/><path d="M14 90c0 9 7 16 16 16 5 0 8-3 8-7s-3-6-6-6-5 2-5 4"/><path d="M106 90c0 9-7 16-16 16-5 0-8-3-8-7s3-6 6-6 5 2 5 4"/></g></svg>');
+
+  /* A crown for the top of an arch: scrolls either side of a jewel. */
+  --orn-crown: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="60" viewBox="0 0 200 60"><g fill="none" stroke="%23c9a227" stroke-width="4" stroke-linecap="round"><path d="M100 10v14"/><path d="M96 30c-18 0-30-6-44-6-10 0-16 5-16 11 0 5 4 9 9 9 4 0 7-3 7-6 0-2-1-4-3-4"/><path d="M104 30c18 0 30-6 44-6 10 0 16 5 16 11 0 5-4 9-9 9-4 0-7-3-7-6 0-2 1-4 3-4"/></g><circle cx="100" cy="30" r="9" fill="%23f6e3a8" stroke="%23c9a227" stroke-width="3"/><path d="M100 2l4 8h-8z" fill="%23c9a227"/></svg>');
+
+  /* A Corinthian-ish capital and a matching base for the columns. */
+  --orn-capital: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="70" viewBox="0 0 80 70"><rect x="2" y="2" width="76" height="12" rx="3" fill="%23f6e3a8" stroke="%23b8912f" stroke-width="2"/><path d="M8 14h64l-8 20c-6 14-42 14-48 0z" fill="%23f6e3a8" stroke="%23b8912f" stroke-width="2"/><g fill="none" stroke="%23b8912f" stroke-width="2.5" stroke-linecap="round"><path d="M20 20c0 8 5 14 12 14M60 20c0 8-5 14-12 14M40 20v16"/></g><rect x="10" y="50" width="60" height="10" rx="2" fill="%23e6cf8d" stroke="%23b8912f" stroke-width="2"/></svg>');
+  --orn-base: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="80" height="60" viewBox="0 0 80 60"><rect x="10" y="0" width="60" height="10" rx="2" fill="%23e6cf8d" stroke="%23b8912f" stroke-width="2"/><path d="M8 12h64l6 20H2z" fill="%23f6e3a8" stroke="%23b8912f" stroke-width="2"/><rect x="0" y="34" width="80" height="14" rx="3" fill="%23f6e3a8" stroke="%23b8912f" stroke-width="2"/></svg>');
+
+  /* A small rosette for panel corners that are not framed. */
+  --orn-rosette: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><g fill="none" stroke="%23c9a227" stroke-width="2.5"><circle cx="20" cy="20" r="6"/><path d="M20 4c0 6-3 10-8 10M20 4c0 6 3 10 8 10M20 36c0-6-3-10-8-10M20 36c0-6 3-10 8-10"/></g><circle cx="20" cy="20" r="2.5" fill="%23f6e3a8"/></svg>');
+}
+
+/* --- the gold skin gets the carved frame ------------------------------- */
+
+.tv-root.is-skin-gold .tv-panel {
+  border: calc(var(--u) * 1.1) solid transparent;
+  border-image: var(--orn-frame) 30 round;
+  border-radius: 0;
+  padding: calc(var(--u) * 1.4);
+  box-shadow: var(--tv-shadow);
+}
+
+/* a card already sits inside a framed panel; a second frame is noise */
+.tv-root.is-skin-gold .tv-dash-ann .tv-card,
+.tv-root.is-skin-gold .tv-panel .tv-card {
+  border: max(1px, calc(var(--u) * 0.16)) solid color-mix(in srgb, var(--tv-accent) 45%, transparent);
+  border-image: none;
+  border-radius: calc(var(--u) * 0.8);
+  box-shadow: none;
+}
+
+/* the frame draws its own corners; the plain ones are no longer needed */
+.tv-root.is-skin-gold .tv-panel::before,
+.tv-root.is-skin-gold .tv-panel::after {
+  content: none;
+}
+
+.tv-root.is-skin-gold .tv-header {
+  padding: calc(var(--u) * 1) calc(var(--u) * 2);
+  border: calc(var(--u) * 1) solid transparent;
+  border-image: var(--orn-frame) 30 round;
+  box-shadow: none;
+}
+
+/* --- marble pillars: real columns, veined stone, a crowned arch -------- */
+
+.tv-root.is-skin-pillars .tv-bg {
+  background:
+    /* veins */
+    repeating-linear-gradient(72deg, rgba(150, 130, 100, 0.16) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(104deg, rgba(120, 100, 75, 0.12) 0 2px, transparent 2px 70px),
+    repeating-linear-gradient(28deg, rgba(180, 165, 135, 0.18) 0 3px, transparent 3px 120px),
+    linear-gradient(120deg, #efe7d8 0%, #f9f5ec 25%, #e7dcc7 50%, #f9f5ec 75%, #eae0cd 100%);
+}
+
+.tv-root.is-skin-pillars::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    /* capital, base and fluted shaft - on each side */
+    var(--orn-capital) left top / calc(var(--u) * 7) calc(var(--u) * 6) no-repeat,
+    var(--orn-base) left bottom / calc(var(--u) * 7) calc(var(--u) * 5) no-repeat,
+    repeating-linear-gradient(90deg, #b8912f 0 2px, #f6e3a8 2px 8px, #d9b45a 8px 10px, #f6e3a8 10px 16px) left center / calc(var(--u) * 6) calc(100% - var(--u) * 11) no-repeat,
+    var(--orn-capital) right top / calc(var(--u) * 7) calc(var(--u) * 6) no-repeat,
+    var(--orn-base) right bottom / calc(var(--u) * 7) calc(var(--u) * 5) no-repeat,
+    repeating-linear-gradient(90deg, #b8912f 0 2px, #f6e3a8 2px 8px, #d9b45a 8px 10px, #f6e3a8 10px 16px) right center / calc(var(--u) * 6) calc(100% - var(--u) * 11) no-repeat;
+}
+
+/* the arched panels wear a crown, the way the printed boards do */
+.tv-root.is-skin-pillars .tv-panel {
+  background-image: var(--orn-crown), linear-gradient(180deg, color-mix(in srgb, var(--tv-bg-b) 92%, #000), color-mix(in srgb, var(--tv-bg-a) 96%, #000));
+  background-position: top center, center;
+  background-size: calc(var(--u) * 12) calc(var(--u) * 3.4), cover;
+  background-repeat: no-repeat, no-repeat;
+  padding-top: calc(var(--u) * 4);
+  padding-inline: calc(var(--u) * 1.6);
+}
+
+.tv-root.is-skin-pillars .tv-header {
+  background-image: var(--orn-crown), linear-gradient(180deg, color-mix(in srgb, var(--tv-bg-b) 92%, #000), color-mix(in srgb, var(--tv-bg-a) 96%, #000));
+  background-position: top center, center;
+  background-size: calc(var(--u) * 12) calc(var(--u) * 3.6), cover;
+  background-repeat: no-repeat, no-repeat;
+  padding-top: calc(var(--u) * 3.4);
+}
+
+/* --- rosettes in the corners of the stone tablets ---------------------- */
+
+.tv-root.is-skin-tablets .tv-panel {
+  background-image: var(--orn-rosette), var(--orn-rosette),
+    radial-gradient(ellipse at 50% 0%, #fdf6e4, transparent 60%),
+    linear-gradient(180deg, #f3e7cd 0%, #e4d3ad 100%);
+  background-position: bottom calc(var(--u) * 1) left calc(var(--u) * 1), bottom calc(var(--u) * 1) right calc(var(--u) * 1), center, center;
+  background-size: calc(var(--u) * 2.8) calc(var(--u) * 2.8), calc(var(--u) * 2.8) calc(var(--u) * 2.8), cover, cover;
+  background-repeat: no-repeat;
+}
+
+/* --------------------------------------------------- three full boards - */
+
+/*
+ * Three skins built one-to-one from printed boards: an arched marble board
+ * between columns, a velvet hall with wooden plaques, and a royal board with
+ * an oval nameplate. Each is a whole dress - background, panel shape, frame
+ * and title - not only a colour change.
+ *
+ * The shared parts: a rope frame (border-image) and an arch radius.
+ */
+
+.tv-root {
+  /* A twisted-rope frame with beaded corners, for arched panels. */
+  --orn-rope: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="%23f6e3a8"/><stop offset="0.5" stop-color="%23c9a227"/><stop offset="1" stop-color="%238a6a1a"/></linearGradient></defs><rect x="3" y="3" width="114" height="114" rx="10" fill="none" stroke="url(%23g)" stroke-width="6"/><g stroke="%238a6a1a" stroke-width="1.2" opacity="0.8"><path d="M6 12l8-8M6 24l16-16M6 36l28-28M6 48l40-40M6 60l52-52"/><path d="M114 12l-8-8M114 24l-16-16M114 36l-28-28M114 48l-40-40M114 60l-52-52"/><path d="M6 108l8 8M6 96l16 16M6 84l28 28M6 72l40 40M6 60l52 52"/><path d="M114 108l-8 8M114 96l-16 16M114 84l-28 28M114 72l-40 40M114 60l-52 52"/></g><g fill="%23f6e3a8" stroke="%238a6a1a" stroke-width="1.5"><circle cx="10" cy="10" r="5"/><circle cx="110" cy="10" r="5"/><circle cx="10" cy="110" r="5"/><circle cx="110" cy="110" r="5"/></g></svg>');
+
+  /* the same cord as a tile, for frames that must follow a rounded corner */
+  --orn-braid: repeating-linear-gradient(45deg, #8a6a1a 0 2px, #f6e3a8 2px 6px, #d9b45a 6px 8px, #b8912f 8px 12px);
+
+  /* An oval nameplate for the top of the board. */
+  --orn-cartouche: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="320" height="90" viewBox="0 0 320 90" preserveAspectRatio="none"><ellipse cx="160" cy="45" rx="150" ry="38" fill="%23fdf6e4" stroke="%23c9a227" stroke-width="5"/><ellipse cx="160" cy="45" rx="142" ry="31" fill="none" stroke="%23b8912f" stroke-width="1.5"/><g fill="%23c9a227"><path d="M10 45c-6-8-6-16 0-24 3 8 3 16 0 24zM310 45c6-8 6-16 0-24-3 8-3 16 0 24z"/></g></svg>');
+}
+
+/* --- arched marble board, between columns ----------------------------- */
+
+.tv-root.is-skin-arch .tv-bg {
+  background:
+    repeating-linear-gradient(72deg, rgba(150, 130, 100, 0.14) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(104deg, rgba(120, 100, 75, 0.1) 0 2px, transparent 2px 76px),
+    linear-gradient(120deg, #f2ece0 0%, #fbf7ef 30%, #e9e0ce 55%, #fbf7ef 80%, #ece4d4 100%);
+}
+
+.tv-root.is-skin-arch::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    var(--orn-capital) left top / calc(var(--u) * 8) calc(var(--u) * 6.5) no-repeat,
+    var(--orn-base) left bottom / calc(var(--u) * 8) calc(var(--u) * 5.5) no-repeat,
+    repeating-linear-gradient(90deg, #b8912f 0 2px, #f6e3a8 2px 9px, #d9b45a 9px 11px, #f6e3a8 11px 18px) left center / calc(var(--u) * 7) calc(100% - var(--u) * 12) no-repeat,
+    var(--orn-capital) right top / calc(var(--u) * 8) calc(var(--u) * 6.5) no-repeat,
+    var(--orn-base) right bottom / calc(var(--u) * 8) calc(var(--u) * 5.5) no-repeat,
+    repeating-linear-gradient(90deg, #b8912f 0 2px, #f6e3a8 2px 9px, #d9b45a 9px 11px, #f6e3a8 11px 18px) right center / calc(var(--u) * 7) calc(100% - var(--u) * 12) no-repeat;
+}
+
+.tv-root.is-skin-arch {
+  padding-inline: calc(var(--u) * 9);
+}
+
+/* the panels are real arches: round on top, square at the foot */
+.tv-root.is-skin-arch .tv-panel {
+  border: calc(var(--u) * 0.8) solid transparent;
+  border-radius: 40% 40% calc(var(--u) * 1) calc(var(--u) * 1) / 18% 18% calc(var(--u) * 1) calc(var(--u) * 1);
+  background:
+    linear-gradient(180deg, #1b3a63 0%, #12243f 100%) padding-box,
+    var(--orn-braid) border-box;
+  box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 2) rgba(40, 30, 10, 0.3);
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 1.6) calc(var(--u) * 0.9);
+  color: #f3f7fc;
+}
+
+.tv-root.is-skin-arch .tv-panel-title {
+  margin-inline: auto;
+  margin-bottom: calc(var(--u) * 0.6);
+  padding: calc(var(--u) * 0.25) calc(var(--u) * 2);
+  border: max(1px, calc(var(--u) * 0.16)) solid #b8912f;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fdf6e4, #e8d49a);
+  color: #4a3208;
+  text-align: center;
+}
+
+/* the two blue plaques of the header, with the name between them */
+.tv-root.is-skin-arch .tv-header {
+  padding: calc(var(--u) * 1) calc(var(--u) * 2.4);
+  border: max(2px, calc(var(--u) * 0.28)) solid #c9a227;
+  border-radius: calc(var(--u) * 1);
+  background: linear-gradient(180deg, #1b3a63, #12243f);
+}
+
+.tv-root.is-skin-arch .tv-dash-strip,
+.tv-root.is-skin-arch .tv-ticker {
+  border: max(1px, calc(var(--u) * 0.2)) solid #c9a227;
+  border-radius: calc(var(--u) * 0.8);
+  background: linear-gradient(180deg, #1b3a63, #12243f);
+  color: #f6e3a8;
+}
+
+/* --- velvet hall: curtain, wooden plaques, ribbon titles -------------- */
+
+.tv-root.is-skin-hall .tv-bg {
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.2) 0 2px, transparent 2px 10px),
+    linear-gradient(170deg, #6b3a1c 0%, #4a2612 50%, #2f1709 100%);
+}
+
+/* the drape, with tassels along its hem */
+.tv-root.is-skin-hall::before {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: calc(var(--u) * 9);
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 0, #c9a227 0 calc(var(--u) * 0.5), transparent calc(var(--u) * 0.55)) 0 100% / calc(var(--u) * 4) calc(var(--u) * 1.4) repeat-x,
+    radial-gradient(circle at 50% 0, #6d1026 0 calc(var(--u) * 3), transparent calc(var(--u) * 3.05)) 0 100% / calc(var(--u) * 7) calc(var(--u) * 3.4) repeat-x,
+    repeating-linear-gradient(90deg, #4d0a16 0 calc(var(--u) * 1.4), #8a1a30 calc(var(--u) * 1.4) calc(var(--u) * 2.8)),
+    #6d1026;
+}
+
+.tv-root.is-skin-hall {
+  padding-top: calc(var(--u) * 10);
+}
+
+.tv-root.is-skin-hall .tv-panel {
+  border: calc(var(--u) * 1) solid transparent;
+  border-image: var(--orn-rope) 32 round;
+  border-radius: calc(var(--u) * 1.6);
+  background:
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.16) 0 2px, transparent 2px 11px),
+    linear-gradient(180deg, #6b3a1c, #3d1f0d);
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 1.6);
+  color: #f9f0dc;
+}
+
+.tv-root.is-skin-hall .tv-panel-title {
+  margin-top: calc(var(--u) * -0.4);
+  margin-inline: calc(var(--u) * -2.2);
+  margin-bottom: calc(var(--u) * 0.8);
+  padding: calc(var(--u) * 0.45) calc(var(--u) * 2.4);
+  background: linear-gradient(180deg, #fdf6e4, #d9b45a);
+  color: #4a1c06;
+  text-align: center;
+  clip-path: polygon(0 0, 100% 0, calc(100% - var(--u) * 1.6) 50%, 100% 100%, 0 100%, calc(var(--u) * 1.6) 50%);
+}
+
+.tv-root.is-skin-hall .tv-panel dt,
+.tv-root.is-skin-hall .tv-panel .tv-dash-sub,
+.tv-root.is-skin-hall .tv-panel .tv-minyan-source,
+.tv-root.is-skin-hall .tv-panel .tv-shiur-meta,
+.tv-root.is-skin-hall .tv-panel .tv-clock-date {
+  color: #dcc7a0;
+}
+
+.tv-root.is-skin-hall .tv-panel dd,
+.tv-root.is-skin-hall .tv-panel .tv-dash-time,
+.tv-root.is-skin-hall .tv-panel .tv-minyan-time,
+.tv-root.is-skin-hall .tv-panel .tv-shiur-time,
+.tv-root.is-skin-hall .tv-panel .tv-clock-time {
+  color: #f6e3a8;
+}
+
+.tv-root.is-skin-hall .tv-panel .tv-zman-row,
+.tv-root.is-skin-hall .tv-panel .tv-minyan-row,
+.tv-root.is-skin-hall .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(246, 227, 168, 0.16);
+}
+
+.tv-root.is-skin-hall .tv-header {
+  border: none;
+  padding-bottom: calc(var(--u) * 1);
+}
+
+/* --- royal: cream marble, an oval nameplate, a deep red centre -------- */
+
+.tv-root.is-skin-crown .tv-bg {
+  background:
+    repeating-linear-gradient(66deg, rgba(160, 140, 105, 0.13) 0 1px, transparent 1px 48px),
+    linear-gradient(150deg, #f6efdf 0%, #fdf9f0 35%, #ece2cc 65%, #fbf6ec 100%);
+}
+
+.tv-root.is-skin-crown .tv-panel {
+  border: calc(var(--u) * 0.8) solid transparent;
+  border-radius: 34% 34% calc(var(--u) * 1.4) calc(var(--u) * 1.4) / 16% 16% calc(var(--u) * 1.4) calc(var(--u) * 1.4);
+  background:
+    linear-gradient(180deg, #fdf8ec, #f1e6cf) padding-box,
+    var(--orn-braid) border-box;
+  box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 2) rgba(120, 95, 45, 0.25);
+  padding: calc(var(--u) * 2) calc(var(--u) * 1.8) calc(var(--u) * 1);
+  color: #3a2a12;
+}
+
+/* the middle column is the deep red one, as on the printed board */
+.tv-root.is-skin-crown .tv-dash-center .tv-panel,
+.tv-root.is-skin-crown .tv-spotlight .tv-card {
+  background:
+    linear-gradient(180deg, #6b1220, #4a0a14) padding-box,
+    var(--orn-braid) border-box;
+  color: #fdf6e4;
+}
+
+.tv-root.is-skin-crown .tv-dash-center .tv-panel .tv-panel-title,
+.tv-root.is-skin-crown .tv-dash-center .tv-panel .tv-clock-time,
+.tv-root.is-skin-crown .tv-dash-center .tv-panel .tv-card-title {
+  color: #f6e3a8;
+}
+
+.tv-root.is-skin-crown .tv-dash-center .tv-panel .tv-clock-date,
+.tv-root.is-skin-crown .tv-dash-center .tv-panel .tv-card-body {
+  color: #e8d3b0;
+}
+
+.tv-root.is-skin-crown .tv-panel-title {
+  color: #7a2410;
+  text-align: center;
+}
+
+.tv-root.is-skin-crown .tv-panel dt,
+.tv-root.is-skin-crown .tv-panel .tv-dash-sub,
+.tv-root.is-skin-crown .tv-panel .tv-minyan-source,
+.tv-root.is-skin-crown .tv-panel .tv-shiur-meta {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-crown .tv-panel dd,
+.tv-root.is-skin-crown .tv-panel .tv-dash-time,
+.tv-root.is-skin-crown .tv-panel .tv-minyan-time,
+.tv-root.is-skin-crown .tv-panel .tv-shiur-time {
+  color: #8a3c12;
+}
+
+.tv-root.is-skin-crown .tv-panel .tv-zman-row,
+.tv-root.is-skin-crown .tv-panel .tv-minyan-row,
+.tv-root.is-skin-crown .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(120, 90, 40, 0.22);
+}
+
+/* the synagogue's name on an oval plate */
+.tv-root.is-skin-crown .tv-header {
+  border-bottom: none;
+}
+
+/* the synagogue name sits inside the oval plate */
+.tv-root.is-skin-crown .tv-title {
+  display: inline-block;
+  padding: calc(var(--u) * 1.1) calc(var(--u) * 5);
+  background: var(--orn-cartouche) center / 100% 100% no-repeat;
+}
+
+.tv-root.is-skin-crown .tv-title,
+.tv-root.is-skin-crown .tv-clock-time {
+  color: #1c2b4a;
+}
+
+.tv-root.is-skin-crown .tv-subtitle,
+.tv-root.is-skin-crown .tv-clock-date,
+.tv-root.is-skin-crown .tv-status {
+  color: #5b4a2f;
+}
+
+.tv-root.is-skin-crown .tv-ribbon span {
+  background: rgba(255, 255, 255, 0.7);
+  border-color: #c9a227;
+  color: #3a2a12;
+}
+
+.tv-root.is-skin-crown .tv-dash-strip,
+.tv-root.is-skin-crown .tv-ticker {
+  border: max(1px, calc(var(--u) * 0.2)) solid #c9a227;
+  border-radius: calc(var(--u) * 0.8);
+  background: linear-gradient(180deg, #6b1220, #4a0a14);
+  color: #f6e3a8;
+}
+
 /* ---------------------------------------------------------- clock styles - */
 
 /* ClockFace (TvLayouts.tsx): digits, an analog dial, or the dial beside the
@@ -2372,4 +2983,593 @@
   align-self: center;
   font-size: calc(var(--fs) * 1.8);
   color: var(--tv-text-dim);
+}
+
+/* ====================================================== carved skins === */
+
+/*
+ * Four skins that differ in shape, not in colour: real columns standing in
+ * the board, domed niches, courses of cut stone and scalloped medallions.
+ * The silhouettes come from TvShapes.tsx - clip paths in bounding-box units,
+ * so a panel keeps the shape at any size. A clipped element cannot show a
+ * border, so each one draws its frame as its own background and its ::before,
+ * inset by the frame's width, carries the face.
+ */
+
+.tv-root {
+  /* courses of cut stone, bevelled, with mortar between them */
+  --orn-ashlar: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="240" height="120" viewBox="0 0 240 120"><rect width="240" height="120" fill="%23c3b79c"/><g stroke="%23b0a084" stroke-width="1.5"><rect x="2" y="2" width="114" height="54" rx="3" fill="%23eae1ca"/><rect x="122" y="2" width="114" height="54" rx="3" fill="%23e4dac1"/><rect x="-58" y="62" width="114" height="54" rx="3" fill="%23e7ddc5"/><rect x="62" y="62" width="114" height="54" rx="3" fill="%23efe7d2"/><rect x="182" y="62" width="114" height="54" rx="3" fill="%23e4dac1"/></g><g stroke="%23fffaf0" stroke-width="1.4" opacity="0.75" fill="none"><path d="M4 55V4h110M124 55V4h110M-56 115V64h110M64 115V64h110M184 115V64h110"/></g></svg>');
+
+  /* a shell in the corner of a frame */
+  --orn-fan: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><path d="M0 0h60C60 33 33 60 0 60Z" fill="%23f6e3a8" opacity="0.9"/><g stroke="%23a9821f" stroke-width="1.6" fill="none"><path d="M0 0 60 0M0 0 55 22M0 0 44 40M0 0 22 55M0 0 0 60"/><path d="M0 12C22 12 40 30 40 52" opacity="0.7"/></g></svg>');
+
+  /* a finial for the top of a dome */
+  --orn-finial: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="70" viewBox="0 0 40 70"><g fill="%23f6e3a8" stroke="%23a9821f" stroke-width="2"><path d="M20 2l3 12h-6z"/><circle cx="20" cy="22" r="7"/><path d="M13 30h14l-3 12H16z"/><rect x="8" y="44" width="24" height="8" rx="3"/></g></svg>');
+}
+
+/* --- היכל: columns standing in the board, beams above and below -------- */
+
+.tv-root.is-skin-heichal .tv-bg {
+  background:
+    repeating-linear-gradient(94deg, rgba(0, 0, 0, 0.25) 0 2px, transparent 2px 11px),
+    linear-gradient(165deg, #43230f 0%, #2a1408 55%, #150a04 100%);
+}
+
+.tv-root.is-skin-heichal .tv-bg {
+  z-index: -2;
+}
+
+/* the two columns rise between the three columns of the board */
+.tv-root.is-skin-heichal .tv-stage::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--u) * 1.6) 0 calc(var(--u) * 1.2);
+  z-index: 0;
+  pointer-events: none;
+  /* the columns stand at the edges of the board... */
+  --col-a: 0%;
+  --col-b: 100%;
+  background:
+    var(--orn-capital) var(--col-a) top / calc(var(--u) * 6.4) calc(var(--u) * 5.4) no-repeat,
+    var(--orn-base) var(--col-a) bottom / calc(var(--u) * 6.4) calc(var(--u) * 4.6) no-repeat,
+    repeating-linear-gradient(90deg, #8a6a1a 0 2px, #f6e3a8 2px 8px, #d9b45a 8px 10px, #f6e3a8 10px 16px) var(--col-a) center / calc(var(--u) * 4.4) calc(100% - var(--u) * 9.4) no-repeat,
+    var(--orn-capital) var(--col-b) top / calc(var(--u) * 6.4) calc(var(--u) * 5.4) no-repeat,
+    var(--orn-base) var(--col-b) bottom / calc(var(--u) * 6.4) calc(var(--u) * 4.6) no-repeat,
+    repeating-linear-gradient(90deg, #8a6a1a 0 2px, #f6e3a8 2px 8px, #d9b45a 8px 10px, #f6e3a8 10px 16px) var(--col-b) center / calc(var(--u) * 4.4) calc(100% - var(--u) * 9.4) no-repeat;
+}
+
+/* ...and on the dashboard they stand in the gaps, in front of the panels */
+.tv-root.is-skin-heichal.is-layout-dashboard .tv-stage::before {
+  --col-a: 30.5%;
+  --col-b: 69.5%;
+  z-index: 2;
+}
+
+.tv-root.is-skin-heichal:not(.is-layout-dashboard) .tv-stage {
+  padding-inline: calc(var(--u) * 7.5);
+}
+
+/* the beam the columns carry, and the plinth they stand on */
+.tv-root.is-skin-heichal .tv-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, #f6e3a8 0%, #c9a227 45%, #8a6a1a 55%, #e6cf8d 100%) top / 100% calc(var(--u) * 1.6) no-repeat,
+    linear-gradient(180deg, #e6cf8d 0%, #8a6a1a 45%, #c9a227 55%, #f6e3a8 100%) bottom / 100% calc(var(--u) * 1.6) no-repeat;
+}
+
+.tv-root.is-skin-heichal .tv-slide,
+.tv-root.is-skin-heichal .tv-dash-strip,
+.tv-root.is-skin-heichal .tv-ticker {
+  position: relative;
+  z-index: 1;
+}
+
+.tv-root.is-skin-heichal .tv-stage {
+  padding: calc(var(--u) * 3.4) calc(var(--u) * 1.4) calc(var(--u) * 2.6);
+}
+
+.tv-root.is-skin-heichal .tv-panel {
+  position: relative;
+  border: calc(var(--u) * 1.1) solid transparent;
+  border-radius: calc(var(--u) * 1.2);
+  background:
+    linear-gradient(180deg, #fdf8ea, #eee0c0) padding-box,
+    linear-gradient(135deg, #8a6a1a, #f6e3a8 25%, #c9a227 50%, #f6e3a8 75%, #8a6a1a) border-box;
+  box-shadow:
+    inset 0 0 0 max(1px, calc(var(--u) * 0.18)) rgba(138, 106, 26, 0.55),
+    0 calc(var(--u) * 0.7) calc(var(--u) * 2.2) rgba(0, 0, 0, 0.5);
+  padding: calc(var(--u) * 3.2) calc(var(--u) * 1.6) calc(var(--u) * 1.2);
+  color: #3a2a12;
+}
+
+/* a shell in each corner of the frame */
+.tv-root.is-skin-heichal .tv-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    var(--orn-fan) left top / calc(var(--u) * 2.6) calc(var(--u) * 2.6) no-repeat,
+    var(--orn-fan) right top / calc(var(--u) * 2.6) calc(var(--u) * 2.6) no-repeat,
+    var(--orn-fan) left bottom / calc(var(--u) * 2.6) calc(var(--u) * 2.6) no-repeat,
+    var(--orn-fan) right bottom / calc(var(--u) * 2.6) calc(var(--u) * 2.6) no-repeat;
+  transform: scaleX(1);
+}
+
+.tv-root.is-skin-heichal .tv-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* the name of each panel on a plate that sits over the frame */
+.tv-root.is-skin-heichal .tv-panel-title {
+  margin: calc(var(--u) * -4.4) auto calc(var(--u) * 0.9);
+  padding: calc(var(--u) * 0.35) calc(var(--u) * 2.4);
+  border: max(1px, calc(var(--u) * 0.16)) solid #8a6a1a;
+  border-radius: calc(var(--u) * 0.6);
+  background: linear-gradient(180deg, #fdf6e4, #d9b45a);
+  box-shadow: 0 calc(var(--u) * 0.2) calc(var(--u) * 0.6) rgba(0, 0, 0, 0.4);
+  color: #3a2408;
+  text-align: center;
+}
+
+/* the name of the synagogue on the black oval of the printed boards */
+.tv-root.is-skin-heichal .tv-title {
+  display: inline-block;
+  padding: calc(var(--u) * 1) calc(var(--u) * 4.5);
+  border: max(2px, calc(var(--u) * 0.26)) solid #c9a227;
+  border-radius: 50% / 100%;
+  background: radial-gradient(ellipse at 50% 30%, #2c2014, #100a04 70%);
+  color: #f6e3a8;
+}
+
+.tv-root.is-skin-heichal .tv-header {
+  border-bottom: none;
+}
+
+.tv-root.is-skin-heichal .tv-panel dt,
+.tv-root.is-skin-heichal .tv-panel .tv-dash-sub,
+.tv-root.is-skin-heichal .tv-panel .tv-minyan-source,
+.tv-root.is-skin-heichal .tv-panel .tv-shiur-meta {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-heichal .tv-panel dd,
+.tv-root.is-skin-heichal .tv-panel .tv-dash-time,
+.tv-root.is-skin-heichal .tv-panel .tv-minyan-time,
+.tv-root.is-skin-heichal .tv-panel .tv-shiur-time,
+.tv-root.is-skin-heichal .tv-panel .tv-clock-time {
+  color: #7a2f0c;
+}
+
+.tv-root.is-skin-heichal .tv-panel .tv-zman-row,
+.tv-root.is-skin-heichal .tv-panel .tv-minyan-row,
+.tv-root.is-skin-heichal .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(120, 90, 40, 0.25);
+}
+
+.tv-root.is-skin-heichal .tv-dash-strip,
+.tv-root.is-skin-heichal .tv-ticker {
+  border: max(1px, calc(var(--u) * 0.2)) solid #8a6a1a;
+  border-radius: calc(var(--u) * 0.8);
+  background: linear-gradient(180deg, #fdf8ea, #e6d6ae);
+  color: #3a2a12;
+}
+
+/* --- כיפת זהב: every niche is a dome ---------------------------------- */
+
+.tv-root.is-skin-dome .tv-bg {
+  background:
+    radial-gradient(ellipse 80% 55% at 50% 100%, rgba(246, 227, 168, 0.16), transparent 70%),
+    linear-gradient(180deg, #071227 0%, #0d2245 55%, #071528 100%);
+  z-index: -2;
+}
+
+.tv-root.is-skin-dome .tv-panel {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  clip-path: url(#tv-shape-onion);
+  background: linear-gradient(180deg, #f6e3a8 0%, #c9a227 60%, #8a6a1a 100%);
+  box-shadow: none;
+  padding: calc(var(--u) * 7) calc(var(--u) * 2.2) calc(var(--u) * 1.4);
+  overflow: visible;
+}
+
+.tv-root.is-skin-dome .tv-panel::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--u) * 0.5);
+  z-index: 0;
+  clip-path: url(#tv-shape-onion);
+  background: linear-gradient(180deg, #14325c 0%, #0a1c36 100%);
+}
+
+.tv-root.is-skin-dome .tv-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* the title rides in the neck of the dome */
+.tv-root.is-skin-dome .tv-panel-title {
+  margin: calc(var(--u) * -3.6) auto calc(var(--u) * 1);
+  padding: calc(var(--u) * 0.2) calc(var(--u) * 1.8);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f6e3a8, #d9b45a);
+  color: #23160a;
+  text-align: center;
+}
+
+.tv-root.is-skin-dome .tv-header {
+  position: relative;
+  padding-top: calc(var(--u) * 4);
+  border-bottom: none;
+}
+
+/* a finial over the name, the way a dome is finished */
+.tv-root.is-skin-dome .tv-header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  inset-inline-end: calc(var(--u) * 2);
+  width: calc(var(--u) * 3);
+  height: calc(var(--u) * 5);
+  background: var(--orn-finial) center / contain no-repeat;
+}
+
+.tv-root.is-skin-dome .tv-title,
+.tv-root.is-skin-dome .tv-panel-title {
+  font-family: var(--tv-font-display);
+}
+
+.tv-root.is-skin-dome .tv-dash-strip,
+.tv-root.is-skin-dome .tv-ticker {
+  border: max(1px, calc(var(--u) * 0.2)) solid #c9a227;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #14325c, #0a1c36);
+  color: #f6e3a8;
+}
+
+/* --- אבני ירושלים: courses of cut stone, niches carved into them ------ */
+
+.tv-root.is-skin-stone .tv-bg {
+  background: var(--orn-ashlar) center / calc(var(--u) * 26) calc(var(--u) * 13) repeat;
+  z-index: -2;
+}
+
+.tv-root.is-skin-stone .tv-panel {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  clip-path: url(#tv-shape-dome);
+  background: linear-gradient(180deg, #b0a084, #8d7e64);
+  box-shadow: none;
+  padding: calc(var(--u) * 5.2) calc(var(--u) * 2.2) calc(var(--u) * 1.4);
+  color: #2e2618;
+}
+
+/* the niche itself, sunk into the wall */
+.tv-root.is-skin-stone .tv-panel::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--u) * 0.7);
+  z-index: 0;
+  clip-path: url(#tv-shape-dome);
+  background:
+    radial-gradient(ellipse 90% 40% at 50% 0%, rgba(0, 0, 0, 0.22), transparent 70%),
+    linear-gradient(180deg, #f3ecda, #ded3b8);
+}
+
+.tv-root.is-skin-stone .tv-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tv-root.is-skin-stone .tv-panel-title {
+  margin: calc(var(--u) * -3) auto calc(var(--u) * 1);
+  color: #55452b;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75);
+}
+
+.tv-root.is-skin-stone .tv-panel dt,
+.tv-root.is-skin-stone .tv-panel .tv-dash-sub,
+.tv-root.is-skin-stone .tv-panel .tv-minyan-source,
+.tv-root.is-skin-stone .tv-panel .tv-shiur-meta {
+  color: #6b5a3b;
+}
+
+.tv-root.is-skin-stone .tv-panel dd,
+.tv-root.is-skin-stone .tv-panel .tv-dash-time,
+.tv-root.is-skin-stone .tv-panel .tv-minyan-time,
+.tv-root.is-skin-stone .tv-panel .tv-shiur-time,
+.tv-root.is-skin-stone .tv-panel .tv-clock-time {
+  color: #7d3f12;
+}
+
+.tv-root.is-skin-stone .tv-panel .tv-zman-row,
+.tv-root.is-skin-stone .tv-panel .tv-minyan-row,
+.tv-root.is-skin-stone .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(90, 70, 40, 0.25);
+}
+
+/* the header on a stone lintel */
+.tv-root.is-skin-stone .tv-header {
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2.4);
+  border: 0;
+  clip-path: url(#tv-shape-octagon);
+  background: linear-gradient(180deg, #f3ecda, #d3c7a8);
+}
+
+.tv-root.is-skin-stone .tv-title {
+  color: #4a2b10;
+}
+
+.tv-root.is-skin-stone .tv-subtitle,
+.tv-root.is-skin-stone .tv-clock-date,
+.tv-root.is-skin-stone .tv-status {
+  color: #6b5a3b;
+}
+
+.tv-root.is-skin-stone .tv-clock-time {
+  color: #7d3f12;
+}
+
+.tv-root.is-skin-stone .tv-ribbon span {
+  border-color: #9a8a68;
+  background: rgba(255, 255, 255, 0.6);
+  color: #4a3a20;
+}
+
+.tv-root.is-skin-stone .tv-dash-strip,
+.tv-root.is-skin-stone .tv-ticker {
+  border: 0;
+  clip-path: url(#tv-shape-octagon);
+  background: linear-gradient(180deg, #f3ecda, #d3c7a8);
+  color: #4a3a20;
+}
+
+/* --- מדליונים: scalloped plates and round faces ----------------------- */
+
+.tv-root.is-skin-medallion .tv-bg {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 255, 255, 0.5), transparent 55%),
+    linear-gradient(160deg, #f4ece0 0%, #e2d3bb 50%, #f6f0e6 100%);
+  z-index: -2;
+}
+
+.tv-root.is-skin-medallion .tv-panel {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  clip-path: url(#tv-shape-scallop);
+  background: linear-gradient(180deg, #d9b45a, #a9821f);
+  box-shadow: none;
+  padding: calc(var(--u) * 2.6) calc(var(--u) * 2.4) calc(var(--u) * 2.2);
+  color: #3a2a12;
+}
+
+.tv-root.is-skin-medallion .tv-panel::before {
+  content: "";
+  position: absolute;
+  inset: calc(var(--u) * 0.55);
+  z-index: 0;
+  clip-path: url(#tv-shape-scallop);
+  background: linear-gradient(180deg, #fffdf6, #f2e8d2);
+}
+
+.tv-root.is-skin-medallion .tv-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* the name of the panel on a shield */
+.tv-root.is-skin-medallion .tv-panel-title {
+  margin: calc(var(--u) * -1.2) auto calc(var(--u) * 0.8);
+  padding: calc(var(--u) * 0.5) calc(var(--u) * 2.6) calc(var(--u) * 1.4);
+  clip-path: url(#tv-shape-shield);
+  background: linear-gradient(180deg, #f6e3a8, #c9a227);
+  color: #3a2408;
+  text-align: center;
+}
+
+/* the clock is a medallion in its own right */
+.tv-root.is-skin-medallion .tv-analog-face {
+  fill: #fffdf6;
+}
+
+.tv-root.is-skin-medallion .tv-analog-rim {
+  stroke: #a9821f;
+  stroke-width: 6;
+}
+
+.tv-root.is-skin-medallion .tv-header {
+  border-bottom: none;
+}
+
+.tv-root.is-skin-medallion .tv-title {
+  display: inline-block;
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 4);
+  border: max(2px, calc(var(--u) * 0.24)) solid #a9821f;
+  border-radius: 50% / 100%;
+  background: linear-gradient(180deg, #fffdf6, #efe2c4);
+  color: #6b2f0c;
+}
+
+.tv-root.is-skin-medallion .tv-subtitle,
+.tv-root.is-skin-medallion .tv-clock-date,
+.tv-root.is-skin-medallion .tv-status {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-medallion .tv-clock-time {
+  color: #7a2f0c;
+}
+
+.tv-root.is-skin-medallion .tv-panel dt,
+.tv-root.is-skin-medallion .tv-panel .tv-dash-sub,
+.tv-root.is-skin-medallion .tv-panel .tv-minyan-source,
+.tv-root.is-skin-medallion .tv-panel .tv-shiur-meta {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-medallion .tv-panel dd,
+.tv-root.is-skin-medallion .tv-panel .tv-dash-time,
+.tv-root.is-skin-medallion .tv-panel .tv-minyan-time,
+.tv-root.is-skin-medallion .tv-panel .tv-shiur-time {
+  color: #7a2f0c;
+}
+
+.tv-root.is-skin-medallion .tv-panel .tv-zman-row,
+.tv-root.is-skin-medallion .tv-panel .tv-minyan-row,
+.tv-root.is-skin-medallion .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(120, 90, 40, 0.22);
+}
+
+.tv-root.is-skin-medallion .tv-ribbon span {
+  border-color: #a9821f;
+  background: rgba(255, 255, 255, 0.7);
+  color: #4a3a20;
+}
+
+.tv-root.is-skin-medallion .tv-dash-strip,
+.tv-root.is-skin-medallion .tv-ticker {
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #fffdf6, #e8dcc0);
+  box-shadow: inset 0 0 0 max(1px, calc(var(--u) * 0.2)) #a9821f;
+  color: #4a3a20;
+}
+
+/* the heichal panels are cream, so the clock and the notice follow them */
+.tv-root.is-skin-heichal .tv-analog-face {
+  fill: #fdf8ea;
+}
+
+.tv-root.is-skin-heichal .tv-analog-rim {
+  stroke: #a9821f;
+  stroke-width: 5;
+}
+
+.tv-root.is-skin-heichal .tv-analog-num,
+.tv-root.is-skin-heichal .tv-analog-tick {
+  fill: #4a3410;
+  stroke: #4a3410;
+}
+
+.tv-root.is-skin-heichal .tv-analog-hour,
+.tv-root.is-skin-heichal .tv-analog-minute {
+  stroke: #3a2408;
+}
+
+.tv-root.is-skin-heichal .tv-analog-second,
+.tv-root.is-skin-heichal .tv-analog-pin {
+  stroke: #a9821f;
+  fill: #a9821f;
+}
+
+.tv-root.is-skin-heichal .tv-clock-date,
+.tv-root.is-skin-heichal .tv-panel .tv-card-body,
+.tv-root.is-skin-heichal .tv-panel .tv-empty {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-heichal .tv-panel .tv-card-title {
+  color: #7a2f0c;
+}
+
+.tv-root.is-skin-heichal .tv-panel .tv-badge {
+  background: linear-gradient(180deg, #f6e3a8, #d9b45a);
+  color: #3a2408;
+}
+
+/* the medallion clock is a cream face, so its hands and figures are dark */
+.tv-root.is-skin-medallion .tv-analog-num,
+.tv-root.is-skin-medallion .tv-analog-tick {
+  fill: #4a3410;
+  stroke: #4a3410;
+}
+
+.tv-root.is-skin-medallion .tv-analog-hour,
+.tv-root.is-skin-medallion .tv-analog-minute {
+  stroke: #3a2408;
+}
+
+.tv-root.is-skin-medallion .tv-analog-second,
+.tv-root.is-skin-medallion .tv-analog-pin {
+  stroke: #a9821f;
+  fill: #a9821f;
+}
+
+.tv-root.is-skin-medallion .tv-panel .tv-card-title {
+  color: #7a2f0c;
+}
+
+.tv-root.is-skin-medallion .tv-panel .tv-card-body,
+.tv-root.is-skin-medallion .tv-panel .tv-empty,
+.tv-root.is-skin-medallion .tv-clock-date {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-medallion .tv-panel .tv-badge {
+  background: linear-gradient(180deg, #f6e3a8, #d9b45a);
+  color: #3a2408;
+}
+
+/* the stone skin: a carved lintel reads better than a cut corner */
+.tv-root.is-skin-stone .tv-header,
+.tv-root.is-skin-stone .tv-dash-strip,
+.tv-root.is-skin-stone .tv-ticker {
+  clip-path: none;
+  border-radius: calc(var(--u) * 0.5);
+  box-shadow:
+    inset 0 max(1px, calc(var(--u) * 0.2)) 0 rgba(255, 255, 255, 0.85),
+    inset 0 calc(var(--u) * -0.3) 0 rgba(110, 90, 60, 0.35),
+    0 calc(var(--u) * 0.4) calc(var(--u) * 1.2) rgba(60, 45, 25, 0.3);
+}
+
+.tv-root.is-skin-stone .tv-analog-face {
+  fill: #f3ecda;
+}
+
+.tv-root.is-skin-stone .tv-analog-rim {
+  stroke: #8d7e64;
+  stroke-width: 5;
+}
+
+.tv-root.is-skin-stone .tv-analog-num,
+.tv-root.is-skin-stone .tv-analog-tick {
+  fill: #4a3a20;
+  stroke: #4a3a20;
+}
+
+.tv-root.is-skin-stone .tv-analog-hour,
+.tv-root.is-skin-stone .tv-analog-minute {
+  stroke: #3a2c15;
+}
+
+.tv-root.is-skin-stone .tv-analog-second,
+.tv-root.is-skin-stone .tv-analog-pin {
+  stroke: #a9821f;
+  fill: #a9821f;
+}
+
+.tv-root.is-skin-stone .tv-panel .tv-card-title {
+  color: #7d3f12;
+}
+
+.tv-root.is-skin-stone .tv-panel .tv-card-body,
+.tv-root.is-skin-stone .tv-panel .tv-empty,
+.tv-root.is-skin-stone .tv-clock-date {
+  color: #6b5a3b;
+}
+
+.tv-root.is-skin-stone .tv-panel .tv-badge {
+  background: linear-gradient(180deg, #e0d2ac, #bda979);
+  color: #3a2c15;
 }

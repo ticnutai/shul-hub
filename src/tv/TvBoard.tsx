@@ -11,6 +11,7 @@ import { themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
 import { ClockContext } from "./clockContext";
+import { TvShapes } from "./TvShapes";
 import type { BoardData, BoardSlide } from "./useBoardData";
 import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
 import karovimLogo from "./assets/karovim-logo.png";
@@ -99,6 +100,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         style={style}
       >
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
+        <TvShapes />
         <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />
 
         <main className="tv-stage">

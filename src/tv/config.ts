@@ -118,8 +118,41 @@ export type ClockStyle = "digital" | "analog" | "both";
  * stone tablets, parchment - and drawn entirely in CSS, so it stays sharp at
  * any size and costs the TV nothing.
  */
-export type BoardSkin = "plain" | "gold" | "tablets" | "parchment" | "velvet";
-export const BOARD_SKINS: BoardSkin[] = ["plain", "gold", "tablets", "parchment", "velvet"];
+export type BoardSkin =
+  | "plain"
+  | "gold"
+  | "tablets"
+  | "parchment"
+  | "velvet"
+  | "pillars"
+  | "curtain"
+  | "sky"
+  | "wood"
+  | "arch"
+  | "hall"
+  | "crown"
+  | "heichal"
+  | "dome"
+  | "stone"
+  | "medallion";
+export const BOARD_SKINS: BoardSkin[] = [
+  "plain",
+  "gold",
+  "tablets",
+  "parchment",
+  "velvet",
+  "pillars",
+  "curtain",
+  "sky",
+  "wood",
+  "arch",
+  "hall",
+  "crown",
+  "heichal",
+  "dome",
+  "stone",
+  "medallion",
+];
 export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
 
 export interface TvConfig {

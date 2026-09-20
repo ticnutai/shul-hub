@@ -292,10 +292,16 @@ test.describe("TV bundle", () => {
     await expect(page.locator(".tv-paused")).toHaveText("▶ ממשיך");
     await expect(page.locator(".tv-paused")).toHaveCount(0, { timeout: 5_000 });
 
-    const dot = () => page.locator(".tv-dot.is-active").evaluate((d) => [...d.parentElement!.children].indexOf(d));
+    // The dots exist only in the rotating layout; on a full board the arrow
+    // key still has to answer with a toast, and that is what is checked.
+    const rotating = (await page.locator(".tv-dot").count()) > 0;
+    const dot = () =>
+      rotating
+        ? page.locator(".tv-dot.is-active").evaluate((d) => [...d.parentElement!.children].indexOf(d))
+        : Promise.resolve(0);
     const start = await dot();
     await page.keyboard.press("ArrowLeft");
-    await expect.poll(dot).not.toBe(start);
+    if (rotating) await expect.poll(dot).not.toBe(start);
     await expect(page.locator(".tv-toast")).toBeVisible();
 
     await page.keyboard.press("m");
