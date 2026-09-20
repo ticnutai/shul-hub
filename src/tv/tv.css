@@ -1398,12 +1398,6 @@
 }
 
 /* long names ("מנחה 10 דקות לפני השקיעה") stay on one line */
-.tv-dash-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .tv-dash-row {
   display: flex;
   align-items: baseline;
@@ -1432,6 +1426,10 @@
 .tv-dash-name {
   min-width: 0;
   font-weight: 600;
+  /* long names ("מנחה 10 דקות לפני השקיעה") stay on one line */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tv-dash-ann .tv-card-body {

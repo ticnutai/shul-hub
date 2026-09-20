@@ -66,7 +66,12 @@ import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 import { ShabbatPicture } from "@/tv/ShabbatScene";
 
 /** The screen layouts, with a small sketch of each for the picker. */
-const LAYOUT_CHOICES: Array<{ id: TvConfig["screenLayout"]; name: string; hint: string; sketch: ReactNode }> = [
+const LAYOUT_CHOICES: Array<{
+  id: TvConfig["screenLayout"];
+  name: string;
+  hint: string;
+  sketch: ReactNode;
+}> = [
   {
     id: "rotate",
     name: "סבב שקפים",
@@ -114,7 +119,8 @@ const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
 ];
 
 const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600];
-const intervalLabel = (s: number) => (s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה");
+const intervalLabel = (s: number) =>
+  s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
@@ -160,10 +166,25 @@ const COALESCE_MS = 800;
 function draftReducer(state: DraftState, action: DraftAction): DraftState {
   switch (action.type) {
     case "load":
-      return { past: [], present: action.config, future: [], lastKey: null, lastAt: 0, editedAt: 0 };
+      return {
+        past: [],
+        present: action.config,
+        future: [],
+        lastKey: null,
+        lastAt: 0,
+        editedAt: 0,
+      };
     case "adopt":
-      if (JSON.stringify(action.config) === JSON.stringify(state.present)) return { ...state, editedAt: action.editedAt };
-      return { past: [...state.past.slice(-60), state.present], present: action.config, future: [], lastKey: null, lastAt: 0, editedAt: action.editedAt };
+      if (JSON.stringify(action.config) === JSON.stringify(state.present))
+        return { ...state, editedAt: action.editedAt };
+      return {
+        past: [...state.past.slice(-60), state.present],
+        present: action.config,
+        future: [],
+        lastKey: null,
+        lastAt: 0,
+        editedAt: action.editedAt,
+      };
     case "edit": {
       const next = action.update(state.present);
       if (JSON.stringify(next) === JSON.stringify(state.present)) return state;
@@ -181,12 +202,26 @@ function draftReducer(state: DraftState, action: DraftAction): DraftState {
     case "undo": {
       if (!state.past.length) return state;
       const previous = state.past[state.past.length - 1];
-      return { past: state.past.slice(0, -1), present: previous, future: [state.present, ...state.future], lastKey: null, lastAt: 0, editedAt: Date.now() };
+      return {
+        past: state.past.slice(0, -1),
+        present: previous,
+        future: [state.present, ...state.future],
+        lastKey: null,
+        lastAt: 0,
+        editedAt: Date.now(),
+      };
     }
     case "redo": {
       if (!state.future.length) return state;
       const [next, ...rest] = state.future;
-      return { past: [...state.past, state.present], present: next, future: rest, lastKey: null, lastAt: 0, editedAt: Date.now() };
+      return {
+        past: [...state.past, state.present],
+        present: next,
+        future: rest,
+        lastKey: null,
+        lastAt: 0,
+        editedAt: Date.now(),
+      };
     }
   }
 }
@@ -223,8 +258,20 @@ function Stepper({
 }) {
   const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
   return (
-    <div className="inline-flex items-center rounded-md border bg-background" role="group" aria-label={label}>
-      <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`הקטנת ${label}`} onClick={() => onChange(clamp(value - step))} disabled={value <= min}>
+    <div
+      className="inline-flex items-center rounded-md border bg-background"
+      role="group"
+      aria-label={label}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-8"
+        aria-label={`הקטנת ${label}`}
+        onClick={() => onChange(clamp(value - step))}
+        disabled={value <= min}
+      >
         <Minus className="size-3.5" />
       </Button>
       <span
@@ -247,7 +294,15 @@ function Stepper({
       >
         {format(value)}
       </span>
-      <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`הגדלת ${label}`} onClick={() => onChange(clamp(value + step))} disabled={value >= max}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-8"
+        aria-label={`הגדלת ${label}`}
+        onClick={() => onChange(clamp(value + step))}
+        disabled={value >= max}
+      >
         <Plus className="size-3.5" />
       </Button>
     </div>
@@ -369,13 +424,22 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const sync = useDraftSync(draft, state.editedAt, {
     onRemoteDraft: (config, editedAt) => {
       // Validated like any stored config; content edits ride along, whitelisted.
-      const records = Array.isArray(config?._records) ? config._records.filter(isAllowedEdit).slice(0, 500) : [];
-      dispatch({ type: "adopt", config: { ...normalizeTvConfig(config), _records: records }, editedAt });
+      const records = Array.isArray(config?._records)
+        ? config._records.filter(isAllowedEdit).slice(0, 500)
+        : [];
+      dispatch({
+        type: "adopt",
+        config: { ...normalizeTvConfig(config), _records: records },
+        editedAt,
+      });
     },
     onSaved: () => void queryClientForSync.invalidateQueries({ queryKey: ["tv_config_admin"] }),
   });
 
-  const edit = useCallback((key: string, update: (c: TvConfig) => TvConfig) => dispatch({ type: "edit", key, update }), []);
+  const edit = useCallback(
+    (key: string, update: (c: TvConfig) => TvConfig) => dispatch({ type: "edit", key, update }),
+    [],
+  );
 
   // Keyboard undo/redo while the panel is open.
   useEffect(() => {
@@ -430,7 +494,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   }, []);
   const toggleFullscreen = () => {
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void previewColumn.current?.requestFullscreen?.().catch(() => toast.error("הדפדפן לא אפשר מסך מלא"));
+    else
+      void previewColumn.current
+        ?.requestFullscreen?.()
+        .catch(() => toast.error("הדפדפן לא אפשר מסך מלא"));
   };
   useEffect(() => {
     if (!editing) return;
@@ -457,14 +524,19 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     // where the board shows the Shabbat screen and no alerts - so the demo
     // uses the coming Sunday instead.
     const weekday = jerusalemWeekday(new Date());
-    const day = weekday >= 5 ? zmanimFor(new Date(Date.now() + (7 - weekday) * 86_400_000), board.data.settings) : zmanimToday;
+    const day =
+      weekday >= 5
+        ? zmanimFor(new Date(Date.now() + (7 - weekday) * 86_400_000), board.data.settings)
+        : zmanimToday;
     const event = draft.alerts.events.find((e) => e !== "candle" && day[e]) ?? "sunset";
     const at = day[event as AlertEvent];
     const lead = draft.alerts.leadMinutes[draft.alerts.leadMinutes.length - 1] ?? 15;
     if (!at) return toast.error("אין זמן מתאים היום להדגמה");
     setSimulatedNow(new Date(at.getTime() - lead * 60_000 + 2000));
     window.setTimeout(() => setSimulatedNow(null), 12_000);
-    toast.info(`מציג איך תיראה ההתראה ${lead} דקות לפני ${ALERT_EVENT_LABELS[event as AlertEvent]}`);
+    toast.info(
+      `מציג איך תיראה ההתראה ${lead} דקות לפני ${ALERT_EVENT_LABELS[event as AlertEvent]}`,
+    );
   };
 
   // Preview the Shabbat screen: jump the preview clock to 20 minutes after
@@ -478,7 +550,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       if (!c.shabbat.rotate) return { ...c, shabbat: { ...c.shabbat, scenes: [scene] } };
       const has = cur.includes(scene);
       if (has && cur.length === 1) return c; // at least one picture
-      return { ...c, shabbat: { ...c.shabbat, scenes: has ? cur.filter((s) => s !== scene) : [...cur, scene] } };
+      return {
+        ...c,
+        shabbat: { ...c.shabbat, scenes: has ? cur.filter((s) => s !== scene) : [...cur, scene] },
+      };
     });
   const [sbUploading, setSbUploading] = useState(false);
   const uploadShabbat = async (files: FileList | null) => {
@@ -490,7 +565,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         const uploaded = await uploadTvImage(file);
         urls.push(uploaded.url);
         if (uploaded.lowRes)
-          toast.warning(`"${file.name}" קטנה מדי לטלוויזיה (${uploaded.lowRes.width}×${uploaded.lowRes.height}) ותיראה מעט מטושטשת.`, { duration: 9000 });
+          toast.warning(
+            `"${file.name}" קטנה מדי לטלוויזיה (${uploaded.lowRes.width}×${uploaded.lowRes.height}) ותיראה מעט מטושטשת.`,
+            { duration: 9000 },
+          );
       }
       edit("sb-upload", (c) => ({
         ...c,
@@ -511,7 +589,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const removeShabbatPhoto = (url: string) =>
     edit("sb-photo-del", (c) => {
       const scenes = c.shabbat.scenes.filter((s) => s !== url);
-      return { ...c, shabbat: { ...c.shabbat, photos: c.shabbat.photos.filter((p) => p !== url), scenes: scenes.length ? scenes : ["art:classic"] } };
+      return {
+        ...c,
+        shabbat: {
+          ...c.shabbat,
+          photos: c.shabbat.photos.filter((p) => p !== url),
+          scenes: scenes.length ? scenes : ["art:classic"],
+        },
+      };
     });
 
   const toggleShabbatPreview = () => {
@@ -531,7 +616,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   /* -------------------------------------------------------------- save -- */
 
   const approvedCount = (devices.data ?? []).filter((d) => d.approved).length;
-  const onlineCount = (devices.data ?? []).filter((d) => d.approved && deviceHealth(d, Date.now()).online).length;
+  const onlineCount = (devices.data ?? []).filter(
+    (d) => d.approved && deviceHealth(d, Date.now()).online,
+  ).length;
 
   const queryClient = useQueryClient();
   // Latest draft for the save below, which awaits: an edit made while it runs
@@ -549,7 +636,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       const records = await commitRecordEdits(snapshot._records);
       if (records) {
         await Promise.all(
-          ["announcements", "shiurim", "minyanim", "settings"].map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
+          ["announcements", "shiurim", "minyanim", "settings"].map((k) =>
+            queryClient.invalidateQueries({ queryKey: [k] }),
+          ),
         );
       }
       const clean = normalizeTvConfig(snapshot);
@@ -562,7 +651,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       } else {
         // Edited meanwhile: keep those edits, minus the content already written.
         const done = new Set(snapshot._records ?? []);
-        dispatch({ type: "load", config: { ...now, _records: (now._records ?? []).filter((r) => !done.has(r)) } });
+        dispatch({
+          type: "load",
+          config: { ...now, _records: (now._records ?? []).filter((r) => !done.has(r)) },
+        });
       }
       toast.success(
         approvedCount
@@ -583,19 +675,51 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const isCustom = draft.customThemes.some((t) => t.id === draft.theme);
   const hasOverrides = Object.keys(draft.themeOverrides).length > 0;
   /** The colours on screen now: the theme plus the live edits below. */
-  const currentVars = () => ({ ...theme.vars, ...(draft.themeOverrides as Partial<Record<ThemeVar, string>>) }) as Record<ThemeVar, string>;
-  const [naming, setNaming] = useState<{ mode: "new" | "rename"; id?: string; value: string } | null>(null);
+  const currentVars = () =>
+    ({ ...theme.vars, ...(draft.themeOverrides as Partial<Record<ThemeVar, string>>) } as Record<
+      ThemeVar,
+      string
+    >);
+  const [naming, setNaming] = useState<{
+    mode: "new" | "rename";
+    id?: string;
+    value: string;
+  } | null>(null);
+  // Switching themes drops the colour tweaks made on top of the current one.
+  // Losing work in silence is how a design gets messy, so ask first.
+  const [themeSwitch, setThemeSwitch] = useState<string | null>(null);
+  const applyThemeChoice = (id: string) =>
+    edit("theme", (c) => ({ ...c, theme: id, themeOverrides: {} }));
+  const pickTheme = (id: string) => {
+    if (id === draft.theme) return;
+    if (Object.keys(draft.themeOverrides).length) setThemeSwitch(id);
+    else applyThemeChoice(id);
+  };
   const commitName = () => {
     if (!naming) return;
     const name = naming.value.trim().slice(0, 40);
     if (!name) return toast.error("צריך לתת שם לערכה");
     if (naming.mode === "new") {
       const vars = currentVars();
-      const t: TvTheme = { id: newCustomThemeId(), name, description: `על בסיס "${theme.name}"`, light: isLightColor(vars["--tv-bg-a"]), vars };
-      edit("theme-new", (c) => ({ ...c, customThemes: [...c.customThemes, t], theme: t.id, themeOverrides: {} }));
+      const t: TvTheme = {
+        id: newCustomThemeId(),
+        name,
+        description: `על בסיס "${theme.name}"`,
+        light: isLightColor(vars["--tv-bg-a"]),
+        vars,
+      };
+      edit("theme-new", (c) => ({
+        ...c,
+        customThemes: [...c.customThemes, t],
+        theme: t.id,
+        themeOverrides: {},
+      }));
       toast.success(`הערכה "${name}" נשמרה ונבחרה. היא תגיע למסכים ב"שמור ושדר".`);
     } else {
-      edit("theme-rename", (c) => ({ ...c, customThemes: c.customThemes.map((t) => (t.id === naming.id ? { ...t, name } : t)) }));
+      edit("theme-rename", (c) => ({
+        ...c,
+        customThemes: c.customThemes.map((t) => (t.id === naming.id ? { ...t, name } : t)),
+      }));
     }
     setNaming(null);
   };
@@ -603,7 +727,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     const vars = currentVars();
     edit("theme-update", (c) => ({
       ...c,
-      customThemes: c.customThemes.map((t) => (t.id === c.theme ? { ...t, vars, light: isLightColor(vars["--tv-bg-a"]) } : t)),
+      customThemes: c.customThemes.map((t) =>
+        t.id === c.theme ? { ...t, vars, light: isLightColor(vars["--tv-bg-a"]) } : t,
+      ),
       themeOverrides: {},
     }));
     toast.success(`הערכה "${theme.name}" עודכנה.`);
@@ -633,7 +759,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       else
         edit("show", (c) => ({
           ...c,
-          slideshow: { ...c.slideshow, images: [...c.slideshow.images, ...urls.map((url) => ({ url }))] },
+          slideshow: {
+            ...c.slideshow,
+            images: [...c.slideshow.images, ...urls.map((url) => ({ url }))],
+          },
           slides: c.slides.map((s) => (s.kind === "slideshow" ? { ...s, enabled: true } : s)),
         }));
       toast.success(urls.length > 1 ? `${urls.length} תמונות הועלו` : "התמונה הועלתה");
@@ -644,7 +773,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     }
   };
 
-  if (saved.isLoading) return <p className="p-6 text-center text-muted-foreground">טוען את עיצוב הלוח…</p>;
+  if (saved.isLoading)
+    return <p className="p-6 text-center text-muted-foreground">טוען את עיצוב הלוח…</p>;
   if (saved.error)
     return (
       <p className="p-6 text-center text-destructive">
@@ -672,10 +802,22 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
         {autoplay ? "עצירת הסבב" : "הפעלת סבב"}
       </Button>
-      <Button type="button" variant="outline" size="sm" onClick={showAlertExample} disabled={!draft.alerts.enabled}>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={showAlertExample}
+        disabled={!draft.alerts.enabled}
+      >
         <BellRing className="size-4" /> דוגמת התראת זמנים
       </Button>
-      <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} onClick={toggleShabbatPreview}>
+      <Button
+        type="button"
+        variant={shabbatPreview ? "default" : "outline"}
+        size="sm"
+        aria-pressed={shabbatPreview}
+        onClick={toggleShabbatPreview}
+      >
         🕯️ {shabbatPreview ? "חזרה לזמן אמת" : "תצוגת מסך שבת"}
       </Button>
       {simulatedNow && (
@@ -691,10 +833,26 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const controls = (
     <>
       <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur">
-        <Button type="button" variant="ghost" size="icon" aria-label="ביטול (Ctrl+Z)" title="ביטול (Ctrl+Z)" disabled={!state.past.length} onClick={() => dispatch({ type: "undo" })}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="ביטול (Ctrl+Z)"
+          title="ביטול (Ctrl+Z)"
+          disabled={!state.past.length}
+          onClick={() => dispatch({ type: "undo" })}
+        >
           <Undo2 className="size-4" />
         </Button>
-        <Button type="button" variant="ghost" size="icon" aria-label="חזרה (Ctrl+Y)" title="חזרה (Ctrl+Y)" disabled={!state.future.length} onClick={() => dispatch({ type: "redo" })}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="חזרה (Ctrl+Y)"
+          title="חזרה (Ctrl+Y)"
+          disabled={!state.future.length}
+          onClick={() => dispatch({ type: "redo" })}
+        >
           <Redo2 className="size-4" />
         </Button>
         <AlertDialog>
@@ -706,17 +864,23 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           <AlertDialogContent dir="rtl">
             <AlertDialogHeader>
               <AlertDialogTitle>לבטל את כל השינויים שלא נשמרו?</AlertDialogTitle>
-              <AlertDialogDescription>התצוגה תחזור לעיצוב השמור, שהוא מה שמוצג כעת על המסכים.</AlertDialogDescription>
+              <AlertDialogDescription>
+                התצוגה תחזור לעיצוב השמור, שהוא מה שמוצג כעת על המסכים.
+              </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>המשך לערוך</AlertDialogCancel>
-              <AlertDialogAction onClick={() => saved.data && dispatch({ type: "load", config: saved.data.config })}>
+              <AlertDialogAction
+                onClick={() => saved.data && dispatch({ type: "load", config: saved.data.config })}
+              >
                 בטל שינויים
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        <span className="ms-auto text-xs text-muted-foreground">{dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}</span>
+        <span className="ms-auto text-xs text-muted-foreground">
+          {dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}
+        </span>
         <Button type="button" onClick={save} disabled={!dirty || saving}>
           {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
           {saving ? "שומר…" : "שמור ושדר למסכים"}
@@ -731,13 +895,22 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               type="button"
               aria-pressed={draft.screenLayout === l.id}
               onClick={() => edit("layout", (c) => ({ ...c, screenLayout: l.id }))}
-              className={`rounded-lg border p-2 text-right transition ${draft.screenLayout === l.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`}
+              className={`rounded-lg border p-2 text-right transition ${
+                draft.screenLayout === l.id
+                  ? "ring-2 ring-primary ring-offset-2"
+                  : "hover:border-primary/50"
+              }`}
             >
-              <span className="mb-2 grid aspect-video grid-cols-3 grid-rows-[auto_1fr_1fr_1fr] gap-1 rounded-md bg-[#0b1628] p-1.5 text-[#f0c35c]" aria-hidden>
+              <span
+                className="mb-2 grid aspect-video grid-cols-3 grid-rows-[auto_1fr_1fr_1fr] gap-1 rounded-md bg-[#0b1628] p-1.5 text-[#f0c35c]"
+                aria-hidden
+              >
                 {l.sketch}
               </span>
               <span className="block text-sm font-medium">{l.name}</span>
-              <span className="block text-[11px] leading-tight text-muted-foreground">{l.hint}</span>
+              <span className="block text-[11px] leading-tight text-muted-foreground">
+                {l.hint}
+              </span>
             </button>
           ))}
         </div>
@@ -758,7 +931,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </div>
       </Section>
 
-      <Section title="ערכת נושא" hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה.">
+      <Section
+        title="ערכת נושא"
+        hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה."
+      >
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {themes.map((t) => {
             const custom = !TV_THEMES.some((b) => b.id === t.id);
@@ -766,13 +942,15 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               <div
                 key={t.id}
                 className={`relative overflow-hidden rounded-lg border text-right transition ${
-                  draft.theme === t.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
+                  draft.theme === t.id
+                    ? "ring-2 ring-primary ring-offset-2"
+                    : "hover:border-primary/50"
                 }`}
               >
                 <button
                   type="button"
                   aria-pressed={draft.theme === t.id}
-                  onClick={() => edit("theme", (c) => ({ ...c, theme: t.id, themeOverrides: {} }))}
+                  onClick={() => pickTheme(t.id)}
                   className="block w-full text-right"
                 >
                   <div
@@ -781,26 +959,52 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                       background: `radial-gradient(ellipse at 20% 0%, ${t.vars["--tv-bg-b"]}, transparent 70%), ${t.vars["--tv-bg-a"]}`,
                     }}
                   >
-                    <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent"] }} />
-                    <span className="size-4 rounded-full" style={{ background: t.vars["--tv-text"] }} />
-                    <span className="size-4 rounded-full" style={{ background: t.vars["--tv-accent-2"] }} />
+                    <span
+                      className="size-4 rounded-full"
+                      style={{ background: t.vars["--tv-accent"] }}
+                    />
+                    <span
+                      className="size-4 rounded-full"
+                      style={{ background: t.vars["--tv-text"] }}
+                    />
+                    <span
+                      className="size-4 rounded-full"
+                      style={{ background: t.vars["--tv-accent-2"] }}
+                    />
                   </div>
                   <div className="p-2 pb-1">
                     <div className="text-sm font-medium">
                       {t.name}
-                      {custom && <span className="ms-1 rounded bg-secondary px-1 text-[10px] font-normal text-muted-foreground">שלי</span>}
+                      {custom && (
+                        <span className="ms-1 rounded bg-secondary px-1 text-[10px] font-normal text-muted-foreground">
+                          שלי
+                        </span>
+                      )}
                     </div>
-                    <div className="text-[11px] leading-tight text-muted-foreground">{t.description}</div>
+                    <div className="text-[11px] leading-tight text-muted-foreground">
+                      {t.description}
+                    </div>
                   </div>
                 </button>
                 {custom && (
                   <div className="flex gap-1 px-1 pb-1">
-                    <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setNaming({ mode: "rename", id: t.id, value: t.name })}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-1.5 text-[11px]"
+                      onClick={() => setNaming({ mode: "rename", id: t.id, value: t.name })}
+                    >
                       שינוי שם
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px] text-destructive">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-1.5 text-[11px] text-destructive"
+                        >
                           מחיקה
                         </Button>
                       </AlertDialogTrigger>
@@ -808,13 +1012,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                         <AlertDialogHeader>
                           <AlertDialogTitle>למחוק את הערכה "{t.name}"?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            {draft.theme === t.id ? "היא בשימוש כרגע; הלוח יחזור ל\"לילה כחול\". " : ""}
+                            {draft.theme === t.id
+                              ? 'היא בשימוש כרגע; הלוח יחזור ל"לילה כחול". '
+                              : ""}
                             המחיקה תגיע למסכים ב"שמור ושדר", ועד אז אפשר לבטל (Ctrl+Z).
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                           <AlertDialogCancel>ביטול</AlertDialogCancel>
-                          <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => deleteTheme(t.id)}>
+                          <AlertDialogAction
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            onClick={() => deleteTheme(t.id)}
+                          >
                             מחיקה
                           </AlertDialogAction>
                         </AlertDialogFooter>
@@ -826,6 +1035,41 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             );
           })}
         </div>
+        <AlertDialog
+          open={Boolean(themeSwitch)}
+          onOpenChange={(open) => !open && setThemeSwitch(null)}
+        >
+          <AlertDialogContent dir="rtl">
+            <AlertDialogHeader>
+              <AlertDialogTitle>יש שינויי צבע שלא נשמרו בערכה</AlertDialogTitle>
+              <AlertDialogDescription>
+                מעבר לערכה אחרת יבטל את שינויי הצבע שעשיתם על ״{theme.name}״. אפשר לשמור אותם קודם
+                כערכה חדשה, וכך הם יישארו זמינים תמיד.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>להישאר כאן</AlertDialogCancel>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setNaming({ mode: "new", value: `${theme.name} (מותאם)` });
+                  setThemeSwitch(null);
+                }}
+              >
+                שמירה כערכה חדשה
+              </Button>
+              <AlertDialogAction
+                onClick={() => {
+                  if (themeSwitch) applyThemeChoice(themeSwitch);
+                  setThemeSwitch(null);
+                }}
+              >
+                החלפה בלי לשמור
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         {naming ? (
           <form
             className="flex flex-wrap items-center gap-2"
@@ -852,23 +1096,43 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           </form>
         ) : (
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setNaming({ mode: "new", value: hasOverrides ? `${theme.name} (מותאם)` : "" })}>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setNaming({ mode: "new", value: hasOverrides ? `${theme.name} (מותאם)` : "" })
+              }
+            >
               <Plus className="size-4" /> שמירה כערכה חדשה
             </Button>
             {isCustom && (
-              <Button type="button" variant="outline" size="sm" disabled={!hasOverrides} onClick={updateTheme} title={hasOverrides ? "שומר את שינויי הצבע שלמטה לתוך הערכה" : "שנו צבעים למטה ואז עדכנו"}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!hasOverrides}
+                onClick={updateTheme}
+                title={
+                  hasOverrides ? "שומר את שינויי הצבע שלמטה לתוך הערכה" : "שנו צבעים למטה ואז עדכנו"
+                }
+              >
                 <Save className="size-4" /> עדכון הערכה "{theme.name}"
               </Button>
             )}
             <span className="text-xs text-muted-foreground">
               {isCustom
-                ? "ערכה שלכם: שנו צבעים למטה ולחצו \"עדכון הערכה\"."
+                ? 'ערכה שלכם: שנו צבעים למטה ולחצו "עדכון הערכה".'
                 : "ערכה מובנית: שנו צבעים למטה ושמרו כערכה חדשה כדי לערוך אותה."}
               {draft.customThemes.length >= 24 ? " הגעתם למספר הערכות המרבי (24)." : ""}
             </span>
           </div>
         )}
-        {hasOverrides && <p className="text-xs text-muted-foreground">בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.</p>}
+        {hasOverrides && (
+          <p className="text-xs text-muted-foreground">
+            בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.
+          </p>
+        )}
       </Section>
 
       <Section title="גופן וגודל טקסט">
@@ -878,7 +1142,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             <select
               id="tv-font"
               value={draft.font}
-              onChange={(e) => edit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))}
+              onChange={(e) =>
+                edit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))
+              }
               className="block h-9 rounded-md border bg-background px-2 text-sm"
             >
               {TV_FONTS.map((f) => (
@@ -903,7 +1169,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </div>
       </Section>
 
-      <Section title="צבעים (עריכה חיה)" hint={`מתחיל מ"${theme.name}". כל שינוי מופיע מיד בתצוגה; ↺ מחזיר לערך הערכה.`}>
+      <Section
+        title="צבעים (עריכה חיה)"
+        hint={`מתחיל מ"${theme.name}". כל שינוי מופיע מיד בתצוגה; ↺ מחזיר לערך הערכה.`}
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           {THEME_VARS.map((v: ThemeVar) => (
             <ColorField
@@ -912,7 +1181,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               value={draft.themeOverrides[v] ?? theme.vars[v]}
               themeValue={theme.vars[v]}
               overridden={v in draft.themeOverrides}
-              onChange={(value) => edit(`color:${v}`, (c) => ({ ...c, themeOverrides: { ...c.themeOverrides, [v]: value } }))}
+              onChange={(value) =>
+                edit(`color:${v}`, (c) => ({
+                  ...c,
+                  themeOverrides: { ...c.themeOverrides, [v]: value },
+                }))
+              }
               onReset={() =>
                 edit(`reset:${v}`, (c) => {
                   const next = { ...c.themeOverrides };
@@ -925,18 +1199,32 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </div>
       </Section>
 
-      <Section title="תמונת רקע" hint="אופציונלי. התמונה מוחשכת כדי שהטקסט יישאר קריא. היא מותאמת אוטומטית לאיכות המלאה של הטלוויזיה; מומלץ לפחות 1920×1080.">
+      <Section
+        title="תמונת רקע"
+        hint="אופציונלי. התמונה מוחשכת כדי שהטקסט יישאר קריא. היא מותאמת אוטומטית לאיכות המלאה של הטלוויזיה; מומלץ לפחות 1920×1080."
+      >
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
             <label className="cursor-pointer">
-              <ImagePlus className="size-4" /> {draft.backgroundImage ? "החלפת תמונה" : "העלאת תמונה"}
-              <input type="file" accept="image/*" className="sr-only" onChange={(e) => void upload(e.target.files, "background")} />
+              <ImagePlus className="size-4" />{" "}
+              {draft.backgroundImage ? "החלפת תמונה" : "העלאת תמונה"}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(e) => void upload(e.target.files, "background")}
+              />
             </label>
           </Button>
           {draft.backgroundImage && (
             <>
               <img src={draft.backgroundImage} alt="" className="h-10 w-16 rounded object-cover" />
-              <Button type="button" variant="ghost" size="sm" onClick={() => edit("bg", (c) => ({ ...c, backgroundImage: null }))}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => edit("bg", (c) => ({ ...c, backgroundImage: null }))}
+              >
                 <Trash2 className="size-4" /> הסרה
               </Button>
             </>
@@ -966,7 +1254,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   checked={s.enabled}
                   aria-label={`הצגת ${SLIDE_KIND_LABELS[s.kind]}`}
                   onCheckedChange={(on) =>
-                    edit(`slide-on:${s.kind}`, (c) => ({ ...c, slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, enabled: on } : x)) }))
+                    edit(`slide-on:${s.kind}`, (c) => ({
+                      ...c,
+                      slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, enabled: on } : x)),
+                    }))
                   }
                 />
                 <span className="min-w-28 font-medium">{SLIDE_KIND_LABELS[s.kind]}</span>
@@ -976,7 +1267,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   onChange={(e) =>
                     edit(`slide-layout:${s.kind}`, (c) => ({
                       ...c,
-                      slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, layout: e.target.value } : x)),
+                      slides: c.slides.map((x) =>
+                        x.kind === s.kind ? { ...x, layout: e.target.value } : x,
+                      ),
                     }))
                   }
                   className="h-8 rounded-md border bg-background px-2 text-sm"
@@ -996,7 +1289,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                     step={1}
                     format={(v) => `${v} שנ׳`}
                     onChange={(v) =>
-                      edit(`slide-sec:${s.kind}`, (c) => ({ ...c, slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, seconds: v } : x)) }))
+                      edit(`slide-sec:${s.kind}`, (c) => ({
+                        ...c,
+                        slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, seconds: v } : x)),
+                      }))
                     }
                   />
                 )}
@@ -1038,7 +1334,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </div>
               </div>
               {s.kind === "slideshow" && (
-                <p className="mt-2 text-xs text-muted-foreground">המשך נקבע לפי מספר התמונות × זמן לתמונה (בהגדרות המצגת).</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  המשך נקבע לפי מספר התמונות × זמן לתמונה (בהגדרות המצגת).
+                </p>
               )}
             </li>
           ))}
@@ -1052,7 +1350,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         <label className="flex items-center gap-3">
           <Switch
             checked={draft.shabbat.enabled}
-            onCheckedChange={(on) => edit("sb-on", (c) => ({ ...c, shabbat: { ...c.shabbat, enabled: on } }))}
+            onCheckedChange={(on) =>
+              edit("sb-on", (c) => ({ ...c, shabbat: { ...c.shabbat, enabled: on } }))
+            }
           />
           מסך שבת פעיל
         </label>
@@ -1065,7 +1365,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             max={90}
             step={1}
             format={(v) => `${v} דק׳`}
-            onChange={(v) => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: v } }))}
+            onChange={(v) =>
+              edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: v } }))
+            }
           />
           <span className="text-xs text-muted-foreground">אחרי השקיעה</span>
           {[40, 72].map((m) => (
@@ -1075,7 +1377,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               size="sm"
               variant={draft.shabbat.endMinutesAfterSunset === m ? "default" : "outline"}
               className="h-7 px-2 text-xs"
-              onClick={() => edit("sb-end", (c) => ({ ...c, shabbat: { ...c.shabbat, endMinutesAfterSunset: m } }))}
+              onClick={() =>
+                edit("sb-end", (c) => ({
+                  ...c,
+                  shabbat: { ...c.shabbat, endMinutesAfterSunset: m },
+                }))
+              }
             >
               {m === 72 ? "72 (ר״ת)" : `${m} (מקובל)`}
             </Button>
@@ -1088,7 +1395,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               <Switch
                 checked={sb.rotate}
                 onCheckedChange={(on) =>
-                  edit("sb-rotate", (c) => ({ ...c, shabbat: { ...c.shabbat, rotate: on, scenes: on ? c.shabbat.scenes : c.shabbat.scenes.slice(0, 1) } }))
+                  edit("sb-rotate", (c) => ({
+                    ...c,
+                    shabbat: {
+                      ...c.shabbat,
+                      rotate: on,
+                      scenes: on ? c.shabbat.scenes : c.shabbat.scenes.slice(0, 1),
+                    },
+                  }))
                 }
               />
               מצגת: החלפת תמונות
@@ -1099,10 +1413,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 <select
                   aria-label="זמן לכל תמונה"
                   value={sb.secondsPerScene}
-                  onChange={(e) => edit("sb-secs", (c) => ({ ...c, shabbat: { ...c.shabbat, secondsPerScene: Number(e.target.value) } }))}
+                  onChange={(e) =>
+                    edit("sb-secs", (c) => ({
+                      ...c,
+                      shabbat: { ...c.shabbat, secondsPerScene: Number(e.target.value) },
+                    }))
+                  }
                   className="h-8 rounded-md border bg-background px-2 text-sm"
                 >
-                  {(SCENE_INTERVALS.includes(sb.secondsPerScene) ? SCENE_INTERVALS : [...SCENE_INTERVALS, sb.secondsPerScene].sort((a, b) => a - b)).map((s) => (
+                  {(SCENE_INTERVALS.includes(sb.secondsPerScene)
+                    ? SCENE_INTERVALS
+                    : [...SCENE_INTERVALS, sb.secondsPerScene].sort((a, b) => a - b)
+                  ).map((s) => (
                     <option key={s} value={s}>
                       {intervalLabel(s)}
                     </option>
@@ -1114,65 +1436,120 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           <p className="text-xs text-muted-foreground">
             {sb.rotate
               ? `לחצו על תמונות כדי להוסיף או להוציא מהמצגת; המספר הוא הסדר. נבחרו ${sb.scenes.length}.`
-              : "לחצו על תמונה כדי לבחור אותה. להחלפת תמונות לפי זמן - הפעילו \"מצגת\"."}
+              : 'לחצו על תמונה כדי לבחור אותה. להחלפת תמונות לפי זמן - הפעילו "מצגת".'}
           </p>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {[...SHABBAT_ART.map((a) => ({ scene: `art:${a.id}`, label: a.label, photo: false })), ...sb.photos.map((p, i) => ({ scene: p, label: `תמונה ${i + 1}`, photo: true }))].map(
-              ({ scene, label, photo }) => {
-                const order = sb.scenes.indexOf(scene);
-                const chosen = order >= 0;
-                return (
-                  <div key={scene} className={`relative overflow-hidden rounded-lg border bg-[#0b1628] transition ${chosen ? "ring-2 ring-primary ring-offset-2" : "opacity-80 hover:opacity-100"}`}>
-                    <button type="button" aria-pressed={chosen} aria-label={label} onClick={() => pickScene(scene)} className="block w-full">
-                      <div className="pointer-events-none aspect-[900/520] p-1 [&_.tv-shabbat-photo]:max-h-none [&_.tv-shabbat-photo]:shadow-none [&_svg]:h-full [&_svg]:w-full">
-                        <ShabbatPicture scene={scene} />
-                      </div>
-                      <div className="bg-background/95 px-2 py-1 text-right text-xs font-medium">{label}</div>
-                    </button>
-                    {chosen && sb.rotate && (
-                      <span className="absolute start-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">{order + 1}</span>
-                    )}
-                    {photo && (
-                      <Button type="button" variant="secondary" size="icon" className="absolute end-1.5 top-1.5 size-7" aria-label={`הסרת ${label}`} onClick={() => removeShabbatPhoto(scene)}>
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                );
-              },
-            )}
+            {[
+              ...SHABBAT_ART.map((a) => ({ scene: `art:${a.id}`, label: a.label, photo: false })),
+              ...sb.photos.map((p, i) => ({ scene: p, label: `תמונה ${i + 1}`, photo: true })),
+            ].map(({ scene, label, photo }) => {
+              const order = sb.scenes.indexOf(scene);
+              const chosen = order >= 0;
+              return (
+                <div
+                  key={scene}
+                  className={`relative overflow-hidden rounded-lg border bg-[#0b1628] transition ${
+                    chosen ? "ring-2 ring-primary ring-offset-2" : "opacity-80 hover:opacity-100"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    aria-pressed={chosen}
+                    aria-label={label}
+                    onClick={() => pickScene(scene)}
+                    className="block w-full"
+                  >
+                    <div className="pointer-events-none aspect-[900/520] p-1 [&_.tv-shabbat-photo]:max-h-none [&_.tv-shabbat-photo]:shadow-none [&_svg]:h-full [&_svg]:w-full">
+                      <ShabbatPicture scene={scene} />
+                    </div>
+                    <div className="bg-background/95 px-2 py-1 text-right text-xs font-medium">
+                      {label}
+                    </div>
+                  </button>
+                  {chosen && sb.rotate && (
+                    <span className="absolute start-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                      {order + 1}
+                    </span>
+                  )}
+                  {photo && (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      className="absolute end-1.5 top-1.5 size-7"
+                      aria-label={`הסרת ${label}`}
+                      onClick={() => removeShabbatPhoto(scene)}
+                    >
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <Button type="button" variant="outline" size="sm" asChild disabled={sbUploading}>
             <label className="cursor-pointer">
               <ImagePlus className="size-4" /> {sbUploading ? "מעלה…" : "העלאת תמונות משלכם"}
-              <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void uploadShabbat(e.target.files)} />
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={(e) => void uploadShabbat(e.target.files)}
+              />
             </label>
           </Button>
-          <span className="ms-2 text-xs text-muted-foreground">מומלץ 1920×1080 ומעלה; התמונה מותאמת אוטומטית לטלוויזיה.</span>
+          <span className="ms-2 text-xs text-muted-foreground">
+            מומלץ 1920×1080 ומעלה; התמונה מותאמת אוטומטית לטלוויזיה.
+          </span>
         </div>
         <p className="text-xs text-muted-foreground">
-          אפשר לשנות את הכיתוב, להסתיר חלקים ולהזיז בעריכה ישירה: לחצו "תצוגת מסך שבת" ואז "עריכה ישירה בלוח".
+          אפשר לשנות את הכיתוב, להסתיר חלקים ולהזיז בעריכה ישירה: לחצו "תצוגת מסך שבת" ואז "עריכה
+          ישירה בלוח".
         </p>
       </Section>
 
       <Section title="ראש המסך">
         <label className="flex items-center gap-3">
-          <Switch checked={draft.header.logo} onCheckedChange={(on) => edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))} />
+          <Switch
+            checked={draft.header.logo}
+            onCheckedChange={(on) =>
+              edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))
+            }
+          />
           לוגו קרובים ליד שם בית הכנסת
         </label>
         <label className="flex items-center gap-3">
-          <Switch checked={draft.header.parasha} onCheckedChange={(on) => edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))} />
+          <Switch
+            checked={draft.header.parasha}
+            onCheckedChange={(on) =>
+              edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))
+            }
+          />
           פרשת השבוע
         </label>
         <label className="flex items-center gap-3">
-          <Switch checked={draft.header.dafYomi} onCheckedChange={(on) => edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))} />
+          <Switch
+            checked={draft.header.dafYomi}
+            onCheckedChange={(on) =>
+              edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))
+            }
+          />
           הדף היומי
         </label>
       </Section>
 
-      <Section title="התראות לפני סוף זמן" hint="ספירה לאחור בתחתית המסך, וכרטיס גדול בכל אחת מהדקות שנבחרו.">
+      <Section
+        title="התראות לפני סוף זמן"
+        hint="ספירה לאחור בתחתית המסך, וכרטיס גדול בכל אחת מהדקות שנבחרו."
+      >
         <label className="flex items-center gap-3">
-          <Switch checked={draft.alerts.enabled} onCheckedChange={(on) => edit("al-on", (c) => ({ ...c, alerts: { ...c.alerts, enabled: on } }))} />
+          <Switch
+            checked={draft.alerts.enabled}
+            onCheckedChange={(on) =>
+              edit("al-on", (c) => ({ ...c, alerts: { ...c.alerts, enabled: on } }))
+            }
+          />
           התראות פעילות
         </label>
         <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -1187,7 +1564,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                     ...c,
                     alerts: {
                       ...c.alerts,
-                      events: ev.target.checked ? [...c.alerts.events, e] : c.alerts.events.filter((x) => x !== e),
+                      events: ev.target.checked
+                        ? [...c.alerts.events, e]
+                        : c.alerts.events.filter((x) => x !== e),
                     },
                   }))
                 }
@@ -1198,7 +1577,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </div>
         <LeadMinutesEditor
           value={draft.alerts.leadMinutes}
-          onChange={(leads) => edit("al-leads", (c) => ({ ...c, alerts: { ...c.alerts, leadMinutes: leads } }))}
+          onChange={(leads) =>
+            edit("al-leads", (c) => ({ ...c, alerts: { ...c.alerts, leadMinutes: leads } }))
+          }
         />
         <div className="flex items-center gap-3 text-sm">
           משך הצגת הכרטיס:
@@ -1209,7 +1590,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             max={180}
             step={5}
             format={(v) => `${v} שנ׳`}
-            onChange={(v) => edit("al-sec", (c) => ({ ...c, alerts: { ...c.alerts, popupSeconds: v } }))}
+            onChange={(v) =>
+              edit("al-sec", (c) => ({ ...c, alerts: { ...c.alerts, popupSeconds: v } }))
+            }
           />
         </div>
       </Section>
@@ -1219,23 +1602,39 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (~45%) כל עוד הסרגל פעיל."
       >
         <label className="flex items-center gap-3">
-          <Switch checked={draft.ticker.enabled} onCheckedChange={(on) => edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))} />
+          <Switch
+            checked={draft.ticker.enabled}
+            onCheckedChange={(on) =>
+              edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))
+            }
+          />
           הצגת סרגל
         </label>
         <Textarea
           value={draft.ticker.text}
           maxLength={400}
           placeholder="למשל: ברוכים הבאים · שיעור העמוד היומי בכל יום ב-16:15"
-          onChange={(e) => edit("tk-text", (c) => ({ ...c, ticker: { ...c.ticker, text: e.target.value } }))}
+          onChange={(e) =>
+            edit("tk-text", (c) => ({ ...c, ticker: { ...c.ticker, text: e.target.value } }))
+          }
         />
       </Section>
 
-      <Section title="מצגת תמונות" hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG.">
+      <Section
+        title="מצגת תמונות"
+        hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG."
+      >
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
             <label className="cursor-pointer">
               <ImagePlus className="size-4" /> {uploading ? "מעלה…" : "הוספת תמונות"}
-              <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => void upload(e.target.files, "slideshow")} />
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                onChange={(e) => void upload(e.target.files, "slideshow")}
+              />
             </label>
           </Button>
           <span className="flex items-center gap-2 text-sm">
@@ -1247,7 +1646,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               max={60}
               step={1}
               format={(v) => `${v} שנ׳`}
-              onChange={(v) => edit("sh-sec", (c) => ({ ...c, slideshow: { ...c.slideshow, secondsPerImage: v } }))}
+              onChange={(v) =>
+                edit("sh-sec", (c) => ({ ...c, slideshow: { ...c.slideshow, secondsPerImage: v } }))
+              }
             />
           </span>
         </div>
@@ -1265,7 +1666,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                       ...c,
                       slideshow: {
                         ...c.slideshow,
-                        images: c.slideshow.images.map((x, j) => (j === i ? { ...x, caption: e.target.value || undefined } : x)),
+                        images: c.slideshow.images.map((x, j) =>
+                          j === i ? { ...x, caption: e.target.value || undefined } : x,
+                        ),
                       },
                     }))
                   }
@@ -1277,7 +1680,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   className="size-8 shrink-0"
                   aria-label="הסרת תמונה"
                   onClick={() =>
-                    edit("sh-del", (c) => ({ ...c, slideshow: { ...c.slideshow, images: c.slideshow.images.filter((_, j) => j !== i) } }))
+                    edit("sh-del", (c) => ({
+                      ...c,
+                      slideshow: {
+                        ...c.slideshow,
+                        images: c.slideshow.images.filter((_, j) => j !== i),
+                      },
+                    }))
                   }
                 >
                   <Trash2 className="size-4" />
@@ -1298,13 +1707,17 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           <AlertDialogHeader>
             <AlertDialogTitle>לאפס את כל העיצוב לברירת המחדל?</AlertDialogTitle>
             <AlertDialogDescription>
-              ערכת הנושא, הצבעים, השקופיות וההתראות יחזרו להגדרות המקוריות בתצוגה המקדימה. שום דבר לא ישתנה במסכים עד
-              שתלחצו "שמור ושדר".
+              ערכת הנושא, הצבעים, השקופיות וההתראות יחזרו להגדרות המקוריות בתצוגה המקדימה. שום דבר
+              לא ישתנה במסכים עד שתלחצו "שמור ושדר".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>ביטול</AlertDialogCancel>
-            <AlertDialogAction onClick={() => edit("reset-all", () => structuredClone(DEFAULT_TV_CONFIG))}>אפס</AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => edit("reset-all", () => structuredClone(DEFAULT_TV_CONFIG))}
+            >
+              אפס
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1327,14 +1740,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           onSelect={setSelected}
           onEdit={edit}
         />
-        <StudioPanel
-          title="עורך חי"
-          status={dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}
-        >
+        <StudioPanel title="עורך חי" status={dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}>
           <div className="space-y-3">
             <p className="rounded-md bg-muted/60 p-2 text-xs leading-relaxed text-muted-foreground">
-              לחצו על כל רכיב בלוח כדי לערוך אותו; גררו אותו כדי להזיז. <b>Alt + לחיצה</b> מפעילה את הלוח כרגיל בלי לבחור,
-              ו-<b>Esc</b> מבטל את הבחירה (לחיצה נוספת: עוצרת את העריכה בלוח). הכל נשאר טיוטה עד "שמור ושדר" - ומתעדכן גם בעורך שבעמוד הניהול.
+              לחצו על כל רכיב בלוח כדי לערוך אותו; גררו אותו כדי להזיז. <b>Alt + לחיצה</b> מפעילה את
+              הלוח כרגיל בלי לבחור, ו-<b>Esc</b> מבטל את הבחירה (לחיצה נוספת: עוצרת את העריכה בלוח).
+              הכל נשאר טיוטה עד "שמור ושדר" - ומתעדכן גם בעורך שבעמוד הניהול.
             </p>
             <div className="flex flex-wrap items-center gap-2">{previewActions}</div>
             <SlideStrip
@@ -1345,7 +1756,15 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 setCycle((c) => c + 1);
               }}
             />
-            {editing && <TvEditInspector selected={selected} config={draft} data={board.data} onEdit={edit} onSelect={setSelected} />}
+            {editing && (
+              <TvEditInspector
+                selected={selected}
+                config={draft}
+                data={board.data}
+                onEdit={edit}
+                onSelect={setSelected}
+              />
+            )}
             {controls}
           </div>
         </StudioPanel>
@@ -1356,13 +1775,32 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   return (
     <div className={`grid gap-5 ${wide ? "" : "lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"}`}>
       {/* ------------------------------------------------ preview column -- */}
-      <div ref={previewColumn} className={`order-1 space-y-3 lg:order-2 ${fullscreen ? "overflow-auto bg-background p-4" : ""}`}>
+      <div
+        ref={previewColumn}
+        className={`order-1 space-y-3 lg:order-2 ${
+          fullscreen ? "overflow-auto bg-background p-4" : ""
+        }`}
+      >
         <div className={wide || fullscreen ? "space-y-3" : "lg:sticky lg:top-4 lg:space-y-3"}>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant={wide ? "default" : "outline"} size="sm" aria-pressed={wide} onClick={() => setWide((w) => !w)} title="התצוגה על כל רוחב המסך, והבקרות מתחתיה">
-              {wide ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />} {wide ? "תצוגה רגילה" : "תצוגה רחבה"}
+            <Button
+              type="button"
+              variant={wide ? "default" : "outline"}
+              size="sm"
+              aria-pressed={wide}
+              onClick={() => setWide((w) => !w)}
+              title="התצוגה על כל רוחב המסך, והבקרות מתחתיה"
+            >
+              {wide ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}{" "}
+              {wide ? "תצוגה רגילה" : "תצוגה רחבה"}
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={toggleFullscreen} title="התצוגה והעורך על כל המסך (Esc ליציאה)">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={toggleFullscreen}
+              title="התצוגה והעורך על כל המסך (Esc ליציאה)"
+            >
               <Expand className="size-4" /> {fullscreen ? "יציאה ממסך מלא" : "מסך מלא לעריכה"}
             </Button>
           </div>
@@ -1381,7 +1819,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           />
           {editing && (
             <div className="mt-3">
-              <TvEditInspector selected={selected} config={draft} data={board.data} onEdit={edit} onSelect={setSelected} />
+              <TvEditInspector
+                selected={selected}
+                config={draft}
+                data={board.data}
+                onEdit={edit}
+                onSelect={setSelected}
+              />
             </div>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -1421,14 +1865,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       </div>
 
       {/* ----------------------------------------------- controls column -- */}
-      <div className="order-2 space-y-4 lg:order-1">
-        {controls}
-      </div>
+      <div className="order-2 space-y-4 lg:order-1">{controls}</div>
     </div>
   );
 }
 
-function LeadMinutesEditor({ value, onChange }: { value: number[]; onChange: (v: number[]) => void }) {
+function LeadMinutesEditor({
+  value,
+  onChange,
+}: {
+  value: number[];
+  onChange: (v: number[]) => void;
+}) {
   const [adding, setAdding] = useState("");
   const add = () => {
     const n = Number(adding);
@@ -1440,9 +1888,17 @@ function LeadMinutesEditor({ value, onChange }: { value: number[]; onChange: (v:
     <div className="flex flex-wrap items-center gap-2 text-sm">
       התראה לפני:
       {value.map((m) => (
-        <span key={m} className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-0.5">
+        <span
+          key={m}
+          className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-0.5"
+        >
           {m} דק׳
-          <button type="button" aria-label={`הסרת התראה של ${m} דקות`} onClick={() => onChange(value.filter((x) => x !== m))} className="text-muted-foreground hover:text-foreground">
+          <button
+            type="button"
+            aria-label={`הסרת התראה של ${m} דקות`}
+            onClick={() => onChange(value.filter((x) => x !== m))}
+            className="text-muted-foreground hover:text-foreground"
+          >
             ×
           </button>
         </span>
@@ -1467,4 +1923,3 @@ function LeadMinutesEditor({ value, onChange }: { value: number[]; onChange: (v:
     </div>
   );
 }
-

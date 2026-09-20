@@ -35,7 +35,16 @@ export interface EditableSpec {
   multiline?: boolean;
 }
 
-export const SHOWN_ZMANIM: SolarEvent[] = ["alot", "sunrise", "sof_zman_shma", "sof_zman_tefila", "chatzot", "plag", "sunset", "tzeit"];
+export const SHOWN_ZMANIM: SolarEvent[] = [
+  "alot",
+  "sunrise",
+  "sof_zman_shma",
+  "sof_zman_tefila",
+  "chatzot",
+  "plag",
+  "sunset",
+  "tzeit",
+];
 
 export const EDITABLE: Record<string, EditableSpec> = {
   "header.logo": { label: "לוגו קרובים", hideable: true, flip: "header" },
@@ -47,7 +56,13 @@ export const EDITABLE: Record<string, EditableSpec> = {
   "dash.strip": { label: "לוח מלא: שורת הפרשה והדף היומי", hideable: true },
   "dash.seasonal": { label: "משיב הרוח / מוריד הטל", hideable: true },
   "split.next": { label: "מפוצל: המניין הבא", text: "המניין הבא", hideable: true },
-  "header.title": { label: "שם בית הכנסת", text: "", hideable: true, flip: "header", siteField: "name" },
+  "header.title": {
+    label: "שם בית הכנסת",
+    text: "",
+    hideable: true,
+    flip: "header",
+    siteField: "name",
+  },
   "header.weekday": { label: "היום בשבוע", hideable: true },
   "header.address": { label: "כתובת", text: "", hideable: true, siteField: "address" },
   "header.parasha": { label: "פרשת השבוע (בראש המסך)", hideable: true },
@@ -61,18 +76,40 @@ export const EDITABLE: Record<string, EditableSpec> = {
   "panel.minyanim": { label: "כותרת: מניינים", text: "מניינים", hideable: true, flip: "prayer" },
   "panel.zmanim": { label: "לוח זמני היום", text: "זמני היום", hideable: true, flip: "prayer" },
   "hero.kicker": { label: "המניין הבא", text: "המניין הבא" },
-  "learning.parasha": { label: "כרטיס פרשת השבוע", text: "פרשת השבוע", hideable: true, flip: "learning" },
+  "learning.parasha": {
+    label: "כרטיס פרשת השבוע",
+    text: "פרשת השבוע",
+    hideable: true,
+    flip: "learning",
+  },
   "learning.daf": { label: "כרטיס הדף היומי", text: "הדף היומי", hideable: true, flip: "learning" },
-  "learning.upcoming": { label: "כרטיס בימים הקרובים", text: "בימים הקרובים", hideable: true, flip: "learning" },
+  "learning.upcoming": {
+    label: "כרטיס בימים הקרובים",
+    text: "בימים הקרובים",
+    hideable: true,
+    flip: "learning",
+  },
   "footer.dots": { label: "נקודות השקופיות", hideable: true },
   ticker: { label: "סרגל רץ", text: "", hideable: true, multiline: true },
   "footer.status": { label: "מצב חיבור", hideable: true },
   "shabbat.title": { label: "מסך שבת: כותרת", text: "שבת שלום" },
-  "shabbat.blessing": { label: "מסך שבת: שורת ברכה", text: "בּוֹאִי בְשָׁלוֹם עֲטֶרֶת בַּעְלָהּ, גַּם בְּשִׂמְחָה וּבְצָהֳלָה", hideable: true, multiline: true },
+  "shabbat.blessing": {
+    label: "מסך שבת: שורת ברכה",
+    text: "בּוֹאִי בְשָׁלוֹם עֲטֶרֶת בַּעְלָהּ, גַּם בְּשִׂמְחָה וּבְצָהֳלָה",
+    hideable: true,
+    multiline: true,
+  },
   "shabbat.art": { label: "מסך שבת: ציור חלות ונרות", hideable: true },
   "shabbat.times": { label: "מסך שבת: זמני השבת", hideable: true },
   ...Object.fromEntries(
-    SHOWN_ZMANIM.map((e) => [`zman.${e}`, { label: `זמן: ${ZMAN_LABELS[e]}`, text: ZMAN_LABELS[e], hideable: true } satisfies EditableSpec]),
+    SHOWN_ZMANIM.map((e) => [
+      `zman.${e}`,
+      {
+        label: `זמן: ${ZMAN_LABELS[e]}`,
+        text: ZMAN_LABELS[e],
+        hideable: true,
+      } satisfies EditableSpec,
+    ]),
   ),
 };
 
@@ -102,13 +139,91 @@ export function setText(config: TvConfig, key: string, value: string | null): Tv
   return { ...config, texts };
 }
 
-export function setElementStyle(config: TvConfig, key: string, patch: Partial<ElementStyle> | null): TvConfig {
+/**
+ * Scopes for per-element styling, so one change can be made once and hold
+ * everywhere it should (and nowhere it should not):
+ *
+ *   element key      "minyan:<id>:label"  - this one element
+ *   family key       "kind:minyan:label"  - every element of the same kind,
+ *                                           on every slide, layout and device
+ *
+ * Both live in `config.styles`. A family rule is the base; the element's own
+ * rule is layered on top, so a single row can still differ from its family.
+ * An entry may also carry `theme`, which limits it to one theme.
+ */
+export const STYLE_FAMILIES: Record<string, string> = {
+  minyan: "כל שורות המניינים",
+  "minyan:label": "כל שמות המניינים",
+  zman: "כל שורות זמני היום",
+  ann: "כל כרטיסי המודעות",
+  "ann:title": "כל כותרות המודעות",
+  "ann:body": "כל גוף המודעות",
+  shiur: "כל שורות השיעורים",
+  "shiur:title": "כל שמות השיעורים",
+  "shiur:teacher": "כל שמות המגידים",
+};
+
+export const FAMILY_PREFIX = "kind:";
+
+/** The family an element belongs to, or null when it is one of a kind. */
+export function familyOf(key: string): string | null {
+  if (key.startsWith(FAMILY_PREFIX)) {
+    const named = key.slice(FAMILY_PREFIX.length);
+    return named in STYLE_FAMILIES ? named : null;
+  }
+  // "minyan:<id>:label" -> "minyan:label"; "zman.alot" -> "zman"
+  const parts = key.split(":");
+  const family = parts.length > 1 ? [parts[0], ...parts.slice(2)].join(":") : key.split(".")[0];
+  return family in STYLE_FAMILIES ? family : null;
+}
+
+export function familyKey(key: string): string | null {
+  const family = familyOf(key);
+  return family ? FAMILY_PREFIX + family : null;
+}
+
+/** Does this entry apply while `theme` is on screen? */
+function inTheme(style: ElementStyle | undefined, theme: string): style is ElementStyle {
+  return Boolean(style && (!style.theme || style.theme === theme));
+}
+
+/**
+ * The styling actually in force for an element: its family's rule with its
+ * own on top, both only if they apply to the theme on screen.
+ */
+export function resolveElementStyle(config: TvConfig, key: string): ElementStyle | undefined {
+  const fk = familyKey(key);
+  const family = fk ? config.styles[fk] : undefined;
+  const own = config.styles[key];
+  const theme = config.theme;
+  if (!inTheme(family, theme)) return inTheme(own, theme) ? own : undefined;
+  return inTheme(own, theme) ? { ...family, ...own } : family;
+}
+
+/**
+ * Where an edit to this element goes: its own entry, unless only a family
+ * rule exists - then the family is what the admin is working on. Keeps
+ * dragging, the joystick and the arrow keys writing to the same scope the
+ * inspector shows.
+ */
+export function styleTargetKey(config: TvConfig, key: string): string {
+  if (config.styles[key]) return key;
+  const fk = familyKey(key);
+  return fk && config.styles[fk] ? fk : key;
+}
+
+export function setElementStyle(
+  config: TvConfig,
+  key: string,
+  patch: Partial<ElementStyle> | null,
+): TvConfig {
   const styles = { ...config.styles };
   if (patch === null) {
     delete styles[key];
     return { ...config, styles };
   }
   const next: ElementStyle = { ...styles[key], ...patch };
+  if (!next.theme) delete next.theme;
   // Defaults are dropped so an untouched element carries no entry.
   if (next.scale === 1 || next.scale === undefined) delete next.scale;
   if (!next.color) delete next.color;
@@ -151,7 +266,9 @@ export function elementStyleCss(s: ElementStyle | undefined): CSSProperties | un
 export function toggleFlip(config: TvConfig, area: FlipArea): TvConfig {
   return {
     ...config,
-    flipped: config.flipped.includes(area) ? config.flipped.filter((a) => a !== area) : [...config.flipped, area],
+    flipped: config.flipped.includes(area)
+      ? config.flipped.filter((a) => a !== area)
+      : [...config.flipped, area],
   };
 }
 
@@ -180,7 +297,7 @@ export function makeBoardEdit(config: TvConfig, editing: boolean): BoardEditApi 
     hidden: (key) => isHidden(config, key),
     flipped: (area) => config.flipped.includes(area),
     attr: (key) => {
-      const style = elementStyleCss(config.styles[key]);
+      const style = elementStyleCss(resolveElementStyle(config, key));
       if (!editing) return style ? { style } : NO_ATTR;
       return style ? { "data-edit": key, style } : { "data-edit": key };
     },

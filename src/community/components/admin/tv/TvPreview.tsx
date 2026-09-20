@@ -5,7 +5,7 @@ import { TvBoard } from "@/tv/TvBoard";
 import type { BoardSlide } from "@/tv/useBoardData";
 import { slideLabel, type useTvSlides } from "./tvPreviewData";
 import { DeviceFrame, DeviceToolbar } from "./DevicePreview";
-import { setElementStyle } from "@/tv/boardEdit";
+import { setElementStyle, styleTargetKey } from "@/tv/boardEdit";
 import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
 
@@ -153,18 +153,20 @@ export function TvDeviceStudio({
   // Drag-to-move. The delta is converted to percent of the board's frame
   // (cqw / cqh), which is what ElementStyle stores, so it lands in the same
   // relative place on every device - whatever scale the preview is drawn at.
-  const drag = useRef<{ key: string; frame: DOMRect; startX: number; startY: number; x0: number; y0: number; moved: boolean } | null>(null);
+  const drag = useRef<{ key: string; elementKey?: string; frame: DOMRect; startX: number; startY: number; x0: number; y0: number; moved: boolean } | null>(null);
   const onPointerDown = (e: PointerEvent) => {
     // Alt + click is an ordinary click on the board (the skill's escape hatch).
     if (!editing || !onEdit || e.button !== 0 || e.altKey) return;
     const el = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-edit]") : null;
     const frame = el?.closest<HTMLElement>(".tv-frame");
     if (!el || !frame) return;
-    const key = el.dataset.edit!;
+    // Same scope the inspector shows: the element's own rule, or its
+    // family's when that is the one that exists.
+    const key = styleTargetKey(props.config, el.dataset.edit!);
     const s = props.config.styles[key];
     // No pointer capture yet: a captured pointer retargets the click to the
     // wrapper, and a plain click must still select the element under it.
-    drag.current = { key, frame: frame.getBoundingClientRect(), startX: e.clientX, startY: e.clientY, x0: s?.x ?? 0, y0: s?.y ?? 0, moved: false };
+    drag.current = { key, elementKey: el.dataset.edit!, frame: frame.getBoundingClientRect(), startX: e.clientX, startY: e.clientY, x0: s?.x ?? 0, y0: s?.y ?? 0, moved: false };
   };
   const onPointerMove = (e: PointerEvent) => {
     const d = drag.current;
@@ -191,8 +193,9 @@ export function TvDeviceStudio({
     if (!d) return;
     if ((e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     if (d.moved) {
-      // The click that ends a drag must not change the selection.
-      onSelect?.(d.key);
+      // The click that ends a drag must not change the selection; selection
+      // is by element, even when the drag wrote to the family rule.
+      onSelect?.(d.key.startsWith("kind:") ? (d.elementKey ?? d.key) : d.key);
       suppressClick.current = true;
     }
   };

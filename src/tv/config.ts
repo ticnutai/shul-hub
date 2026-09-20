@@ -86,6 +86,12 @@ export interface ElementStyle {
   weight?: number;
   /** 0.15-1. */
   opacity?: number;
+  /**
+   * Which themes this styling applies in. Absent = every theme (the default:
+   * one change is meant to hold everywhere). A theme id = only while that
+   * theme is the one on screen.
+   */
+  theme?: string;
   /** Offset in percent of the screen width / height, -50..50. */
   x?: number;
   y?: number;
@@ -261,7 +267,7 @@ function normalizeShabbatScenes(raw: unknown): string[] {
   return out.length ? out : ["art:classic"];
 }
 
-export function normalizeElementStyle(raw: unknown): ElementStyle | null {
+export function normalizeElementStyle(raw: unknown, themes?: string[]): ElementStyle | null {
   if (!isObj(raw)) return null;
   const s: ElementStyle = {};
   if (typeof raw.scale === "number" && Number.isFinite(raw.scale) && raw.scale !== 1) s.scale = Math.min(2, Math.max(0.5, raw.scale));
@@ -269,16 +275,19 @@ export function normalizeElementStyle(raw: unknown): ElementStyle | null {
   if (typeof raw.bg === "string" && isSafeCssValue(raw.bg)) s.bg = raw.bg.trim();
   if (typeof raw.weight === "number" && Number.isFinite(raw.weight)) s.weight = Math.round(Math.min(900, Math.max(300, raw.weight)) / 100) * 100;
   if (typeof raw.opacity === "number" && Number.isFinite(raw.opacity) && raw.opacity < 1) s.opacity = Math.round(Math.min(1, Math.max(0.15, raw.opacity)) * 100) / 100;
+  if (typeof raw.theme === "string" && raw.theme && (!themes || themes.includes(raw.theme))) s.theme = raw.theme;
   if (typeof raw.x === "number" && Number.isFinite(raw.x) && raw.x !== 0) s.x = Math.min(50, Math.max(-50, Math.round(raw.x * 10) / 10));
   if (typeof raw.y === "number" && Number.isFinite(raw.y) && raw.y !== 0) s.y = Math.min(50, Math.max(-50, Math.round(raw.y * 10) / 10));
   return Object.keys(s).length ? s : null;
 }
 
-function normalizeStyles(raw: unknown): Record<string, ElementStyle> {
+function normalizeStyles(raw: unknown, themes: string[]): Record<string, ElementStyle> {
   const out: Record<string, ElementStyle> = {};
   if (!isObj(raw)) return out;
   for (const [k, v] of Object.entries(raw).slice(0, 200)) {
-    const s = KEY_RE.test(k) ? normalizeElementStyle(v) : null;
+    // Keys are either one element ("header.title") or a family of them
+    // ("kind:minyan" - every minyan row); both match KEY_RE.
+    const s = KEY_RE.test(k) ? normalizeElementStyle(v, themes) : null;
     if (s) out[k] = s;
   }
   return out;
@@ -373,7 +382,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
     customThemes,
-    styles: normalizeStyles(raw.styles),
+    styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
   };
