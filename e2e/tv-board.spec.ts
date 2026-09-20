@@ -275,6 +275,14 @@ test.describe("TV bundle", () => {
         .map((a) => (a.effect as KeyframeEffect).target?.className ?? "?"),
     );
     expect(endless).toEqual([]);
+
+    // The burn-in guard moves the background on every slide change. It must
+    // JUMP: animating it repainted the full screen for four seconds out of
+    // every twenty, which was two thirds of the board CPU on the TV box.
+    const drift = await page
+      .locator(".tv-bg")
+      .evaluate((el) => getComputedStyle(el).transitionDuration);
+    expect(drift === "0s" || drift === "").toBe(true);
     await testInfo.attach("tv", { body: await page.screenshot(), contentType: "image/png" });
     expect(errors).toEqual([]);
   });

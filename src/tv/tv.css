@@ -70,6 +70,18 @@
  * Burn-in protection is kept by moving this layer to a new position on every
  * slide change (TvBoard sets the transform); the transition runs for a few
  * seconds and then the screen is static again.
+ *
+ * The move is instant, and that is deliberate. Sliding it took four seconds
+ * of full-screen repainting - the gradients are behind the text, so the
+ * compositor cannot keep them on a layer of their own while they move.
+ * Traced on the bundle at 1920x1080, one slide change cost (median of 3):
+ *   - four-second drift ................ 206 ms raster / 539 raster tasks
+ *   - four-second drift, own layer ..... 129 ms / 379
+ *   - instant move, own layer ...........  22 ms /  67   <- this
+ *   - no move at all ....................   6 ms /  24
+ * On the MECOOL box the drift alone was two thirds of the board CPU: four
+ * seconds of repainting out of every twenty. The jump lands at the same
+ * moment the slide changes, on a blurred gradient, so nobody sees it.
  */
 .tv-bg {
   position: absolute;
@@ -79,7 +91,7 @@
     radial-gradient(ellipse 60% 55% at 22% 8%, var(--tv-bg-b), transparent 70%),
     radial-gradient(ellipse 55% 50% at 95% 95%, var(--tv-bg-c), transparent 70%),
     var(--tv-bg-a);
-  transition: transform 4s ease-in-out;
+  will-change: transform;
 }
 
 /* The admin's own gradient replaces the theme's background layers. */
