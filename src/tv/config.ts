@@ -1,6 +1,10 @@
 import type { SolarEvent } from "@community/lib/zmanim";
 import {
+  CUSTOM_GRADIENT_ID_RE,
   CUSTOM_THEME_ID_RE,
+  isSafeFill,
+  isSafeGradient,
+  type TvGradient,
   isSafeCssValue,
   THEME_VARS,
   TV_FONTS,
@@ -116,6 +120,10 @@ export interface TvConfig {
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
   customThemes: TvTheme[];
+  /** Gradients the admin saved, offered anywhere a background is chosen. */
+  gradients: TvGradient[];
+  /** A gradient behind the whole board; null = the theme's own background. */
+  backgroundGradient: string | null;
   font: TvFontId;
   textScale: number;
   /** Live-editor colour overrides on top of the theme (CSS var -> colour). */
@@ -208,6 +216,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   hidden: [],
   flipped: [],
   customThemes: [],
+  gradients: [],
+  backgroundGradient: null,
   styles: {},
   screenLayout: "rotate",
   clockStyle: "digital",
@@ -267,12 +277,27 @@ function normalizeShabbatScenes(raw: unknown): string[] {
   return out.length ? out : ["art:classic"];
 }
 
+export function normalizeGradients(raw: unknown): TvGradient[] {
+  const out: TvGradient[] = [];
+  const seen = new Set<string>();
+  for (const g of Array.isArray(raw) ? raw : []) {
+    if (!isObj(g) || typeof g.id !== "string" || !CUSTOM_GRADIENT_ID_RE.test(g.id) || seen.has(g.id)) continue;
+    if (typeof g.value !== "string" || !isSafeGradient(g.value)) continue;
+    const name = str(g.name, "", 40).trim();
+    if (!name) continue;
+    seen.add(g.id);
+    out.push({ id: g.id, name, value: g.value.trim() });
+    if (out.length >= 40) break;
+  }
+  return out;
+}
+
 export function normalizeElementStyle(raw: unknown, themes?: string[]): ElementStyle | null {
   if (!isObj(raw)) return null;
   const s: ElementStyle = {};
   if (typeof raw.scale === "number" && Number.isFinite(raw.scale) && raw.scale !== 1) s.scale = Math.min(2, Math.max(0.5, raw.scale));
   if (typeof raw.color === "string" && isSafeCssValue(raw.color)) s.color = raw.color.trim();
-  if (typeof raw.bg === "string" && isSafeCssValue(raw.bg)) s.bg = raw.bg.trim();
+  if (typeof raw.bg === "string" && isSafeFill(raw.bg)) s.bg = raw.bg.trim();
   if (typeof raw.weight === "number" && Number.isFinite(raw.weight)) s.weight = Math.round(Math.min(900, Math.max(300, raw.weight)) / 100) * 100;
   if (typeof raw.opacity === "number" && Number.isFinite(raw.opacity) && raw.opacity < 1) s.opacity = Math.round(Math.min(1, Math.max(0.15, raw.opacity)) * 100) / 100;
   if (typeof raw.theme === "string" && raw.theme && (!themes || themes.includes(raw.theme))) s.theme = raw.theme;
@@ -382,6 +407,8 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
     customThemes,
+    gradients: normalizeGradients(raw.gradients),
+    backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,

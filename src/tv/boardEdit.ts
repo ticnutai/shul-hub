@@ -252,10 +252,16 @@ export function elementStyleCss(s: ElementStyle | undefined): CSSProperties | un
   }
   if (s.color) css.color = s.color;
   if (s.bg) {
-    css.backgroundColor = s.bg;
+    // A gradient is a background-image; a colour can also pad itself out with
+    // a ring of the same colour, which a gradient cannot do.
+    if (/-gradient\(/i.test(s.bg)) {
+      css.backgroundImage = s.bg;
+      css.padding = "calc(var(--u) * 0.6) calc(var(--u) * 1.2)";
+    } else {
+      css.backgroundColor = s.bg;
+      css.boxShadow = `0 0 0 calc(var(--u) * 0.5) ${s.bg}`;
+    }
     css.borderRadius = "calc(var(--u) * 0.8)";
-    // Some breathing room, without shifting the layout around it.
-    css.boxShadow = `0 0 0 calc(var(--u) * 0.5) ${s.bg}`;
   }
   if (s.weight) css.fontWeight = String(s.weight);
   if (s.opacity !== undefined && s.opacity < 1) css.opacity = String(s.opacity);

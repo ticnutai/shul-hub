@@ -229,6 +229,8 @@ export function themeStyle(options: {
   font: string;
   textScale?: number;
   backgroundImage?: string | null;
+  /** A gradient behind everything, instead of the theme's own background. */
+  backgroundGradient?: string | null;
   backgroundDim?: number;
 }): CSSProperties {
   const theme = getTheme(options.theme, options.customThemes);
@@ -245,6 +247,8 @@ export function themeStyle(options: {
       ? `url("${options.backgroundImage}")`
       : "none";
   vars["--tv-bg-dim"] = String(clamp(options.backgroundDim ?? 0.55, 0, 0.95));
+  vars["--tv-bg-gradient"] =
+    options.backgroundGradient && isSafeGradient(options.backgroundGradient) ? options.backgroundGradient : "none";
   return vars as CSSProperties;
 }
 
@@ -255,6 +259,60 @@ function clamp(n: number, min: number, max: number) {
 /** Colours only: hex, rgb(a), hsl(a). Rejects anything that could break out of a declaration. */
 export function isSafeCssValue(value: string): boolean {
   return /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\))$/i.test(value.trim());
+}
+
+/**
+ * A CSS gradient the admin may store. Admin-written CSS is still untrusted
+ * input: it lands in a style attribute on a TV that nobody watches, so only
+ * the gradient functions are allowed, only with characters that cannot end a
+ * declaration or start another (no ; { } url( var( expression...), and the
+ * browser has to agree it is a real background-image when it can be asked.
+ */
+const GRADIENT_FUNCTIONS = /^(repeating-)?(linear|radial|conic)-gradient\(/i;
+
+export function isSafeGradient(value: string): boolean {
+  const v = value.trim();
+  if (v.length > 600 || !GRADIENT_FUNCTIONS.test(v) || !v.endsWith(")")) return false;
+  if (/[;{}\\<>]|url\(|var\(|expression|image-set|attr\(|@import/i.test(v)) return false;
+  // Letters, digits and the punctuation gradients are made of.
+  if (!/^[a-z0-9\s(),.%#-]+$/i.test(v)) return false;
+  if (typeof CSS !== "undefined" && typeof CSS.supports === "function") return CSS.supports("background-image", v);
+  return true;
+}
+
+/** A colour or a gradient - what an element's background may be. */
+export function isSafeFill(value: string): boolean {
+  return isSafeCssValue(value) || isSafeGradient(value);
+}
+
+export interface TvGradient {
+  id: string;
+  name: string;
+  /** The gradient CSS itself; rules keep their own copy, so deleting this entry never changes a board. */
+  value: string;
+}
+
+/** Ready-made gradients, offered as swatches. Admin-saved ones live in tv_config. */
+export const TV_GRADIENTS: TvGradient[] = [
+  { id: "g_night", name: "לילה כחול", value: "linear-gradient(160deg, #0b1628 0%, #1b3054 55%, #16304f 100%)" },
+  { id: "g_royal", name: "בורדו מלכותי", value: "linear-gradient(160deg, #14080b 0%, #3d101a 60%, #24080e 100%)" },
+  { id: "g_forest", name: "ירוק יער", value: "linear-gradient(160deg, #07170f 0%, #143d29 60%, #0c2a1c 100%)" },
+  { id: "g_dawn", name: "שחר", value: "linear-gradient(160deg, #142542 0%, #6d4b7a 60%, #d8ab35 100%)" },
+  { id: "g_gold", name: "זהב רך", value: "linear-gradient(125deg, #fffaf0 0%, #ecd393 100%)" },
+  { id: "g_stone", name: "אבן ירושלים", value: "linear-gradient(125deg, #ece2cf 0%, #ddcdae 100%)" },
+  { id: "g_glow", name: "הילה מרכזית", value: "radial-gradient(ellipse at 50% 30%, #1b3054 0%, #0b1628 70%)" },
+  { id: "g_spot", name: "זרקור זהב", value: "radial-gradient(ellipse at 50% 20%, #d8ab35 0%, #14080b 65%)" },
+];
+
+export const CUSTOM_GRADIENT_ID_RE = /^u_[a-z0-9]{4,24}$/;
+
+export function newGradientId(): string {
+  return `u_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/** Built-ins first, then the admin's own; ids never clash. */
+export function allGradients(saved?: readonly TvGradient[] | null): TvGradient[] {
+  return [...TV_GRADIENTS, ...(saved ?? [])];
 }
 
 function isSafeUrl(value: string): boolean {

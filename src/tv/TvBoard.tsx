@@ -68,9 +68,19 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         font: config.font,
         textScale: config.textScale,
         backgroundImage: config.backgroundImage,
+        backgroundGradient: config.backgroundGradient,
         backgroundDim: config.backgroundDim,
       }),
-    [config.theme, config.customThemes, config.themeOverrides, config.font, config.textScale, config.backgroundImage, config.backgroundDim],
+    [
+      config.theme,
+      config.customThemes,
+      config.themeOverrides,
+      config.font,
+      config.textScale,
+      config.backgroundImage,
+      config.backgroundGradient,
+      config.backgroundDim,
+    ],
   );
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   const shabbat = slides[0]?.kind === "shabbat";
@@ -82,7 +92,12 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   return (
     <BoardEditContext.Provider value={edit}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
-      <div className={`tv-root is-layout-${layout}${config.backgroundImage ? " has-bg-image" : ""}`} style={style}>
+      <div
+        className={`tv-root is-layout-${layout}${config.backgroundImage ? " has-bg-image" : ""}${
+          config.backgroundGradient ? " has-bg-gradient" : ""
+        }`}
+        style={style}
+      >
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
         <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />
 

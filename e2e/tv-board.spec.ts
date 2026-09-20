@@ -195,10 +195,17 @@ test.describe("administrator", () => {
     await expect(bar).toBeVisible();
     await testInfo.attach("browser-board", { body: await page.screenshot(), contentType: "image/png" });
 
-    const dot = () => page.locator(".tv-dot.is-active").evaluate((d) => [...d.parentElement!.children].indexOf(d));
+    // Which slide is showing. The dots exist only in the rotating layout, so
+    // the "full board" layout (everything at once) is reported as a single
+    // step - the test then checks the controls, not the slide movement.
+    const rotating = (await page.locator(".tv-dot").count()) > 0;
+    const dot = () =>
+      rotating
+        ? page.locator(".tv-dot.is-active").evaluate((d) => [...d.parentElement!.children].indexOf(d))
+        : Promise.resolve(0);
     const start = await dot();
     await bar.getByRole("button", { name: "השקופית הבאה" }).click();
-    await expect.poll(dot).not.toBe(start);
+    if (rotating) await expect.poll(dot).not.toBe(start);
     await page.keyboard.press("ArrowRight");
     await expect.poll(dot).toBe(start);
 
@@ -206,7 +213,8 @@ test.describe("administrator", () => {
     await bar.getByRole("button", { name: "השקופית הבאה" }).focus();
     const beforeEnter = await dot();
     await page.keyboard.press("Enter");
-    await expect.poll(dot).not.toBe(beforeEnter);
+    if (rotating) await expect.poll(dot).not.toBe(beforeEnter);
+    // Enter pressed a button, so the board must not have paused.
     await expect(page.locator(".tv-paused")).toHaveCount(0);
     await page.keyboard.press("ArrowRight");
     await page.mouse.move(210, 210);

@@ -82,6 +82,11 @@
   transition: transform 4s ease-in-out;
 }
 
+/* The admin's own gradient replaces the theme's background layers. */
+.tv-root.has-bg-gradient .tv-bg {
+  background: var(--tv-bg-gradient);
+}
+
 /*
  * Dithering. A dark gradient spread over 1080 rows has only ~20 distinct
  * levels per channel, so an 8-bit screen draws it as visible stripes
