@@ -83,6 +83,76 @@ function load(): Box {
   return defaultBox();
 }
 
+/**
+ * Where each handle sits, which cursor it shows and which sides it pulls.
+ * Edges are 6 px bands just inside the panel; corners are 14 px squares on
+ * top of them, so a corner always wins over the two edges it touches.
+ */
+const HANDLES: Array<{
+  name: string;
+  label: string;
+  className: string;
+  cursor: string;
+  edge: { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean };
+}> = [
+  {
+    name: "n",
+    label: "שינוי גובה מלמעלה",
+    className: "inset-x-3 top-0 h-1.5",
+    cursor: "ns-resize",
+    edge: { top: true },
+  },
+  {
+    name: "s",
+    label: "שינוי גובה מלמטה",
+    className: "inset-x-3 bottom-0 h-1.5",
+    cursor: "ns-resize",
+    edge: { bottom: true },
+  },
+  {
+    name: "w",
+    label: "שינוי רוחב משמאל",
+    className: "inset-y-3 left-0 w-1.5",
+    cursor: "ew-resize",
+    edge: { left: true },
+  },
+  {
+    name: "e",
+    label: "שינוי רוחב מימין",
+    className: "inset-y-3 right-0 w-1.5",
+    cursor: "ew-resize",
+    edge: { right: true },
+  },
+  {
+    name: "nw",
+    label: "שינוי גודל מהפינה השמאלית העליונה",
+    className: "left-0 top-0 size-3.5",
+    cursor: "nwse-resize",
+    edge: { top: true, left: true },
+  },
+  {
+    name: "ne",
+    label: "שינוי גודל מהפינה הימנית העליונה",
+    className: "right-0 top-0 size-3.5",
+    cursor: "nesw-resize",
+    edge: { top: true, right: true },
+  },
+  {
+    name: "sw",
+    label: "שינוי גודל מהפינה השמאלית התחתונה",
+    className: "bottom-0 left-0 size-3.5",
+    cursor: "nesw-resize",
+    edge: { bottom: true, left: true },
+  },
+  {
+    name: "se",
+    label: "שינוי גודל מהפינה הימנית התחתונה",
+    className: "bottom-0 right-0 size-3.5",
+    cursor: "nwse-resize",
+    edge: { bottom: true, right: true },
+  },
+];
+
 export function StudioPanel({
   title,
   status,
@@ -106,14 +176,14 @@ export function StudioPanel({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // One pointer gesture at a time: move (header) or resize (a corner).
-  const gesture = useRef<{
-    kind: "move" | "resize-l" | "resize-r";
-    sx: number;
-    sy: number;
-    start: Box;
-  } | null>(null);
-  const begin = (kind: "move" | "resize-l" | "resize-r") => (e: PointerEvent<HTMLElement>) => {
+  /**
+   * One pointer gesture at a time: moving by the header, or resizing from any
+   * edge or corner. An edge is described by which sides it pulls, so the same
+   * handler serves all eight handles.
+   */
+  type Edge = { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean };
+  const gesture = useRef<{ kind: "move" | Edge; sx: number; sy: number; start: Box } | null>(null);
+  const begin = (kind: "move" | Edge) => (e: PointerEvent<HTMLElement>) => {
     if (e.button !== 0) return;
     if (kind === "move" && (e.target as HTMLElement).closest("button")) return;
     e.preventDefault();
@@ -130,12 +200,24 @@ export function StudioPanel({
     const dx = e.clientX - g.sx;
     const dy = e.clientY - g.sy;
     const s = g.start;
-    if (g.kind === "move") setBox(fit({ ...s, x: s.x + dx, y: s.y + dy }));
-    else if (g.kind === "resize-r") setBox(fit({ ...s, w: s.w + dx, h: s.h + dy }));
-    else {
-      const w = Math.max(MIN_W, s.w - dx);
-      setBox(fit({ ...s, w, x: s.x + (s.w - w), h: s.h + dy }));
+    if (g.kind === "move") {
+      setBox(fit({ ...s, x: s.x + dx, y: s.y + dy }));
+      return;
     }
+    // Dragging a left or top edge moves the panel as it resizes, so the
+    // opposite edge stays where the eye expects it.
+    const next = { ...s };
+    if (g.kind.right) next.w = s.w + dx;
+    if (g.kind.left) {
+      next.w = Math.max(MIN_W, s.w - dx);
+      next.x = s.x + (s.w - next.w);
+    }
+    if (g.kind.bottom) next.h = s.h + dy;
+    if (g.kind.top) {
+      next.h = Math.max(MIN_H, s.h - dy);
+      next.y = s.y + (s.h - next.h);
+    }
+    setBox(fit(next));
   }, []);
   const end = () => {
     gesture.current = null;
@@ -236,30 +318,28 @@ export function StudioPanel({
       {!box.collapsed && (
         <>
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">{children}</div>
-          {/* resize from either bottom corner */}
-          <div
-            className="absolute bottom-0 left-0 size-4 cursor-nesw-resize"
+          {/* Eight handles: four edges and four corners. */}
+          {HANDLES.map((h) => (
+            <div
+              key={h.name}
+              className={`absolute ${h.className}`}
+              style={{ cursor: h.cursor, touchAction: "none" }}
+              role="separator"
+              aria-label={h.label}
+              onPointerDown={begin(h.edge)}
+              onPointerMove={onMove}
+              onPointerUp={end}
+              onPointerCancel={end}
+            />
+          ))}
+          {/* the corner grips, drawn so the panel looks resizable */}
+          <span
             aria-hidden
-            onPointerDown={begin("resize-l")}
-            onPointerMove={onMove}
-            onPointerUp={end}
-            onPointerCancel={end}
-            style={{
-              background:
-                "linear-gradient(45deg, hsl(var(--muted-foreground) / 0.5) 0 2px, transparent 2px 5px, hsl(var(--muted-foreground) / 0.5) 5px 7px, transparent 7px)",
-            }}
+            className="pointer-events-none absolute bottom-0.5 left-0.5 size-3 border-b-2 border-l-2 border-muted-foreground/40"
           />
-          <div
-            className="absolute bottom-0 right-0 size-4 cursor-nwse-resize"
+          <span
             aria-hidden
-            onPointerDown={begin("resize-r")}
-            onPointerMove={onMove}
-            onPointerUp={end}
-            onPointerCancel={end}
-            style={{
-              background:
-                "linear-gradient(-45deg, hsl(var(--muted-foreground) / 0.5) 0 2px, transparent 2px 5px, hsl(var(--muted-foreground) / 0.5) 5px 7px, transparent 7px)",
-            }}
+            className="pointer-events-none absolute bottom-0.5 right-0.5 size-3 border-b-2 border-r-2 border-muted-foreground/40"
           />
         </>
       )}

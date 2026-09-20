@@ -49,6 +49,25 @@ describe("weeklyParasha", () => {
     // Friday 18 Sep 2026 -> Shabbat Shuva, Haazinu.
     expect(weeklyParasha(new Date(2026, 8, 18))).toBe("פרשת האזינו");
   });
+
+  it("on a weekday whose Shabbat is a festival, keeps naming the parasha we are in", () => {
+    // The Shabbat of 26 Sep 2026 is Sukkot I - a festival reading, not a
+    // parasha. On the weekdays around it the board should still answer
+    // "which parasha are we in?" with the last one read, Haazinu.
+    expect(weeklyParasha(new Date(2026, 8, 20))).toBe("פרשת האזינו"); // Sunday before
+    expect(weeklyParasha(new Date(2026, 8, 24))).toBe("פרשת האזינו"); // Thursday before
+    expect(weeklyParasha(new Date(2026, 8, 27))).toBe("פרשת האזינו"); // chol hamoed
+  });
+
+  it("on the festival Shabbat itself, names what is actually read", () => {
+    expect(weeklyParasha(new Date(2026, 8, 26))).toBe("סכות א׳");
+    expect(weeklyParasha(new Date(2026, 9, 3))).toBe("שמיני עצרת");
+  });
+
+  it("returns to the regular cycle as soon as it resumes", () => {
+    expect(weeklyParasha(new Date(2026, 9, 10))).toBe("פרשת בראשית");
+    expect(weeklyParasha(new Date(2026, 9, 14))).toBe("פרשת נח");
+  });
 });
 
 describe("upcomingDays", () => {

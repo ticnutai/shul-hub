@@ -97,9 +97,29 @@ export function weeklyParasha(date: Date, il = true): string | null {
   });
   const parsha = events.find((ev) => ev instanceof ParshaEvent);
   if (parsha) return stripNiqqud(parsha.render("he"));
-  // A festival Shabbat has no weekly parasha; name the festival instead.
-  const holiday = events.find((ev) => ev.getFlags() & flags.CHAG);
-  return holiday ? stripNiqqud(holiday.render("he")) : null;
+
+  // A festival Shabbat has no weekly parasha (Sukkot I, for instance, has the
+  // festival reading). On the day itself, name the festival - that is what is
+  // being read. On a weekday, naming next Shabbat's festival would answer a
+  // question nobody asked: "which parasha are we in?" is answered by the last
+  // one read, so the board keeps showing it until the cycle moves on.
+  const onTheDay = today.getDay() === 6;
+  if (onTheDay) {
+    const holiday = events.find((ev) => ev.getFlags() & flags.CHAG);
+    if (holiday) return stripNiqqud(holiday.render("he"));
+  }
+  return lastParashaRead(shabbat, il);
+}
+
+/** The most recent weekly parasha actually read, looking back up to five weeks. */
+function lastParashaRead(from: HDate, il: boolean): string | null {
+  for (let week = 1; week <= 5; week++) {
+    const shabbat = from.subtract(week * 7, "d");
+    const events = HebrewCalendar.calendar({ start: shabbat.greg(), end: shabbat.greg(), sedrot: true, il, locale: "he" });
+    const parsha = events.find((ev) => ev instanceof ParshaEvent);
+    if (parsha) return stripNiqqud(parsha.render("he"));
+  }
+  return null;
 }
 
 export interface UpcomingDay {
