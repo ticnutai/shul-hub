@@ -81,6 +81,24 @@ export function stripNiqqud(text: string): string {
 }
 
 /**
+ * The calendar library writes Hebrew with niqqud, in the defective spelling
+ * that goes with it ("סֻכּוֹת"). Stripping the niqqud alone leaves "סכות",
+ * which reads wrong on a board without vowels - Israeli signage uses the full
+ * spelling. So: strip, then spell out the few words where the two differ.
+ */
+const FULL_SPELLING: Array<[RegExp, string]> = [
+  [/סכות/g, "סוכות"],
+  [/יום כפור/g, "יום כיפור"],
+  [/חנכה/g, "חנוכה"],
+];
+
+export function hebrewName(text: string): string {
+  let out = stripNiqqud(text);
+  for (const [from, to] of FULL_SPELLING) out = out.replace(from, to);
+  return out;
+}
+
+/**
  * The parasha read on the coming Shabbat (or today, on Shabbat). Israel
  * schedule: the synagogue is in Bnei Brak, and the two schedules diverge
  * after some festivals.
@@ -96,7 +114,7 @@ export function weeklyParasha(date: Date, il = true): string | null {
     locale: "he",
   });
   const parsha = events.find((ev) => ev instanceof ParshaEvent);
-  if (parsha) return stripNiqqud(parsha.render("he"));
+  if (parsha) return hebrewName(parsha.render("he"));
 
   // A festival Shabbat has no weekly parasha (Sukkot I, for instance, has the
   // festival reading). On the day itself, name the festival - that is what is
@@ -106,7 +124,7 @@ export function weeklyParasha(date: Date, il = true): string | null {
   const onTheDay = today.getDay() === 6;
   if (onTheDay) {
     const holiday = events.find((ev) => ev.getFlags() & flags.CHAG);
-    if (holiday) return stripNiqqud(holiday.render("he"));
+    if (holiday) return hebrewName(holiday.render("he"));
   }
   return lastParashaRead(shabbat, il);
 }
@@ -117,7 +135,7 @@ function lastParashaRead(from: HDate, il: boolean): string | null {
     const shabbat = from.subtract(week * 7, "d");
     const events = HebrewCalendar.calendar({ start: shabbat.greg(), end: shabbat.greg(), sedrot: true, il, locale: "he" });
     const parsha = events.find((ev) => ev instanceof ParshaEvent);
-    if (parsha) return stripNiqqud(parsha.render("he"));
+    if (parsha) return hebrewName(parsha.render("he"));
   }
   return null;
 }
@@ -151,7 +169,7 @@ export function upcomingDays(date: Date, days = 21, limit = 6): UpcomingDay[] {
       const d = ev.getDate().greg();
       return {
         date: d,
-        title: stripNiqqud(ev.render("he")),
+        title: hebrewName(ev.render("he")),
         inDays: dayNumber(d) - dayNumber(start),
         major: Boolean(ev.getFlags() & (flags.CHAG | flags.MAJOR_FAST)),
       };

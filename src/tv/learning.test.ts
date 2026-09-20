@@ -60,7 +60,7 @@ describe("weeklyParasha", () => {
   });
 
   it("on the festival Shabbat itself, names what is actually read", () => {
-    expect(weeklyParasha(new Date(2026, 8, 26))).toBe("סכות א׳");
+    expect(weeklyParasha(new Date(2026, 8, 26))).toBe("סוכות א׳"); // full spelling, not "סכות"
     expect(weeklyParasha(new Date(2026, 9, 3))).toBe("שמיני עצרת");
   });
 
@@ -73,7 +73,7 @@ describe("weeklyParasha", () => {
 describe("upcomingDays", () => {
   it("lists Yom Kippur three days ahead of 18 Sep 2026", () => {
     const days = upcomingDays(new Date(2026, 8, 18));
-    const yk = days.find((d) => d.title === "יום כפור");
+    const yk = days.find((d) => d.title === "יום כיפור");
     expect(yk?.inDays).toBe(3);
     expect(yk?.major).toBe(true);
   });

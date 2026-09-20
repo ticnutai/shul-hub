@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_TV_CONFIG, normalizeGradients, normalizeTvConfig, type TvConfig } from "./config";
 import { elementStyleCss } from "./boardEdit";
 import { isSafeFill, isSafeGradient, newGradientId, themeStyle, TV_GRADIENTS } from "./themes";
-import { buildExport, mergeImport, parseImport, TRANSFER_KIND } from "./transfer";
+import { buildExport, mergeImport, parseImport, TRANSFER_FORMAT } from "./transfer";
 
 const GRADIENT = "linear-gradient(160deg, #0b1628, #1b3054)";
 let n = 0;
@@ -98,7 +98,10 @@ describe("import and export", () => {
       gradients: [{ id: "u_abcd1234", name: "ערב", value: GRADIENT }],
     });
     const file = buildExport(source);
-    expect(file.kind).toBe(TRANSFER_KIND);
+    expect(file.format).toBe(TRANSFER_FORMAT);
+    // Themes travel as named roles, not as this board's CSS variables.
+    expect(Object.keys(file.themes[0].roles)).toContain("accent");
+    expect(file.themes[0].roles.accent).toBe("#ffcc00");
     const imported = parseImport(JSON.stringify(file), nextThemeId, nextGradientId);
     expect(imported.themes.map((t) => t.name)).toEqual(["חגים"]);
     expect(imported.gradients.map((g) => g.value)).toEqual([GRADIENT]);
@@ -118,15 +121,15 @@ describe("import and export", () => {
 
   it("refuses a file that is not ours, is broken, or holds nothing valid", () => {
     expect(() => parseImport("{", nextThemeId, nextGradientId)).toThrow(/JSON/);
-    expect(() => parseImport(JSON.stringify({ kind: "something-else" }), nextThemeId, nextGradientId)).toThrow(/לא קובץ עיצוב/);
+    expect(() => parseImport(JSON.stringify({ format: "something-else" }), nextThemeId, nextGradientId)).toThrow(/לא קובץ עיצוב/);
     expect(() =>
-      parseImport(JSON.stringify({ kind: TRANSFER_KIND, themes: [{ name: "x" }], gradients: [{ name: "y", value: "url(x)" }] }), nextThemeId, nextGradientId),
+      parseImport(JSON.stringify({ format: TRANSFER_FORMAT, themes: [{ name: "x" }], gradients: [{ name: "y", value: "url(x)" }] }), nextThemeId, nextGradientId),
     ).toThrow(/לא נמצאו/);
   });
 
   it("a half-valid file imports what it can and reports the rest", () => {
     const file = {
-      kind: TRANSFER_KIND,
+      format: TRANSFER_FORMAT,
       gradients: [
         { id: "u_a1111111", name: "טוב", value: GRADIENT },
         { id: "u_b2222222", name: "רע", value: "javascript:alert(1)" },
@@ -143,5 +146,40 @@ describe("import and export", () => {
     expect(c.backgroundGradient).toBe(GRADIENT);
     expect(newGradientId()).toMatch(/^u_[a-z0-9]{4,24}$/);
     expect(TV_GRADIENTS.every((g) => isSafeGradient(g.value))).toBe(true);
+  });
+});
+
+describe("a file from another system", () => {
+  it("imports a theme written in roles, filling anything it does not define", () => {
+    const fromElsewhere = JSON.stringify({
+      format: "design-tokens",
+      version: 1,
+      app: "some-other-app",
+      themes: [{ name: "Ocean", mode: "dark", roles: { background: "#001018", text: "#e6f6ff", accent: "#35c4f0" } }],
+      gradients: [{ name: "Ocean fade", value: "linear-gradient(180deg, #001018, #35c4f0)" }],
+    });
+    const result = parseImport(fromElsewhere, nextThemeId, nextGradientId);
+    expect(result.themes).toHaveLength(1);
+    const theme = result.themes[0];
+    expect(theme.name).toBe("Ocean");
+    expect(theme.light).toBe(false);
+    expect(theme.vars["--tv-bg-a"]).toBe("#001018");
+    expect(theme.vars["--tv-accent"]).toBe("#35c4f0");
+    // Roles the other app never had still come out as a complete theme.
+    expect(theme.vars["--tv-pinned"]).toBeTruthy();
+    expect(result.gradients[0].name).toBe("Ocean fade");
+  });
+
+  it("refuses a file from a newer version of the format", () => {
+    const future = JSON.stringify({ format: "design-tokens", version: 99, themes: [], gradients: [] });
+    expect(() => parseImport(future, nextThemeId, nextGradientId)).toThrow(/גרסה חדשה/);
+  });
+
+  it("still reads a file exported before the portable format", () => {
+    const legacy = JSON.stringify({
+      kind: "shul-hub-tv-design",
+      gradients: [{ id: "u_legacy11", name: "ישן", value: "linear-gradient(160deg, #0b1628, #1b3054)" }],
+    });
+    expect(parseImport(legacy, nextThemeId, nextGradientId).gradients).toHaveLength(1);
   });
 });
