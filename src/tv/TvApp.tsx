@@ -357,14 +357,33 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     };
   }, [web, link]);
 
-  // Android Back: open the help card instead of leaving the board.
+  /**
+   * Android Back. The board is signage, so a stray press must not drop the
+   * congregation onto the TV home screen - but it must still be possible to
+   * leave for another app. So: Back closes the help card if it is open,
+   * otherwise the first press asks and the second one (within 3 s) exits.
+   */
+  const exitArmed = useRef(0);
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    const handle = CapApp.addListener("backButton", () => setHelp((h) => !h));
+    const handle = CapApp.addListener("backButton", () => {
+      setHelp((open) => {
+        if (open) {
+          exitArmed.current = 0;
+          return false;
+        }
+        if (Date.now() < exitArmed.current) void CapApp.exitApp();
+        else {
+          exitArmed.current = Date.now() + 3000;
+          flash("לחצו שוב על ׳חזור׳ ליציאה · לעזרה: כפתור התפריט");
+        }
+        return false;
+      });
+    });
     return () => {
       void handle.then((h) => h.remove());
     };
-  }, []);
+  }, [flash]);
 
   // Re-evaluated on the once-a-second clock render; the bar steps with it.
   const elapsedMs = paused ? heldMs.current : now.getTime() - startedAt.current;
@@ -447,8 +466,14 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
                   <dd>חזרה לערכת הנושא של המנהל</dd>
                   <dt>1–9</dt>
                   <dd>מעבר ישיר לשקופית</dd>
-                  <dt>{web ? "Esc" : "חזור"}</dt>
-                  <dd>סגירת החלון</dd>
+                  <dt>{web ? "Esc" : "תפריט"}</dt>
+                  <dd>פתיחה וסגירה של החלון הזה</dd>
+                  {!web && (
+                    <>
+                      <dt>חזור</dt>
+                      <dd>לחיצה כפולה: יציאה מהלוח לאפליקציות אחרות</dd>
+                    </>
+                  )}
                 </dl>
                 <p className="tv-help-foot">
                   {web ? (
