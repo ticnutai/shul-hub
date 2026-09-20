@@ -111,11 +111,21 @@ export interface ElementStyle {
 export type ScreenLayout = "rotate" | "split" | "dashboard";
 export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard"];
 export type ClockStyle = "digital" | "analog" | "both";
+
+/**
+ * The decorative dress of the board: how panels are framed, over whatever
+ * theme is chosen. Inspired by the printed synagogue boards - gold frames,
+ * stone tablets, parchment - and drawn entirely in CSS, so it stays sharp at
+ * any size and costs the TV nothing.
+ */
+export type BoardSkin = "plain" | "gold" | "tablets" | "parchment" | "velvet";
+export const BOARD_SKINS: BoardSkin[] = ["plain", "gold", "tablets", "parchment", "velvet"];
 export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
 
 export interface TvConfig {
   screenLayout: ScreenLayout;
   clockStyle: ClockStyle;
+  skin: BoardSkin;
   /** A built-in theme id, or the id of one of `customThemes`. */
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
@@ -221,6 +231,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   styles: {},
   screenLayout: "rotate",
   clockStyle: "digital",
+  skin: "plain",
 };
 
 const KINDS = Object.keys(SLIDE_LAYOUTS) as SlideKind[];
@@ -412,5 +423,6 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
+    skin: BOARD_SKINS.includes(raw.skin as BoardSkin) ? (raw.skin as BoardSkin) : d.skin,
   };
 }

@@ -1231,6 +1231,249 @@
   line-height: 1.5;
 }
 
+/* ------------------------------------------------------------- skins - */
+
+/*
+ * The board's decorative dress, over any theme (config.skin).
+ *
+ * Everything here is drawn with borders, gradients and pseudo-elements: no
+ * images to download, nothing to go blurry on a 1080p panel, and nothing
+ * that animates - the idle board must stay still (see the CPU note above).
+ *
+ * A skin only dresses the panels; the theme still owns the colours, and the
+ * two skins that turn panels into parchment set their own readable text
+ * colours inside those panels, the way a printed board does.
+ */
+
+/* --- gold frame: the classic ornate board ------------------------------ */
+
+.tv-root.is-skin-gold .tv-panel,
+.tv-root.is-skin-gold .tv-card {
+  position: relative;
+  border: max(2px, calc(var(--u) * 0.32)) solid var(--tv-accent);
+  border-radius: calc(var(--u) * 1.2);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--tv-accent) 7%, transparent), transparent 55%),
+    var(--tv-panel);
+  box-shadow:
+    inset 0 0 0 max(1px, calc(var(--u) * 0.12)) color-mix(in srgb, var(--tv-accent) 45%, transparent),
+    inset 0 0 calc(var(--u) * 2.5) color-mix(in srgb, var(--tv-accent) 12%, transparent),
+    var(--tv-shadow);
+}
+
+/* a small ornament in two opposite corners, like the printed boards */
+.tv-root.is-skin-gold .tv-panel::before,
+.tv-root.is-skin-gold .tv-panel::after {
+  content: "";
+  position: absolute;
+  width: calc(var(--u) * 2.4);
+  height: calc(var(--u) * 2.4);
+  border: max(1px, calc(var(--u) * 0.2)) solid var(--tv-accent);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.tv-root.is-skin-gold .tv-panel::before {
+  inset-inline-start: calc(var(--u) * 0.7);
+  top: calc(var(--u) * 0.7);
+  border-inline-end: 0;
+  border-bottom: 0;
+  border-start-start-radius: calc(var(--u) * 0.8);
+}
+
+.tv-root.is-skin-gold .tv-panel::after {
+  inset-inline-end: calc(var(--u) * 0.7);
+  bottom: calc(var(--u) * 0.7);
+  border-inline-start: 0;
+  border-top: 0;
+  border-end-end-radius: calc(var(--u) * 0.8);
+}
+
+.tv-root.is-skin-gold .tv-panel-title {
+  padding-bottom: calc(var(--u) * 0.8);
+  border-bottom: max(1px, calc(var(--u) * 0.16)) solid color-mix(in srgb, var(--tv-accent) 55%, transparent);
+  letter-spacing: 0.01em;
+}
+
+.tv-root.is-skin-gold .tv-header {
+  border-bottom-width: max(2px, calc(var(--u) * 0.3));
+  border-bottom-color: var(--tv-accent);
+  box-shadow: 0 max(1px, calc(var(--u) * 0.1)) 0 color-mix(in srgb, var(--tv-accent) 35%, transparent);
+}
+
+/* --- stone tablets: arched panels on parchment ------------------------- */
+
+.tv-root.is-skin-tablets .tv-panel {
+  border: max(2px, calc(var(--u) * 0.3)) solid #b98f3a;
+  border-radius: calc(var(--u) * 6) calc(var(--u) * 6) calc(var(--u) * 1) calc(var(--u) * 1);
+  background:
+    radial-gradient(ellipse at 50% 0%, #fdf6e4, transparent 60%),
+    linear-gradient(180deg, #f3e7cd 0%, #e4d3ad 100%);
+  box-shadow:
+    inset 0 0 0 max(1px, calc(var(--u) * 0.14)) #d9c48c,
+    inset 0 calc(var(--u) * 0.5) calc(var(--u) * 1.5) rgba(255, 255, 255, 0.55),
+    var(--tv-shadow);
+  padding-top: calc(var(--u) * 3);
+  color: #3a2a12;
+}
+
+.tv-root.is-skin-tablets .tv-panel .tv-panel-title {
+  color: #7a4a12;
+  text-align: center;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* the theme's own text colours would vanish on parchment */
+.tv-root.is-skin-tablets .tv-panel dt,
+.tv-root.is-skin-tablets .tv-panel .tv-minyan-source,
+.tv-root.is-skin-tablets .tv-panel .tv-dash-sub,
+.tv-root.is-skin-tablets .tv-panel .tv-shiur-meta {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-tablets .tv-panel dd,
+.tv-root.is-skin-tablets .tv-panel .tv-minyan-time,
+.tv-root.is-skin-tablets .tv-panel .tv-dash-time,
+.tv-root.is-skin-tablets .tv-panel .tv-shiur-time {
+  color: #8a3c12;
+}
+
+.tv-root.is-skin-tablets .tv-panel .tv-zman-row,
+.tv-root.is-skin-tablets .tv-panel .tv-minyan-row,
+.tv-root.is-skin-tablets .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(120, 90, 40, 0.25);
+}
+
+.tv-root.is-skin-tablets .tv-panel .is-next {
+  background: linear-gradient(270deg, rgba(185, 143, 58, 0.28), transparent 85%);
+}
+
+.tv-root.is-skin-tablets .tv-badge {
+  background: #8a3c12;
+  color: #fdf6e4;
+}
+
+/* --- parchment: a warm sheet with a double frame ----------------------- */
+
+.tv-root.is-skin-parchment .tv-panel,
+.tv-root.is-skin-parchment .tv-card {
+  border: max(2px, calc(var(--u) * 0.28)) solid #8a6a3a;
+  border-radius: calc(var(--u) * 0.8);
+  background: linear-gradient(175deg, #fbf3df 0%, #efe2c4 100%);
+  box-shadow:
+    inset 0 0 0 max(2px, calc(var(--u) * 0.28)) #fbf3df,
+    inset 0 0 0 max(3px, calc(var(--u) * 0.42)) #c8a668,
+    var(--tv-shadow);
+  color: #3a2a12;
+}
+
+.tv-root.is-skin-parchment .tv-panel-title,
+.tv-root.is-skin-parchment .tv-card-title {
+  color: #7a4a12;
+}
+
+.tv-root.is-skin-parchment .tv-panel dt,
+.tv-root.is-skin-parchment .tv-card-body,
+.tv-root.is-skin-parchment .tv-minyan-source,
+.tv-root.is-skin-parchment .tv-dash-sub,
+.tv-root.is-skin-parchment .tv-shiur-meta {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-parchment .tv-panel dd,
+.tv-root.is-skin-parchment .tv-minyan-time,
+.tv-root.is-skin-parchment .tv-dash-time,
+.tv-root.is-skin-parchment .tv-shiur-time {
+  color: #8a3c12;
+}
+
+.tv-root.is-skin-parchment .tv-panel .tv-zman-row,
+.tv-root.is-skin-parchment .tv-panel .tv-minyan-row,
+.tv-root.is-skin-parchment .tv-panel .tv-dash-row {
+  border-bottom-color: rgba(120, 90, 40, 0.22);
+}
+
+.tv-root.is-skin-parchment .tv-panel .is-next {
+  background: linear-gradient(270deg, rgba(200, 166, 104, 0.35), transparent 85%);
+}
+
+.tv-root.is-skin-parchment .tv-badge {
+  background: #8a3c12;
+  color: #fbf3df;
+}
+
+/* Anything inside a parchment panel that still carried a theme colour would
+   be pale on cream: the clock date, card bodies, empty states, hero lines. */
+.tv-root.is-skin-tablets .tv-panel .tv-clock-date,
+.tv-root.is-skin-parchment .tv-panel .tv-clock-date,
+.tv-root.is-skin-tablets .tv-panel .tv-empty,
+.tv-root.is-skin-parchment .tv-panel .tv-empty,
+.tv-root.is-skin-tablets .tv-panel .tv-hero-kicker,
+.tv-root.is-skin-parchment .tv-panel .tv-hero-kicker,
+.tv-root.is-skin-tablets .tv-panel .tv-hero-meta,
+.tv-root.is-skin-parchment .tv-panel .tv-hero-meta,
+.tv-root.is-skin-tablets .tv-panel .tv-card-body,
+.tv-root.is-skin-parchment .tv-panel .tv-card-body {
+  color: #6b5433;
+}
+
+.tv-root.is-skin-tablets .tv-panel .tv-clock-time,
+.tv-root.is-skin-parchment .tv-panel .tv-clock-time,
+.tv-root.is-skin-tablets .tv-panel .tv-hero-time,
+.tv-root.is-skin-parchment .tv-panel .tv-hero-time {
+  color: #3a2a12;
+}
+
+.tv-root.is-skin-tablets .tv-panel .tv-analog-face,
+.tv-root.is-skin-parchment .tv-panel .tv-analog-face {
+  fill: #fbf3df;
+}
+
+.tv-root.is-skin-tablets .tv-panel .tv-analog-hour,
+.tv-root.is-skin-parchment .tv-panel .tv-analog-hour,
+.tv-root.is-skin-tablets .tv-panel .tv-analog-minute,
+.tv-root.is-skin-parchment .tv-panel .tv-analog-minute,
+.tv-root.is-skin-tablets .tv-panel .tv-analog-num,
+.tv-root.is-skin-parchment .tv-panel .tv-analog-num {
+  stroke: #3a2a12;
+  fill: #3a2a12;
+}
+
+.tv-root.is-skin-tablets .tv-panel .tv-analog-tick,
+.tv-root.is-skin-parchment .tv-panel .tv-analog-tick {
+  stroke: #8a6a3a;
+}
+
+/* --- royal velvet: deep panels with gold piping ------------------------ */
+
+.tv-root.is-skin-velvet .tv-panel,
+.tv-root.is-skin-velvet .tv-card {
+  border: max(1px, calc(var(--u) * 0.18)) solid color-mix(in srgb, var(--tv-accent) 65%, transparent);
+  border-radius: calc(var(--u) * 1.6);
+  background:
+    radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--tv-accent) 10%, transparent), transparent 65%),
+    linear-gradient(180deg, color-mix(in srgb, #000 18%, var(--tv-panel)), color-mix(in srgb, #000 32%, var(--tv-panel)));
+  box-shadow:
+    inset 0 0 0 max(2px, calc(var(--u) * 0.3)) color-mix(in srgb, #000 35%, transparent),
+    inset 0 0 calc(var(--u) * 4) color-mix(in srgb, #000 45%, transparent),
+    0 calc(var(--u) * 0.8) calc(var(--u) * 2.5) color-mix(in srgb, #000 40%, transparent);
+}
+
+.tv-root.is-skin-velvet .tv-panel-title {
+  padding-bottom: calc(var(--u) * 0.7);
+  border-bottom: max(1px, calc(var(--u) * 0.14)) solid color-mix(in srgb, var(--tv-accent) 40%, transparent);
+  text-shadow: 0 calc(var(--u) * 0.2) calc(var(--u) * 0.6) rgba(0, 0, 0, 0.6);
+}
+
+.tv-root.is-skin-velvet .tv-header {
+  border-bottom-color: color-mix(in srgb, var(--tv-accent) 60%, transparent);
+}
+
+.tv-root.is-skin-velvet .tv-title,
+.tv-root.is-skin-velvet .tv-clock-time {
+  text-shadow: 0 calc(var(--u) * 0.25) calc(var(--u) * 0.8) rgba(0, 0, 0, 0.55);
+}
+
 /* ---------------------------------------------------------- clock styles - */
 
 /* ClockFace (TvLayouts.tsx): digits, an analog dial, or the dial beside the

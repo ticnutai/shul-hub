@@ -114,6 +114,73 @@ const LAYOUT_CHOICES: Array<{
   },
 ];
 
+/**
+ * The decorative dress of the board. Each option shows a miniature of what
+ * it does - a frame, an arch, a parchment - rather than only a name.
+ */
+const SKIN_CHOICES: Array<{
+  id: TvConfig["skin"];
+  name: string;
+  hint: string;
+  preview: ReactNode;
+}> = [
+  {
+    id: "plain",
+    name: "נקי",
+    hint: "בלי מסגרות - הצבעים של הערכה בלבד",
+    preview: (
+      <span className="flex h-full w-full gap-1 p-1.5">
+        <i className="flex-1 rounded-sm bg-white/10" />
+        <i className="flex-1 rounded-sm bg-white/10" />
+      </span>
+    ),
+  },
+  {
+    id: "gold",
+    name: "מסגרת זהב",
+    hint: "מסגרות זהב עם עיטורי פינות, כמו לוח מודפס",
+    preview: (
+      <span className="flex h-full w-full gap-1 p-1.5">
+        <i className="flex-1 rounded-sm border-2 border-[#f0c35c] bg-white/5" />
+        <i className="flex-1 rounded-sm border-2 border-[#f0c35c] bg-white/5" />
+      </span>
+    ),
+  },
+  {
+    id: "tablets",
+    name: "לוחות אבן",
+    hint: "לוחות מקושתים על קלף, עם מסגרת זהב",
+    preview: (
+      <span className="flex h-full w-full items-end gap-1 p-1.5">
+        <i className="h-[85%] flex-1 rounded-t-full border-2 border-[#b98f3a] bg-[#f3e7cd]" />
+        <i className="h-[85%] flex-1 rounded-t-full border-2 border-[#b98f3a] bg-[#f3e7cd]" />
+      </span>
+    ),
+  },
+  {
+    id: "parchment",
+    name: "קלף",
+    hint: "יריעות קלף עם מסגרת כפולה",
+    preview: (
+      <span className="flex h-full w-full gap-1 p-1.5">
+        <i className="flex-1 rounded-sm border-2 border-[#8a6a3a] bg-[#fbf3df] shadow-[inset_0_0_0_2px_#c8a668]" />
+        <i className="flex-1 rounded-sm border-2 border-[#8a6a3a] bg-[#fbf3df] shadow-[inset_0_0_0_2px_#c8a668]" />
+      </span>
+    ),
+  },
+  {
+    id: "velvet",
+    name: "קטיפה מלכותית",
+    hint: "לוחות עמוקים עם קו זהב עדין",
+    preview: (
+      <span className="flex h-full w-full gap-1 p-1.5">
+        <i className="flex-1 rounded-md border border-[#f0c35c]/70 bg-black/45" />
+        <i className="flex-1 rounded-md border border-[#f0c35c]/70 bg-black/45" />
+      </span>
+    ),
+  },
+];
+
 const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
   { id: "digital", name: "ספרות" },
   { id: "analog", name: "שעון מחוגים" },
@@ -943,7 +1010,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           <TabsTrigger value="content">תוכן</TabsTrigger>
           <TabsTrigger value="tools">כלים</TabsTrigger>
         </TabsList>
-        <TabsContent value="design" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
+        <TabsContent
+          value="design"
+          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+        >
           <Section
             title="ערכת נושא"
             hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה."
@@ -1273,7 +1343,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </div>
           </Section>
         </TabsContent>
-        <TabsContent value="layout" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
+        <TabsContent
+          value="layout"
+          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+        >
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. מסך השבת תמיד מוצג על כל המסך.">
             <div className="grid grid-cols-3 gap-2">
               {LAYOUT_CHOICES.map((l) => (
@@ -1301,6 +1374,38 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </button>
               ))}
             </div>
+            <div className="space-y-2">
+              <div className="text-sm font-medium">סגנון תצוגה</div>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+                {SKIN_CHOICES.map((sk) => (
+                  <button
+                    key={sk.id}
+                    type="button"
+                    aria-pressed={draft.skin === sk.id}
+                    title={sk.hint}
+                    onClick={() => edit("skin", (c) => ({ ...c, skin: sk.id }))}
+                    className={`rounded-lg border p-1.5 text-right transition ${
+                      draft.skin === sk.id
+                        ? "ring-2 ring-primary ring-offset-2"
+                        : "hover:border-primary/50"
+                    }`}
+                  >
+                    <span
+                      className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]"
+                      aria-hidden
+                    >
+                      {sk.preview}
+                    </span>
+                    <span className="block text-center text-xs font-medium">{sk.name}</span>
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                הסגנון מתלבש על כל ערכת נושא וכל פריסה. "לוחות אבן" ו"קלף" הופכים את הלוחות לבהירים,
+                והטקסט שבתוכם מתכהה בהתאם.
+              </p>
+            </div>
+
             <div className="flex flex-wrap items-center gap-2 text-sm">
               שעון:
               {CLOCK_CHOICES.map((c) => (
@@ -1456,7 +1561,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </ul>
           </Section>
         </TabsContent>
-        <TabsContent value="content" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
+        <TabsContent
+          value="content"
+          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+        >
           <Section
             title="מסך שבת"
             hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי הגדרות בית הכנסת."
@@ -1793,7 +1901,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </div>
           </Section>
         </TabsContent>
-        <TabsContent value="tools" className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2">
+        <TabsContent
+          value="tools"
+          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+        >
           <Section
             title="ייבוא וייצוא"
             hint="גיבוי של ערכות הנושא והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
@@ -1879,7 +1990,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   }
 
   return (
-    <div className={`grid gap-5 ${wide ? "" : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]"}`}>
+    <div
+      className={`grid gap-5 ${
+        wide
+          ? ""
+          : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]"
+      }`}
+    >
       {/* ------------------------------------------------ preview column -- */}
       <div
         ref={previewColumn}

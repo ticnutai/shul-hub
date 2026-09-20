@@ -93,7 +93,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     <BoardEditContext.Provider value={edit}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
       <div
-        className={`tv-root is-layout-${layout}${config.backgroundImage ? " has-bg-image" : ""}${
+        className={`tv-root is-layout-${layout} is-skin-${config.skin}${config.backgroundImage ? " has-bg-image" : ""}${
           config.backgroundGradient ? " has-bg-gradient" : ""
         }`}
         style={style}
