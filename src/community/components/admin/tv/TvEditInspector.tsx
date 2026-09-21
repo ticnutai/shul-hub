@@ -44,7 +44,9 @@ import {
   styleTargetKey,
   toggleFlip,
 } from "@/tv/boardEdit";
-import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
+import { FRAME_RADIUS_MAX, type ElementStyle, type FlipArea, type RecordTable, type TvConfig } from "@/tv/config";
+import { allGradients } from "@/tv/themes";
+import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
 import { getTheme, isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
@@ -196,12 +198,164 @@ function Selected({
           <X className="size-4" />
         </Button>
       </div>
-      {EDITABLE[k] ? (
-        <BoardElement k={k} config={config} data={data} onEdit={onEdit} />
+      {k === "board.background" ? (
+        <BoardBackground config={config} onEdit={onEdit} />
       ) : (
-        <RecordElement k={k} config={config} data={data} onEdit={onEdit} onClose={onClose} />
+        <>
+          {EDITABLE[k] ? (
+            <BoardElement k={k} config={config} data={data} onEdit={onEdit} />
+          ) : (
+            <RecordElement k={k} config={config} data={data} onEdit={onEdit} onClose={onClose} />
+          )}
+          <ElementLook k={k} config={config} onEdit={onEdit} />
+        </>
       )}
-      <ElementLook k={k} config={config} onEdit={onEdit} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------ the board itself ----- */
+
+/**
+ * What the board looks like as a whole: its style, the shape of its corners
+ * and the background behind everything. It is reached by clicking any empty
+ * part of the board, so the live editor on a second screen can change the
+ * whole look without going back to the admin page.
+ */
+function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
+  const gradients = allGradients(config.gradients);
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground">סגנון תצוגה</div>
+        <div className="grid grid-cols-4 gap-1.5">
+          {SKIN_CHOICES.map((sk) => (
+            <button
+              key={sk.id}
+              type="button"
+              aria-pressed={config.skin === sk.id}
+              title={sk.hint}
+              onClick={() => onEdit("skin", (c) => ({ ...c, skin: sk.id }))}
+              className={`rounded-md border p-1 transition ${
+                config.skin === sk.id ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
+              }`}
+            >
+              <span className="block aspect-[16/10] overflow-hidden rounded-sm bg-[#0b1628]" aria-hidden>
+                {sk.preview}
+              </span>
+              <span className="mt-0.5 block text-center text-[10px] leading-tight">{sk.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground">מסגרות</div>
+        <div className="grid grid-cols-6 gap-1.5">
+          {FRAME_CHOICES.map((fr) => (
+            <button
+              key={fr.id}
+              type="button"
+              aria-pressed={config.frame.shape === fr.id}
+              title={fr.hint}
+              onClick={() => onEdit("frame.shape", (c) => ({ ...c, frame: { ...c.frame, shape: fr.id } }))}
+              className={`rounded-md border p-1 transition ${
+                config.frame.shape === fr.id
+                  ? "ring-2 ring-primary ring-offset-1"
+                  : "hover:border-primary/50"
+              }`}
+            >
+              <span
+                className="mx-auto block h-6 w-8 border-2 border-[#c9a227] bg-[#12243f]"
+                style={fr.css}
+                aria-hidden
+              />
+              <span className="mt-0.5 block text-center text-[10px] leading-tight">{fr.name}</span>
+            </button>
+          ))}
+        </div>
+        {(["top", "bottom"] as const).map((edge) => {
+          const value = config.frame[edge];
+          const label = edge === "top" ? "עיגול למעלה" : "עיגול למטה";
+          return (
+            <div key={edge} className="flex items-center gap-2 text-xs">
+              <span className="w-20 shrink-0">{label}</span>
+              <input
+                type="range"
+                min={0}
+                max={FRAME_RADIUS_MAX}
+                step={0.5}
+                value={value ?? 1.6}
+                disabled={value === null}
+                aria-label={label}
+                onChange={(e) =>
+                  onEdit(`frame.${edge}`, (c) => ({
+                    ...c,
+                    frame: { ...c.frame, [edge]: Number(e.target.value) },
+                  }))
+                }
+                className="h-1.5 flex-1 accent-primary disabled:opacity-40"
+              />
+              <span className="w-7 text-left tabular-nums text-muted-foreground">
+                {value === null ? "—" : value}
+              </span>
+              <Button
+                type="button"
+                size="sm"
+                variant={value === null ? "default" : "outline"}
+                className="h-7 px-2 text-[11px]"
+                onClick={() =>
+                  onEdit(`frame.${edge}.auto`, (c) => ({
+                    ...c,
+                    frame: { ...c.frame, [edge]: value === null ? 1.6 : null },
+                  }))
+                }
+              >
+                לפי הסגנון
+              </Button>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground">רקע הלוח</div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            aria-pressed={!config.backgroundGradient}
+            title="הרקע של ערכת הנושא"
+            onClick={() => onEdit("bg.gradient", (c) => ({ ...c, backgroundGradient: null }))}
+            className={`h-8 rounded-md border px-2 text-[11px] transition ${
+              !config.backgroundGradient ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
+            }`}
+          >
+            לפי הערכה
+          </button>
+          {gradients.map((g) => (
+            <button
+              key={g.id}
+              type="button"
+              aria-pressed={config.backgroundGradient === g.value}
+              title={g.name}
+              onClick={() =>
+                onEdit("bg.gradient", (c) => ({ ...c, backgroundGradient: g.value }))
+              }
+              className={`h-8 w-12 rounded-md border transition ${
+                config.backgroundGradient === g.value
+                  ? "ring-2 ring-primary ring-offset-1"
+                  : "hover:border-primary/50"
+              }`}
+              style={{ backgroundImage: g.value }}
+            >
+              <span className="sr-only">{g.name}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] leading-tight text-muted-foreground">
+          צבעי הטקסט וההדגשה הם של ערכת הנושא, ונערכים בלשונית "עיצוב".
+        </p>
+      </div>
     </div>
   );
 }

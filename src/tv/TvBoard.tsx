@@ -113,6 +113,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           config.backgroundGradient ? " has-bg-gradient" : ""
         }${frame.classes}`}
         style={{ ...style, ...frame.vars }}
+        {...edit.attr("board.background")}
       >
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
         <TvShapes />

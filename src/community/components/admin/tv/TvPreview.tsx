@@ -160,6 +160,8 @@ export function TvDeviceStudio({
     const el = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-edit]") : null;
     const frame = el?.closest<HTMLElement>(".tv-frame");
     if (!el || !frame) return;
+    // The board behind everything is selected, never dragged.
+    if (el.dataset.edit === "board.background") return;
     // Same scope the inspector shows: the element's own rule, or its
     // family's when that is the one that exists.
     const key = styleTargetKey(props.config, el.dataset.edit!);

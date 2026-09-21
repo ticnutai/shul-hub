@@ -47,6 +47,13 @@ export const SHOWN_ZMANIM: SolarEvent[] = [
 ];
 
 export const EDITABLE: Record<string, EditableSpec> = {
+  /**
+   * The board behind everything. Clicking anywhere that is not a panel or a
+   * line of text selects this, and the inspector then offers the whole look:
+   * background, style and frames. `closest("[data-edit]")` means an inner
+   * element still wins, so nothing else changes.
+   */
+  "board.background": { label: "רקע הלוח, סגנון ומסגרות" },
   "header.logo": { label: "לוגו קרובים", hideable: true, flip: "header" },
   "dash.prayers": { label: "לוח מלא: כותרת זמני התפילות", text: "זמני התפילות" },
   "dash.zmanim": { label: "לוח מלא: כותרת זמני היום", text: "זמני היום" },
