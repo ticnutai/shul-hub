@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { guessRoles, parseFigmaColors } from "./figmaTokens";
+import { guessRoles, parseFigmaColors, readHandoff } from "./figmaTokens";
 
 describe("reading a Figma export", () => {
   it("reads the REST API's variables body", () => {
@@ -65,5 +65,24 @@ describe("reading a Figma export", () => {
     expect(roles.accent).toBe("#f0c35c");
     // nothing in the palette says "on accent"
     expect(roles.onAccent).toBeNull();
+  });
+});
+
+describe("a palette handed over by the plugin", () => {
+  const encode = (payload: unknown) =>
+    Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+
+  it("reads what the plugin sent, Hebrew names and all", () => {
+    const hash = `#figma=${encode({ v: 1, name: "לוח קרובים", colors: [{ n: "רקע", v: "#101820" }] })}`;
+    expect(readHandoff(hash)).toEqual({
+      name: "לוח קרובים",
+      colours: [{ name: "רקע", value: "#101820" }],
+    });
+  });
+
+  it("refuses anything that is not a colour, and anything malformed", () => {
+    expect(readHandoff(`#figma=${encode({ colors: [{ n: "x", v: "url(evil)" }] })}`)).toBeNull();
+    expect(readHandoff("#figma=not-base64!!")).toBeNull();
+    expect(readHandoff("#nothing=here")).toBeNull();
   });
 });

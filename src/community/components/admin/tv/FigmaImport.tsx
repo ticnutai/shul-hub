@@ -1,10 +1,10 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Palette, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TvConfig } from "@/tv/config";
-import { ROLE_LABELS, guessRoles, parseFigmaColors, type FigmaColor } from "@/tv/figmaTokens";
+import { ROLE_LABELS, guessRoles, parseFigmaColors, readHandoff, type FigmaColor } from "@/tv/figmaTokens";
 import { THEME_ROLES, fromRoles, type ThemeRole } from "@/tv/transfer";
 import { isLightColor } from "@/tv/themes";
 
@@ -23,7 +23,16 @@ const DRAFT_ID = "c_figma";
  * on the second screen - shows the palette while it is still being sorted
  * out. Nothing reaches a TV until "שמור ושדר", like every other edit.
  */
-export function FigmaImport({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
+export function FigmaImport({
+  config,
+  onEdit,
+  handoff,
+}: {
+  config: TvConfig;
+  onEdit: Edit;
+  /** A palette the Figma plugin sent over (the URL fragment), read once. */
+  handoff?: string | null;
+}) {
   const [colours, setColours] = useState<FigmaColor[] | null>(null);
   const [roles, setRoles] = useState<Record<ThemeRole, string | null> | null>(null);
   const [name, setName] = useState("ערכה מפיגמה");
@@ -86,6 +95,26 @@ export function FigmaImport({ config, onEdit }: { config: TvConfig; onEdit: Edit
     setRoles(null);
   };
 
+  // The plugin's palette arrives before anything is dropped here.
+  const handled = useRef(false);
+  useEffect(() => {
+    if (!handoff || handled.current) return;
+    handled.current = true;
+    const sent = readHandoff(handoff);
+    if (!sent) {
+      toast.error("הקישור מפיגמה לא הכיל צבעים שאפשר לקרוא");
+      return;
+    }
+    const guessed = guessRoles(sent.colours);
+    previousTheme.current = config.theme === DRAFT_ID ? previousTheme.current : config.theme;
+    setColours(sent.colours);
+    setRoles(guessed);
+    setName(sent.name);
+    apply(guessed, sent.name);
+    toast.success(`התקבלו ${sent.colours.length} צבעים מפיגמה`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoff]);
+
   if (!colours || !roles) {
     return (
       <div className="space-y-2">
@@ -113,6 +142,7 @@ export function FigmaImport({ config, onEdit }: { config: TvConfig; onEdit: Edit
         </button>
         <input
           ref={fileInput}
+          data-testid="figma-file"
           type="file"
           accept="application/json,.json"
           className="hidden"

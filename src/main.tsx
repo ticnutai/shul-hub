@@ -45,6 +45,47 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
   });
 }
 
+// A deploy replaces every hashed chunk. A tab opened before it - or a page
+// answered from an old service-worker cache - then asks for a file that is no
+// longer on the server and dies with "Failed to fetch dynamically imported
+// module": the blank error screen, which a plain refresh does not always
+// clear because the old worker answers that refresh too.
+//
+// Recover by ourselves, at most once a minute so this can never loop: drop
+// the caches, push the newest worker to take over, and reload into the build
+// that is actually deployed.
+if (import.meta.env.PROD) {
+  const HEAL_KEY = "app-stale-chunk-heal";
+  const healOnce = () => {
+    const last = Number(sessionStorage.getItem(HEAL_KEY) || 0);
+    if (Date.now() - last < 60_000) return;
+    sessionStorage.setItem(HEAL_KEY, String(Date.now()));
+    void (async () => {
+      try {
+        if ("caches" in window) {
+          await Promise.all((await caches.keys()).map((key) => caches.delete(key)));
+        }
+        if ("serviceWorker" in navigator) {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(
+            registrations.map((r) => r.update().catch(() => r.unregister().catch(() => {}))),
+          );
+        }
+      } catch {
+        // Whatever failed here, the reload below is the part that matters.
+      }
+      window.location.reload();
+    })();
+  };
+  window.addEventListener("vite:preloadError", healOnce);
+  window.addEventListener("unhandledrejection", (event) => {
+    const message = String((event.reason as Error)?.message ?? event.reason ?? "");
+    if (/dynamically imported module|Importing a module script failed|Loading chunk/i.test(message)) {
+      healOnce();
+    }
+  });
+}
+
 document.documentElement.dataset.appBuild = __APP_BUILD_ID__;
 
 // Initialize Capacitor plugins on native platforms

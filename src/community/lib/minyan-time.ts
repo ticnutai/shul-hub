@@ -62,6 +62,10 @@ export function resolveMinyan(minyan: Minyan, zmanim: Zmanim): ResolvedMinyan | 
   const base = zmanim[(minyan.relative_to ?? "sunset") as SolarEvent];
   if (!base) return null;
   const d = new Date(base.getTime() + minyan.offset_minutes * 60000);
+  // A row with a missing or damaged offset used to produce an invalid Date,
+  // and formatting it threw - taking the whole board down, on a screen with
+  // nobody to press reload. One bad row is simply not shown.
+  if (!Number.isFinite(d.getTime())) return null;
   const off = minyan.offset_minutes;
   const relLabel = RELATIVE_LABELS[(minyan.relative_to ?? "sunset") as SolarEvent];
   const source =

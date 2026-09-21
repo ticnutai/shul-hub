@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { margin: 0; padding: 14px; font: 13px -apple-system, "Segoe UI", system-ui; color: var(--figma-color-text); background: var(--figma-color-bg); }
+      h1 { margin: 0 0 4px; font-size: 14px; }
+      p { margin: 0 0 10px; color: var(--figma-color-text-secondary); line-height: 1.45; }
+      label { display: block; margin-bottom: 4px; font-weight: 600; }
+      input { width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid var(--figma-color-border); border-radius: 6px; background: var(--figma-color-bg); color: var(--figma-color-text); direction: ltr; text-align: left; }
+      button { width: 100%; margin-top: 10px; padding: 9px; border: 0; border-radius: 6px; background: var(--figma-color-bg-brand); color: var(--figma-color-text-onbrand); font-weight: 700; cursor: pointer; }
+      button:disabled { opacity: .5; cursor: default; }
+      .count { font-weight: 700; color: var(--figma-color-text); }
+    </style>
+  </head>
+  <body>
+    <h1>שליחת הצבעים ללוח</h1>
+    <p id="status">קורא את הקובץ…</p>
+    <label for="url">כתובת האתר של בית הכנסת</label>
+    <input id="url" placeholder="https://shul-hub.lovable.app" />
+    <button id="send" disabled>שלח ללוח</button>
+    <script>
+      const status = document.getElementById("status");
+      const url = document.getElementById("url");
+      const send = document.getElementById("send");
+      onmessage = (e) => {
+        const msg = e.data.pluginMessage;
+        if (msg?.type !== "ready") return;
+        status.innerHTML = msg.count
+          ? `נמצאו <span class="count">${msg.count}</span> צבעים בקובץ "${msg.file}". הלוח ייפתח בדפדפן עם הפלטה מוכנה לעריכה.`
+          : "לא נמצאו צבעים בקובץ הזה. צריך משתני צבע (Variables) או סגנונות צבע (Styles).";
+        url.value = msg.url || "https://shul-hub.lovable.app";
+        send.disabled = !msg.count;
+      };
+      send.onclick = () => {
+        if (!url.value.trim()) return url.focus();
+        parent.postMessage({ pluginMessage: { type: "send", url: url.value.trim() } }, "*");
+      };
+    </script>
+  </body>
+</html>

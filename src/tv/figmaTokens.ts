@@ -161,3 +161,36 @@ export const ROLE_LABELS: Record<ThemeRole, string> = {
   onAccent: "טקסט על הדגשה",
   highlight: "הדגשת שורה",
 };
+
+/* ------------------------------------------------ handed over by URL -- */
+
+/**
+ * The Figma plugin ("שלח ללוח", in figma-plugin/) opens the editor with the
+ * palette in the URL fragment. A fragment is never sent to a server, so the
+ * colours travel from Figma to this browser and no further.
+ *
+ * This is untrusted input like any other: only colours this board accepts
+ * survive, and only the first two hundred of them.
+ */
+export function readHandoff(hash: string): { name: string; colours: FigmaColor[] } | null {
+  const match = /[#&]figma=([A-Za-z0-9_-]+)/.exec(hash);
+  if (!match) return null;
+  try {
+    const base64 = match[1].replace(/-/g, "+").replace(/_/g, "/");
+    const binary = atob(base64 + "=".repeat((4 - (base64.length % 4)) % 4));
+    const bytes = Uint8Array.from(binary, (ch) => ch.charCodeAt(0));
+    const raw = JSON.parse(new TextDecoder().decode(bytes)) as unknown;
+    if (!isObj(raw) || !Array.isArray(raw.colors)) return null;
+    const colours: FigmaColor[] = [];
+    for (const entry of raw.colors) {
+      if (!isObj(entry)) continue;
+      const name = typeof entry.n === "string" ? entry.n.slice(0, 80) : "";
+      const value = fromCss(entry.v);
+      if (name && value && colours.length < 200) colours.push({ name, value });
+    }
+    if (!colours.length) return null;
+    return { name: typeof raw.name === "string" ? raw.name.slice(0, 40) : "ערכה מפיגמה", colours };
+  } catch {
+    return null;
+  }
+}

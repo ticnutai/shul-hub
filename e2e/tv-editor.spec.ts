@@ -1,0 +1,212 @@
+import { expect, test } from "@playwright/test";
+import { BOARD_SKINS } from "../src/tv/config";
+import { TV_THEMES } from "../src/tv/themes";
+import { expectNotFrozen, serveEditor, type EditorServer } from "./support/tvEditor";
+
+/**
+ * The editor itself, control by control.
+ *
+ * It runs against e2e/harness/editor.html, which mounts the real
+ * TvDesignPanel with its database answered from the spec - so these tests
+ * need no administrator account and still drive the shipped component.
+ *
+ * Every step ends with `expectNotFrozen`: twice now a dialog has closed badly
+ * and left the whole page unclickable while looking perfectly normal, so each
+ * test proves a click still lands after it.
+ */
+
+const HARNESS = "/e2e/harness/editor.html";
+
+let server: EditorServer;
+
+test.describe("TV editor", () => {
+  test.skip(({ isMobile }) => isMobile, "the editor is for a desktop screen");
+
+  test.beforeEach(async ({ page }) => {
+    server = await serveEditor(page);
+    const res = await page.goto(HARNESS).catch(() => null);
+    test.skip(!res, "the dev server is not running (npm run dev)");
+    await expect(page.locator(".tv-frame .tv-root")).toBeVisible({ timeout: 20_000 });
+  });
+
+  /** The board's own root, which carries the theme variables and the skin. */
+  const root = (page: import("@playwright/test").Page) => page.locator(".tv-frame .tv-root").first();
+
+  const cssVar = (page: import("@playwright/test").Page, name: string) =>
+    root(page).evaluate((el, v) => getComputedStyle(el).getPropertyValue(v).trim(), name);
+
+  test("every theme applies to the board, one after another", async ({ page }) => {
+    const seen: string[] = [];
+    for (const theme of TV_THEMES) {
+      await page.getByRole("button", { name: new RegExp(`^${theme.name} `) }).click();
+      // The board carries the theme's own background colour.
+      await expect
+        .poll(() => cssVar(page, "--tv-bg-a"), { message: `theme ${theme.name}` })
+        .toBe(theme.vars["--tv-bg-a"]);
+      seen.push(theme.name);
+      await expectNotFrozen(page, `theme ${theme.name}`);
+    }
+    expect(seen).toEqual(TV_THEMES.map((t) => t.name));
+  });
+
+  test("every style in the picker applies, and they are all the board's own", async ({ page }) => {
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
+    const count = await skins.count();
+    expect(count).toBe(BOARD_SKINS.length);
+
+    const applied: string[] = [];
+    for (let i = 0; i < count; i++) {
+      await skins.nth(i).click();
+      const className = await root(page).getAttribute("class");
+      const match = /is-skin-([a-z]+)/.exec(className ?? "");
+      expect(match, `style #${i + 1} set no skin`).toBeTruthy();
+      applied.push(match![1]);
+      await expectNotFrozen(page, `style ${match![1]}`);
+    }
+    expect([...applied].sort()).toEqual([...BOARD_SKINS].sort());
+  });
+
+  test("every frame shape applies, and the roundness sliders work", async ({ page }) => {
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    const shapes = ["לפי הסגנון", "מעוגל", "רך", "קטום", "מגורע", "מדורג"];
+    const frames = page.getByTestId("frame-shapes");
+    for (const shape of shapes) {
+      await frames.getByRole("button", { name: shape, exact: true }).click();
+      const className = (await root(page).getAttribute("class")) ?? "";
+      if (shape === "לפי הסגנון") expect(className).not.toContain("has-frame-shape");
+      else expect(className).toContain("has-frame-shape");
+      await expectNotFrozen(page, `frame ${shape}`);
+    }
+
+    // The roundness of the top, set by hand, reaches the board.
+    // The two sliders start on "לפי הסגנון"; the button beside one turns it on.
+    const topRow = page.locator("div", { has: page.getByLabel("עיגול למעלה", { exact: true }) }).last();
+    await topRow.getByRole("button", { name: "לפי הסגנון" }).click();
+    await page.getByLabel("עיגול למעלה", { exact: true }).fill("8");
+    await expect.poll(() => cssVar(page, "--frame-top")).not.toBe("");
+    await expect.poll(() => root(page).getAttribute("class")).toContain("has-frame-radius");
+    await expectNotFrozen(page, "frame radius");
+  });
+
+  test("a gradient reaches the board and can be kept in the library", async ({ page }) => {
+    await page.getByRole("button", { name: "בורדו מלכותי" }).click();
+    await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
+    await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
+    await expect.poll(() => cssVar(page, "--tv-bg-gradient")).toContain("gradient");
+    await expectNotFrozen(page, "gradient applied");
+
+    await page.getByPlaceholder("שם לשמירה בספרייה").fill("בדיקה");
+    await page.getByRole("button", { name: "שמירה בספרייה" }).click();
+    await expect(page.getByRole("button", { name: "בדיקה" }).first()).toBeVisible();
+    await expectNotFrozen(page, "gradient saved");
+  });
+
+  test("a theme can be saved as a new one, and the board can be broadcast", async ({ page }) => {
+    await page.getByRole("button", { name: /^זהב מלכותי/ }).click();
+    await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
+    await expectNotFrozen(page, "save as new theme");
+
+    await page.getByRole("button", { name: "שמור ושדר למסכים" }).click();
+    await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
+    await expectNotFrozen(page, "saved and broadcast");
+  });
+
+  test("discarding unsaved changes does not leave the page stuck", async ({ page }) => {
+    await page.getByRole("button", { name: /^ירוק שבת/ }).click();
+    await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
+
+    await page.getByRole("button", { name: "ביטול שינויים" }).click();
+    await page.getByRole("button", { name: "לבטל הכל?" }).click();
+    // Back to what the database holds, and the page still answers.
+    await expect.poll(() => cssVar(page, "--tv-bg-a")).toBe(TV_THEMES[0].vars["--tv-bg-a"]);
+    await expectNotFrozen(page, "discard");
+  });
+
+  test("a palette from Figma is read and applied", async ({ page }) => {
+    await page.getByRole("tab", { name: "כלים" }).click();
+    const palette = {
+      color: {
+        background: { $value: "#1b1033", $type: "color" },
+        surface: { $value: "#241640", $type: "color" },
+        text: { $value: "#f6f1ff", $type: "color" },
+        primary: { $value: "#ffb454", $type: "color" },
+      },
+    };
+    await page.getByTestId("figma-file").setInputFiles({
+      name: "palette.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(palette)),
+    });
+    await expect.poll(() => cssVar(page, "--tv-bg-a"), { timeout: 10_000 }).toBe("#1b1033");
+    await expect.poll(() => cssVar(page, "--tv-accent")).toBe("#ffb454");
+    await expectNotFrozen(page, "figma import");
+  });
+  test("saving, renaming and deleting a theme all leave the page working", async ({ page }) => {
+    // Save the current look as a theme of its own.
+    await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
+    await page.getByPlaceholder(/שם לערכה החדשה/).fill("ערכת בדיקה");
+    await page.getByRole("button", { name: "שמירת הערכה" }).click();
+    await expect(page.getByRole("button", { name: /^ערכת בדיקה/ })).toBeVisible();
+    await expectNotFrozen(page, "theme saved");
+
+    // Renaming it, from the same row.
+    await page.getByRole("button", { name: "שינוי שם" }).first().click();
+    await page.getByPlaceholder("שם חדש").fill("ערכה אחרת");
+    await page.getByRole("button", { name: "שינוי השם" }).click();
+    await expect(page.getByRole("button", { name: /^ערכה אחרת/ })).toBeVisible();
+    await expectNotFrozen(page, "theme renamed");
+
+    const mine = page.getByRole("button", { name: "מחיקה" });
+    if (await mine.count()) {
+      await mine.first().click();
+      await expectNotFrozen(page, "delete asked");
+      await page.getByRole("button", { name: /^למחוק?/ }).first().click();
+      await expectNotFrozen(page, "theme deleted");
+    }
+  });
+
+  test("the reset dialog opens, cancels and confirms without sticking", async ({ page }) => {
+    await page.getByRole("tab", { name: "כלים" }).click();
+    const open = page.getByRole("button", { name: /איפוס לעיצוב ברירת המחדל/ });
+
+    await open.click();
+    await page.getByRole("button", { name: "ביטול" }).first().click();
+    await expectNotFrozen(page, "reset cancelled");
+
+    await open.click();
+    await page.getByRole("button", { name: "אפס", exact: true }).click();
+    await expectNotFrozen(page, "reset confirmed");
+  });
+
+  test("a run through the editor, the way an admin actually uses it", async ({ page }) => {
+    // Theme, style, frame, gradient, a slide, the Shabbat screen, and save -
+    // one after another, checking after each that the page still answers.
+    await page.getByRole("button", { name: /^אבן ירושלים / }).click();
+    await expectNotFrozen(page, "theme");
+
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByTestId("skin-picker").getByRole("button").nth(12).click();
+    await expectNotFrozen(page, "style");
+    await page.getByTestId("frame-shapes").getByRole("button", { name: "קטום" }).click();
+    await expectNotFrozen(page, "frame");
+
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await page.getByRole("button", { name: "זרקור זהב" }).click();
+    await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
+    await expectNotFrozen(page, "gradient");
+
+    await page.getByRole("button", { name: /תצוגת מסך שבת/ }).click();
+    await expectNotFrozen(page, "shabbat preview");
+    // The same button now offers the way back.
+    await page.getByRole("button", { name: /חזרה לזמן אמת/ }).click();
+    await expectNotFrozen(page, "back from shabbat");
+
+    await page.getByRole("button", { name: "דוגמת התראת זמנים" }).click();
+    await expectNotFrozen(page, "alert demo");
+
+    await page.getByRole("button", { name: "שמור ושדר למסכים" }).click();
+    await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
+    await expectNotFrozen(page, "saved");
+  });
+});

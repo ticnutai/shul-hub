@@ -135,6 +135,7 @@ import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
+import { useNeverFrozen } from "./useNeverFrozen";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
 import { buildExport, exportFileName, mergeImport, parseImport } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
@@ -391,6 +392,7 @@ function ColorField({
  * editor open on the admin page through tvDraftChannel.
  */
 export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
+  useNeverFrozen();
   const saved = useTvConfig();
   const devices = useTvDevices();
   const [state, dispatch] = useReducer(draftReducer, {
@@ -498,8 +500,23 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   // A bigger preview: "wide" stacks the controls under a full-width preview;
   // fullscreen puts the preview column alone on the whole screen.
   const [wide, setWide] = useState(false);
+  /**
+   * A palette sent by the Figma plugin: it arrives in the URL fragment, is
+   * read once, and the address is cleaned so a refresh does not import it
+   * again. The tools tab opens by itself so the admin lands on the wizard.
+   */
+  const [figmaHandoff] = useState(() => {
+    if (typeof window === "undefined" || !/[#&]figma=/.test(window.location.hash)) return null;
+    const hash = window.location.hash;
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    return hash;
+  });
+  const [tab, setTab] = useState(figmaHandoff ? "tools" : "design");
+
   /** "ביטול שינויים" asks inline before it throws the draft away. */
   const [confirmDiscard, setConfirmDiscard] = useState(false);
+  /** The theme whose "מחיקה" is waiting to be confirmed, inline. */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   // Saving, or an undo back to the saved design, answers the question itself.
   useEffect(() => {
     if (!dirty) setConfirmDiscard(false);
@@ -957,7 +974,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </Button>
       </div>
 
-      <Tabs defaultValue="design" className="w-full">
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="design">עיצוב</TabsTrigger>
           <TabsTrigger value="layout">פריסה</TabsTrigger>
@@ -1034,38 +1051,41 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                         >
                           שינוי שם
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                        {confirmDelete === t.id ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              className="h-6 px-1.5 text-[11px]"
+                              onClick={() => {
+                                setConfirmDelete(null);
+                                deleteTheme(t.id);
+                              }}
+                            >
+                              {draft.theme === t.id ? "למחוק? הלוח יחזור לברירת המחדל" : "למחוק?"}
+                            </Button>
                             <Button
                               type="button"
                               variant="ghost"
                               size="sm"
-                              className="h-6 px-1.5 text-[11px] text-destructive"
+                              className="h-6 px-1.5 text-[11px]"
+                              onClick={() => setConfirmDelete(null)}
                             >
-                              מחיקה
+                              ביטול
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent dir="rtl">
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>למחוק את הערכה "{t.name}"?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {draft.theme === t.id
-                                  ? 'היא בשימוש כרגע; הלוח יחזור ל"לילה כחול". '
-                                  : ""}
-                                המחיקה תגיע למסכים ב"שמור ושדר", ועד אז אפשר לבטל (Ctrl+Z).
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>ביטול</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                onClick={() => deleteTheme(t.id)}
-                              >
-                                מחיקה
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-1.5 text-[11px] text-destructive"
+                            onClick={() => setConfirmDelete(t.id)}
+                          >
+                            מחיקה
+                          </Button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1330,7 +1350,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </div>
             <div className="space-y-2">
               <div className="text-sm font-medium">סגנון תצוגה</div>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5">
+              <div
+                data-testid="skin-picker"
+                className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5"
+              >
                 {SKIN_CHOICES.map((sk) => (
                   <button
                     key={sk.id}
@@ -1362,7 +1385,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
             <div className="space-y-2">
               <div className="text-sm font-medium">מסגרות</div>
-              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+              <div data-testid="frame-shapes" className="grid grid-cols-3 gap-2 sm:grid-cols-6">
                 {FRAME_CHOICES.map((fr) => (
                   <button
                     key={fr.id}
@@ -1948,7 +1971,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             title="ייבוא מפיגמה"
             hint="קובץ המשתנים (Variables) של פיגמה הופך לערכת נושא. בלי טוקן ובלי חשבון - הקובץ נקרא כאן בדפדפן."
           >
-            <FigmaImport config={draft} onEdit={edit} />
+            <FigmaImport config={draft} onEdit={edit} handoff={figmaHandoff} />
           </Section>
 
           <AlertDialog>

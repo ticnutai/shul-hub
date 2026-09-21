@@ -4045,3 +4045,23 @@
 .tv-root.is-skin-sky .tv-panel-title {
   color: #3a2408;
 }
+
+/* ============================================ the admin beats the skin === */
+
+/*
+ * A style paints its own wall - marble, walnut, stone - and it does so with
+ * two classes, the same weight as the rule that puts the admin s chosen
+ * gradient or picture there. Written earlier in the file, the admin s choice
+ * lost, and picking a gradient did nothing on any material skin.
+ *
+ * Repeating the class raises the weight without !important, so an explicit
+ * choice always wins, whatever style is on. Remove the gradient and the
+ * style s own wall comes back.
+ */
+.tv-root.has-bg-gradient.has-bg-gradient .tv-bg {
+  background: var(--tv-bg-gradient);
+}
+
+.tv-root.has-bg-image.has-bg-image .tv-bg {
+  background: var(--tv-bg-a);
+}
