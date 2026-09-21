@@ -118,7 +118,7 @@ const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object
  * default theme, so a file from an app with a smaller palette still imports
  * into a complete, usable theme instead of being rejected.
  */
-function fromRoles(roles: Record<string, unknown>): Record<ThemeVar, string> {
+export function fromRoles(roles: Record<string, unknown>): Record<ThemeVar, string> {
   const base = TV_THEMES[0].vars;
   const vars = {} as Record<ThemeVar, string>;
   for (const v of THEME_VARS) vars[v] = base[v];

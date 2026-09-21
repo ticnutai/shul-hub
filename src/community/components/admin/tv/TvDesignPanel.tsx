@@ -134,6 +134,7 @@ import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
+import { FigmaImport } from "./FigmaImport";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
 import { buildExport, exportFileName, mergeImport, parseImport } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
@@ -1941,6 +1942,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             hint="גיבוי של ערכות הנושא והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
           >
             <TransferPanel onExport={doExport} onImport={doImport} />
+          </Section>
+
+          <Section
+            title="ייבוא מפיגמה"
+            hint="קובץ המשתנים (Variables) של פיגמה הופך לערכת נושא. בלי טוקן ובלי חשבון - הקובץ נקרא כאן בדפדפן."
+          >
+            <FigmaImport config={draft} onEdit={edit} />
           </Section>
 
           <AlertDialog>
