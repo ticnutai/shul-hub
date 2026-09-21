@@ -3835,3 +3835,52 @@
 .tv-root.is-skin-sky .is-past {
   opacity: 0.62;
 }
+
+/* ==================================================== the admin's frame === */
+
+/*
+ * "מסגרות" in the editor: the shape of every panel's corners, chosen by the
+ * admin instead of by the skin. These rules come last in the file, so they
+ * beat the skins at the same specificity.
+ *
+ * Asking for a radius also cancels a skin's silhouette and its picture
+ * frame: a clip path cuts the corner away before a radius can round it, and
+ * border-image ignores border-radius entirely. The skin keeps its materials
+ * and its colours - only the outline becomes the admin's.
+ */
+
+.tv-root.has-frame-radius .tv-panel,
+.tv-root.has-frame-radius .tv-card,
+.tv-root.has-frame-radius .tv-dash-strip,
+.tv-root.has-frame-radius .tv-ticker {
+  border-radius: var(--frame-top, calc(var(--u) * 1.6)) var(--frame-top, calc(var(--u) * 1.6))
+    var(--frame-bottom, calc(var(--u) * 1.6)) var(--frame-bottom, calc(var(--u) * 1.6));
+  clip-path: none;
+  border-image: none;
+}
+
+/* the inner face of a clipped skin follows the same corner */
+.tv-root.has-frame-radius .tv-panel::before {
+  clip-path: none;
+  border-radius: inherit;
+}
+
+/* a skin whose frame was an image now needs a line to keep the edge */
+.tv-root.has-frame-radius.is-skin-gold .tv-panel,
+.tv-root.has-frame-radius.is-skin-hall .tv-panel,
+.tv-root.has-frame-radius.is-skin-dome .tv-panel,
+.tv-root.has-frame-radius.is-skin-stone .tv-panel,
+.tv-root.has-frame-radius.is-skin-medallion .tv-panel {
+  border-color: var(--tv-accent);
+}
+
+.tv-root.has-frame-shape .tv-panel,
+.tv-root.has-frame-shape .tv-card,
+.tv-root.has-frame-shape .tv-dash-strip,
+.tv-root.has-frame-shape .tv-ticker {
+  corner-shape: var(--frame-shape);
+}
+
+.tv-root.has-frame-shape .tv-panel::before {
+  corner-shape: var(--frame-shape);
+}

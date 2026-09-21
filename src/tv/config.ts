@@ -155,10 +155,41 @@ export const BOARD_SKINS: BoardSkin[] = [
 ];
 export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
 
+/**
+ * The shape of a panel's corners, over and above how round they are.
+ *
+ * "auto" leaves the skin's own silhouette alone - an arch stays an arch, a
+ * dome stays a dome. Anything else replaces it on every panel of every skin:
+ * a plain round corner, a squircle (the corner of a phone icon), a cut
+ * corner, a corner scooped inwards, or a notch. They are CSS corner-shape
+ * values; a browser without it still gets the roundness.
+ */
+export type FrameShape = "auto" | "round" | "squircle" | "bevel" | "scoop" | "notch";
+export const FRAME_SHAPES: FrameShape[] = ["auto", "round", "squircle", "bevel", "scoop", "notch"];
+
+/** What each shape is in CSS. */
+export const CORNER_SHAPE: Record<Exclude<FrameShape, "auto">, string> = {
+  round: "round",
+  squircle: "superellipse(2)",
+  bevel: "bevel",
+  scoop: "scoop",
+  notch: "notch",
+};
+
+/** How round a corner may be set to, in --u units. */
+export const FRAME_RADIUS_MAX = 12;
+
 export interface TvConfig {
   screenLayout: ScreenLayout;
   clockStyle: ClockStyle;
   skin: BoardSkin;
+  /**
+   * The corners of every panel, when the admin wants to decide instead of
+   * the skin. `top`/`bottom` are in --u units; null means "as the skin
+   * draws it", and setting either one also drops the skin's own silhouette
+   * (a clipped dome cannot show a corner radius).
+   */
+  frame: { shape: FrameShape; top: number | null; bottom: number | null };
   /** A built-in theme id, or the id of one of `customThemes`. */
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
@@ -264,6 +295,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   styles: {},
   screenLayout: "rotate",
   clockStyle: "digital",
+  frame: { shape: "auto", top: null, bottom: null },
   skin: "plain",
 };
 
@@ -362,6 +394,18 @@ function normalizeStyles(raw: unknown, themes: string[]): Record<string, Element
   return out;
 }
 
+/** A corner setting from storage: unknown shapes and silly sizes are dropped. */
+function normalizeFrame(raw: unknown, fallback: TvConfig["frame"]): TvConfig["frame"] {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const size = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(v, 0), FRAME_RADIUS_MAX) : null;
+  return {
+    shape: FRAME_SHAPES.includes(r.shape as FrameShape) ? (r.shape as FrameShape) : fallback.shape,
+    top: size(r.top),
+    bottom: size(r.bottom),
+  };
+}
+
 export function normalizeTvConfig(raw: unknown): TvConfig {
   const d = DEFAULT_TV_CONFIG;
   if (!isObj(raw)) return structuredClone(d);
@@ -457,5 +501,6 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
     skin: BOARD_SKINS.includes(raw.skin as BoardSkin) ? (raw.skin as BoardSkin) : d.skin,
+    frame: normalizeFrame(raw.frame, d.frame),
   };
 }

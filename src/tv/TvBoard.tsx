@@ -4,7 +4,7 @@ import { DAYS_HE } from "@community/lib/data";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { Settings } from "@community/lib/data";
-import type { TvConfig } from "./config";
+import { CORNER_SHAPE, type TvConfig } from "./config";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
 import { themeStyle } from "./themes";
@@ -83,6 +83,21 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       config.backgroundDim,
     ],
   );
+  // The admin's own corner settings, when they overrule the skin.
+  const frame = useMemo(() => {
+    const { shape, top, bottom } = config.frame;
+    const vars: Record<string, string> = {};
+    if (shape !== "auto") vars["--frame-shape"] = CORNER_SHAPE[shape];
+    if (top !== null) vars["--frame-top"] = `calc(var(--u) * ${top})`;
+    if (bottom !== null) vars["--frame-bottom"] = `calc(var(--u) * ${bottom})`;
+    // A radius can only show on a panel that is not cut to a silhouette, so
+    // asking for one drops the skin's clip path (see tv.css).
+    const classes =
+      (shape !== "auto" ? " has-frame-shape" : "") +
+      (top !== null || bottom !== null ? " has-frame-radius" : "");
+    return { vars, classes };
+  }, [config.frame]);
+
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   const shabbat = slides[0]?.kind === "shabbat";
   // The Shabbat screen always takes the whole stage, whatever the layout.
@@ -96,8 +111,8 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       <div
         className={`tv-root is-layout-${layout} is-skin-${config.skin}${config.backgroundImage ? " has-bg-image" : ""}${
           config.backgroundGradient ? " has-bg-gradient" : ""
-        }`}
-        style={style}
+        }${frame.classes}`}
+        style={{ ...style, ...frame.vars }}
       >
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
         <TvShapes />

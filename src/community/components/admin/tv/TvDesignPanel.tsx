@@ -318,6 +318,45 @@ const SKIN_CHOICES: Array<{
   },
 ];
 
+/**
+ * The corner shapes offered in "מסגרות". The little preview is the shape
+ * itself, drawn with the same CSS the board uses, so what is on the button
+ * is what lands on the panels.
+ */
+const FRAME_CHOICES: Array<{ id: FrameShape; name: string; hint: string; css: CSSProperties }> = [
+  {
+    id: "auto",
+    name: "לפי הסגנון",
+    hint: "כל סגנון שומר על הצורה שלו - קשת נשארת קשת, כיפה נשארת כיפה",
+    css: { borderRadius: "10px 10px 4px 4px / 14px 14px 4px 4px" },
+  },
+  { id: "round", name: "מעוגל", hint: "פינה עגולה רגילה", css: { borderRadius: "12px" } },
+  {
+    id: "squircle",
+    name: "רך",
+    hint: "פינה רכה, כמו אייקון של אפליקציה",
+    css: { borderRadius: "14px", cornerShape: "superellipse(2)" } as CSSProperties,
+  },
+  {
+    id: "bevel",
+    name: "קטום",
+    hint: "פינה חתוכה בקו ישר, כמו אבן מסותתת",
+    css: { borderRadius: "14px", cornerShape: "bevel" } as CSSProperties,
+  },
+  {
+    id: "scoop",
+    name: "מגורע",
+    hint: "פינה שנחתכת פנימה בקשת",
+    css: { borderRadius: "14px", cornerShape: "scoop" } as CSSProperties,
+  },
+  {
+    id: "notch",
+    name: "מדורג",
+    hint: "פינה בצורת מדרגה",
+    css: { borderRadius: "14px", cornerShape: "notch" } as CSSProperties,
+  },
+];
+
 const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
   { id: "digital", name: "ספרות" },
   { id: "analog", name: "שעון מחוגים" },
@@ -327,6 +366,7 @@ const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
 const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600];
 const intervalLabel = (s: number) =>
   s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
+import { FRAME_RADIUS_MAX, type FrameShape } from "@/tv/config";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
@@ -1540,6 +1580,84 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               <p className="text-xs text-muted-foreground">
                 הסגנון מתלבש על כל ערכת נושא וכל פריסה. "לוחות אבן" ו"קלף" הופכים את הלוחות לבהירים,
                 והטקסט שבתוכם מתכהה בהתאם.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="text-sm font-medium">מסגרות</div>
+              <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {FRAME_CHOICES.map((fr) => (
+                  <button
+                    key={fr.id}
+                    type="button"
+                    aria-pressed={draft.frame.shape === fr.id}
+                    title={fr.hint}
+                    onClick={() =>
+                      edit("frame.shape", (c) => ({ ...c, frame: { ...c.frame, shape: fr.id } }))
+                    }
+                    className={`rounded-lg border p-1.5 text-center transition ${
+                      draft.frame.shape === fr.id
+                        ? "ring-2 ring-primary ring-offset-2"
+                        : "hover:border-primary/50"
+                    }`}
+                  >
+                    <span
+                      className="mx-auto mb-1 block h-10 w-14 border-2 border-[#c9a227] bg-[#12243f]"
+                      style={fr.css}
+                      aria-hidden
+                    />
+                    <span className="block text-[11px] font-medium">{fr.name}</span>
+                  </button>
+                ))}
+              </div>
+
+              {(["top", "bottom"] as const).map((edge) => {
+                const value = draft.frame[edge];
+                const label = edge === "top" ? "עיגול למעלה" : "עיגול למטה";
+                return (
+                  <div key={edge} className="flex items-center gap-3 text-sm">
+                    <span className="w-24 shrink-0">{label}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={FRAME_RADIUS_MAX}
+                      step={0.5}
+                      value={value ?? 1.6}
+                      disabled={value === null}
+                      aria-label={label}
+                      onChange={(e) =>
+                        edit(`frame.${edge}`, (c) => ({
+                          ...c,
+                          frame: { ...c.frame, [edge]: Number(e.target.value) },
+                        }))
+                      }
+                      className="h-2 flex-1 accent-primary disabled:opacity-40"
+                    />
+                    <span className="w-10 text-left tabular-nums text-muted-foreground">
+                      {value === null ? "—" : value}
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={value === null ? "default" : "outline"}
+                      aria-pressed={value === null}
+                      onClick={() =>
+                        edit(`frame.${edge}.auto`, (c) => ({
+                          ...c,
+                          frame: { ...c.frame, [edge]: value === null ? 1.6 : null },
+                        }))
+                      }
+                    >
+                      לפי הסגנון
+                    </Button>
+                  </div>
+                );
+              })}
+
+              <p className="text-xs text-muted-foreground">
+                חל על כל הלוחות בכל הסגנונות ובכל הפריסות - בטלוויזיה, בלפטופ ובנייד. כשקובעים
+                עיגול, הצורה של הסגנון (כיפה, קשת, קצה מסולסל) מוחלפת בפינה שנבחרה; החומרים
+                והצבעים של הסגנון נשארים.
               </p>
             </div>
 
