@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { CORNER_SHAPE, FRAME_RADIUS_MAX, FRAME_SHAPES, normalizeTvConfig } from "./config";
+import {
+  CORNER_SHAPE,
+  FRAME_RADIUS_MAX,
+  FRAME_SHAPES,
+  SPACING_EDGES,
+  SPACING_MAX,
+  normalizeTvConfig,
+} from "./config";
 
 /** The admin's corner settings arrive from storage, so they are not trusted. */
 describe("frame settings", () => {
@@ -26,5 +33,25 @@ describe("frame settings", () => {
       if (shape === "auto") continue;
       expect(CORNER_SHAPE[shape]).toBeTruthy();
     }
+  });
+});
+
+/** The air around the panels comes from storage too. */
+describe("spacing", () => {
+  const spacingOf = (raw: unknown) => normalizeTvConfig({ spacing: raw }).spacing;
+
+  it("defaults to what the layout draws", () => {
+    expect(spacingOf(undefined)).toEqual({ top: null, sides: null, gap: null });
+  });
+
+  it("clamps each edge and refuses anything that is not a number", () => {
+    expect(spacingOf({ top: 99 }).top).toBe(SPACING_MAX);
+    expect(spacingOf({ sides: -2 }).sides).toBe(0);
+    expect(spacingOf({ gap: "3" }).gap).toBeNull();
+  });
+
+  it("covers every edge the board knows", () => {
+    const spacing = spacingOf({ top: 1, sides: 2, gap: 3 });
+    expect(Object.keys(spacing).sort()).toEqual([...SPACING_EDGES].sort());
   });
 });

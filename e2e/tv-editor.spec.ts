@@ -292,4 +292,30 @@ test.describe("TV editor", () => {
     expect(measured.overflow, "and then it fits").toBeLessThanOrEqual(2);
     await expectNotFrozen(page, "long notice");
   });
+  test("less air at the top gives the panels more height", async ({ page }) => {
+    // The point of the spacing controls: take the air back and the panels
+    // grow, which is what makes room for another row.
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("button", { name: /לוח מלא/ }).first().click();
+    await page.waitForTimeout(300);
+    const panel = page.locator(".tv-frame .tv-panel").first();
+    const before = (await panel.boundingBox())?.height ?? 0;
+    expect(before).toBeGreaterThan(0);
+
+    // Turn the slider on (it starts on "לפי הסגנון") and close the gap.
+    const row = page.locator("div", { has: page.getByLabel("מרווח עליון", { exact: true }) }).last();
+    await row.getByRole("button", { name: "לפי הסגנון" }).click();
+    await page.getByLabel("מרווח עליון", { exact: true }).fill("0");
+    await expect.poll(() => root(page).getAttribute("class")).toContain("has-space-top");
+
+    await expect
+      .poll(async () => (await panel.boundingBox())?.height ?? 0, { message: "the panel grew" })
+      .toBeGreaterThan(before);
+    await expectNotFrozen(page, "spacing");
+
+    // And back to what the layout draws.
+    await row.getByRole("button", { name: "לפי הסגנון" }).click();
+    await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-space-top");
+    await expect.poll(async () => (await panel.boundingBox())?.height ?? 0).toBe(before);
+  });
 });

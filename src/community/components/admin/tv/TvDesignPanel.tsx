@@ -130,7 +130,7 @@ const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 
 const intervalLabel = (s: number) =>
   s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
 import { FRAME_RADIUS_MAX, type FrameShape } from "@/tv/config";
-import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
+import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
@@ -1346,118 +1346,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </button>
               ))}
             </div>
-            <div className="space-y-2">
-              <div className="text-sm font-medium">סגנון תצוגה</div>
-              <div
-                data-testid="skin-picker"
-                className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5"
-              >
-                {SKIN_CHOICES.map((sk) => (
-                  <button
-                    key={sk.id}
-                    type="button"
-                    aria-pressed={draft.skin === sk.id}
-                    title={sk.hint}
-                    onClick={() => edit("skin", (c) => ({ ...c, skin: sk.id }))}
-                    className={`rounded-lg border p-1.5 text-right transition ${
-                      draft.skin === sk.id
-                        ? "ring-2 ring-primary ring-offset-2"
-                        : "hover:border-primary/50"
-                    }`}
-                  >
-                    <span
-                      className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]"
-                      aria-hidden
-                    >
-                      {sk.preview}
-                    </span>
-                    <span className="block text-center text-xs font-medium">{sk.name}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                הסגנון מתלבש על כל ערכת נושא וכל פריסה. "לוחות אבן" ו"קלף" הופכים את הלוחות לבהירים,
-                והטקסט שבתוכם מתכהה בהתאם.
-              </p>
-            </div>
+            <StylePicker config={draft} onEdit={edit} />
 
-            <div className="space-y-2">
-              <div className="text-sm font-medium">מסגרות</div>
-              <div data-testid="frame-shapes" className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {FRAME_CHOICES.map((fr) => (
-                  <button
-                    key={fr.id}
-                    type="button"
-                    aria-pressed={draft.frame.shape === fr.id}
-                    title={fr.hint}
-                    onClick={() =>
-                      edit("frame.shape", (c) => ({ ...c, frame: { ...c.frame, shape: fr.id } }))
-                    }
-                    className={`rounded-lg border p-1.5 text-center transition ${
-                      draft.frame.shape === fr.id
-                        ? "ring-2 ring-primary ring-offset-2"
-                        : "hover:border-primary/50"
-                    }`}
-                  >
-                    <span
-                      className="mx-auto mb-1 block h-10 w-14 border-2 border-[#c9a227] bg-[#12243f]"
-                      style={fr.css}
-                      aria-hidden
-                    />
-                    <span className="block text-[11px] font-medium">{fr.name}</span>
-                  </button>
-                ))}
-              </div>
-
-              {(["top", "bottom"] as const).map((edge) => {
-                const value = draft.frame[edge];
-                const label = edge === "top" ? "עיגול למעלה" : "עיגול למטה";
-                return (
-                  <div key={edge} className="flex items-center gap-3 text-sm">
-                    <span className="w-24 shrink-0">{label}</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={FRAME_RADIUS_MAX}
-                      step={0.5}
-                      value={value ?? 1.6}
-                      disabled={value === null}
-                      aria-label={label}
-                      onChange={(e) =>
-                        edit(`frame.${edge}`, (c) => ({
-                          ...c,
-                          frame: { ...c.frame, [edge]: Number(e.target.value) },
-                        }))
-                      }
-                      className="h-2 flex-1 accent-primary disabled:opacity-40"
-                    />
-                    <span className="w-10 text-left tabular-nums text-muted-foreground">
-                      {value === null ? "—" : value}
-                    </span>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant={value === null ? "default" : "outline"}
-                      aria-pressed={value === null}
-                      onClick={() =>
-                        edit(`frame.${edge}.auto`, (c) => ({
-                          ...c,
-                          frame: { ...c.frame, [edge]: value === null ? 1.6 : null },
-                        }))
-                      }
-                    >
-                      לפי הסגנון
-                    </Button>
-                  </div>
-                );
-              })}
-
-              <p className="text-xs text-muted-foreground">
-                חל על כל הלוחות בכל הסגנונות ובכל הפריסות - בטלוויזיה, בלפטופ ובנייד. כשקובעים
-                עיגול, הצורה של הסגנון (כיפה, קשת, קצה מסולסל) מוחלפת בפינה שנבחרה; החומרים
-                והצבעים של הסגנון נשארים.
-              </p>
-            </div>
+            <FrameAndSpacing config={draft} onEdit={edit} />
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
               שעון:

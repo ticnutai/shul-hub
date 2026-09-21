@@ -179,6 +179,16 @@ export const CORNER_SHAPE: Record<Exclude<FrameShape, "auto">, string> = {
 /** How round a corner may be set to, in --u units. */
 export const FRAME_RADIUS_MAX = 12;
 
+/**
+ * The air around the panels, in --u units (1 = one percent of the board's
+ * height). Less air means taller panels and another row of times; more means
+ * a calmer board. null leaves it to the layout and the style, which is what
+ * every board had before this existed.
+ */
+export const SPACING_MAX = 10;
+export const SPACING_EDGES = ["top", "sides", "gap"] as const;
+export type SpacingEdge = (typeof SPACING_EDGES)[number];
+
 export interface TvConfig {
   screenLayout: ScreenLayout;
   clockStyle: ClockStyle;
@@ -190,6 +200,12 @@ export interface TvConfig {
    * (a clipped dome cannot show a corner radius).
    */
   frame: { shape: FrameShape; top: number | null; bottom: number | null };
+  /**
+   * `top`: between the header strip and the panels. `sides`: the margin at
+   * the edges of the board. `gap`: between one panel and the next. null =
+   * as the layout and the style draw it.
+   */
+  spacing: Record<SpacingEdge, number | null>;
   /** A built-in theme id, or the id of one of `customThemes`. */
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
@@ -296,6 +312,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   screenLayout: "rotate",
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
+  spacing: { top: null, sides: null, gap: null },
   skin: "plain",
 };
 
@@ -406,6 +423,14 @@ function normalizeFrame(raw: unknown, fallback: TvConfig["frame"]): TvConfig["fr
   };
 }
 
+/** Spacing from storage: only numbers, and only sane ones. */
+function normalizeSpacing(raw: unknown): TvConfig["spacing"] {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const size = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(v, 0), SPACING_MAX) : null;
+  return { top: size(r.top), sides: size(r.sides), gap: size(r.gap) };
+}
+
 export function normalizeTvConfig(raw: unknown): TvConfig {
   const d = DEFAULT_TV_CONFIG;
   if (!isObj(raw)) return structuredClone(d);
@@ -502,5 +527,6 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
     skin: BOARD_SKINS.includes(raw.skin as BoardSkin) ? (raw.skin as BoardSkin) : d.skin,
     frame: normalizeFrame(raw.frame, d.frame),
+    spacing: normalizeSpacing(raw.spacing),
   };
 }

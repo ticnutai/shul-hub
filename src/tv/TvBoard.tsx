@@ -92,11 +92,18 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     if (bottom !== null) vars["--frame-bottom"] = `calc(var(--u) * ${bottom})`;
     // A radius can only show on a panel that is not cut to a silhouette, so
     // asking for one drops the skin's clip path (see tv.css).
-    const classes =
+    let classes =
       (shape !== "auto" ? " has-frame-shape" : "") +
       (top !== null || bottom !== null ? " has-frame-radius" : "");
+
+    // The air around the panels, when the admin sets it instead of the layout.
+    for (const [edge, value] of Object.entries(config.spacing)) {
+      if (value === null) continue;
+      vars[`--space-${edge}`] = `calc(var(--u) * ${value})`;
+      classes += ` has-space-${edge}`;
+    }
     return { vars, classes };
-  }, [config.frame]);
+  }, [config.frame, config.spacing]);
 
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   const shabbat = slides[0]?.kind === "shabbat";

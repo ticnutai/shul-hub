@@ -4233,3 +4233,33 @@
   margin-bottom: calc(var(--u) * 1.1);
 }
 
+
+/* ==================================================== the admin s spacing === */
+
+/*
+ * "מרווחים" in the editor: the air around the panels, when the admin sets it
+ * rather than the layout and the style.
+ *
+ * Doubling the class raises the weight over the styles, which set their own
+ * padding for a curtain or a row of columns, so an explicit choice wins
+ * wherever it is made. Each edge is independent, and an edge left alone keeps
+ * whatever the board drew before.
+ *
+ * Less air means taller panels - which, measured, is the difference between
+ * eight rows of times and seven.
+ */
+.tv-root.has-space-top.has-space-top .tv-stage {
+  padding-top: var(--space-top);
+}
+
+.tv-root.has-space-sides.has-space-sides {
+  padding-inline: var(--space-sides);
+}
+
+.tv-root.has-space-gap.has-space-gap .tv-dash,
+.tv-root.has-space-gap.has-space-gap .tv-dash-col,
+.tv-root.has-space-gap.has-space-gap .tv-split,
+.tv-root.has-space-gap.has-space-gap .tv-prayer-grid,
+.tv-root.has-space-gap.has-space-gap .tv-learning-grid {
+  gap: var(--space-gap);
+}

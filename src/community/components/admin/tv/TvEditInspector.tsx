@@ -44,9 +44,9 @@ import {
   styleTargetKey,
   toggleFlip,
 } from "@/tv/boardEdit";
-import { FRAME_RADIUS_MAX, type ElementStyle, type FlipArea, type RecordTable, type TvConfig } from "@/tv/config";
+import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
 import { allGradients, allThemes } from "@/tv/themes";
-import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
+import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { getTheme, isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
@@ -232,97 +232,9 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
   const gradients = allGradients(config.gradients);
   return (
     <div className="space-y-3" data-testid="board-background">
-      <div className="space-y-1.5">
-        <div className="text-xs font-medium text-muted-foreground">סגנון תצוגה</div>
-        <div className="grid grid-cols-4 gap-1.5">
-          {SKIN_CHOICES.map((sk) => (
-            <button
-              key={sk.id}
-              type="button"
-              aria-pressed={config.skin === sk.id}
-              title={sk.hint}
-              onClick={() => onEdit("skin", (c) => ({ ...c, skin: sk.id }))}
-              className={`rounded-md border p-1 transition ${
-                config.skin === sk.id ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
-              }`}
-            >
-              <span className="block aspect-[16/10] overflow-hidden rounded-sm bg-[#0b1628]" aria-hidden>
-                {sk.preview}
-              </span>
-              <span className="mt-0.5 block text-center text-[10px] leading-tight">{sk.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <StylePicker config={config} onEdit={onEdit} compact />
 
-      <div className="space-y-1.5">
-        <div className="text-xs font-medium text-muted-foreground">מסגרות</div>
-        <div className="grid grid-cols-6 gap-1.5">
-          {FRAME_CHOICES.map((fr) => (
-            <button
-              key={fr.id}
-              type="button"
-              aria-pressed={config.frame.shape === fr.id}
-              title={fr.hint}
-              onClick={() => onEdit("frame.shape", (c) => ({ ...c, frame: { ...c.frame, shape: fr.id } }))}
-              className={`rounded-md border p-1 transition ${
-                config.frame.shape === fr.id
-                  ? "ring-2 ring-primary ring-offset-1"
-                  : "hover:border-primary/50"
-              }`}
-            >
-              <span
-                className="mx-auto block h-6 w-8 border-2 border-[#c9a227] bg-[#12243f]"
-                style={fr.css}
-                aria-hidden
-              />
-              <span className="mt-0.5 block text-center text-[10px] leading-tight">{fr.name}</span>
-            </button>
-          ))}
-        </div>
-        {(["top", "bottom"] as const).map((edge) => {
-          const value = config.frame[edge];
-          const label = edge === "top" ? "עיגול למעלה" : "עיגול למטה";
-          return (
-            <div key={edge} className="flex items-center gap-2 text-xs">
-              <span className="w-20 shrink-0">{label}</span>
-              <input
-                type="range"
-                min={0}
-                max={FRAME_RADIUS_MAX}
-                step={0.5}
-                value={value ?? 1.6}
-                disabled={value === null}
-                aria-label={label}
-                onChange={(e) =>
-                  onEdit(`frame.${edge}`, (c) => ({
-                    ...c,
-                    frame: { ...c.frame, [edge]: Number(e.target.value) },
-                  }))
-                }
-                className="h-1.5 flex-1 accent-primary disabled:opacity-40"
-              />
-              <span className="w-7 text-left tabular-nums text-muted-foreground">
-                {value === null ? "—" : value}
-              </span>
-              <Button
-                type="button"
-                size="sm"
-                variant={value === null ? "default" : "outline"}
-                className="h-7 px-2 text-[11px]"
-                onClick={() =>
-                  onEdit(`frame.${edge}.auto`, (c) => ({
-                    ...c,
-                    frame: { ...c.frame, [edge]: value === null ? 1.6 : null },
-                  }))
-                }
-              >
-                לפי הסגנון
-              </Button>
-            </div>
-          );
-        })}
-      </div>
+      <FrameAndSpacing config={config} onEdit={onEdit} compact />
 
       <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">ערכת נושא</div>
