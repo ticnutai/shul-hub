@@ -3884,3 +3884,164 @@
 .tv-root.has-frame-shape .tv-panel::before {
   corner-shape: var(--frame-shape);
 }
+
+/* ============================================ the rest of the skins, in kind === */
+
+/*
+ * The five skins that were still flat colour, brought up to the same
+ * materials as the rest: real columns on the marble board, a velvet valance
+ * that hangs, stone under the gold domes, and paper where there was a plain
+ * panel.
+ */
+
+/* --- עמודי שיש: the columns get the same treatment as היכל עמודים ------ */
+
+.tv-root.is-skin-pillars::before {
+  --shaft: calc(var(--u) * 4.6) calc(100% - var(--u) * 10);
+  background:
+    var(--orn-capital) left top / calc(var(--u) * 6.6) calc(var(--u) * 5.4) no-repeat,
+    var(--orn-base) left bottom / calc(var(--u) * 6.6) calc(var(--u) * 4.6) no-repeat,
+    linear-gradient(90deg, rgba(60, 40, 0, 0.55) 0 6%, rgba(255, 248, 220, 0.45) 22%, rgba(255, 255, 255, 0.15) 42%, rgba(120, 90, 20, 0.25) 62%, rgba(40, 25, 0, 0.6) 100%) left center, repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 6px) left center, var(--tex-gold) left center,
+    var(--orn-capital) right top / calc(var(--u) * 6.6) calc(var(--u) * 5.4) no-repeat,
+    var(--orn-base) right bottom / calc(var(--u) * 6.6) calc(var(--u) * 4.6) no-repeat,
+    linear-gradient(90deg, rgba(60, 40, 0, 0.55) 0 6%, rgba(255, 248, 220, 0.45) 22%, rgba(255, 255, 255, 0.15) 42%, rgba(120, 90, 20, 0.25) 62%, rgba(40, 25, 0, 0.6) 100%) right center, repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 6px) right center, var(--tex-gold) right center;
+  background-size:
+    calc(var(--u) * 6.6) calc(var(--u) * 5.4), calc(var(--u) * 6.6) calc(var(--u) * 4.6),
+    var(--shaft), var(--shaft), var(--shaft),
+    calc(var(--u) * 6.6) calc(var(--u) * 5.4), calc(var(--u) * 6.6) calc(var(--u) * 4.6),
+    var(--shaft), var(--shaft), var(--shaft);
+  background-repeat: no-repeat;
+}
+
+.tv-root.is-skin-pillars .tv-panel {
+  border-color: transparent;
+  background:
+    var(--tex-marble-dark) center / calc(var(--u) * 20) calc(var(--u) * 14) repeat padding-box,
+    var(--tex-gold) center / cover border-box;
+  border-width: max(2px, calc(var(--u) * 0.5));
+}
+
+.tv-root.is-skin-pillars .tv-header,
+.tv-root.is-skin-pillars .tv-dash-strip,
+.tv-root.is-skin-pillars .tv-ticker {
+  background: var(--tex-marble-dark) center / calc(var(--u) * 20) calc(var(--u) * 14) repeat;
+}
+
+/* --- פרוכת: a valance that hangs, with a gold rod and fringe ----------- */
+
+.tv-root.is-skin-curtain::before {
+  height: calc(var(--u) * 9);
+  background:
+    /* the fringe along the hem */
+    radial-gradient(circle at 50% 0, #f6e3a8 0 calc(var(--u) * 0.5), transparent calc(var(--u) * 0.55)) 0 100% / calc(var(--u) * 1.6) calc(var(--u) * 1.2) repeat-x,
+    /* the scalloped hem of the drape */
+    radial-gradient(circle at 50% 0, #8a1a30 0 calc(var(--u) * 2.8), transparent calc(var(--u) * 2.85)) 0 calc(100% - var(--u) * 0.9) / calc(var(--u) * 6.4) calc(var(--u) * 3.2) repeat-x,
+    /* the folds */
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0 calc(var(--u) * 0.5), rgba(255, 255, 255, 0.12) calc(var(--u) * 1.4), rgba(0, 0, 0, 0.4) calc(var(--u) * 3.2)),
+    var(--tex-velvet) center / cover;
+  border-bottom: none;
+  box-shadow: 0 calc(var(--u) * 0.6) calc(var(--u) * 1.6) rgba(0, 0, 0, 0.45);
+}
+
+/* the rod the curtain hangs from */
+.tv-root.is-skin-curtain::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: calc(var(--u) * 1.1);
+  z-index: -1;
+  pointer-events: none;
+  background: var(--tex-gold) center / cover;
+  box-shadow: 0 calc(var(--u) * 0.3) calc(var(--u) * 0.8) rgba(0, 0, 0, 0.5);
+}
+
+.tv-root.is-skin-curtain {
+  padding-top: calc(var(--u) * 10.5);
+}
+
+.tv-root.is-skin-curtain .tv-panel,
+.tv-root.is-skin-curtain .tv-card {
+  background:
+    linear-gradient(180deg, rgba(20, 6, 10, 0.75), rgba(10, 3, 5, 0.85)),
+    var(--tex-velvet) center / cover;
+}
+
+.tv-root.is-skin-curtain .tv-panel-title {
+  background: var(--tex-gold) center / cover;
+}
+
+/* --- כיפות זהב: stone under the gold, not flat blue ------------------- */
+
+.tv-root.is-skin-dome .tv-panel {
+  background: var(--tex-gold) center / cover;
+}
+
+.tv-root.is-skin-dome .tv-panel::before {
+  background: var(--tex-marble-dark) center / calc(var(--u) * 20) calc(var(--u) * 14) repeat;
+}
+
+.tv-root.is-skin-dome .tv-panel-title,
+.tv-root.is-skin-dome .tv-dash-strip,
+.tv-root.is-skin-dome .tv-ticker {
+  background: var(--tex-gold) center / cover;
+  color: #23160a;
+}
+
+.tv-root.is-skin-dome .tv-dash-strip,
+.tv-root.is-skin-dome .tv-ticker {
+  border-color: #8a6a1a;
+}
+
+/* --- מסגרת זהב: the plate behind the carved frame is stone ------------ */
+
+.tv-root.is-skin-gold .tv-panel,
+.tv-root.is-skin-gold .tv-card {
+  background: var(--tex-marble-dark) center / calc(var(--u) * 20) calc(var(--u) * 14) repeat;
+}
+
+.tv-root.is-skin-gold .tv-header {
+  background: var(--tex-marble-dark) center / calc(var(--u) * 20) calc(var(--u) * 14) repeat;
+}
+
+/* --- תכלת: paper panels under a bright sky ---------------------------- */
+
+.tv-root.is-skin-sky .tv-panel,
+.tv-root.is-skin-sky .tv-card {
+  background: var(--tex-parchment) center / calc(var(--u) * 34) calc(var(--u) * 23) repeat;
+}
+
+.tv-root.is-skin-sky .tv-panel-title {
+  background: var(--tex-gold) center / cover;
+}
+
+/* the תכלת panels are cream now, so the clock has to be a cream face too */
+.tv-root.is-skin-sky .tv-analog-face {
+  fill: #fffdf7;
+}
+
+.tv-root.is-skin-sky .tv-analog-rim {
+  stroke: #a9821f;
+  stroke-width: 5;
+}
+
+.tv-root.is-skin-sky .tv-analog-num,
+.tv-root.is-skin-sky .tv-analog-tick {
+  fill: #24303f;
+  stroke: #24303f;
+}
+
+.tv-root.is-skin-sky .tv-analog-hour,
+.tv-root.is-skin-sky .tv-analog-minute {
+  stroke: #1c2b3a;
+}
+
+.tv-root.is-skin-sky .tv-analog-second,
+.tv-root.is-skin-sky .tv-analog-pin {
+  stroke: #a9821f;
+  fill: #a9821f;
+}
+
+.tv-root.is-skin-sky .tv-panel-title {
+  color: #3a2408;
+}
