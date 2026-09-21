@@ -57,6 +57,10 @@ if (import.meta.env.PROD && "serviceWorker" in navigator) {
 if (import.meta.env.PROD) {
   const HEAL_KEY = "app-stale-chunk-heal";
   const healOnce = () => {
+    // Offline, a chunk is missing because the network is gone, not because a
+    // deploy replaced it - and reloading would only take the app away from
+    // the reader. This matters in the installed app, which is used on buses.
+    if (navigator.onLine === false) return;
     const last = Number(sessionStorage.getItem(HEAL_KEY) || 0);
     if (Date.now() - last < 60_000) return;
     sessionStorage.setItem(HEAL_KEY, String(Date.now()));
