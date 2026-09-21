@@ -1498,7 +1498,7 @@
 .tv-root.is-skin-pillars::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: calc(var(--u) * 0.8) 0;
   z-index: -1;
   pointer-events: none;
   background:
@@ -1520,7 +1520,7 @@
 
 .tv-root.is-skin-pillars .tv-panel {
   border: max(2px, calc(var(--u) * 0.34)) solid #c9a227;
-  border-radius: calc(var(--u) * 7) calc(var(--u) * 7) calc(var(--u) * 1.2) calc(var(--u) * 1.2);
+  border-radius: calc(var(--u) * 5) calc(var(--u) * 5) calc(var(--u) * 1.2) calc(var(--u) * 1.2);
   background: linear-gradient(180deg, color-mix(in srgb, var(--tv-bg-b) 92%, #000), color-mix(in srgb, var(--tv-bg-a) 96%, #000));
   box-shadow:
     inset 0 0 0 max(1px, calc(var(--u) * 0.16)) rgba(246, 227, 168, 0.55),
@@ -1805,10 +1805,9 @@
 .tv-root.is-skin-pillars .tv-panel {
   background-image: var(--orn-crown), linear-gradient(180deg, color-mix(in srgb, var(--tv-bg-b) 92%, #000), color-mix(in srgb, var(--tv-bg-a) 96%, #000));
   background-position: top center, center;
-  background-size: calc(var(--u) * 12) calc(var(--u) * 3.4), cover;
+  background-size: calc(var(--u) * 10) calc(var(--u) * 2.6), cover;
   background-repeat: no-repeat, no-repeat;
-  padding-top: calc(var(--u) * 4);
-  padding-inline: calc(var(--u) * 1.6);
+  padding: calc(var(--u) * 2.6) calc(var(--u) * 1.6) calc(var(--u) * 1.4);
 }
 
 .tv-root.is-skin-pillars .tv-header {
@@ -3189,7 +3188,7 @@
   clip-path: url(#tv-shape-onion);
   background: linear-gradient(180deg, #f6e3a8 0%, #c9a227 60%, #8a6a1a 100%);
   box-shadow: none;
-  padding: calc(var(--u) * 7) calc(var(--u) * 2.2) calc(var(--u) * 1.4);
+  padding: calc(var(--u) * 6.6) calc(var(--u) * 2.2) calc(var(--u) * 1.1);
   overflow: visible;
 }
 
