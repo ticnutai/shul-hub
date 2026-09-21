@@ -55,7 +55,25 @@ const MINYANIM = [minyan("m1", "שחרית א'", "06:15:00", 1), minyan("m2", "�
 const CATEGORIES = [{ id: "c1", name: "ימות החול", sort_order: 1, active: true }];
 
 const ANNOUNCEMENTS = [
-  { id: "a1", title: "שיעור העמוד היומי", body: "כל יום בשעה 16:15", active: true, sort_order: 1, starts_at: null, ends_at: null, image_url: null },
+  // A deliberately long notice: the card has to shrink its type to fit it
+  // (src/tv/useFitText.ts) instead of cutting the last lines off.
+  {
+    id: "a2",
+    title: "הודעה ארוכה במיוחד לבדיקת ההתאמה האוטומטית של גודל הטקסט",
+    body: [
+      "הציבור מתבקש לשים לב לשינויים בזמני התפילות בשבוע הקרוב, בעקבות ימי החג.",
+      "שחרית תתקיים בשעה שש וחצי, מנחה עשר דקות לפני השקיעה, וערבית מיד אחריה.",
+      "בנוסף, השיעור הקבוע של יום שלישי יתקיים השבוע ביום רביעי באותה השעה.",
+      "מי שמעוניין להצטרף לסעודה שלישית מתבקש להירשם אצל הגבאים עד יום חמישי.",
+      "תודה לכל המתנדבים שסייעו בהכנת בית הכנסת, ויישר כוח לכל הקהל הקדוש.",
+    ].join("\n"),
+    active: true,
+    sort_order: 1,
+    starts_at: null,
+    ends_at: null,
+    image_url: null,
+  },
+  { id: "a1", title: "שיעור העמוד היומי", body: "כל יום בשעה 16:15", active: true, sort_order: 2, starts_at: null, ends_at: null, image_url: null },
 ];
 
 const SHIURIM = [

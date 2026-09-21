@@ -256,9 +256,12 @@ test.describe("TV editor", () => {
       await page.waitForTimeout(150);
       const skin = /is-skin-([a-z]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? `#${i}`;
       const over = await page.evaluate(() =>
-        [...document.querySelectorAll(".tv-frame .tv-panel")]
+        [...document.querySelectorAll(".tv-frame .tv-panel, .tv-frame .tv-card-text")]
           .map((el) => ({
-            title: el.querySelector(".tv-panel-title")?.textContent?.trim().split("·")[0].trim() ?? "",
+            title:
+              el.querySelector(".tv-panel-title")?.textContent?.trim().split("·")[0].trim() ??
+              el.querySelector(".tv-card-title")?.textContent?.trim().slice(0, 20) ??
+              "",
             cut: Math.max(0, el.scrollHeight - el.clientHeight),
           }))
           .filter((o) => o.cut > 2),
@@ -267,5 +270,26 @@ test.describe("TV editor", () => {
     }
 
     expect(clipped, `styles that cut a row: ${clipped.join(" | ")}`).toEqual([]);
+  });
+  test("a long notice is shrunk to fit, not cut off", async ({ page }) => {
+    // The fixture carries a deliberately long notice. On the notices slide it
+    // has to be made smaller until it fits - the card reports the size it
+    // settled on in --fit - and nothing may be left hanging out of the box.
+    // The full board always shows a notice, so switch to it.
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("button", { name: /לוח מלא/ }).first().click();
+    const card = page.locator(".tv-frame .tv-card-text").first();
+    await expect(card).toBeVisible();
+    await page.waitForTimeout(600);
+
+    const measured = await card.evaluate((el) => ({
+      fit: Number(getComputedStyle(el).getPropertyValue("--fit") || 1),
+      overflow: el.scrollHeight - el.clientHeight,
+      text: el.textContent?.length ?? 0,
+    }));
+    expect(measured.text, "the long notice is the one on screen").toBeGreaterThan(200);
+    expect(measured.fit, "the card had to shrink").toBeLessThan(1);
+    expect(measured.overflow, "and then it fits").toBeLessThanOrEqual(2);
+    await expectNotFrozen(page, "long notice");
   });
 });

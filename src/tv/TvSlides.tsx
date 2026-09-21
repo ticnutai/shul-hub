@@ -7,6 +7,7 @@ import type { FlipArea } from "./config";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
 import { ShabbatSlide } from "./ShabbatScene";
 import { jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
+import { useFitText } from "./useFitText";
 
 /**
  * The slide bodies. Pure presentation: everything they need arrives as props,
@@ -381,13 +382,15 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
 
 export function AnnouncementCard({ item, large }: { item: Announcement; large?: boolean }) {
   const edit = useBoardEdit();
+  // A long notice is shrunk to fit rather than cut off (see useFitText).
+  const fit = useFitText<HTMLDivElement>(`${item.id}:${item.title}:${item.body}:${large}`);
   return (
     <article
       className={`tv-card${item.pinned ? " is-pinned" : ""}${large ? " is-large" : ""}${item.image_url ? " has-image" : ""}`}
       {...edit.attr(`ann:${item.id}`)}
     >
       {item.image_url && <img className="tv-card-image" src={item.image_url} alt="" decoding="async" />}
-      <div className="tv-card-text">
+      <div className="tv-card-text" ref={fit}>
         <h3 className="tv-card-title" {...edit.attr(`ann:${item.id}:title`)}>
           {item.title}
         </h3>
