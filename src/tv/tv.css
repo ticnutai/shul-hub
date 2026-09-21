@@ -3584,3 +3584,254 @@
   background: linear-gradient(180deg, #e0d2ac, #bda979);
   color: #3a2c15;
 }
+
+/* ===================================================== real materials === */
+
+/*
+ * Marble, wood, stone and gold, generated rather than downloaded.
+ *
+ * Each is generated from fractal noise - tinted into veins and grain, or lit
+ * into a rough or a brushed surface. The recipes live in
+ * scripts/tv-textures.mjs, which bakes them into the images next door;
+ * nothing is downloaded and nothing is licensed.
+ *
+ * They are baked rather than computed in the page because a filtered SVG is
+ * recomputed for every element that uses it and for every size: measured on
+ * the bundle, the stone board spent 950 ms rasterising that way against
+ * 146 ms for the plain board. As ordinary images they are decoded once and
+ * shared. They are tiled, not stretched, so the veins stay small enough to
+ * read as stone from four metres away.
+ */
+
+.tv-root {
+  /* cream marble with grey veins */
+  --tex-marble: url("./assets/tex-marble.jpg");
+
+  /* the same stone in deep blue, for panels that carry light text */
+  --tex-marble-dark: url("./assets/tex-marble-dark.jpg");
+
+  /* walnut, the grain stretched along the plank */
+  --tex-walnut: url("./assets/tex-walnut.jpg");
+
+  /* brushed gold: noise lit from the side, so it reads as metal */
+  --tex-gold: url("./assets/tex-gold.jpg");
+
+  /* Jerusalem stone: rough, lit from the upper left */
+  --tex-stone: url("./assets/tex-stone.jpg");
+
+  /* aged parchment */
+  --tex-parchment: url("./assets/tex-parchment.jpg");
+
+  /* velvet: a fine nap with a soft sheen */
+  --tex-velvet: url("./assets/tex-velvet.jpg");
+}
+
+/* --- היכל עמודים: wood wall, gold columns, parchment plaques ---------- */
+
+.tv-root.is-skin-heichal .tv-bg {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.15) 30%, rgba(0, 0, 0, 0.55)),
+    var(--tex-walnut) center / cover;
+}
+
+.tv-root.is-skin-heichal .tv-stage::before {
+  /* capital, fluted shaft (three layers: the round of the column, the
+     flutes, then the metal itself), and base - for each of the two */
+  --shaft: calc(var(--u) * 3.6) calc(100% - var(--u) * 9.4);
+  background:
+    var(--orn-capital) var(--col-a) top / calc(var(--u) * 5.6) calc(var(--u) * 5) no-repeat,
+    var(--orn-base) var(--col-a) bottom / calc(var(--u) * 5.6) calc(var(--u) * 4.2) no-repeat,
+    linear-gradient(90deg, rgba(60, 40, 0, 0.55) 0 6%, rgba(255, 248, 220, 0.45) 22%, rgba(255, 255, 255, 0.15) 42%, rgba(120, 90, 20, 0.25) 62%, rgba(40, 25, 0, 0.6) 100%) var(--col-a) center, repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 6px) var(--col-a) center, var(--tex-gold) var(--col-a) center,
+    var(--orn-capital) var(--col-b) top / calc(var(--u) * 5.6) calc(var(--u) * 5) no-repeat,
+    var(--orn-base) var(--col-b) bottom / calc(var(--u) * 5.6) calc(var(--u) * 4.2) no-repeat,
+    linear-gradient(90deg, rgba(60, 40, 0, 0.55) 0 6%, rgba(255, 248, 220, 0.45) 22%, rgba(255, 255, 255, 0.15) 42%, rgba(120, 90, 20, 0.25) 62%, rgba(40, 25, 0, 0.6) 100%) var(--col-b) center, repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 6px) var(--col-b) center, var(--tex-gold) var(--col-b) center;
+  background-size:
+    calc(var(--u) * 5.6) calc(var(--u) * 5), calc(var(--u) * 5.6) calc(var(--u) * 4.2),
+    var(--shaft), var(--shaft), var(--shaft),
+    calc(var(--u) * 5.6) calc(var(--u) * 5), calc(var(--u) * 5.6) calc(var(--u) * 4.2),
+    var(--shaft), var(--shaft), var(--shaft);
+  background-repeat: no-repeat;
+}
+
+.tv-root.is-skin-heichal .tv-stage::after {
+  background:
+    var(--tex-gold) top / 100% calc(var(--u) * 1.6) no-repeat,
+    var(--tex-gold) bottom / 100% calc(var(--u) * 1.6) no-repeat;
+}
+
+.tv-root.is-skin-heichal .tv-panel {
+  background:
+    var(--tex-parchment) center / cover padding-box,
+    var(--tex-gold) center / cover border-box;
+}
+
+.tv-root.is-skin-heichal .tv-panel-title {
+  background: var(--tex-gold) center / cover;
+}
+
+.tv-root.is-skin-heichal .tv-dash-strip,
+.tv-root.is-skin-heichal .tv-ticker {
+  background: var(--tex-parchment) center / cover;
+}
+
+/* --- היכל שיש: marble wall, gold columns, dark marble arches ---------- */
+
+.tv-root.is-skin-arch .tv-bg {
+  background: var(--tex-marble) center / calc(var(--u) * 24) calc(var(--u) * 16) repeat;
+}
+
+.tv-root.is-skin-arch::before {
+  --shaft: calc(var(--u) * 5.6) calc(100% - var(--u) * 12);
+  background:
+    var(--orn-capital) left top / calc(var(--u) * 8) calc(var(--u) * 6.5) no-repeat,
+    var(--orn-base) left bottom / calc(var(--u) * 8) calc(var(--u) * 5.5) no-repeat,
+    linear-gradient(90deg, rgba(60, 40, 0, 0.55) 0 6%, rgba(255, 248, 220, 0.45) 22%, rgba(255, 255, 255, 0.15) 42%, rgba(120, 90, 20, 0.25) 62%, rgba(40, 25, 0, 0.6) 100%) left center, repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 6px) left center, var(--tex-gold) left center,
+    var(--orn-capital) right top / calc(var(--u) * 8) calc(var(--u) * 6.5) no-repeat,
+    var(--orn-base) right bottom / calc(var(--u) * 8) calc(var(--u) * 5.5) no-repeat,
+    linear-gradient(90deg, rgba(60, 40, 0, 0.55) 0 6%, rgba(255, 248, 220, 0.45) 22%, rgba(255, 255, 255, 0.15) 42%, rgba(120, 90, 20, 0.25) 62%, rgba(40, 25, 0, 0.6) 100%) right center, repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 6px) right center, var(--tex-gold) right center;
+  background-size:
+    calc(var(--u) * 8) calc(var(--u) * 6.5), calc(var(--u) * 8) calc(var(--u) * 5.5),
+    var(--shaft), var(--shaft), var(--shaft),
+    calc(var(--u) * 8) calc(var(--u) * 6.5), calc(var(--u) * 8) calc(var(--u) * 5.5),
+    var(--shaft), var(--shaft), var(--shaft);
+  background-repeat: no-repeat;
+}
+
+.tv-root.is-skin-arch .tv-panel {
+  background:
+    var(--tex-marble-dark) center / calc(var(--u) * 20) calc(var(--u) * 14) repeat padding-box,
+    var(--tex-gold) center / cover border-box;
+}
+
+.tv-root.is-skin-arch .tv-panel-title {
+  background: var(--tex-gold) center / cover;
+}
+
+.tv-root.is-skin-arch .tv-header,
+.tv-root.is-skin-arch .tv-dash-strip,
+.tv-root.is-skin-arch .tv-ticker {
+  background: var(--tex-marble-dark) center / calc(var(--u) * 20) calc(var(--u) * 14) repeat;
+}
+
+/* --- אבני ירושלים: real stone, courses drawn over it ------------------ */
+
+.tv-root.is-skin-stone .tv-bg {
+  background:
+    var(--orn-ashlar) center / calc(var(--u) * 26) calc(var(--u) * 13) repeat,
+    var(--tex-stone) center / calc(var(--u) * 26) calc(var(--u) * 13) repeat;
+  background-blend-mode: multiply, normal;
+}
+
+.tv-root.is-skin-stone .tv-panel {
+  background:
+    linear-gradient(180deg, rgba(60, 45, 20, 0.45), rgba(30, 22, 8, 0.55)),
+    var(--tex-stone) center / calc(var(--u) * 26) calc(var(--u) * 13) repeat;
+}
+
+.tv-root.is-skin-stone .tv-panel::before {
+  background:
+    radial-gradient(ellipse 95% 45% at 50% 0%, rgba(0, 0, 0, 0.28), transparent 72%),
+    var(--tex-parchment) center / calc(var(--u) * 34) calc(var(--u) * 23) repeat;
+  box-shadow: inset 0 calc(var(--u) * 0.5) calc(var(--u) * 1.4) rgba(40, 30, 10, 0.45);
+}
+
+.tv-root.is-skin-stone .tv-header,
+.tv-root.is-skin-stone .tv-dash-strip,
+.tv-root.is-skin-stone .tv-ticker {
+  background: var(--tex-stone) center / cover;
+}
+
+/* --- אולם קטיפה and עץ אגוז: real walnut and real velvet -------------- */
+
+.tv-root.is-skin-hall .tv-bg,
+.tv-root.is-skin-wood .tv-bg {
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.55)),
+    var(--tex-walnut) center / cover;
+}
+
+.tv-root.is-skin-hall .tv-panel,
+.tv-root.is-skin-wood .tv-panel,
+.tv-root.is-skin-wood .tv-card {
+  background: var(--tex-walnut) center / cover;
+}
+
+.tv-root.is-skin-hall .tv-panel-title,
+.tv-root.is-skin-wood .tv-panel-title {
+  background: var(--tex-gold) center / cover;
+}
+
+.tv-root.is-skin-hall::before {
+  background:
+    radial-gradient(circle at 50% 0, #8a1a30 0 calc(var(--u) * 2.8), transparent calc(var(--u) * 2.8)) 0 100% / calc(var(--u) * 6.4) calc(var(--u) * 3.2) repeat-x,
+    var(--tex-velvet) center / cover;
+}
+
+/* --- עמודי שיש and קלף and מסגרת זהב ---------------------------------- */
+
+.tv-root.is-skin-pillars .tv-bg {
+  background: var(--tex-marble) center / calc(var(--u) * 24) calc(var(--u) * 16) repeat;
+}
+
+.tv-root.is-skin-pillars::before {
+  background:
+    var(--tex-gold) left center / calc(var(--u) * 5) 100% no-repeat,
+    var(--tex-gold) right center / calc(var(--u) * 5) 100% no-repeat;
+}
+
+.tv-root.is-skin-parchment .tv-panel,
+.tv-root.is-skin-parchment .tv-card {
+  background: var(--tex-parchment) center / cover;
+}
+
+.tv-root.is-skin-tablets .tv-panel {
+  background-image: var(--orn-rosette), var(--orn-rosette), var(--tex-parchment);
+  background-position: bottom calc(var(--u) * 1) left calc(var(--u) * 1), bottom calc(var(--u) * 1) right calc(var(--u) * 1), center;
+  background-size: calc(var(--u) * 2.8) calc(var(--u) * 2.8), calc(var(--u) * 2.8) calc(var(--u) * 2.8), cover;
+  background-repeat: no-repeat, no-repeat, no-repeat;
+}
+
+.tv-root.is-skin-crown .tv-bg,
+.tv-root.is-skin-medallion .tv-bg {
+  background: var(--tex-marble) center / calc(var(--u) * 24) calc(var(--u) * 16) repeat;
+}
+
+.tv-root.is-skin-crown .tv-panel {
+  background:
+    var(--tex-parchment) center / cover padding-box,
+    var(--tex-gold) center / cover border-box;
+}
+
+.tv-root.is-skin-medallion .tv-panel {
+  background: var(--tex-gold) center / cover;
+}
+
+.tv-root.is-skin-medallion .tv-panel::before {
+  background: var(--tex-parchment) center / cover;
+}
+
+.tv-root.is-skin-medallion .tv-panel-title {
+  background: var(--tex-gold) center / cover;
+}
+
+.tv-root.is-skin-velvet .tv-bg {
+  background: var(--tex-velvet) center / cover;
+}
+
+.tv-root.is-skin-curtain::before {
+  background:
+    radial-gradient(circle at 50% 0, #8a1a30 0 calc(var(--u) * 2.6), transparent calc(var(--u) * 2.6)) 0 100% / calc(var(--u) * 6) calc(var(--u) * 3) repeat-x,
+    var(--tex-velvet) center / cover;
+}
+
+/* On a pale board (stone, marble, parchment) a past time at 45% opacity is
+   barely there. These skins keep it dimmer than the rest but still legible. */
+.tv-root.is-skin-stone .is-past,
+.tv-root.is-skin-heichal .is-past,
+.tv-root.is-skin-crown .is-past,
+.tv-root.is-skin-medallion .is-past,
+.tv-root.is-skin-tablets .is-past,
+.tv-root.is-skin-parchment .is-past,
+.tv-root.is-skin-sky .is-past {
+  opacity: 0.62;
+}
