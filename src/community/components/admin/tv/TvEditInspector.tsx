@@ -45,7 +45,7 @@ import {
   toggleFlip,
 } from "@/tv/boardEdit";
 import { FRAME_RADIUS_MAX, type ElementStyle, type FlipArea, type RecordTable, type TvConfig } from "@/tv/config";
-import { allGradients } from "@/tv/themes";
+import { allGradients, allThemes } from "@/tv/themes";
 import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
 import { getTheme, isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
@@ -222,10 +222,16 @@ function Selected({
  * part of the board, so the live editor on a second screen can change the
  * whole look without going back to the admin page.
  */
+/** The colour of a "flat" background, i.e. a gradient from a colour to itself. */
+function flatColour(gradient: string | null): string | null {
+  const match = /^linear-gradient\(180deg, (#[0-9a-f]{6}), \1\)$/i.exec(gradient ?? "");
+  return match ? match[1] : null;
+}
+
 function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
   const gradients = allGradients(config.gradients);
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="board-background">
       <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">סגנון תצוגה</div>
         <div className="grid grid-cols-4 gap-1.5">
@@ -319,12 +325,37 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
       </div>
 
       <div className="space-y-1.5">
-        <div className="text-xs font-medium text-muted-foreground">רקע הלוח</div>
+        <div className="text-xs font-medium text-muted-foreground">ערכת נושא</div>
         <div className="flex flex-wrap gap-1.5">
+          {allThemes(config.customThemes).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              aria-pressed={config.theme === t.id}
+              title={t.description || t.name}
+              onClick={() => onEdit("theme", (c) => ({ ...c, theme: t.id }))}
+              className={`flex h-8 items-center gap-1 rounded-md border px-2 text-[11px] transition ${
+                config.theme === t.id ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
+              }`}
+            >
+              <span
+                className="size-3.5 rounded-full border"
+                style={{ background: t.vars["--tv-accent"] }}
+                aria-hidden
+              />
+              {t.name}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground">רקע הלוח</div>
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             aria-pressed={!config.backgroundGradient}
-            title="הרקע של ערכת הנושא"
+            title="הרקע של ערכת הנושא, או של הסגנון"
             onClick={() => onEdit("bg.gradient", (c) => ({ ...c, backgroundGradient: null }))}
             className={`h-8 rounded-md border px-2 text-[11px] transition ${
               !config.backgroundGradient ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
@@ -332,6 +363,24 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
           >
             לפי הערכה
           </button>
+          <label
+            className="flex h-8 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px] hover:border-primary/50"
+            title="צבע אחיד לכל הרקע"
+          >
+            צבע
+            <input
+              type="color"
+              aria-label="צבע רקע אחיד"
+              value={flatColour(config.backgroundGradient) ?? "#0b1628"}
+              onChange={(e) =>
+                onEdit("bg.colour", (c) => ({
+                  ...c,
+                  backgroundGradient: `linear-gradient(180deg, ${e.target.value}, ${e.target.value})`,
+                }))
+              }
+              className="size-5 cursor-pointer border-0 bg-transparent p-0"
+            />
+          </label>
           {gradients.map((g) => (
             <button
               key={g.id}
@@ -353,7 +402,8 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
           ))}
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
-          צבעי הטקסט וההדגשה הם של ערכת הנושא, ונערכים בלשונית "עיצוב".
+          הבחירה כאן חלה על הלוח עצמו - בטלוויזיה, בלפטופ ובנייד כאחד - וגוברת על הרקע של
+          הסגנון. "לפי הערכה" מחזיר אותו. צבעי הטקסט וההדגשה נערכים בלשונית "עיצוב".
         </p>
       </div>
     </div>

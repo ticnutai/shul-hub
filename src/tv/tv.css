@@ -4065,3 +4065,168 @@
 .tv-root.has-bg-image.has-bg-image .tv-bg {
   background: var(--tv-bg-a);
 }
+
+/*
+ * A style that cuts its panels to a shape - a dome, an arched niche, a
+ * scalloped plate - keeps room at the top for that shape. When the admin
+ * chooses the corner instead, the shape is not drawn, and that room becomes
+ * a band of nothing that pushes the last row out of the panel. Measured on
+ * the live board: the day-times panel lost its last line by 13 px.
+ */
+.tv-root.has-frame-radius.is-skin-dome .tv-panel,
+.tv-root.has-frame-radius.is-skin-stone .tv-panel,
+.tv-root.has-frame-radius.is-skin-medallion .tv-panel,
+.tv-root.has-frame-radius.is-skin-crown .tv-panel,
+.tv-root.has-frame-radius.is-skin-arch .tv-panel {
+  padding-top: calc(var(--u) * 2.2);
+  padding-bottom: calc(var(--u) * 1.4);
+}
+
+.tv-root.has-frame-radius.is-skin-dome .tv-panel-title,
+.tv-root.has-frame-radius.is-skin-stone .tv-panel-title,
+.tv-root.has-frame-radius.is-skin-medallion .tv-panel-title,
+.tv-root.has-frame-radius.is-skin-crown .tv-panel-title,
+.tv-root.has-frame-radius.is-skin-arch .tv-panel-title {
+  margin-top: 0;
+}
+
+/* the dome panels are deep stone, so the clock and the badge follow them */
+.tv-root.is-skin-dome .tv-analog-face {
+  fill: #14325c;
+}
+
+.tv-root.is-skin-dome .tv-analog-rim {
+  stroke: #c9a227;
+  stroke-width: 5;
+}
+
+.tv-root.is-skin-dome .tv-analog-num,
+.tv-root.is-skin-dome .tv-analog-tick {
+  fill: #f6e3a8;
+  stroke: #f6e3a8;
+}
+
+.tv-root.is-skin-dome .tv-analog-hour,
+.tv-root.is-skin-dome .tv-analog-minute {
+  stroke: #fdf6e4;
+}
+
+.tv-root.is-skin-dome .tv-analog-second,
+.tv-root.is-skin-dome .tv-analog-pin {
+  stroke: #c9a227;
+  fill: #c9a227;
+}
+
+/*
+ * The "הבא" badge marks the next time. On a light theme its own colours can
+ * come out pale on pale - seen on the live board, white on white - so on
+ * every style that paints its own panels it is given the same gold plate the
+ * titles use, which is legible on all of them.
+ */
+.tv-root.is-skin-dome .tv-badge,
+.tv-root.is-skin-arch .tv-badge,
+.tv-root.is-skin-pillars .tv-badge,
+.tv-root.is-skin-gold .tv-badge,
+.tv-root.is-skin-curtain .tv-badge,
+.tv-root.is-skin-hall .tv-badge,
+.tv-root.is-skin-wood .tv-badge {
+  background: linear-gradient(180deg, #f6e3a8, #c9a227);
+  color: #23160a;
+  border-color: #8a6a1a;
+}
+
+/*
+ * Room for one more row.
+ *
+ * Swept every style against the board that is actually live (its theme, its
+ * font, its clock) and four of them cut the last line of the day-times panel
+ * by 6-13 px: the chrome they add at the top and bottom - a carved border, a
+ * crown, a ribbon that hangs over the edge - is not free. Each gives back a
+ * little more than it took.
+ */
+.tv-root.is-skin-gold .tv-panel,
+.tv-root.is-skin-gold .tv-card {
+  border-width: calc(var(--u) * 0.85);
+  padding-block: calc(var(--u) * 1.6);
+}
+
+.tv-root.is-skin-pillars .tv-panel {
+  padding-block: calc(var(--u) * 2.2) calc(var(--u) * 1.1);
+}
+
+.tv-root.is-skin-curtain .tv-panel,
+.tv-root.is-skin-hall .tv-panel {
+  padding-block: calc(var(--u) * 1.8) calc(var(--u) * 1.2);
+}
+
+.tv-root.is-skin-curtain .tv-panel-title,
+.tv-root.is-skin-hall .tv-panel-title {
+  margin-bottom: calc(var(--u) * 0.6);
+}
+
+/*
+ * The curtain hangs over the top of the board, and every panel below it is
+ * shorter by exactly that much - measured: 56 px of board height, which is
+ * one row of times. A shorter valance, and the room comes back.
+ */
+.tv-root.is-skin-curtain {
+  padding-top: calc(var(--u) * 8);
+}
+
+.tv-root.is-skin-curtain::before {
+  height: calc(var(--u) * 7);
+}
+
+.tv-root.is-skin-hall {
+  padding-top: calc(var(--u) * 8);
+}
+
+.tv-root.is-skin-hall::before {
+  height: calc(var(--u) * 6.4);
+}
+
+/* the carved frame is a border, and a border eats the panel from inside */
+.tv-root.is-skin-gold .tv-panel,
+.tv-root.is-skin-gold .tv-card {
+  border-width: calc(var(--u) * 0.6);
+}
+
+/* the dome keeps a little less room for its own apex */
+.tv-root.is-skin-dome .tv-panel {
+  padding-block: calc(var(--u) * 5.4) calc(var(--u) * 0.9);
+}
+
+/* five pixels short: the wooden plaques carry a thicker frame than the rest */
+.tv-root.is-skin-hall .tv-panel {
+  border-width: max(2px, calc(var(--u) * 0.55));
+  padding-block: calc(var(--u) * 1.6) calc(var(--u) * 1);
+}
+
+/*
+ * A little slack in every row.
+ *
+ * The board is laid out in units of the container height, but a line of
+ * Hebrew type is not: its height comes from the font, and the TV box rounds
+ * it differently from a desktop browser. Measured in the browser every style
+ * fitted, and on the box itself the last row of the lessons panel was still
+ * half cut - about twenty pixels.
+ *
+ * So the rows give back a sliver each. Four rows or eight, that is the
+ * difference between a row that fits and a row that is sliced, and at four
+ * metres nobody can see the sliver that was given up.
+ */
+.tv-zman-row {
+  padding-block: calc(var(--u) * 0.45);
+}
+
+.tv-dash-row {
+  padding-block: calc(var(--u) * 0.38);
+}
+
+.tv-minyan-row {
+  padding-block: calc(var(--u) * 0.7);
+}
+
+.tv-panel-title {
+  margin-bottom: calc(var(--u) * 1.1);
+}

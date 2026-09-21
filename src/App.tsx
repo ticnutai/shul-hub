@@ -22,6 +22,7 @@ import { PWAReloadPrompt } from "@/components/PWAReloadPrompt";
 import { ReminderPopup } from "@/components/ReminderPopup";
 import { OmerEntryPopup } from "@/components/OmerEntryPopup";
 import { useNotifications } from "@/hooks/useNotifications";
+import { useNeverFrozen } from "@/hooks/useNeverFrozen";
 import { MetaSyncInitializer } from "@/components/MetaSyncInitializer";
 import { MobilePageSwipeNavigation } from "@/components/MobilePageSwipeNavigation";
 import { AndroidBackNavigation } from "@/components/AndroidBackNavigation";
@@ -111,6 +112,10 @@ function Trace({ id, children }: { id: string; children: React.ReactNode }) {
 }
 
 const App = () => {
+  // A dialog that closes into a button which has just been removed or
+  // disabled can leave the page locked and unclickable. This lifts such a
+  // lock the moment no dialog is open (src/hooks/useNeverFrozen.ts).
+  useNeverFrozen();
   // Defer mounting the reminder popup hook until after first paint so its
   // localStorage reads + permission checks don't run on the critical path.
   // Without this, useNotifications fired its mount effects during initial

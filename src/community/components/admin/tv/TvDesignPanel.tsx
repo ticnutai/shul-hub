@@ -135,7 +135,6 @@ import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
-import { useNeverFrozen } from "./useNeverFrozen";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
 import { buildExport, exportFileName, mergeImport, parseImport } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
@@ -392,7 +391,6 @@ function ColorField({
  * editor open on the admin page through tvDraftChannel.
  */
 export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
-  useNeverFrozen();
   const saved = useTvConfig();
   const devices = useTvDevices();
   const [state, dispatch] = useReducer(draftReducer, {

@@ -209,4 +209,63 @@ test.describe("TV editor", () => {
     await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
     await expectNotFrozen(page, "saved");
   });
+  test("the board itself is editable from the board: style, frame, theme, colour", async ({ page }) => {
+    // Clicking an empty part of the board selects the board, and everything
+    // about its look is then in one panel - the way the live editor is used.
+    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+    await page.locator(".tv-frame .tv-root").first().click({ position: { x: 8, y: 8 } });
+    await expect(page.getByText("רקע הלוח, סגנון ומסגרות")).toBeVisible();
+    await expectNotFrozen(page, "board selected");
+
+    // A style, chosen from the board's own panel.
+    const panel = page.getByTestId("board-background");
+    await panel.getByRole("button", { name: "אבני ירושלים" }).first().click();
+    await expect.poll(() => root(page).getAttribute("class")).toContain("is-skin-stone");
+    await expectNotFrozen(page, "style from the board");
+
+    // A theme, from the same panel - imported ones are listed here too.
+    await panel.getByRole("button", { name: "ירוק שבת", exact: true }).click();
+    await expect.poll(() => cssVar(page, "--tv-bg-a")).toBe(TV_THEMES[2].vars["--tv-bg-a"]);
+    await expectNotFrozen(page, "theme from the board");
+
+    // A flat colour for the whole background, which beats the style's wall.
+    await panel.getByLabel("צבע רקע אחיד").fill("#123456");
+    await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
+    await expect
+      .poll(() => root(page).locator(".tv-bg").evaluate((el) => getComputedStyle(el).backgroundImage))
+      .toContain("rgb(18, 52, 86)");
+    await expectNotFrozen(page, "flat colour");
+
+    // And back to what the style paints.
+    await panel.getByRole("button", { name: "לפי הערכה" }).click();
+    await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-bg-gradient");
+    await expectNotFrozen(page, "back to the style");
+  });
+  test("no style cuts a row off the board", async ({ page }) => {
+    // The chrome a style adds - a carved border, a crown, a curtain over the
+    // top - is paid for out of the panels below it. Four styles were caught
+    // cutting the last line of the day-times panel this way, so every style
+    // is now measured: content taller than its panel means a lost row.
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    const skins = page.getByTestId("skin-picker").getByRole("button");
+    const count = await skins.count();
+    const clipped: string[] = [];
+
+    for (let i = 0; i < count; i++) {
+      await skins.nth(i).click();
+      await page.waitForTimeout(150);
+      const skin = /is-skin-([a-z]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? `#${i}`;
+      const over = await page.evaluate(() =>
+        [...document.querySelectorAll(".tv-frame .tv-panel")]
+          .map((el) => ({
+            title: el.querySelector(".tv-panel-title")?.textContent?.trim().split("·")[0].trim() ?? "",
+            cut: Math.max(0, el.scrollHeight - el.clientHeight),
+          }))
+          .filter((o) => o.cut > 2),
+      );
+      if (over.length) clipped.push(`${skin}: ${over.map((o) => `${o.title} -${o.cut}px`).join(", ")}`);
+    }
+
+    expect(clipped, `styles that cut a row: ${clipped.join(" | ")}`).toEqual([]);
+  });
 });
