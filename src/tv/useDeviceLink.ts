@@ -5,7 +5,7 @@ import { supabase as typedClient } from "@/integrations/supabase/client";
 import { normalizeTvConfig, type TvConfig } from "./config";
 import { DeviceLink, type DeviceStatus } from "./device";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
-import { deviceCommunity } from "./device";
+import { deviceCommunity, lastKnownCommunity, rememberCommunity } from "./device";
 import {
   type Community,
   currentCommunity,
@@ -108,11 +108,20 @@ export function useDeviceLink({
   useEffect(() => {
     if (!device) return;
     let alive = true;
+
+    // What it was told last time, straight away and without the network.
+    // A board that boots into a dead router still knows whose board it is,
+    // and so still finds its own saved design on disk.
+    const known = lastKnownCommunity();
+    if (known) setCommunity(known, false);
+
     const ask = async () => {
       const id = await deviceCommunity();
       if (!alive || !id || id === currentCommunity()?.id) return;
       const { data } = await db.from("communities").select("id, slug, name").eq("id", id).maybeSingle();
-      if (alive && data) setCommunity(data as Community, false);
+      if (!alive || !data) return;
+      setCommunity(data as Community, false);
+      rememberCommunity(data as Community);
     };
     void ask();
     return () => {

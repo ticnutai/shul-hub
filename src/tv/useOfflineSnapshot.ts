@@ -55,8 +55,28 @@ function write<T>(key: string, data: T): number | null {
  * not read or overwrite the TV's persisted copy (they share an origin in dev).
  */
 export function useOfflineSnapshot<T>(key: string, live: T | undefined, enabled = true): Snapshot<T> {
-  const [fallback] = useState(() => (enabled ? read<T>(key) : null));
+  const [fallback, setFallback] = useState(() => (enabled ? read<T>(key) : null));
   const [savedAt, setSavedAt] = useState<number | null>(fallback?.savedAt ?? null);
+
+  /**
+   * The key can change after the first render, and when it does the copy on
+   * disk has to be looked up again.
+   *
+   * The board's own settings are stored per synagogue, and which synagogue a
+   * screen belongs to is known one render later than the first paint. Reading
+   * the disk only once meant that on a boot with no internet the board asked
+   * for "the settings of no synagogue", found nothing, and came up in the
+   * default colours and layout with the gabbai's whole design still sitting
+   * on the disk unread - at precisely the moment nobody is there to fix it.
+   */
+  const lastKey = useRef(key);
+  useEffect(() => {
+    if (lastKey.current === key) return;
+    lastKey.current = key;
+    const next = enabled ? read<T>(key) : null;
+    setFallback(next);
+    setSavedAt(next?.savedAt ?? null);
+  }, [key, enabled]);
 
   // Avoid rewriting an identical payload on every render; realtime refetches
   // are frequent and localStorage writes are synchronous.

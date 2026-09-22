@@ -80,6 +80,33 @@ function save(key: string, value: unknown) {
   }
 }
 
+const COMMUNITY_KEY = "shul-tv-community";
+
+export interface KnownCommunity {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+/**
+ * The synagogue this screen was last told it belongs to, kept on the box.
+ *
+ * Without this a screen that boots with no internet knows nothing about
+ * itself, and a board that does not know its synagogue cannot find its own
+ * saved design - it would come up in the default colours and layout, having
+ * thrown away everything the gabbai set, at exactly the moment nobody is
+ * there to fix it. The answer changes only when an admin re-pairs the
+ * screen, so remembering it costs nothing and is right almost always.
+ */
+export function lastKnownCommunity(): KnownCommunity | null {
+  const c = load<Partial<KnownCommunity>>(COMMUNITY_KEY, {});
+  return c.id && c.slug && c.name ? (c as KnownCommunity) : null;
+}
+
+export function rememberCommunity(c: KnownCommunity | null): void {
+  save(COMMUNITY_KEY, c);
+}
+
 /**
  * Which synagogue this screen belongs to, asked of the server.
  *
