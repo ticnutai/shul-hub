@@ -55,7 +55,9 @@ export function AnalogClock({ now, seconds = true }: { now: Date; seconds?: bool
       role="img"
       aria-label={`השעה ${formatTime(now)}`}
     >
+      {/* Two circles, not one mixed fill - see .tv-analog-face in tv.css. */}
       <circle className="tv-analog-face" r={96} />
+      <circle className="tv-analog-tint" r={96} />
       <circle className="tv-analog-rim" r={96} fill="none" />
       {Array.from({ length: 60 }, (_, i) => (
         <line

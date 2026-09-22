@@ -1462,6 +1462,12 @@
   fill: #fbf3df;
 }
 
+/* These skins paint the face themselves; the tint on top would undo it. */
+.tv-root.is-skin-tablets .tv-panel .tv-analog-tint,
+.tv-root.is-skin-parchment .tv-panel .tv-analog-tint {
+  display: none;
+}
+
 .tv-root.is-skin-tablets .tv-panel .tv-analog-hour,
 .tv-root.is-skin-parchment .tv-panel .tv-analog-hour,
 .tv-root.is-skin-tablets .tv-panel .tv-analog-minute,
@@ -2143,8 +2149,22 @@
   overflow: visible;
 }
 
+/* The face is two circles rather than one with a mixed fill.
+   color-mix() computes to color(srgb ...), and that syntax does not survive
+   html-to-image: the fill comes back invalid, Chrome falls back to black, and
+   every remote screenshot showed the clock as a solid black disc - hands and
+   numerals included, because they are dark and were drawn on top of it. The
+   wall was always fine; only the picture of it lied, which is worse, because
+   the picture is what you look at when you cannot see the wall.
+   Two plain colours, one over the other: the same 70/30 blend on screen, and
+   the same in the photograph. */
 .tv-analog-face {
-  fill: color-mix(in srgb, var(--tv-bg-a) 70%, var(--tv-panel));
+  fill: var(--tv-panel);
+}
+
+.tv-analog-tint {
+  fill: var(--tv-bg-a);
+  opacity: 0.7;
 }
 
 .tv-analog-rim {
