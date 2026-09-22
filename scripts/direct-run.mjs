@@ -39,10 +39,26 @@ function readWindowsUserEnv(name) {
   }
 }
 
+/**
+ * .env.migrations.local outranks the environment, not the other way round.
+ *
+ * It is the file that says who administers *this* project, and it exists
+ * precisely because the machine-wide MIGRATION_ADMIN_EMAIL belongs to a
+ * different one. With process.env spread last, that machine-wide value won,
+ * the runner signed in as somebody who is not an admin here, and the server
+ * answered "Invalid login credentials" - which reads as a wrong password and
+ * sends you off to change one that was never wrong.
+ *
+ * An empty value in the file still means "use the machine's": that is how
+ * the file ships, with the email filled in and the password left blank.
+ */
+const localEnv = Object.fromEntries(
+  Object.entries(readEnvFile(path.join(root, ".env.migrations.local"))).filter(([, v]) => v !== ""),
+);
 const env = {
   ...readEnvFile(path.join(root, ".env")),
-  ...readEnvFile(path.join(root, ".env.migrations.local")),
   ...process.env,
+  ...localEnv,
 };
 const projectRef = env.VITE_SUPABASE_PROJECT_ID || env.SUPABASE_PROJECT_ID;
 const supabaseUrl = env.VITE_SUPABASE_URL || env.SUPABASE_URL;
