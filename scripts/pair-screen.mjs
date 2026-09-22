@@ -43,11 +43,17 @@ const headers = { apikey: key, Authorization: `Bearer ${jwt}`, "Content-Type": "
 
 // Which synagogue. Named explicitly rather than left to "the only one":
 // this script should keep doing the right thing once there are three.
-const res = await fetch(`${url}/rest/v1/communities?select=id,slug,name&active=eq.true`, { headers });
+//
+// Switched-on ones are not the only candidates. A screen finds its board by
+// the id it was given and never asks whether the synagogue is live, so a new
+// community can be set up and checked on a real screen before the public
+// site offers it to anybody - which is the normal order of things.
+const res = await fetch(`${url}/rest/v1/communities?select=id,slug,name,active`, { headers });
 const all = await res.json();
-const target = slug ? all.find((c) => c.slug === slug) : all.length === 1 ? all[0] : null;
+const live = all.filter((c) => c.active);
+const target = slug ? all.find((c) => c.slug === slug) : live.length === 1 ? live[0] : null;
 if (!target) {
-  console.error("name which synagogue:", all.map((c) => c.slug).join(", "));
+  console.error("name which synagogue:", all.map((c) => `${c.slug}${c.active ? "" : " (not live yet)"}`).join(", "));
   process.exit(1);
 }
 
@@ -61,5 +67,5 @@ if (!claim.ok) {
   console.error("pairing failed:", body);
   process.exit(1);
 }
-console.log(`paired "${name}" to ${target.name}`);
+console.log(`paired "${name}" to ${target.name}${target.active ? "" : "  (not switched on yet - the screen does not mind)"}`);
 console.log(body);
