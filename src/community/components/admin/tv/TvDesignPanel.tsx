@@ -427,15 +427,22 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the saved row changes
   }, [savedJson]);
 
-  // Unsaved edits must not vanish with a stray navigation.
+  // Unsaved edits must not vanish with a stray navigation - nor with the
+  // app reloading itself into a new deploy (see src/main.tsx, which waits
+  // for this to clear before it takes one).
   useEffect(() => {
-    if (!dirty) return;
+    const w = window as { __appHasUnsavedWork?: boolean };
+    w.__appHasUnsavedWork = dirty;
+    if (!dirty) return () => undefined;
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      w.__appHasUnsavedWork = false;
+      window.removeEventListener("beforeunload", onBeforeUnload);
+    };
   }, [dirty]);
 
   // In step with the other editor window of this browser (admin page <-> live window).

@@ -38,11 +38,54 @@ if (import.meta.env.DEV && "serviceWorker" in navigator) {
 if (import.meta.env.PROD && "serviceWorker" in navigator) {
   const hadControllerAtStartup = Boolean(navigator.serviceWorker.controller);
   let reloadingForNewWorker = false;
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
+
+  /**
+   * Work in progress that a reload would throw away.
+   *
+   * The board editor sets this while it holds unsaved edits. Picking up a
+   * new deploy is never worth losing half an hour of somebody's design.
+   */
+  const busy = () => Boolean((window as { __appHasUnsavedWork?: boolean }).__appHasUnsavedWork);
+
+  let waiting = false;
+  const takeOver = () => {
     if (!hadControllerAtStartup || reloadingForNewWorker) return;
+    if (busy()) {
+      // Come back to it: the moment the work is saved, or the tab is left,
+      // the reload happens by itself.
+      waiting = true;
+      return;
+    }
     reloadingForNewWorker = true;
     window.location.reload();
-  });
+  };
+
+  navigator.serviceWorker.addEventListener("controllerchange", takeOver);
+  window.setInterval(() => waiting && takeOver(), 5_000);
+
+  /**
+   * Ask whether there is a newer build.
+   *
+   * Without this a tab that stays open never finds out. The browser checks
+   * the worker on navigation, and an admin who leaves the board editor open
+   * all morning never navigates - so a deploy made at eleven is still
+   * invisible at two, and the honest-looking conclusion is that the deploy
+   * did not happen. Which is exactly what it looked like.
+   *
+   * It costs one conditional request every few minutes, and only when the
+   * tab is actually being looked at.
+   */
+  const CHECK_MS = 5 * 60_000;
+  let lastCheck = 0;
+  const check = () => {
+    if (document.visibilityState !== "visible" || !navigator.onLine) return;
+    if (Date.now() - lastCheck < 60_000) return;
+    lastCheck = Date.now();
+    void navigator.serviceWorker.getRegistration().then((r) => r?.update().catch(() => {}));
+  };
+  window.setInterval(check, CHECK_MS);
+  document.addEventListener("visibilitychange", check);
+  window.addEventListener("online", check);
 }
 
 // A deploy replaces every hashed chunk. A tab opened before it - or a page
