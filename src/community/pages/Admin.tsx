@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
-import { LayoutDashboard, LogOut, ShieldAlert, Tv } from "lucide-react";
+import { Building2, LayoutDashboard, LogOut, ShieldAlert, Tv } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,7 +18,9 @@ import { QuickAddButton } from "@community/components/QuickAddButton";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { useAdminMessages } from "@community/lib/data";
-import { CommunityPicker } from "@/community/components/admin/CommunityPicker";
+import { CommunitySwitcher, ShulNow } from "@/community/components/admin/CommunitySwitcher";
+import { listMyCommunities } from "@/community/lib/community";
+import { CommunitiesAdmin } from "@/community/components/admin/CommunitiesAdmin";
 
 // Loaded only when the tab is opened: it brings the whole TV board with it.
 const TvAdmin = lazy(() => import("@community/components/admin/tv/TvAdmin"));
@@ -33,10 +35,24 @@ export function AdminPage() {
   const requestedTab = searchParams.get("tab");
   const activeTab = [
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
-    "messages", "widgets", "settings", "users", "data", "qr", "tv",
+    "messages", "widgets", "settings", "users", "data", "qr", "tv", "communities",
   ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
+
+  // The synagogues tab is for whoever has more than one to keep straight, and
+  // for whoever may add one. A gabbai of a single synagogue would get a page
+  // listing that synagogue, which is a tab that only ever says what they
+  // already know.
+  const { data: myShuls = [] } = useQuery({
+    queryKey: ["my-communities"],
+    queryFn: listMyCommunities,
+  });
+  const { data: isPlatformAdmin = false } = useQuery({
+    queryKey: ["is-platform-admin"],
+    queryFn: async () => Boolean((await supabase.rpc("is_platform_admin")).data),
+  });
+  const showCommunities = myShuls.length > 1 || isPlatformAdmin;
 
   async function signOut() {
     await qc.cancelQueries();
@@ -57,10 +73,11 @@ export function AdminPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
+            <ShulNow />
             <p className="mt-1 text-sm text-muted-foreground">{session?.user.email}</p>
           </div>
           <div className="flex items-center gap-2">
-            <CommunityPicker />
+            <CommunitySwitcher />
             <Button variant="outline" onClick={signOut}>
               <LogOut className="size-4" /> יציאה
             </Button>
@@ -110,8 +127,16 @@ export function AdminPage() {
               <TabsTrigger value="tv">
                 <Tv className="size-4" /> תצוגות
               </TabsTrigger>
+              {showCommunities && (
+                <TabsTrigger value="communities">
+                  <Building2 className="size-4" /> בתי כנסת
+                </TabsTrigger>
+              )}
             </TabsList>
 
+            <TabsContent value="communities" className="mt-6">
+              <CommunitiesAdmin />
+            </TabsContent>
             <TabsContent value="minyanim" className="mt-6">
               <MinyanimAdmin />
             </TabsContent>

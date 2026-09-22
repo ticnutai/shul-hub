@@ -33,6 +33,11 @@ export interface Community {
   id: string;
   slug: string;
   name: string;
+  /**
+   * Shown to the public. Undefined when it was not asked for - the visitor
+   * side only ever sees live ones, so it has no use for the answer.
+   */
+  active?: boolean;
 }
 
 const STORAGE_KEY = "shul-hub.community";
@@ -69,6 +74,23 @@ export function setCommunity(next: Community | null, remember = true): void {
   for (const l of listeners) l();
 }
 
+/**
+ * Fills in something we have since learned about the synagogue in hand.
+ *
+ * The visitor-side list does not carry `active` - a visitor only ever sees
+ * live ones, so the answer would always be the same. The admin side does
+ * need it, and learns it a moment later than it learns the name. This is
+ * that moment, and it is not a change of synagogue: switching is
+ * setCommunity, and nothing here may quietly become a different shul.
+ */
+export function updateCurrentCommunity(patch: Partial<Omit<Community, "id">>): void {
+  if (!current) return;
+  const next = { ...current, ...patch };
+  if (next.slug === current.slug && next.name === current.name && next.active === current.active) return;
+  current = next;
+  for (const l of listeners) l();
+}
+
 export function subscribeCommunity(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
@@ -87,6 +109,40 @@ export async function listCommunities(): Promise<Community[]> {
     .order("name");
   if (error) throw error;
   return data ?? [];
+}
+
+/**
+ * The synagogues this account may administer, live or not.
+ *
+ * Deliberately not the same list as listCommunities(): a visitor may only
+ * see synagogues that are open, while an admin has to be able to reach one
+ * that is still being prepared - that is what preparing means. The server
+ * decides which ones those are; a list built here would only be a
+ * suggestion.
+ */
+export async function listMyCommunities(): Promise<Community[]> {
+  const { data, error } = await supabase.rpc("my_communities");
+  if (error) throw error;
+  return (data ?? []) as Community[];
+}
+
+/**
+ * Puts the synagogue in the address bar.
+ *
+ * So that a reload, a bookmark or a link sent to the other gabbai all open
+ * the same one, and so that the answer to "which synagogue am I editing?"
+ * is written somewhere the browser itself will show you. Replaces rather
+ * than pushes: switching synagogue is not a place you go back from.
+ */
+export function writeCommunityToUrl(slug: string): void {
+  try {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("shul") === slug) return;
+    url.searchParams.set("shul", slug);
+    window.history.replaceState(window.history.state, "", url.toString());
+  } catch {
+    /* an address bar we cannot write to changes nothing that matters */
+  }
 }
 
 /**
@@ -134,5 +190,10 @@ export async function resolveCommunity(): Promise<{
  * synagogue refetches by itself.
  */
 export function useCommunityId(): string | null {
-  return useSyncExternalStore(subscribeCommunity, communitySnapshot, communitySnapshot)?.id ?? null;
+  return useCommunity()?.id ?? null;
+}
+
+/** The whole synagogue, for the few places that show it rather than query it. */
+export function useCommunity(): Community | null {
+  return useSyncExternalStore(subscribeCommunity, communitySnapshot, communitySnapshot);
 }
