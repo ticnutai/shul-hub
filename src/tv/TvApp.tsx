@@ -4,6 +4,8 @@ import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
 import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
+import { checkClock } from "./clock";
+import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { allThemes, getTheme } from "./themes";
 import { TvBoard } from "./TvBoard";
@@ -247,6 +249,36 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     },
     [config.theme, themes, applyTheme],
   );
+
+  /**
+   * The Shabbat screen going up and coming down, written to the log.
+   *
+   * It takes the whole board, and a gabbai who finds it up on a Tuesday has
+   * no way to ask the board why. This says so at the moment it happens, with
+   * what the board believed at the time: its own clock, the day it worked
+   * out, and whether it was running on its stored copy of the data. If it
+   * ever comes up wrongly again, the answer will be in the log instead of
+   * in an afternoon of guessing.
+   */
+  const shabbatUp = slide?.kind === "shabbat";
+  const wasShabbatUp = useRef(shabbatUp);
+  useEffect(() => {
+    if (shabbatUp === wasShabbatUp.current) return;
+    wasShabbatUp.current = shabbatUp;
+    const clock = checkClock(new Date());
+    link.current?.log(
+      "info",
+      "shabbat",
+      shabbatUp ? "מסך שבת עלה" : "מסך שבת ירד",
+      {
+        deviceTime: new Date().toString(),
+        weekday: jerusalemWeekday(new Date()),
+        clockTrusted: clock.trusted,
+        clockReason: clock.reason,
+        dataIsStale: data.stale,
+      },
+    );
+  }, [shabbatUp, data.stale, link]);
 
   // ------------------------------------------------ state for the admin --
   stateRef.current = {

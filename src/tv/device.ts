@@ -8,6 +8,8 @@
  * server answered), and supabase-js folds both into one error shape.
  */
 
+import { noteServerTime } from "./clock";
+
 const URL_BASE = import.meta.env.VITE_SUPABASE_URL as string;
 const KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
@@ -178,6 +180,11 @@ async function rpc<T>(fn: string, args: Record<string, unknown>, timeoutMs = 15_
     if (error instanceof DOMException && error.name === "TimeoutError") throw new RpcError("timeout", -1);
     throw new RpcError(String(error), 0);
   }
+  // Every answer carries a Date header. It costs nothing to read, and it is
+  // how the board later knows its own clock has been reset (clock.ts).
+  const served = Date.parse(res.headers.get("date") ?? "");
+  if (Number.isFinite(served)) noteServerTime(served);
+
   const body = await res.json().catch(() => null);
   if (!res.ok) throw new RpcError(body?.message ?? `HTTP ${res.status}`, res.status, body?.code);
   return body as T;

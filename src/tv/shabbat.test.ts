@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import { buildSlides } from "./useBoardData";
+import { DEFAULT_TV_CONFIG } from "./config";
+import { forgetServerTime, noteServerTime } from "./clock";
 import { shabbatNow, nextCandleLighting } from "./shabbat";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
 
@@ -66,5 +69,49 @@ describe("the Shabbat screen", () => {
     expect(next).not.toBeNull();
     expect(jerusalemWeekday(next!)).toBe(5);
     expect(next!.getTime()).toBeGreaterThan(from.getTime());
+  });
+});
+
+/**
+ * The board refusing to take itself over on a clock it cannot believe.
+ *
+ * This is the case a gabbai actually reported: the screen was offline, and
+ * the Shabbat screen was up. A box that loses power while the router is
+ * down comes back with whatever clock it has, and on the wrong day of the
+ * week that hides every time in the building.
+ */
+describe("the Shabbat screen and a clock that cannot be trusted", () => {
+  const data = {
+    settings, minyanim: [], categories: [], announcements: [], shiurim: [],
+    stale: false, sync: { status: "idle" },
+  } as never;
+  const config = {
+    ...structuredClone(DEFAULT_TV_CONFIG),
+    shabbat: { ...structuredClone(DEFAULT_TV_CONFIG).shabbat, enabled: true },
+  };
+  const zmanim = {} as never;
+  const isShabbat = (now: Date) =>
+    buildSlides(data, config, now, zmanim).some((s) => s.kind === "shabbat");
+
+  beforeEach(() => forgetServerTime());
+
+  it("comes up on Friday evening when the clock is sound", () => {
+    expect(isShabbat(new Date(2026, 8, 25, 19, 0, 0))).toBe(true);
+  });
+
+  it("stays down when the clock reads before the software existed", () => {
+    // 2 January 1970 was a Friday. The old code would have obliged.
+    expect(isShabbat(new Date(1970, 0, 2, 19, 0, 0))).toBe(false);
+  });
+
+  it("stays down when the clock has gone backwards since the server last spoke", () => {
+    noteServerTime(new Date(2026, 8, 25, 20, 0).getTime());
+    // The box came back believing it is the Friday a week earlier.
+    expect(isShabbat(new Date(2026, 8, 18, 19, 0, 0))).toBe(false);
+  });
+
+  it("comes up again once the clock is back where it should be", () => {
+    noteServerTime(new Date(2026, 8, 25, 18, 0).getTime());
+    expect(isShabbat(new Date(2026, 8, 25, 19, 0, 0))).toBe(true);
   });
 });

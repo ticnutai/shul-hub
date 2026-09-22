@@ -19,6 +19,7 @@ import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime
 import type { TvConfig } from "./config";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
 import { shabbatNow, type ShabbatTimes } from "./shabbat";
+import { checkClock } from "./clock";
 
 /**
  * Data for the board, plus the rules that turn it into slides. Shared by the
@@ -153,7 +154,13 @@ export function shiurMinutes(timeText: string | null | undefined): number {
 
 export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim: Zmanim): BoardSlide[] {
   // Shabbat: one screen, no rotation, from candle lighting until it ends.
-  if (config.shabbat.enabled) {
+  //
+  // It takes the whole board, so it is the one thing here that must not
+  // happen on a guess. A box that lost power while the router was down can
+  // come back believing it is a different day, and the board would then
+  // hide every time in the building and look entirely deliberate about it.
+  // A clock that cannot be trusted keeps the ordinary board (clock.ts).
+  if (config.shabbat.enabled && checkClock(now).trusted) {
     const times = shabbatNow(now, data.settings, config.shabbat.endMinutesAfterSunset);
     if (times) {
       const { scenes, rotate, secondsPerScene } = config.shabbat;
