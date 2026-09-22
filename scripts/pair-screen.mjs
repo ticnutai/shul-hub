@@ -9,16 +9,7 @@
  *
  *   node scripts/pair-screen.mjs <6-digit code> "<name>" [slug]
  */
-import fs from "node:fs";
-
-const env = Object.fromEntries(
-  fs.readFileSync(".env", "utf8").split(/\r?\n/).filter((l) => l.includes("=")).map((l) => {
-    const i = l.indexOf("=");
-    return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^['"]|['"]$/g, "")];
-  }),
-);
-const url = env.VITE_SUPABASE_URL;
-const key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { url, signIn, rows } from "./lib/admin.mjs";
 
 const [code, name, slug] = process.argv.slice(2);
 if (!code || !name) {
@@ -26,20 +17,7 @@ if (!code || !name) {
   process.exit(2);
 }
 
-const auth = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-  method: "POST",
-  headers: { apikey: key, "Content-Type": "application/json" },
-  body: JSON.stringify({
-    email: process.env.MIGRATION_ADMIN_EMAIL,
-    password: process.env.MIGRATION_ADMIN_PASSWORD,
-  }),
-});
-if (!auth.ok) {
-  console.error("could not sign in:", await auth.text());
-  process.exit(1);
-}
-const jwt = (await auth.json()).access_token;
-const headers = { apikey: key, Authorization: `Bearer ${jwt}`, "Content-Type": "application/json" };
+const headers = await signIn({ json: true });
 
 // Which synagogue. Named explicitly rather than left to "the only one":
 // this script should keep doing the right thing once there are three.
@@ -48,8 +26,7 @@ const headers = { apikey: key, Authorization: `Bearer ${jwt}`, "Content-Type": "
 // the id it was given and never asks whether the synagogue is live, so a new
 // community can be set up and checked on a real screen before the public
 // site offers it to anybody - which is the normal order of things.
-const res = await fetch(`${url}/rest/v1/communities?select=id,slug,name,active`, { headers });
-const all = await res.json();
+const all = await rows(headers, "communities?select=id,slug,name,active");
 const live = all.filter((c) => c.active);
 const target = slug ? all.find((c) => c.slug === slug) : live.length === 1 ? live[0] : null;
 if (!target) {

@@ -1,29 +1,9 @@
 /** Every screen, and which synagogue it shows. */
-import fs from "node:fs";
+import { signIn, rows } from "./lib/admin.mjs";
 
-const env = Object.fromEntries(
-  fs.readFileSync(".env", "utf8").split(/\r?\n/).filter((l) => l.includes("=")).map((l) => {
-    const i = l.indexOf("=");
-    return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^["']|["']$/g, "")];
-  }),
-);
-const url = env.VITE_SUPABASE_URL;
-const key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-const auth = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-  method: "POST",
-  headers: { apikey: key, "Content-Type": "application/json" },
-  body: JSON.stringify({
-    email: process.env.MIGRATION_ADMIN_EMAIL,
-    password: process.env.MIGRATION_ADMIN_PASSWORD,
-  }),
-});
-const jwt = (await auth.json()).access_token;
-const headers = { apikey: key, Authorization: `Bearer ${jwt}` };
-
-const get = async (p) => (await fetch(`${url}/rest/v1/${p}`, { headers })).json();
-const devices = await get("tv_devices?select=name,approved,app_version,last_seen_at,community_id&order=created_at");
-const comms = await get("communities?select=id,name,active");
+const headers = await signIn();
+const devices = await rows(headers, "tv_devices?select=name,approved,app_version,last_seen_at,community_id&order=created_at");
+const comms = await rows(headers, "communities?select=id,name,active");
 const nameOf = (id) => comms.find((c) => c.id === id)?.name ?? "—";
 
 const ago = (t) => (t ? `${Math.round((Date.now() - new Date(t)) / 1000)}s ago` : "never");

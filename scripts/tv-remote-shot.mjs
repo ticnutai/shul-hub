@@ -8,27 +8,18 @@
  */
 import fs from "node:fs";
 
-const env = Object.fromEntries(
-  fs.readFileSync(".env", "utf8").split(/\r?\n/).filter((l) => l.includes("=")).map((l) => {
-    const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^["']|["']$/g, "")];
-  }),
-);
-const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
-const auth = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-  method: "POST", headers: { apikey: key, "Content-Type": "application/json" },
-  body: JSON.stringify({ email: process.env.MIGRATION_ADMIN_EMAIL, password: process.env.MIGRATION_ADMIN_PASSWORD }),
-});
-if (!auth.ok) { console.error("sign-in failed"); process.exit(1); }
-const headers = { apikey: key, Authorization: `Bearer ${(await auth.json()).access_token}`, "Content-Type": "application/json" };
+import { url, signIn, rows } from "./lib/admin.mjs";
 
-const devices = await (await fetch(`${url}/rest/v1/tv_devices?select=id,name,last_seen_at&approved=eq.true`, { headers })).json();
+const headers = await signIn({ json: true });
+
+const devices = await rows(headers, "tv_devices?select=id,name,last_seen_at&approved=eq.true");
 const wanted = process.argv[2];
 const target = wanted ? devices.find((d) => d.name.includes(wanted)) : devices
   .slice().sort((a, b) => new Date(b.last_seen_at) - new Date(a.last_seen_at))[0];
 if (!target) { console.error("no such screen"); process.exit(1); }
 console.log(`asking "${target.name}" for a picture...`);
 
-const before = await (await fetch(`${url}/rest/v1/tv_snapshots?select=captured_at&device_id=eq.${target.id}`, { headers })).json();
+const before = await rows(headers, `tv_snapshots?select=captured_at&device_id=eq.${target.id}`);
 const wasAt = before[0]?.captured_at ?? null;
 
 const cmd = await fetch(`${url}/rest/v1/tv_commands`, {

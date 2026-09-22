@@ -13,14 +13,7 @@
  * is live yet, so a new community can be set up and looked at on a real
  * screen before the public site offers it to anybody.
  */
-import fs from "node:fs";
-
-const env = Object.fromEntries(
-  fs.readFileSync(".env", "utf8").split(/\r?\n/).filter((l) => l.includes("=")).map((l) => {
-    const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1).trim().replace(/^["']|["']$/g, "")];
-  }),
-);
-const url = env.VITE_SUPABASE_URL, key = env.VITE_SUPABASE_PUBLISHABLE_KEY;
+import { url, signIn, rows } from "./lib/admin.mjs";
 
 const [screenName, shulName] = process.argv.slice(2);
 if (!screenName || !shulName) {
@@ -28,16 +21,11 @@ if (!screenName || !shulName) {
   process.exit(2);
 }
 
-const auth = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-  method: "POST", headers: { apikey: key, "Content-Type": "application/json" },
-  body: JSON.stringify({ email: process.env.MIGRATION_ADMIN_EMAIL, password: process.env.MIGRATION_ADMIN_PASSWORD }),
-});
-if (!auth.ok) { console.error("sign-in failed"); process.exit(1); }
-const headers = { apikey: key, Authorization: `Bearer ${(await auth.json()).access_token}`, "Content-Type": "application/json" };
+const headers = await signIn({ json: true });
 
 const [devices, shuls] = await Promise.all([
-  (await fetch(`${url}/rest/v1/tv_devices?select=id,name,community_id`, { headers })).json(),
-  (await fetch(`${url}/rest/v1/communities?select=id,name,active`, { headers })).json(),
+  rows(headers, "tv_devices?select=id,name,community_id"),
+  rows(headers, "communities?select=id,name,active"),
 ]);
 const screen = devices.find((d) => d.name.includes(screenName));
 const shul = shuls.find((c) => c.name.includes(shulName));
