@@ -108,7 +108,7 @@ export function AdminPage() {
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
               <TabsTrigger value="qr">קודי QR</TabsTrigger>
               <TabsTrigger value="tv">
-                <Tv className="size-4" /> לוח תצוגה (TV)
+                <Tv className="size-4" /> תצוגות
               </TabsTrigger>
             </TabsList>
 

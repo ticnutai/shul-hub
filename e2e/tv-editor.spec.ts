@@ -424,6 +424,67 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "panel hidden, times spread");
   });
 
+  /**
+   * One board, three screens. The wall in the shul, a computer and a phone
+   * can each be given their own wording, layout and look - and, far more
+   * importantly, an ordinary edit still applies to all three at once.
+   */
+  test("each display can differ, and by default none of them do", async ({ page }) => {
+    const scope = page.getByTestId("device-scope");
+    const pick = async (name: string) => {
+      await scope.getByRole("radio", { name, exact: false }).first().click();
+      await page.waitForTimeout(450);
+    };
+    const skinOf = async () =>
+      /is-skin-([a-z]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? null;
+
+    await expect(scope).toBeVisible();
+    await expect(scope.getByRole("radio", { name: "כל התצוגות" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
+
+    // A style chosen for everybody is what every screen shows.
+    await skins.nth(1).click();
+    await page.waitForTimeout(300);
+    const shared = await skinOf();
+    expect(shared).toBeTruthy();
+
+    // Now the phone alone gets a different one.
+    await pick("מובייל");
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await skins.nth(4).click();
+    await page.waitForTimeout(400);
+    const phone = await skinOf();
+    expect(phone).toBeTruthy();
+    expect(phone).not.toBe(shared);
+
+    // The wall never moved.
+    await pick("אנדרואיד TV");
+    expect(await skinOf()).toBe(shared);
+
+    // Nor did the computer.
+    await pick("מחשב");
+    expect(await skinOf()).toBe(shared);
+
+    // And the phone kept its own - it was stored, not just previewed.
+    await pick("מובייל");
+    expect(await skinOf()).toBe(phone);
+
+    // Back to everybody: still the shared one, and the phone is marked as
+    // having something of its own so it cannot disagree in silence.
+    await pick("כל התצוגות");
+    expect(await skinOf()).toBe(shared);
+    await expect(
+      scope.getByRole("radio", { name: /מובייל/ }).locator("span[aria-label]"),
+    ).toBeVisible();
+
+    await expectNotFrozen(page, "per-display editing");
+  });
+
   test("an edit can be kept to a copy of the theme, leaving the others alone", async ({ page }) => {
     // The third answer to "which themes does this apply to": neither all of
     // them nor the one in use, but a copy made for the purpose.

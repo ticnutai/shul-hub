@@ -1,4 +1,5 @@
 import type { SolarEvent } from "@community/lib/zmanim";
+import { DEVICE_CLASSES, type DeviceClass } from "./devices";
 import {
   CUSTOM_GRADIENT_ID_RE,
   CUSTOM_THEME_ID_RE,
@@ -189,6 +190,36 @@ export const SPACING_MAX = 10;
 export const SPACING_EDGES = ["top", "sides", "gap"] as const;
 export type SpacingEdge = (typeof SPACING_EDGES)[number];
 
+/**
+ * The parts of a board one kind of screen may do differently.
+ *
+ * Deliberately not everything. The list of saved themes, the gradients in
+ * the library, the Shabbat pictures, which slides exist - those are the
+ * shul's, not a screen's, and letting them differ per screen would be three
+ * libraries to keep in step for no gain. What is here is what somebody
+ * actually stands in front of a screen and wants changed for that screen.
+ */
+export interface DeviceOverlay {
+  screenLayout?: ScreenLayout;
+  clockStyle?: ClockStyle;
+  skin?: BoardSkin;
+  frame?: TvConfig["frame"];
+  spacing?: TvConfig["spacing"];
+  theme?: string;
+  themeOverrides?: Record<string, string>;
+  backgroundGradient?: string | null;
+  backgroundImage?: string | null;
+  backgroundDim?: number;
+  font?: TvFontId;
+  textScale?: number;
+  texts?: Record<string, string>;
+  hidden?: string[];
+  flipped?: FlipArea[];
+  styles?: Record<string, ElementStyle>;
+  header?: TvConfig["header"];
+  ticker?: TvConfig["ticker"];
+}
+
 export interface TvConfig {
   screenLayout: ScreenLayout;
   clockStyle: ClockStyle;
@@ -264,6 +295,15 @@ export interface TvConfig {
   /** Per-element look, keyed like `texts` (see ElementStyle). */
   styles: Record<string, ElementStyle>;
   /**
+   * What each kind of screen does differently; see devices.ts.
+   *
+   * Absent or empty means "the same as everywhere else", which is what
+   * every board is until somebody deliberately changes one screen. So the
+   * ordinary edit stays one edit, applying to the wall, the laptop and the
+   * phone at once, and only what is genuinely different is stored twice.
+   */
+  perDevice: Partial<Record<DeviceClass, DeviceOverlay>>;
+  /**
    * Editor only, never stored: content edits (an announcement's text, a
    * minyan's name...) waiting for "שמור ושדר". normalizeTvConfig drops it.
    */
@@ -279,6 +319,7 @@ export type RecordEdit =
   | { table: "announcements"; id: string; delete: true };
 
 export const DEFAULT_TV_CONFIG: TvConfig = {
+  perDevice: {},
   theme: "navy",
   font: "classic",
   textScale: 1,
@@ -528,5 +569,154 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     skin: BOARD_SKINS.includes(raw.skin as BoardSkin) ? (raw.skin as BoardSkin) : d.skin,
     frame: normalizeFrame(raw.frame, d.frame),
     spacing: normalizeSpacing(raw.spacing),
+    perDevice: normalizePerDevice(raw.perDevice),
   };
+}
+
+/**
+ * The per-screen overlays, kept only where they say something.
+ *
+ * An overlay with nothing in it is dropped rather than stored, so that
+ * "does this screen differ" is answerable by looking, and a board nobody
+ * has customised per screen carries no trace of the feature at all.
+ */
+function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
+  if (!isObj(raw)) return {};
+  const out: TvConfig["perDevice"] = {};
+  for (const device of DEVICE_CLASSES) {
+    const layer = raw[device];
+    if (!isObj(layer)) continue;
+    const kept: DeviceOverlay = {};
+    for (const [k, v] of Object.entries(layer)) {
+      if (v === undefined) continue;
+      if (!(k in DEVICE_OVERLAY_KEYS)) continue;
+      (kept as Record<string, unknown>)[k] = v;
+    }
+    if (Object.keys(kept).length > 0) out[device] = kept;
+  }
+  return out;
+}
+
+/** Guards normalizePerDevice against a stray key from an older board. */
+const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
+  screenLayout: true, clockStyle: true, skin: true, frame: true, spacing: true,
+  theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true,
+  backgroundDim: true, font: true, textScale: true, texts: true, hidden: true,
+  flipped: true, styles: true, header: true, ticker: true,
+};
+
+/**
+ * The board as one kind of screen sees it: the shared settings, with that
+ * screen's differences laid over them.
+ *
+ * The result is an ordinary TvConfig, which is the point - everything
+ * downstream (the board, the themes, the styles, the editor's preview)
+ * carries on knowing nothing about screens.
+ *
+ * Two merge rules, and the difference between them matters:
+ *
+ *   The things keyed by element - the wording, the per-element styling,
+ *   the colour overrides - merge key by key. "A shorter title on a phone"
+ *   should change that one title and leave everything else following the
+ *   board, and deleting the key puts it back.
+ *
+ *   Everything else replaces wholesale, including the lists of what is
+ *   hidden and what is flipped. A list cannot merge: if the board hides a
+ *   panel and this screen wants it back, no union of two lists can say so.
+ *   The editor writes the whole list, so this stays invisible.
+ */
+export function configForDevice(config: TvConfig, device: DeviceClass | null): TvConfig {
+  const layer = device ? config.perDevice?.[device] : undefined;
+  if (!layer || Object.keys(layer).length === 0) return config;
+  const { texts, styles, themeOverrides, ...rest } = layer;
+  return {
+    ...config,
+    ...rest,
+    texts: texts ? { ...config.texts, ...texts } : config.texts,
+    styles: styles ? { ...config.styles, ...styles } : config.styles,
+    themeOverrides: themeOverrides
+      ? { ...config.themeOverrides, ...themeOverrides }
+      : config.themeOverrides,
+  };
+}
+
+/** Does this screen differ from the board at all? */
+export function deviceHasOverrides(config: TvConfig, device: DeviceClass): boolean {
+  return Object.keys(config.perDevice?.[device] ?? {}).length > 0;
+}
+
+/**
+ * Makes an edit apply to one screen instead of to the board.
+ *
+ * The editor is full of functions of the shape (config) => config: pick a
+ * theme, hide a panel, retype a title. None of them know that screens
+ * exist and none of them should have to. So the edit is run against the
+ * board as that screen sees it, and what came out different is kept as
+ * that screen's overlay.
+ *
+ * That means a new control added to the editor next year can be scoped to
+ * one screen without anybody remembering to make it so.
+ */
+export function editForDevice(
+  config: TvConfig,
+  device: DeviceClass | null,
+  edit: (c: TvConfig) => TvConfig,
+): TvConfig {
+  if (!device) return edit(config);
+  const after = edit(configForDevice(config, device));
+  const layer = overlayFrom(config, after);
+  const perDevice = { ...config.perDevice };
+  if (Object.keys(layer).length === 0) delete perDevice[device];
+  else perDevice[device] = layer;
+  // Only the overlay moves; the shared board and the editor-only record
+  // edits are the board's, whichever screen is being looked at.
+  return { ...config, perDevice, _records: after._records };
+}
+
+/** What `after` says that the shared board does not. */
+function overlayFrom(base: TvConfig, after: TvConfig): DeviceOverlay {
+  const layer: DeviceOverlay = {};
+  const set = <K extends keyof DeviceOverlay>(k: K, v: DeviceOverlay[K]) => {
+    layer[k] = v;
+  };
+
+  for (const key of Object.keys(DEVICE_OVERLAY_KEYS) as (keyof DeviceOverlay)[]) {
+    if (key === "texts" || key === "styles" || key === "themeOverrides") continue;
+    const a = (after as Record<string, unknown>)[key];
+    const b = (base as Record<string, unknown>)[key];
+    if (JSON.stringify(a) !== JSON.stringify(b)) set(key, a as never);
+  }
+
+  // Keyed by element, so only the elements that differ are kept - a screen
+  // with one shorter title should not carry a copy of every other title.
+  const texts = differingKeys(base.texts, after.texts, () => "");
+  if (texts) set("texts", texts);
+  const themeOverrides = differingKeys(base.themeOverrides, after.themeOverrides, () => "");
+  if (themeOverrides) set("themeOverrides", themeOverrides);
+  const styles = differingKeys(base.styles, after.styles, () => ({}) as ElementStyle);
+  if (styles) set("styles", styles);
+
+  return layer;
+}
+
+/**
+ * The entries of `after` that differ from `base`.
+ *
+ * A key the edit removed is kept as `cleared()` rather than dropped: the
+ * overlay is laid over the board, so leaving it out would bring the board's
+ * value back, and "no styling on the phone" has to be sayable.
+ */
+function differingKeys<T>(
+  base: Record<string, T>,
+  after: Record<string, T>,
+  cleared: () => T,
+): Record<string, T> | undefined {
+  const out: Record<string, T> = {};
+  for (const [k, v] of Object.entries(after)) {
+    if (JSON.stringify(v) !== JSON.stringify(base[k])) out[k] = v;
+  }
+  for (const k of Object.keys(base)) {
+    if (!(k in after)) out[k] = cleared();
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
 }

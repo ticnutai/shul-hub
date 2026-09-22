@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
-import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
+import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
+import { useDeviceClass } from "./useDeviceClass";
 import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { allThemes, getTheme } from "./themes";
 import { TvBoard } from "./TvBoard";
@@ -134,14 +135,19 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     }
   }, [baseConfig.theme, web]);
 
-  const config = useMemo<TvConfig>(
-    () =>
+  // What kind of screen this is. The wall in the shul, a laptop and a phone
+  // can each be given their own wording and layout; a board where nobody has
+  // asked for that is the same board on all three (see devices.ts).
+  const deviceClass = useDeviceClass(!web);
+
+  const config = useMemo<TvConfig>(() => {
+    const chosen =
       // A remote choice the admin has since deleted is simply ignored.
       themeOverride && themes.some((t) => t.id === themeOverride)
         ? { ...baseConfig, theme: themeOverride, themeOverrides: {} }
-        : baseConfig,
-    [baseConfig, themeOverride, themes],
-  );
+        : baseConfig;
+    return configForDevice(chosen, deviceClass);
+  }, [baseConfig, themeOverride, themes, deviceClass]);
 
   // Slides change at most once a minute (expiring notices, the day rolling
   // over); rebuilding them on every clock tick only re-rendered the board.

@@ -46,6 +46,9 @@ import {
   SLIDE_LAYOUTS,
   normalizeTvConfig,
   type AlertEvent,
+  configForDevice,
+  deviceHasOverrides,
+  editForDevice,
   type TvConfig,
 } from "@/tv/config";
 import {
@@ -130,6 +133,7 @@ const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 
 const intervalLabel = (s: number) =>
   s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
 import { FRAME_RADIUS_MAX, type FrameShape } from "@/tv/config";
+import { DeviceScopePicker, type DeviceScope } from "./DeviceScopePicker";
 import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
@@ -449,9 +453,37 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     onSaved: () => void queryClientForSync.invalidateQueries({ queryKey: ["tv_config_admin"] }),
   });
 
+  /**
+   * Which screen is being worked on: the wall, a computer, a phone - or all
+   * of them at once, which is the default and what every edit did before
+   * screens could differ.
+   *
+   * It is one choice covering the whole panel rather than a scope on each
+   * control, because it is the question you answer once when you sit down:
+   * "I am fixing the phone now". Every control below then means what it
+   * says, and the preview shows that screen.
+   */
+  const [scope, setScope] = useState<DeviceScope>("all");
+  const scopeDevice = scope === "all" ? null : scope;
+  /**
+   * The board as the chosen screen sees it. Everything on this panel shows
+   * this rather than the shared board, so the controls read back what that
+   * screen actually does and the preview is that screen's board. With no
+   * screen chosen it is the shared board itself, unchanged.
+   */
+  const view = configForDevice(state.present, scopeDevice);
+
   const edit = useCallback(
-    (key: string, update: (c: TvConfig) => TvConfig) => dispatch({ type: "edit", key, update }),
-    [],
+    (key: string, update: (c: TvConfig) => TvConfig) =>
+      dispatch({
+        type: "edit",
+        key: `${scope}:${key}`,
+        // The controls are all (config) => config and none of them know that
+        // screens exist; this is the one place that decides where the change
+        // lands (see editForDevice).
+        update: (c) => editForDevice(c, scopeDevice, update),
+      }),
+    [scope, scopeDevice],
   );
 
   // Keyboard undo/redo while the panel is open.
@@ -474,7 +506,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   /* ----------------------------------------------------------- preview -- */
 
   const [simulatedNow, setSimulatedNow] = useState<Date | null>(null);
-  const board = useTvSlides(draft, simulatedNow);
+  const board = useTvSlides(view, simulatedNow);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
   // Click-to-edit on the board itself (see boardEdit.ts / TvEditInspector).
@@ -562,9 +594,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       weekday >= 5
         ? zmanimFor(new Date(Date.now() + (7 - weekday) * 86_400_000), board.data.settings)
         : zmanimToday;
-    const event = draft.alerts.events.find((e) => e !== "candle" && day[e]) ?? "sunset";
+    const event = view.alerts.events.find((e) => e !== "candle" && day[e]) ?? "sunset";
     const at = day[event as AlertEvent];
-    const lead = draft.alerts.leadMinutes[draft.alerts.leadMinutes.length - 1] ?? 15;
+    const lead = view.alerts.leadMinutes[view.alerts.leadMinutes.length - 1] ?? 15;
     if (!at) return toast.error("אין זמן מתאים היום להדגמה");
     setSimulatedNow(new Date(at.getTime() - lead * 60_000 + 2000));
     window.setTimeout(() => setSimulatedNow(null), 12_000);
@@ -577,7 +609,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   // the next candle lighting, until the admin goes back to real time.
   const [shabbatPreview, setShabbatPreview] = useState(false);
   // Shabbat pictures: pick one, or several for a slideshow.
-  const sb = draft.shabbat;
+  const sb = view.shabbat;
   const pickScene = (scene: string) =>
     edit("sb-scene", (c) => {
       const cur = c.shabbat.scenes;
@@ -644,7 +676,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     setShabbatPreview(true);
     setSimulatedNow(new Date(candle.getTime() + 20 * 60_000));
     setPreviewIndex(0);
-    if (!draft.shabbat.enabled) toast.warning("מסך השבת כבוי - הוא לא יופיע בשבת עד שתפעילו אותו.");
+    if (!view.shabbat.enabled) toast.warning("מסך השבת כבוי - הוא לא יופיע בשבת עד שתפעילו אותו.");
   };
 
   /* -------------------------------------------------------------- save -- */
@@ -960,6 +992,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </Button>
       </div>
 
+      <DeviceScopePicker scope={scope} onScope={setScope} config={state.present} />
+
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="design">עיצוב</TabsTrigger>
@@ -1215,7 +1249,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             hint="גרדיאנט או תמונה מאחורי כל הלוח. גרדיאנט נשאר חד בכל גודל מסך ואינו עולה דבר בביצועים."
           >
             <GradientStudio
-              config={draft}
+              config={view}
               onEdit={edit}
               applyLabel="החלה על רקע הלוח"
               current={draft.backgroundGradient}
@@ -1334,9 +1368,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </button>
               ))}
             </div>
-            <StylePicker config={draft} onEdit={edit} />
+            <StylePicker config={view} onEdit={edit} />
 
-            <FrameAndSpacing config={draft} onEdit={edit} />
+            <FrameAndSpacing config={view} onEdit={edit} />
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
               שעון:
@@ -1848,7 +1882,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             title="ייבוא מפיגמה"
             hint="קובץ המשתנים (Variables) של פיגמה הופך לערכת נושא. בלי טוקן ובלי חשבון - הקובץ נקרא כאן בדפדפן."
           >
-            <FigmaImport config={draft} onEdit={edit} handoff={figmaHandoff} />
+            <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
           </Section>
 
           <AlertDialog>
@@ -1886,7 +1920,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         <TvDeviceStudio
           {...board}
           fullscreen
-          config={draft}
+          config={view}
           index={index}
           cycle={cycle}
           progress={0}
@@ -1915,7 +1949,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             {editing && (
               <TvEditInspector
                 selected={selected}
-                config={draft}
+                config={view}
                 data={board.data}
                 onEdit={edit}
                 onSelect={setSelected}
@@ -1978,7 +2012,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           </div>
           <TvDeviceStudio
             {...board}
-            config={draft}
+            config={view}
             index={index}
             cycle={cycle}
             progress={0}
@@ -1993,7 +2027,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             <div className="mt-3">
               <TvEditInspector
                 selected={selected}
-                config={draft}
+                config={view}
                 data={board.data}
                 onEdit={edit}
                 onSelect={setSelected}
