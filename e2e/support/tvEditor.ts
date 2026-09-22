@@ -18,6 +18,16 @@ export interface EditorServer {
   writes: () => number;
 }
 
+/**
+ * The one synagogue these tests are about.
+ *
+ * The editor now settles which synagogue it is editing before it reads
+ * anything, exactly as the real admin page does, so the fixture has to
+ * answer that question too - otherwise every query is correctly disabled
+ * and the board renders nothing at all.
+ */
+const COMMUNITY = { id: "community-1", slug: "main", name: "בית הכנסת אושר של יהודי" };
+
 const SETTINGS = {
   id: "default",
   name: "בית הכנסת אושר של יהודי",
@@ -117,6 +127,8 @@ export async function serveEditor(page: Page, config: Record<string, unknown> = 
     }
 
     switch (table) {
+      case "communities":
+        return json(route, [COMMUNITY]);
       case "tv_config":
         // .maybeSingle() asks for one row.
         return json(route, { config: saved, updated_at: new Date().toISOString() });

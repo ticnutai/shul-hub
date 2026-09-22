@@ -44,6 +44,7 @@ import {
   PrayerLayoutPicker,
 } from "@community/components/PrayerLayoutPicker";
 import { supabase } from "@community/integrations/supabase/client";
+import { communityId } from "@/community/lib/community";
 
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
@@ -129,6 +130,7 @@ export function MinyanimAdmin() {
       const { error } = await supabase
         .from("minyanim")
         .update({ prayer: replacement })
+        .eq("community_id", communityId())
         .eq("category_id", categoryDraft.id)
         .in("prayer", removedIds);
       if (error) {

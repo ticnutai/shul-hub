@@ -24,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@community/integrations/supabase/client";
 import type { TablesInsert } from "@community/integrations/supabase/types";
+import { communityId } from "@/community/lib/community";
 
 const initialForm = {
   name: "",
@@ -46,7 +47,8 @@ export function ChavrutaRequestDialog() {
 
   const submit = useMutation({
     mutationFn: async (values: TablesInsert<"chavruta_requests">) => {
-      const { error: insertError } = await supabase.from("chavruta_requests").insert(values);
+      const { error: insertError } = await supabase.from("chavruta_requests")
+        .insert({ ...values, community_id: communityId() });
       if (insertError) throw insertError;
     },
     onSuccess: () => {

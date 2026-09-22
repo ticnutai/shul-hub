@@ -14,6 +14,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster } from "sonner";
 import { TvDesignPanel } from "@/community/components/admin/tv/TvDesignPanel";
+import { CommunityProvider } from "@/community/components/CommunityProvider";
 import "@/index.css";
 
 const queryClient = new QueryClient({
@@ -24,10 +25,17 @@ createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     {/* The app wraps everything in this; the harness has to as well. */}
     <DirectionProvider dir="rtl">
+    {/*
+      Which synagogue is being edited is settled before anything is read,
+      here as in the app. Going through the real provider rather than
+      setting it directly means the tests exercise that path too.
+    */}
+    <CommunityProvider>
     <div dir="rtl" className="p-3">
       <TvDesignPanel />
     </div>
     <Toaster position="top-center" />
+    </CommunityProvider>
     </DirectionProvider>
   </QueryClientProvider>,
 );

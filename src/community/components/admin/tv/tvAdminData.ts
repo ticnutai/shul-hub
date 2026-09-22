@@ -5,6 +5,7 @@ import { supabase as typedClient } from "@community/integrations/supabase/client
 import { normalizeTvConfig, type TvConfig } from "@/tv/config";
 import type { OutageReason } from "@/tv/device";
 import { prepareTvImage } from "./tvImage";
+import { communityId } from "@/community/lib/community";
 
 /**
  * Admin-side access to the TV control center (tables from
@@ -85,6 +86,7 @@ export function useTvDevices() {
       const { data, error } = await tvDb
         .from("tv_devices")
         .select("id,name,approved,approved_at,created_at,last_seen_at,last_boot_at,app_version,info,state")
+        .eq("community_id", communityId())
         .order("created_at");
       if (error) throw error;
       return (data ?? []) as TvDevice[];
@@ -131,12 +133,12 @@ export function useClaimDevice() {
 }
 
 export async function renameDevice(id: string, name: string) {
-  const { error } = await tvDb.from("tv_devices").update({ name }).eq("id", id);
+  const { error } = await tvDb.from("tv_devices").update({ name }).eq("community_id", communityId()).eq("id", id);
   if (error) throw error;
 }
 
 export async function deleteDevice(id: string) {
-  const { error } = await tvDb.from("tv_devices").delete().eq("id", id);
+  const { error } = await tvDb.from("tv_devices").delete().eq("community_id", communityId()).eq("id", id);
   if (error) throw error;
 }
 
@@ -191,7 +193,10 @@ export function useTvConfig() {
   const query = useQuery({
     queryKey: ["tv_config_admin"],
     queryFn: async () => {
-      const { data, error } = await tvDb.from("tv_config").select("config, updated_at").eq("id", "default").maybeSingle();
+      const { data, error } = await tvDb.from("tv_config")
+        .select("config, updated_at")
+        .eq("community_id", communityId())
+        .maybeSingle();
       if (error) throw error;
       return { config: normalizeTvConfig(data?.config), updatedAt: (data?.updated_at as string) ?? null };
     },
@@ -202,7 +207,7 @@ export function useTvConfig() {
       const { error } = await tvDb
         .from("tv_config")
         .update({ config, updated_at: new Date().toISOString(), updated_by: auth.user?.id ?? null })
-        .eq("id", "default");
+        .eq("community_id", communityId());
       if (error) throw error;
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["tv_config_admin"] }),

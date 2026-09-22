@@ -80,6 +80,39 @@ function save(key: string, value: unknown) {
   }
 }
 
+/**
+ * Which synagogue this screen belongs to, asked of the server.
+ *
+ * The screen holds the answer nowhere and is never asked to choose: it
+ * proves who it is with the secret it generated at first boot, and the
+ * server - which was told by the admin who typed its pairing code - says
+ * where it belongs.
+ */
+export async function deviceCommunity(): Promise<string | null> {
+  const me = identity();
+  try {
+    const mine = await rpc<string | null>("tv_community", {
+      p_device_id: me.id,
+      p_secret: me.secret,
+    });
+    if (mine) return mine;
+  } catch {
+    /* offline; fall through to the question below, which will also fail */
+  }
+
+  // Not paired yet. While there is one synagogue there is nothing to be
+  // wrong about, so a screen out of the box shows the board straight away
+  // and can be paired afterwards - which is how it has always worked here.
+  // Once there are several this returns nothing, and an unpaired screen
+  // shows its pairing code and waits, because guessing would put one
+  // shul's times on another's wall.
+  try {
+    return (await rpc<string | null>("sole_community", {})) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function identity(): { id: string; secret: string } {
   const existing = load<{ id?: string; secret?: string }>(IDENTITY_KEY, {});
   if (existing.id && existing.secret && existing.secret.length >= 32) return existing as { id: string; secret: string };

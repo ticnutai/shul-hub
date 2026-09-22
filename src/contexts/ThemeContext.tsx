@@ -3,6 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSyncedState } from "@/hooks/useSyncedState";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
+import { communityId } from "@/community/lib/community";
 
 export type Theme = "classic" | "navy" | "jerusalem" | "bordeaux" | "forest" | "sand" | "night" | "royal-gold" | "elegant-night" | "ancient-scroll" | "light" | "gold-silver" | "torah-luxury" | "pearl-gold" | "parchment-navy" | "midnight-gold" | "custom";
 
@@ -138,6 +139,7 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase
       .from("app_themes")
       .select("id,name,theme,updated_at")
+      .eq("community_id", communityId())
       .order("created_at", { ascending: true });
     if (error) {
       // The migration may not have been applied yet; keep the local theme system usable.
@@ -198,7 +200,12 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
     const payload = { ...defaultCustomTheme, ...next, name: next.name.trim() };
     const { data, error } = await supabase
       .from("app_themes")
-      .insert({ name: payload.name, theme: payload, created_by: user.id })
+      .insert({
+        name: payload.name,
+        theme: payload,
+        created_by: user.id,
+        community_id: communityId(),
+      })
       .select("id,name,theme,updated_at")
       .single();
     if (error) throw error;

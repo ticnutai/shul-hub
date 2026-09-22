@@ -17,6 +17,7 @@ export type Database = {
       admin_messages: {
         Row: {
           body: string
+          community_id: string
           created_at: string
           id: string
           is_read: boolean
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           body: string
+          community_id?: string
           created_at?: string
           id?: string
           is_read?: boolean
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          community_id?: string
           created_at?: string
           id?: string
           is_read?: boolean
@@ -47,6 +50,7 @@ export type Database = {
       announcements: {
         Row: {
           body: string
+          community_id: string
           created_at: string
           expires_at: string | null
           home_width: string
@@ -64,6 +68,7 @@ export type Database = {
         }
         Insert: {
           body?: string
+          community_id?: string
           created_at?: string
           expires_at?: string | null
           home_width?: string
@@ -81,6 +86,7 @@ export type Database = {
         }
         Update: {
           body?: string
+          community_id?: string
           created_at?: string
           expires_at?: string | null
           home_width?: string
@@ -100,6 +106,7 @@ export type Database = {
       }
       app_themes: {
         Row: {
+          community_id: string
           created_at: string
           created_by: string
           id: string
@@ -108,6 +115,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          community_id?: string
           created_at?: string
           created_by?: string
           id?: string
@@ -116,6 +124,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          community_id?: string
           created_at?: string
           created_by?: string
           id?: string
@@ -128,6 +137,7 @@ export type Database = {
       chavruta_requests: {
         Row: {
           availability: string
+          community_id: string
           created_at: string
           email: string
           id: string
@@ -144,6 +154,7 @@ export type Database = {
         }
         Insert: {
           availability?: string
+          community_id?: string
           created_at?: string
           email?: string
           id?: string
@@ -160,6 +171,7 @@ export type Database = {
         }
         Update: {
           availability?: string
+          community_id?: string
           created_at?: string
           email?: string
           id?: string
@@ -179,6 +191,7 @@ export type Database = {
       chavrutot: {
         Row: {
           active: boolean
+          community_id: string
           contact: string
           created_at: string
           id: string
@@ -192,6 +205,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          community_id?: string
           contact?: string
           created_at?: string
           id?: string
@@ -205,6 +219,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          community_id?: string
           contact?: string
           created_at?: string
           id?: string
@@ -221,6 +236,7 @@ export type Database = {
       commentaries: {
         Row: {
           commentator: string
+          community_id: string
           created_at: string
           id: string
           pasuk: number
@@ -230,6 +246,7 @@ export type Database = {
         }
         Insert: {
           commentator: string
+          community_id?: string
           created_at?: string
           id?: string
           pasuk: number
@@ -239,6 +256,7 @@ export type Database = {
         }
         Update: {
           commentator?: string
+          community_id?: string
           created_at?: string
           id?: string
           pasuk?: number
@@ -250,6 +268,7 @@ export type Database = {
       }
       home_widgets: {
         Row: {
+          community_id: string
           created_at: string
           id: string
           key: string
@@ -261,6 +280,7 @@ export type Database = {
           visible: boolean
         }
         Insert: {
+          community_id?: string
           created_at?: string
           id?: string
           key: string
@@ -272,6 +292,7 @@ export type Database = {
           visible?: boolean
         }
         Update: {
+          community_id?: string
           created_at?: string
           id?: string
           key?: string
@@ -286,6 +307,7 @@ export type Database = {
       }
       learning_sessions: {
         Row: {
+          community_id: string
           created_at: string
           duration: number | null
           end_time: string | null
@@ -298,6 +320,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          community_id?: string
           created_at?: string
           duration?: number | null
           end_time?: string | null
@@ -310,6 +333,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          community_id?: string
           created_at?: string
           duration?: number | null
           end_time?: string | null
@@ -325,6 +349,7 @@ export type Database = {
       }
       migration_logs: {
         Row: {
+          community_id: string
           error: string | null
           executed_at: string
           executed_by: string | null
@@ -334,6 +359,7 @@ export type Database = {
           success: boolean
         }
         Insert: {
+          community_id?: string
           error?: string | null
           executed_at?: string
           executed_by?: string | null
@@ -343,6 +369,7 @@ export type Database = {
           success?: boolean
         }
         Update: {
+          community_id?: string
           error?: string | null
           executed_at?: string
           executed_by?: string | null
@@ -356,6 +383,7 @@ export type Database = {
       minyan_categories: {
         Row: {
           active: boolean
+          community_id: string
           created_at: string
           display_mode: string
           id: string
@@ -369,6 +397,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          community_id?: string
           created_at?: string
           display_mode?: string
           id?: string
@@ -382,6 +411,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          community_id?: string
           created_at?: string
           display_mode?: string
           id?: string
@@ -399,6 +429,7 @@ export type Database = {
         Row: {
           active: boolean
           category_id: string | null
+          community_id: string
           created_at: string
           day_type: string
           fixed_time: string | null
@@ -418,6 +449,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category_id?: string | null
+          community_id?: string
           created_at?: string
           day_type?: string
           fixed_time?: string | null
@@ -437,6 +469,7 @@ export type Database = {
         Update: {
           active?: boolean
           category_id?: string | null
+          community_id?: string
           created_at?: string
           day_type?: string
           fixed_time?: string | null
@@ -663,6 +696,7 @@ export type Database = {
           address: string
           candle_offset_minutes: number
           city: string
+          community_id: string
           created_at: string
           elevation: number
           home_header_variant: string
@@ -688,6 +722,7 @@ export type Database = {
           address?: string
           candle_offset_minutes?: number
           city?: string
+          community_id?: string
           created_at?: string
           elevation?: number
           home_header_variant?: string
@@ -713,6 +748,7 @@ export type Database = {
           address?: string
           candle_offset_minutes?: number
           city?: string
+          community_id?: string
           created_at?: string
           elevation?: number
           home_header_variant?: string
@@ -739,6 +775,7 @@ export type Database = {
       shiur_categories: {
         Row: {
           active: boolean
+          community_id: string
           created_at: string
           description: string
           id: string
@@ -748,6 +785,7 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          community_id?: string
           created_at?: string
           description?: string
           id?: string
@@ -757,6 +795,7 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          community_id?: string
           created_at?: string
           description?: string
           id?: string
@@ -770,6 +809,7 @@ export type Database = {
         Row: {
           active: boolean
           category_id: string | null
+          community_id: string
           created_at: string
           day_of_week: number
           description: string
@@ -787,6 +827,7 @@ export type Database = {
         Insert: {
           active?: boolean
           category_id?: string | null
+          community_id?: string
           created_at?: string
           day_of_week?: number
           description?: string
@@ -804,6 +845,7 @@ export type Database = {
         Update: {
           active?: boolean
           category_id?: string | null
+          community_id?: string
           created_at?: string
           day_of_week?: number
           description?: string

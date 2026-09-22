@@ -5,6 +5,13 @@ import { supabase as typedClient } from "@/integrations/supabase/client";
 import { normalizeTvConfig, type TvConfig } from "./config";
 import { DeviceLink, type DeviceStatus } from "./device";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
+import { deviceCommunity } from "./device";
+import {
+  type Community,
+  currentCommunity,
+  setCommunity,
+  useCommunityId,
+} from "@community/lib/community";
 
 /**
  * Binds the TV to the control center: pairing status, the admin's board
@@ -92,18 +99,47 @@ export function useDeviceLink({
     };
   }, [device]);
 
+  // --------------------------------------------------- which synagogue --
+  // A screen is told once, by the admin who typed its pairing code, and
+  // asks the server from then on. Nothing about the network, the address
+  // or the hardware takes part: those can all be spoofed, and all change.
+  // In a browser (/admin/tv-board) the admin has already chosen, and that
+  // choice is left alone.
+  useEffect(() => {
+    if (!device) return;
+    let alive = true;
+    const ask = async () => {
+      const id = await deviceCommunity();
+      if (!alive || !id || id === currentCommunity()?.id) return;
+      const { data } = await db.from("communities").select("id, slug, name").eq("id", id).maybeSingle();
+      if (alive && data) setCommunity(data as Community, false);
+    };
+    void ask();
+    return () => {
+      alive = false;
+    };
+    // Asked again the moment it is paired, which is when the answer changes.
+  }, [device, status?.approved]);
+
+  const community = useCommunityId();
+
   // ------------------------------------------------------------- config --
   const configQuery = useQuery({
-    queryKey: ["tv_config"],
+    queryKey: ["tv_config", community],
+    enabled: Boolean(community),
     queryFn: async () => {
-      const { data, error } = await db.from("tv_config").select("config, updated_at").eq("id", "default").maybeSingle();
+      const { data, error } = await db
+        .from("tv_config")
+        .select("config, updated_at")
+        .eq("community_id", community)
+        .maybeSingle();
       if (error) throw error;
       return (data ?? null) as { config: unknown; updated_at: string } | null;
     },
   });
   // Kept on the device like the rest of the board's data, so a TV that boots
   // without internet still comes up in the admin's chosen design.
-  const configSnap = useOfflineSnapshot("tv_config", configQuery.data ?? undefined);
+  const configSnap = useOfflineSnapshot(`tv_config:${community ?? "none"}`, configQuery.data ?? undefined);
   const config = useMemo<TvConfig>(() => normalizeTvConfig(configSnap.data?.config), [configSnap.data]);
   const configUpdatedAt = configSnap.data?.updated_at ?? null;
 

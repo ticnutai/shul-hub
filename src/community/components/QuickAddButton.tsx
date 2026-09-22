@@ -27,6 +27,7 @@ import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { DAYS_HE, PRAYERS } from "@community/lib/data";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
+import { communityId } from "@/community/lib/community";
 
 export function QuickAddButton() {
   const { isAdmin, loading } = useAuth();
@@ -98,6 +99,7 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
     if (!title.trim()) return;
     setSaving(true);
     const { error } = await supabase.from("announcements").insert({
+      community_id: communityId(),
       title: title.trim(),
       body: body.trim(),
       kind: "general",
@@ -157,6 +159,7 @@ function QuickShiur({ onDone }: { onDone: () => void }) {
     if (!title.trim()) return;
     setSaving(true);
     const { error } = await supabase.from("shiurim").insert({
+      community_id: communityId(),
       title: title.trim(),
       teacher: teacher.trim(),
       time_text: time.trim(),
@@ -239,6 +242,7 @@ function QuickChavruta({ onDone }: { onDone: () => void }) {
     if (!topic.trim()) return;
     setSaving(true);
     const { error } = await supabase.from("chavrutot").insert({
+      community_id: communityId(),
       topic: topic.trim(),
       partners: partners.trim(),
       time_text: time.trim(),
@@ -314,6 +318,7 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
     setSaving(true);
     const fixedTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
     const { error } = await supabase.from("minyanim").insert({
+      community_id: communityId(),
       label: label.trim(),
       prayer: prayer,
       day_type: dayType,

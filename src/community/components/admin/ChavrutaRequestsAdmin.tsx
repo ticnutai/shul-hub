@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAdminChavrutaRequests } from "@community/lib/data";
+import { communityId } from "@/community/lib/community";
 
 const labels = {
   level: { beginner: "מתחיל", intermediate: "בינוני", advanced: "מתקדם" },
@@ -19,7 +20,10 @@ export function ChavrutaRequestsAdmin() {
 
   const updateStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      const { error } = await supabase.from("chavruta_requests").update({ status }).eq("id", id);
+      const { error } = await supabase.from("chavruta_requests")
+        .update({ status })
+        .eq("community_id", communityId())
+        .eq("id", id);
       if (error) throw error;
     },
     onSuccess: (_, { status }) => {
@@ -31,7 +35,7 @@ export function ChavrutaRequestsAdmin() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("chavruta_requests").delete().eq("id", id);
+      const { error } = await supabase.from("chavruta_requests").delete().eq("community_id", communityId()).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {

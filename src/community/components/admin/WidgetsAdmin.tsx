@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@community/integrations/supabase/client";
 import { useHomeWidgets, type HomeWidget } from "@community/lib/data";
+import { communityId } from "@/community/lib/community";
 
 function reorder(list: HomeWidget[], from: number, to: number) {
   const next = [...list];
@@ -167,7 +168,11 @@ export function WidgetsAdmin() {
       layout_width: widget.layout_width === "half" ? "half" : "full",
       sort_order: (index + 1) * 10,
     }));
-    const { error } = await supabase.from("home_widgets").upsert(rows, { onConflict: "id" });
+    const { error } = await supabase.from("home_widgets")
+      .upsert(
+        rows.map((r) => ({ ...r, community_id: communityId() })),
+        { onConflict: "id" },
+      );
     setSaving(false);
     if (error) {
       toast.error(error.message || "השמירה נכשלה");

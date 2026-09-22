@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@community/integrations/supabase/client";
 import type { Tables } from "@community/integrations/supabase/types";
+import { communityId, useCommunityId } from "@/community/lib/community";
 
 export type Settings = Tables<"settings">;
 export type Minyan = Tables<"minyanim">;
@@ -61,12 +62,15 @@ export function prayerLabel(subcategories: MinyanSubcategory[], prayer: string):
 export const DAYS_HE = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
 export function useSettings() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["settings"],
+    queryKey: ["settings", community],
+    enabled: Boolean(community),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("settings")
         .select("*")
+        .eq("community_id", communityId())
         .order("created_at")
         .limit(1)
         .maybeSingle();
@@ -77,10 +81,16 @@ export function useSettings() {
 }
 
 export function useMinyanim() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["minyanim"],
+    queryKey: ["minyanim", community],
+    enabled: Boolean(community),
     queryFn: async () => {
-      const { data, error } = await supabase.from("minyanim").select("*").order("sort_order");
+      const { data, error } = await supabase
+        .from("minyanim")
+        .select("*")
+        .eq("community_id", communityId())
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -88,12 +98,15 @@ export function useMinyanim() {
 }
 
 export function useMinyanCategories() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["minyan_categories"],
+    queryKey: ["minyan_categories", community],
+    enabled: Boolean(community),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("minyan_categories")
         .select("*")
+        .eq("community_id", communityId())
         .order("sort_order")
         .order("name");
       if (error) throw error;
@@ -103,12 +116,15 @@ export function useMinyanCategories() {
 }
 
 export function useAnnouncements() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["announcements"],
+    queryKey: ["announcements", community],
+    enabled: Boolean(community),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("announcements")
         .select("*")
+        .eq("community_id", communityId())
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -118,10 +134,16 @@ export function useAnnouncements() {
 }
 
 export function useShiurim() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["shiurim"],
+    queryKey: ["shiurim", community],
+    enabled: Boolean(community),
     queryFn: async () => {
-      const { data, error } = await supabase.from("shiurim").select("*").order("sort_order");
+      const { data, error } = await supabase
+        .from("shiurim")
+        .select("*")
+        .eq("community_id", communityId())
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -129,12 +151,15 @@ export function useShiurim() {
 }
 
 export function useShiurCategories() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["shiur_categories"],
+    queryKey: ["shiur_categories", community],
+    enabled: Boolean(community),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("shiur_categories")
         .select("*")
+        .eq("community_id", communityId())
         .order("sort_order")
         .order("name");
       if (error) throw error;
@@ -144,10 +169,16 @@ export function useShiurCategories() {
 }
 
 export function useChavrutot() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["chavrutot"],
+    queryKey: ["chavrutot", community],
+    enabled: Boolean(community),
     queryFn: async () => {
-      const { data, error } = await supabase.from("chavrutot").select("*").order("sort_order");
+      const { data, error } = await supabase
+        .from("chavrutot")
+        .select("*")
+        .eq("community_id", communityId())
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },
@@ -155,10 +186,17 @@ export function useChavrutot() {
 }
 
 export function useApprovedChavrutaRequests() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["approved_chavruta_requests"],
+    queryKey: ["approved_chavruta_requests", community],
+    enabled: Boolean(community),
     queryFn: async () => {
-      const { data, error } = await supabase.rpc("list_approved_chavruta_requests");
+      // The one public read a policy cannot scope: the table is closed to
+      // the public and this function hands out the approved rows past it,
+      // so it has to be told which synagogue is being asked about.
+      const { data, error } = await supabase.rpc("list_approved_chavruta_requests", {
+        p_community: communityId(),
+      });
       if (error) throw error;
       return (data ?? []) as ApprovedChavrutaRequest[];
     },
@@ -166,12 +204,15 @@ export function useApprovedChavrutaRequests() {
 }
 
 export function useAdminChavrutaRequests() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["admin_chavruta_requests"],
+    queryKey: ["admin_chavruta_requests", community],
+    enabled: Boolean(community),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("chavruta_requests")
         .select("*")
+        .eq("community_id", communityId())
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -180,12 +221,15 @@ export function useAdminChavrutaRequests() {
 }
 
 export function useAdminMessages() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["admin_messages"],
+    queryKey: ["admin_messages", community],
+    enabled: Boolean(community),
     queryFn: async () => {
       const { data, error } = await supabase
         .from("admin_messages")
         .select("*")
+        .eq("community_id", communityId())
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -196,10 +240,16 @@ export function useAdminMessages() {
 export type HomeWidget = Tables<"home_widgets">;
 
 export function useHomeWidgets() {
+  const community = useCommunityId();
   return useQuery({
-    queryKey: ["home_widgets"],
+    queryKey: ["home_widgets", community],
+    enabled: Boolean(community),
     queryFn: async () => {
-      const { data, error } = await supabase.from("home_widgets").select("*").order("sort_order");
+      const { data, error } = await supabase
+        .from("home_widgets")
+        .select("*")
+        .eq("community_id", communityId())
+        .order("sort_order");
       if (error) throw error;
       return data ?? [];
     },

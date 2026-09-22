@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@community/integrations/supabase/client";
+import { communityId } from "@/community/lib/community";
 
 export function ContactPage() {
   const [form, setForm] = useState({ sender_name: "", phone: "", subject: "", body: "" });
@@ -19,7 +20,7 @@ export function ContactPage() {
       return;
     }
     setSending(true);
-    const { error } = await supabase.from("admin_messages").insert(form);
+    const { error } = await supabase.from("admin_messages").insert({ ...form, community_id: communityId() });
     setSending(false);
     if (error) {
       toast.error("שליחת ההודעה נכשלה, נסו שוב");

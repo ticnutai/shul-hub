@@ -18,6 +18,7 @@ import { QuickAddButton } from "@community/components/QuickAddButton";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { useAdminMessages } from "@community/lib/data";
+import { CommunityPicker } from "@/community/components/admin/CommunityPicker";
 
 // Loaded only when the tab is opened: it brings the whole TV board with it.
 const TvAdmin = lazy(() => import("@community/components/admin/tv/TvAdmin"));
@@ -58,9 +59,12 @@ export function AdminPage() {
             <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
             <p className="mt-1 text-sm text-muted-foreground">{session?.user.email}</p>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="size-4" /> יציאה
-          </Button>
+          <div className="flex items-center gap-2">
+            <CommunityPicker />
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="size-4" /> יציאה
+            </Button>
+          </div>
         </div>
 
         {!loading && !isAdmin ? (

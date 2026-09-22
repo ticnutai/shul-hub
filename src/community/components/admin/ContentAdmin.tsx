@@ -27,6 +27,7 @@ import {
 } from "@community/lib/data";
 import { useDeleteRow, useSaveRow } from "@community/lib/admin";
 import { supabase } from "@community/integrations/supabase/client";
+import { communityId } from "@/community/lib/community";
 import {
   ANNOUNCEMENT_STYLE_PRESETS,
   announcementCardStyle,
@@ -197,6 +198,7 @@ export function AnnouncementsAdmin() {
         supabase
           .from("announcements")
           .update({ sort_order: (index + 1) * 10 })
+          .eq("community_id", communityId())
           .eq("id", announcement.id),
       ),
     );
@@ -592,6 +594,7 @@ export function ShiurimAdmin() {
         supabase
           .from("shiurim")
           .update({ sort_order: (index + 1) * 10 })
+          .eq("community_id", communityId())
           .eq("id", item.id),
       ),
     );

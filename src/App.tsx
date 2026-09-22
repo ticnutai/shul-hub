@@ -24,6 +24,7 @@ import { OmerEntryPopup } from "@/components/OmerEntryPopup";
 import { useNotifications } from "@/hooks/useNotifications";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { useNeverFrozen } from "@/hooks/useNeverFrozen";
+import { CommunityProvider } from "@/community/components/CommunityProvider";
 import { MetaSyncInitializer } from "@/components/MetaSyncInitializer";
 import { MobilePageSwipeNavigation } from "@/components/MobilePageSwipeNavigation";
 import { AndroidBackNavigation } from "@/components/AndroidBackNavigation";
@@ -148,6 +149,12 @@ const App = () => {
     <Trace id="App.root">
     <AuthProvider>
       <QueryClientProvider client={communityQueryClient}>
+      {/*
+        Which synagogue this is. It sits above everything that reads data
+        and below the query client, because settling it is the first thing
+        that happens and clearing the cache is what a change of it means.
+      */}
+      <CommunityProvider>
       <EditModeProvider>
       <MetaSyncInitializer />
       <Trace id="App.Device">
@@ -234,6 +241,7 @@ const App = () => {
       </DeviceProvider>
       </Trace>
       </EditModeProvider>
+      </CommunityProvider>
       </QueryClientProvider>
     </AuthProvider>
     </Trace>

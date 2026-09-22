@@ -46,14 +46,28 @@ const check = (name, pass, detail = "") => {
 };
 
 // 1. the synagogue itself
-const comms = await get("communities?select=id,slug,name,active");
-check("the synagogue exists", comms.ok && comms.body.length === 1,
-  comms.ok ? comms.body.map((c) => `${c.name} (${c.slug})`).join(", ") : String(comms.body));
+const comms = await get("communities?select=id,slug,name,active&order=created_at");
+check("the synagogues exist", comms.ok && comms.body.length >= 1,
+  comms.ok ? comms.body.map((c) => `${c.name}${c.active ? "" : " (כבוי)"}`).join(", ") : String(comms.body));
 const first = comms.ok ? comms.body[0] : null;
 
+// Exactly one is live: that is what keeps the deployed client working.
+const live = comms.ok ? comms.body.filter((c) => c.active) : [];
+check("exactly one synagogue is switched on", live.length === 1,
+  live.map((c) => c.name).join(", "));
+
+// Every synagogue was born complete - the trigger, not a checklist.
+const allSettings = await get("settings?select=community_id,name");
+const allBoards = await get("tv_config?select=community_id");
+check("every synagogue has its settings and its board",
+  allSettings.ok && allBoards.ok &&
+  comms.body.every((c) => allSettings.body.some((s) => s.community_id === c.id)) &&
+  comms.body.every((c) => allBoards.body.some((b) => b.community_id === c.id)),
+  `${allSettings.body?.length} settings, ${allBoards.body?.length} boards`);
+
 // 2. its id is the settings id, as the migration intended
-const settings = await get("settings?select=id,name,community_id");
-check("settings belongs to it, and shares its id",
+const settings = await get(`settings?select=id,name,community_id&community_id=eq.${first?.id}`);
+check("the first one's settings belongs to it, and shares its id",
   settings.ok && settings.body[0]?.community_id === first?.id && settings.body[0]?.id === first?.id);
 
 // 3. nothing was left behind
@@ -87,7 +101,10 @@ check("the admin sees the synagogue they administer",
   mine.ok ? `${mine.body.length} synagogue(s)` : String(mine.body));
 
 const ghost = await rpc("is_admin_of", { _community: "00000000-0000-0000-0000-000000000000" });
-check("admin of a synagogue they do not belong to: refused", ghost.ok && ghost.body === false);
+check("admin of a synagogue that does not exist: refused", ghost.ok && ghost.body === false);
+
+const anon = await rpc("is_admin_of", { _community: first?.id }, false);
+check("a stranger is admin of nothing", anon.ok && anon.body === false);
 
 const anonWrite = await fetch(`${url}/rest/v1/minyanim?id=eq.${crypto.randomUUID()}`, {
   method: "PATCH",

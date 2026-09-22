@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAdminMessages } from "@community/lib/data";
+import { communityId } from "@/community/lib/community";
 
 export function MessagesAdmin() {
   const { data = [] } = useAdminMessages();
@@ -14,6 +15,7 @@ export function MessagesAdmin() {
       const { error } = await supabase
         .from("admin_messages")
         .update({ is_read: true })
+        .eq("community_id", communityId())
         .eq("id", id);
       if (error) throw error;
     },
@@ -23,7 +25,7 @@ export function MessagesAdmin() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("admin_messages").delete().eq("id", id);
+      const { error } = await supabase.from("admin_messages").delete().eq("community_id", communityId()).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["admin_messages"] }),
