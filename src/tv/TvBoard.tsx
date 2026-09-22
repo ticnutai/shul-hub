@@ -118,7 +118,11 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     <BoardEditContext.Provider value={edit}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
       <div
-        className={`tv-root is-layout-${layout} is-skin-${config.skin}${config.backgroundImage ? " has-bg-image" : ""}${
+        className={`tv-root is-layout-${layout} is-skin-${config.skin}${
+          // A light board is a different contrast problem from a dark one,
+          // and some things that read on navy vanish on parchment.
+          getTheme(config.theme, config.customThemes).light ? " is-light" : ""
+        }${config.backgroundImage ? " has-bg-image" : ""}${
           config.backgroundGradient ? " has-bg-gradient" : ""
         }${frame.classes}`}
         style={{ ...style, ...frame.vars }}

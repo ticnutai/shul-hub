@@ -4350,3 +4350,30 @@
 .tv-dash-prayers .tv-dash-list .tv-dash-row {
   padding-block: calc(var(--u) * 0.5 + min(var(--row-extra, 0px), var(--u) * 1.8) / 2);
 }
+
+/*
+ * A time that has already passed, on a light board.
+ *
+ * Dimming by opacity alone is right on navy, where the type is pale and
+ * fading it towards the background still leaves it legible. On parchment
+ * the times are gold, and gold at 45% over cream is very close to nothing -
+ * which was exactly what the board looked like after switching to a light
+ * theme to fight the reflections in the hall.
+ *
+ * So on a light board a passed time gives up its colour rather than its
+ * presence: it goes to the muted text colour, which is a grey-brown with
+ * real contrast against the page, and fades far less.
+ */
+.tv-root.is-light .is-past,
+.tv-root.is-light .tv-dash-row.is-past {
+  opacity: 0.72;
+}
+
+.tv-root.is-light .is-past .tv-dash-time,
+.tv-root.is-light .tv-dash-row.is-past .tv-dash-time,
+/* the zmanim list puts its time in a <dd>, not in a class of its own */
+.tv-root.is-light .tv-zman-row.is-past dd,
+.tv-root.is-light .tv-minyan-row.is-past .tv-dash-time,
+.tv-root.is-light .tv-tl-row.is-past .tv-dash-time {
+  color: var(--tv-text-dim);
+}
