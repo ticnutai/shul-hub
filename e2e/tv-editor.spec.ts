@@ -102,6 +102,48 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "gradient saved");
   });
 
+  /**
+   * Judging a gradient on the board rather than on a swatch.
+   *
+   * A colour that looks right in a twenty-pixel strip in a side panel can
+   * be wrong across a wall, and having to commit before you can see it
+   * turns choosing one into a guessing game.
+   */
+  test("a gradient shows on the board while you build it, and is not saved until you say", async ({
+    page,
+  }) => {
+    const gradient = () => cssVar(page, "--tv-bg-gradient");
+    const before = await gradient();
+
+    // Turning a dial reaches the board immediately.
+    await page.getByRole("button", { name: "בורדו מלכותי" }).click();
+    await expect.poll(gradient).not.toBe(before);
+    const shown = await gradient();
+    expect(shown).toContain("gradient");
+
+    // And it says, in words, that this is not yet kept.
+    await expect(page.getByText(/כך זה נראה על הלוח עכשיו\. עוד לא נשמר/)).toBeVisible();
+
+    // Nothing was written down: leaving the control puts the board back.
+    await page.getByRole("tab", { name: "תוכן" }).click();
+    await page.waitForTimeout(400);
+    await expect.poll(gradient).toBe(before);
+    await expectNotFrozen(page, "preview abandoned");
+
+    // Now the same thing, kept this time.
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await page.getByRole("button", { name: "בורדו מלכותי" }).click();
+    await expect.poll(gradient).not.toBe(before);
+    await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
+    await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
+
+    // It survives leaving the control, because now it is the board's.
+    await page.getByRole("tab", { name: "תוכן" }).click();
+    await page.waitForTimeout(400);
+    await expect.poll(gradient).toContain("gradient");
+    await expectNotFrozen(page, "gradient kept");
+  });
+
   test("a theme can be saved as a new one, and the board can be broadcast", async ({ page }) => {
     await page.getByRole("button", { name: /^זהב מלכותי/ }).click();
     await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();

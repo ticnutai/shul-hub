@@ -75,12 +75,18 @@ export function GradientStudio({
   /** Where "החלה" puts the gradient: the board's background, or a chosen element. */
   applyLabel,
   onApply,
+  onPreview,
   current,
 }: {
   config: TvConfig;
   onEdit: Edit;
   applyLabel: string;
   onApply: (value: string | null) => void;
+  /**
+   * Shows what is being built on the board itself, without saving it.
+   * Must be stable, or the effect below fires on every render.
+   */
+  onPreview?: (value: string | null) => void;
   current: string | null;
 }) {
   const simple = useMemo(() => parseSimple(current), [current]);
@@ -108,6 +114,49 @@ export function GradientStudio({
   const valid = isSafeGradient(built);
   const saved = config.gradients;
 
+  /**
+   * Loads a ready-made gradient into the controls.
+   *
+   * The label under these says "לחיצה בוחרת" - clicking chooses - and now
+   * that is what it does. It used to apply on the spot, which made the
+   * choice and the commitment the same act: you could not look at one on
+   * the board without already having taken it.
+   */
+  const pick = (value: string) => {
+    setTouched(true);
+    const parsed = parseSimple(value);
+    if (parsed) {
+      setKind(parsed.kind);
+      setAngle(parsed.angle);
+      setFrom(parsed.from);
+      setTo(parsed.to);
+      setAdvanced("");
+    } else {
+      setAdvanced(value);
+    }
+  };
+
+  // Every turn of a dial reaches the board. Nothing is written down: this
+  // is the board wearing it, so the judgement is made on the wall and not
+  // on a twenty-pixel strip in a side panel.
+  /**
+   * Only after the first deliberate change.
+   *
+   * The controls hold a default gradient before anybody touches them, and
+   * previewing that would paint the board the moment this tab is opened -
+   * an edit nobody asked for, on a board that was fine.
+   */
+  const [touched, setTouched] = useState(false);
+
+  const previewing = Boolean(onPreview) && touched && valid && built !== current;
+  useEffect(() => {
+    if (!touched) return;
+    onPreview?.(valid ? built : null);
+  }, [built, valid, touched, onPreview]);
+
+  // Leaving the control puts the board back to what is actually saved.
+  useEffect(() => () => onPreview?.(null), [onPreview]);
+
   const saveToLibrary = () => {
     const clean = name.trim().slice(0, 40);
     if (!clean) return toast.error("צריך לתת שם לגרדיאנט");
@@ -131,6 +180,12 @@ export function GradientStudio({
           className="h-20 rounded-lg border shadow-inner"
           style={{ backgroundImage: valid ? built : undefined }}
         />
+        {previewing && (
+          <p className="text-[11px] leading-tight text-muted-foreground">
+            כך זה נראה על הלוח עכשיו. עוד לא נשמר - ״{applyLabel}״ מקבע, ויציאה מכאן מחזירה את
+            הקודם.
+          </p>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" onClick={() => onApply(built)} disabled={!valid}>
             <Check className="size-4" /> {applyLabel}
@@ -162,6 +217,7 @@ export function GradientStudio({
               variant={kind === k ? "default" : "outline"}
               aria-pressed={kind === k}
               onClick={() => {
+                setTouched(true);
                 setKind(k);
                 setAdvanced("");
               }}
@@ -177,6 +233,7 @@ export function GradientStudio({
             aria-label="צבע ראשון"
             value={from}
             onChange={(e) => {
+              setTouched(true);
               setFrom(e.target.value);
               setAdvanced("");
             }}
@@ -190,6 +247,7 @@ export function GradientStudio({
             aria-label="צבע שני"
             value={to}
             onChange={(e) => {
+              setTouched(true);
               setTo(e.target.value);
               setAdvanced("");
             }}
@@ -207,6 +265,7 @@ export function GradientStudio({
               value={angle}
               aria-label="זווית הגרדיאנט"
               onChange={(e) => {
+                setTouched(true);
                 setAngle(Number(e.target.value));
                 setAdvanced("");
               }}
@@ -231,10 +290,7 @@ export function GradientStudio({
                   type="button"
                   title={g.name}
                   aria-label={g.name}
-                  onClick={() => {
-                    setAdvanced(g.value);
-                    onApply(g.value);
-                  }}
+                  onClick={() => pick(g.value)}
                   className={`block w-full overflow-hidden rounded-md border transition hover:ring-2 hover:ring-primary ${
                     current === g.value ? "ring-2 ring-primary ring-offset-1" : ""
                   }`}
@@ -293,7 +349,10 @@ export function GradientStudio({
         <Input
           dir="ltr"
           value={advanced}
-          onChange={(e) => setAdvanced(e.target.value)}
+          onChange={(e) => {
+            setTouched(true);
+            setAdvanced(e.target.value);
+          }}
           placeholder="linear-gradient(160deg, #0b1628 0%, #1b3054 55%, #16304f 100%)"
           className={`mt-2 h-8 font-mono text-xs ${
             advanced && !isSafeGradient(advanced) ? "border-destructive" : ""

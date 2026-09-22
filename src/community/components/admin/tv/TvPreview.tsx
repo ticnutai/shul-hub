@@ -134,6 +134,7 @@ export function TvDeviceStudio({
   large = false,
   fullscreen = false,
   onDeviceChange,
+  preview,
   ...props
 }: BoardProps & {
   /** The live editor window: the board alone on the whole screen, no device frame. */
@@ -151,6 +152,12 @@ export function TvDeviceStudio({
    * changing something and not seeing it, because it went to the other one.
    */
   onDeviceChange?: (mode: DeviceMode) => void;
+  /**
+   * Something being tried out: laid over every frame for display only, and
+   * after the per-screen resolution, so that adjusting a colour is visible
+   * even on a screen that has a colour of its own.
+   */
+  preview?: Partial<TvConfig> | null;
 }) {
   useTvFonts();
   const choice = useDeviceChoice();
@@ -168,7 +175,10 @@ export function TvDeviceStudio({
   }, [choice.mode, onDeviceChange]);
 
   /** The board as one particular screen shows it. */
-  const boardFor = (id: DeviceId) => configForDevice(props.config, classOfPreviewDevice(id));
+  const boardFor = (id: DeviceId) => {
+    const c = configForDevice(props.config, classOfPreviewDevice(id));
+    return preview ? { ...c, ...preview } : c;
+  };
   const [actualSize, setActualSize] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const editing = Boolean(props.editing);

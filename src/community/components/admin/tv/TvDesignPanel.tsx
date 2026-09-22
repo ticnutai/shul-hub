@@ -481,6 +481,11 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     setScope(mode === "all" ? "all" : classOfPreviewDevice(mode));
   }, []);
 
+  const previewBackgroundGradient = useCallback(
+    (value: string | null) => setPreview(value === null ? null : { backgroundGradient: value }),
+    [],
+  );
+
   /** Puts one screen back to following the board. */
   const clearDevice = useCallback(
     (device: DeviceClass) =>
@@ -496,12 +501,25 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     [],
   );
   /**
+   * Something being tried out, shown on the board but not written down.
+   *
+   * Dragging a colour and having to press "החלה" before you can see what
+   * you did is a guessing game: the little swatch in the editor is not the
+   * board, and a gradient that looks right in a 20-pixel strip can be
+   * wrong across a wall. So what is being adjusted is laid over the board
+   * for display only - it never reaches the draft, so it cannot be saved
+   * by accident and vanishes the moment the control is left.
+   */
+  const [preview, setPreview] = useState<Partial<TvConfig> | null>(null);
+
+  /**
    * The board as the chosen screen sees it. Everything on this panel shows
    * this rather than the shared board, so the controls read back what that
    * screen actually does and the preview is that screen's board. With no
    * screen chosen it is the shared board itself, unchanged.
    */
-  const view = configForDevice(state.present, scopeDevice);
+  const scoped = configForDevice(state.present, scopeDevice);
+  const view = preview ? { ...scoped, ...preview } : scoped;
 
   const edit = useCallback(
     (key: string, update: (c: TvConfig) => TvConfig) =>
@@ -1282,8 +1300,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               config={view}
               onEdit={edit}
               applyLabel="החלה על רקע הלוח"
-              current={draft.backgroundGradient}
-              onApply={(value) => edit("bg-gradient", (c) => ({ ...c, backgroundGradient: value }))}
+              /* What is actually saved - not what is being tried out, or the
+                 studio would think its own preview was already the board's. */
+              current={scoped.backgroundGradient}
+              onPreview={previewBackgroundGradient}
+              onApply={(value) => {
+                setPreview(null);
+                edit("bg-gradient", (c) => ({ ...c, backgroundGradient: value }));
+              }}
             />
             <div className="h-px bg-border" />
             <div className="text-xs font-medium text-muted-foreground">או תמונת רקע</div>
@@ -1949,6 +1973,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       <>
         <TvDeviceStudio
           onDeviceChange={onDeviceChange}
+          preview={preview}
           {...board}
           fullscreen
           config={state.present}
@@ -2043,6 +2068,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           </div>
           <TvDeviceStudio
             onDeviceChange={onDeviceChange}
+            preview={preview}
             {...board}
             config={state.present}
             index={index}
