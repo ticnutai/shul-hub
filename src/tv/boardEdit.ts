@@ -61,7 +61,7 @@ export const EDITABLE: Record<string, EditableSpec> = {
   "dash.shiurim": { label: "לוח מלא: כותרת השיעורים", text: "שיעורים", hideable: true },
   "dash.clock": { label: "לוח מלא: השעון", hideable: true },
   "dash.strip": { label: "לוח מלא: שורת הפרשה והדף היומי", hideable: true },
-  "dash.seasonal": { label: "משיב הרוח / מוריד הטל", hideable: true },
+  "dash.seasonal": { label: "לדוד ה׳ אורי / משיב הרוח / ותן טל", hideable: true },
   "split.next": { label: "מפוצל: המניין הבא", text: "המניין הבא", hideable: true },
   "header.title": {
     label: "שם בית הכנסת",

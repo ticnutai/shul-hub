@@ -341,6 +341,89 @@ test.describe("TV editor", () => {
     await expect(page.locator(".tv-frame .tv-panel", { hasText: "סליחות" })).toHaveCount(1);
     await expectNotFrozen(page, "panel restored");
   });
+  test("taking a panel off gives its height to the times, not to empty space", async ({ page }) => {
+    // What the gabbai actually saw after removing סליחות: the panel beside
+    // it grew, and the times stayed bunched at the top of it in two narrow
+    // columns with a third of the panel empty underneath.
+    await page.route("**/rest/v1/minyanim*", (r) =>
+      r.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify([
+          // Fourteen weekday minyanim - the shul's real count - in the
+          // fixture's own weekday category, plus the סליחות row so there is
+          // still a second panel to take off the board.
+          ...Array.from({ length: 14 }, (_, i) => ({
+            id: `m${i}`,
+            label: `מניין ${i + 1}`,
+            prayer: `מניין ${i + 1}`,
+            category_id: "c1",
+            day_type: "weekday",
+            time_mode: "fixed",
+            fixed_time: `${String(6 + i).padStart(2, "0")}:00:00`,
+            relative_to: null,
+            offset_minutes: 0,
+            room: "",
+            note: "",
+            active: true,
+            sort_order: i,
+            reminder_minutes: 0,
+            notification_enabled: false,
+          })),
+          {
+            id: "s1",
+            label: "סליחות א'",
+            prayer: "סליחות א'",
+            category_id: "c2",
+            day_type: "custom",
+            time_mode: "fixed",
+            fixed_time: "05:45:00",
+            relative_to: null,
+            offset_minutes: 0,
+            room: "",
+            note: "",
+            active: true,
+            sort_order: 1,
+            reminder_minutes: 0,
+            notification_enabled: false,
+          },
+        ]),
+      }),
+    );
+    await page.reload();
+    await expect(page.locator(".tv-frame .tv-root")).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("button", { name: /לוח מלא/ }).first().click();
+    await page.waitForTimeout(700);
+
+    const list = page.locator(".tv-frame .tv-dash-prayers .tv-dash-list").first();
+
+    /** How much of the panel the times actually occupy, 0..1. */
+    const filled = () =>
+      list.evaluate((el) => {
+        const rows = Array.from(el.querySelectorAll<HTMLElement>(".tv-dash-row"));
+        const perColumn = el.classList.contains("is-two-col") ? Math.ceil(rows.length / 2) : rows.length;
+        const used = rows.slice(0, perColumn).reduce((h, r) => h + r.offsetHeight, 0);
+        return el.clientHeight > 0 ? used / el.clientHeight : 0;
+      });
+
+    // Before this was fixed the list did not grow with its panel at all.
+    expect(await filled()).toBeGreaterThan(0.9);
+
+    const before = await list.evaluate((el) => el.clientHeight);
+    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+    await page.waitForTimeout(400);
+    const selichot = page.locator(".tv-frame .tv-panel", { hasText: "סליחות" }).first();
+    await selichot.getByText("סליחות").first().click();
+    await page.getByRole("button", { name: /הסתרת הלוח מהמסך/ }).click();
+    await expect(page.locator(".tv-frame .tv-panel", { hasText: "סליחות" })).toHaveCount(0);
+    await page.waitForTimeout(900);
+
+    // The panel grew, and the times grew with it rather than leaving a hole.
+    expect(await list.evaluate((el) => el.clientHeight)).toBeGreaterThan(before);
+    expect(await filled()).toBeGreaterThan(0.9);
+    await expectNotFrozen(page, "panel hidden, times spread");
+  });
+
   test("an edit can be kept to a copy of the theme, leaving the others alone", async ({ page }) => {
     // The third answer to "which themes does this apply to": neither all of
     // them nor the one in use, but a copy made for the purpose.

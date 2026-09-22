@@ -4278,3 +4278,56 @@
 .tv-dash.is-cols-1 {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/*
+ * The Amud Yomi shiur carries a second line: which page is being learnt
+ * today. The rest of the row is unchanged - name on one side, time on the
+ * other - and the page sits underneath, across the full width, because
+ * "כעת לומדים שבת דף ז׳ ע״א" does not fit beside either of them.
+ */
+.tv-dash-row.is-amud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  row-gap: calc(var(--u) * 0.2);
+}
+
+.tv-dash-amud {
+  grid-column: 1 / -1;
+  font-size: 0.7em;
+  font-weight: 600;
+  color: var(--tv-accent, var(--tv-text-dim));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/*
+ * Room left over in a one-column list, given back to the rows.
+ *
+ * useFitRows measures the slack and divides it by the number of rows; this
+ * caps what any single row may take, so that three times in a tall panel
+ * stay a list rather than drifting apart into three unrelated lines. The
+ * cap is in board units, so it holds at any screen size.
+ */
+/*
+ * The list fills the panel it is in.
+ *
+ * It did not: the panel is stretched by its column, but the list inside it
+ * sized itself to its rows and sat at the top. With סליחות on the board
+ * nobody noticed - the panel was only as tall as its content anyway. Take
+ * סליחות off and the panel grew to 195px while the list stayed at 80, and
+ * the rest of it was empty.
+ *
+ * Filling it is also what makes the measuring possible at all: until the
+ * list has a height of its own to overflow, "does this fit in one column"
+ * has no answer.
+ */
+.tv-dash-prayers .tv-dash-list {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.tv-dash-prayers .tv-dash-list .tv-dash-row {
+  padding-block: calc(var(--u) * 0.5 + min(var(--row-extra, 0px), var(--u) * 1.8) / 2);
+}

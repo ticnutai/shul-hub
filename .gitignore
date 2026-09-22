@@ -53,3 +53,4 @@ play-store-assets/*-1080x1920.png
 
 # Content backups taken before migrations — data, not code.
 backups/
+shots/

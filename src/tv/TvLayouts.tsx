@@ -6,7 +6,8 @@ import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { ClockStyle } from "./config";
 import { useBoardEdit } from "./boardEdit";
-import { dafYomi, seasonalPrayers, weeklyParasha } from "./learning";
+import { useFitRows } from "./useFitRows";
+import { amudYomi, dafYomi, seasonalPrayers, weeklyParasha } from "./learning";
 import { AnnouncementCard, ZmanimPanel } from "./TvSlides";
 import { jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
 
@@ -136,6 +137,7 @@ function PrayerPanel({
   const nowMin = jerusalemMinutes(now);
   const nextIndex = schedule.rows.findIndex((r) => r.minutes >= nowMin);
   const title = titleKey ? edit.text(titleKey, "זמני התפילות") : schedule.title;
+  const listRef = useFitRows<HTMLUListElement>(schedule.rows.length);
   return (
     <div className="tv-panel tv-dash-prayers" {...edit.attr(categoryKey(schedule.id))}>
       <h3 className="tv-panel-title" {...(titleKey ? edit.attr(titleKey) : {})}>
@@ -146,6 +148,9 @@ function PrayerPanel({
         <p className="tv-empty">לא הוגדרו מניינים להיום</p>
       ) : (
         <ul
+          ref={listRef}
+          // A first guess, so the board does not flash a wrong layout; the
+          // measurement below corrects it before anyone could see it.
           className={`tv-dash-list${schedule.rows.length > 7 ? " is-two-col" : ""}`}
           style={{ "--rows": Math.ceil(schedule.rows.length / 2) } as CSSProperties}
         >
@@ -170,10 +175,23 @@ function PrayerPanel({
   );
 }
 
+/**
+ * The Amud Yomi shiur, which is the one whose page changes every day.
+ *
+ * Matched by name, because that is the only thing that says which shiur it
+ * is - and deliberately so: rename it and the line simply stops appearing,
+ * which is the right failure. Guessing at a shiur and printing the wrong
+ * daf under it would be worse than printing nothing.
+ */
+const AMUD_SHIUR = /עמוד\s+ה?יומי/;
+
 function ShiurimPanel({ items, now }: { items: Shiur[]; now: Date }) {
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
   const nextIndex = items.findIndex((s) => shiurMinutes(s.time_text) >= nowMin);
+  // Recomputed once a day, not once a second: it is the date that moves it.
+  const dayKey = now.toDateString();
+  const amud = useMemo(() => amudYomi(new Date(dayKey)), [dayKey]);
   return (
     <div className="tv-panel tv-dash-shiurim">
       <h3 className="tv-panel-title" {...edit.attr("dash.shiurim")}>
@@ -183,19 +201,28 @@ function ShiurimPanel({ items, now }: { items: Shiur[]; now: Date }) {
         <p className="tv-empty">אין שיעורים היום</p>
       ) : (
         <ul className="tv-dash-list">
-          {items.slice(0, 6).map((s, i) => (
-            <li
-              key={s.id}
-              className={`tv-dash-row${i === nextIndex ? " is-next" : ""}`}
-              {...edit.attr(`shiur:${s.id}`)}
-            >
-              <span className="tv-dash-name">
-                <span {...edit.attr(`shiur:${s.id}:title`)}>{s.title}</span>
-                {s.teacher && <small className="tv-dash-sub">{s.teacher}</small>}
-              </span>
-              <span className="tv-dash-time">{s.time_text}</span>
-            </li>
-          ))}
+          {items.slice(0, 6).map((s, i) => {
+            const isAmud = AMUD_SHIUR.test(s.title ?? "");
+            // "16:15 · חצי שעה" becomes "16:15": the length of the shiur is
+            // the same every week, and the page is not.
+            const when = isAmud ? (s.time_text ?? "").split("·")[0].trim() : s.time_text;
+            return (
+              <li
+                key={s.id}
+                className={`tv-dash-row${i === nextIndex ? " is-next" : ""}${
+                  isAmud ? " is-amud" : ""
+                }`}
+                {...edit.attr(`shiur:${s.id}`)}
+              >
+                <span className="tv-dash-name">
+                  <span {...edit.attr(`shiur:${s.id}:title`)}>{s.title}</span>
+                  {s.teacher && <small className="tv-dash-sub">{s.teacher}</small>}
+                </span>
+                <span className="tv-dash-time">{when}</span>
+                {isAmud && <span className="tv-dash-amud">כעת לומדים {amud.label}</span>}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

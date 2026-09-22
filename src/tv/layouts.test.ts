@@ -88,4 +88,45 @@ describe("seasonal insertions (Eretz Yisrael)", () => {
   it("from the first day of Pesach: back to summer", () => {
     expect(seasonalPrayers(new Date("2027-04-25T12:00:00")).text).toBe("מוריד הטל · ותן ברכה");
   });
+
+  /**
+   * "לדוד ה' אורי וישעי" is the one that has to take itself off the board:
+   * the gabbai should not have to remember, the morning after Simchat
+   * Torah, that a line on the wall is now wrong.
+   */
+  describe("לדוד ה' אורי וישעי", () => {
+    const said = (iso: string) => seasonalPrayers(new Date(`${iso}T12:00:00`)).leDavid;
+
+    it("starts at Rosh Chodesh Elul", () => {
+      expect(said("2026-08-13")).toBe(false); // 29 Av 5786
+      expect(said("2026-08-14")).toBe(true); // 1 Elul 5786
+    });
+
+    it("is said right through Elul and the Yamim Noraim", () => {
+      expect(said("2026-09-01")).toBe(true); // Elul
+      expect(said("2026-09-12")).toBe(true); // Rosh Hashana
+      expect(said("2026-09-21")).toBe(true); // Yom Kippur
+      expect(said("2026-09-27")).toBe(true); // Sukkot
+    });
+
+    it("is said on Shemini Atzeret - Simchat Torah here - and not after", () => {
+      expect(said("2026-10-03")).toBe(true); // 22 Tishrei 5787
+      expect(said("2026-10-04")).toBe(false); // 23 Tishrei, and it is gone
+    });
+
+    it("is not said for the rest of the year", () => {
+      expect(said("2026-12-15")).toBe(false);
+      expect(said("2027-04-10")).toBe(false);
+      expect(said("2027-07-01")).toBe(false);
+    });
+
+    it("leads the line while it is said, and leaves no trace when it is not", () => {
+      expect(seasonalPrayers(new Date("2026-09-22T12:00:00")).text).toBe(
+        "לדוד ה' אורי וישעי · מוריד הטל · ותן ברכה",
+      );
+      expect(seasonalPrayers(new Date("2026-10-04T12:00:00")).text).toBe(
+        "משיב הרוח ומוריד הגשם · ותן ברכה",
+      );
+    });
+  });
 });

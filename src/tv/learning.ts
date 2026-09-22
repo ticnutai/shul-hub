@@ -177,13 +177,88 @@ export function upcomingDays(date: Date, days = 21, limit = 6): UpcomingDay[] {
     .slice(0, limit);
 }
 
+/* ------------------------------------------------------- Amud Yomi ---- */
+
 /**
- * The seasonal insertions in the Amidah, as said in Eretz Yisrael:
- * "משיב הרוח ומוריד הגשם" from Shemini Atzeret (22 Tishrei) until the first
- * day of Pesach, otherwise "מוריד הטל"; "ותן טל ומטר לברכה" from 7
- * Cheshvan until Pesach, otherwise "ותן ברכה".
+ * The shul's Amud Yomi: one side of a daf a day, half the pace of Daf Yomi.
+ *
+ * Unlike Daf Yomi this has no world-wide fixed start - a shul begins where
+ * it begins. This one is anchored to where ours actually was on a known
+ * day, and counts from there: 22 September 2026 was שבת דף ז׳ ע״א, so the
+ * next day is ע״ב, the day after that is דף ח׳ ע״א, and so on.
+ *
+ * It runs on through the whole Shas rather than stopping at the end of
+ * שבת, using the same table Daf Yomi uses, and wraps when it gets there -
+ * so the board keeps telling the truth long after anybody here has stopped
+ * thinking about it.
  */
-export function seasonalPrayers(date: Date): { geshem: boolean; talUmatar: boolean; text: string } {
+const AMUD_ANCHOR_DAY = dayNumber(new Date(2026, 8, 22));
+/** שבת דף ז׳ ע״א, as an index into the Shas counted in amudim. */
+const AMUD_ANCHOR_INDEX = (() => {
+  let before = 0;
+  for (const [name, last] of SHAS) {
+    if (name === "שבת") return before + (7 - 2) * 2;
+    before += (last - 1) * 2;
+  }
+  return 0;
+})();
+const AMUDIM_IN_SHAS = SHAS.reduce((n, [, last]) => n + (last - 1) * 2, 0);
+
+export interface AmudYomi {
+  tractate: string;
+  daf: number;
+  /** 0 for ע״א, 1 for ע״ב. */
+  side: 0 | 1;
+  /** e.g. "שבת דף ז׳ ע״א". */
+  label: string;
+}
+
+export function amudYomi(date: Date): AmudYomi {
+  // Positive modulo: a date before the anchor counts backwards correctly.
+  const n =
+    (((AMUD_ANCHOR_INDEX + dayNumber(date) - AMUD_ANCHOR_DAY) % AMUDIM_IN_SHAS) + AMUDIM_IN_SHAS) %
+    AMUDIM_IN_SHAS;
+
+  let left = n;
+  for (const [tractate, last] of SHAS) {
+    const amudim = (last - 1) * 2;
+    if (left < amudim) {
+      const daf = 2 + Math.floor(left / 2);
+      const side = (left % 2) as 0 | 1;
+      return {
+        tractate,
+        daf,
+        side,
+        label: `${tractate} דף ${gematriya(daf)} ${side === 0 ? "ע״א" : "ע״ב"}`,
+      };
+    }
+    left -= amudim;
+  }
+  // Unreachable: n was reduced modulo the length of the Shas.
+  const [tractate] = SHAS[0];
+  return { tractate, daf: 2, side: 0, label: `${tractate} דף ${gematriya(2)} ע״א` };
+}
+
+/**
+ * What the season adds to the davening, as said in Eretz Yisrael.
+ *
+ * Two of these are insertions in the Amidah: "משיב הרוח ומוריד הגשם" from
+ * Shemini Atzeret (22 Tishrei) until the first day of Pesach, otherwise
+ * "מוריד הטל"; "ותן טל ומטר לברכה" from 7 Cheshvan until Pesach,
+ * otherwise "ותן ברכה".
+ *
+ * The third is not an insertion but a psalm said after davening: "לדוד ה'
+ * אורי וישעי", from Rosh Chodesh Elul through Shemini Atzeret - which in
+ * Eretz Yisrael is Simchat Torah, the same day. It is on the board for the
+ * weeks it is said and gone by itself on 23 Tishrei, which is the whole
+ * point of it being computed rather than typed in by the gabbai.
+ */
+export function seasonalPrayers(date: Date): {
+  geshem: boolean;
+  talUmatar: boolean;
+  leDavid: boolean;
+  text: string;
+} {
   const h = new HDate(date);
   const m = h.getMonth();
   const d = h.getDate();
@@ -191,9 +266,18 @@ export function seasonalPrayers(date: Date): { geshem: boolean; talUmatar: boole
   const beforePesach = m === 1 && d < 15;
   const geshem = (m === 7 && d >= 22) || m >= 8 || beforePesach;
   const talUmatar = (m === 8 && d >= 7) || m >= 9 || beforePesach;
+  // All of Elul, and Tishrei up to and including Shemini Atzeret.
+  const leDavid = m === 6 || (m === 7 && d <= 22);
   return {
     geshem,
     talUmatar,
-    text: `${geshem ? "משיב הרוח ומוריד הגשם" : "מוריד הטל"} · ${talUmatar ? "ותן טל ומטר לברכה" : "ותן ברכה"}`,
+    leDavid,
+    text: [
+      leDavid && "לדוד ה' אורי וישעי",
+      geshem ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
+      talUmatar ? "ותן טל ומטר לברכה" : "ותן ברכה",
+    ]
+      .filter(Boolean)
+      .join(" · "),
   };
 }

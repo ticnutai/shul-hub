@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dafYomi, stripNiqqud, upcomingDays, weeklyParasha } from "./learning";
+import { amudYomi, dafYomi, stripNiqqud, upcomingDays, weeklyParasha } from "./learning";
 
 // Golden values produced by @hebcal/learning 6.11 (the reference implementation).
 // The full comparison ran over every day 1990-2045 with zero differences; these
@@ -82,5 +82,60 @@ describe("upcomingDays", () => {
 describe("stripNiqqud", () => {
   it("removes vowel points and cantillation", () => {
     expect(stripNiqqud("פָּרָשַׁת הַאֲזִינוּ")).toBe("פרשת האזינו");
+  });
+});
+
+/**
+ * Amud Yomi. The anchor is the only fact here that came from outside: the
+ * shul was on שבת דף ז׳ ע״א on 22 September 2026. Everything else follows
+ * from counting, so what these check is that the counting is right - in
+ * both directions, across the seam between tractates, and through the
+ * Hebrew numerals that are easy to get wrong.
+ */
+describe("amud yomi", () => {
+  const on = (iso: string) => amudYomi(new Date(`${iso}T09:00:00`)).label;
+
+  it("is where the shul actually was on the day it was anchored", () => {
+    expect(on("2026-09-22")).toBe("שבת דף ז׳ ע״א");
+  });
+
+  it("turns the page one side at a time", () => {
+    expect(on("2026-09-23")).toBe("שבת דף ז׳ ע״ב");
+    expect(on("2026-09-24")).toBe("שבת דף ח׳ ע״א");
+    expect(on("2026-09-25")).toBe("שבת דף ח׳ ע״ב");
+    expect(on("2026-09-26")).toBe("שבת דף ט׳ ע״א");
+  });
+
+  it("counts backwards from the anchor just as correctly", () => {
+    expect(on("2026-09-21")).toBe("שבת דף ו׳ ע״ב");
+    expect(on("2026-09-20")).toBe("שבת דף ו׳ ע״א");
+  });
+
+  it("writes fifteen and sixteen the way they are written, not as a Name", () => {
+    // ט״ו and ט״ז, never י״ה / י״ו.
+    const fifteen = amudYomi(new Date("2026-09-22T09:00:00"));
+    expect(fifteen.daf).toBe(7);
+    expect(on("2026-10-08")).toBe("שבת דף ט״ו ע״א");
+    expect(on("2026-10-10")).toBe("שבת דף ט״ז ע״א");
+  });
+
+  it("carries on into the next tractate instead of stopping", () => {
+    // שבת ends at קנז ע״ב, 301 days after the anchor.
+    const end = new Date("2026-09-22T09:00:00");
+    end.setDate(end.getDate() + 301);
+    expect(amudYomi(end).label).toBe("שבת דף קנ״ז ע״ב");
+
+    const next = new Date(end);
+    next.setDate(next.getDate() + 1);
+    expect(amudYomi(next).label).toBe("עירובין דף ב׳ ע״א");
+  });
+
+  it("never runs out: it wraps back to the start of the Shas", () => {
+    const far = new Date("2026-09-22T09:00:00");
+    far.setDate(far.getDate() + 20_000);
+    const a = amudYomi(far);
+    expect(a.label).toMatch(/^[^ ]+( [^ ]+)* דף .+ ע״[אב]$/);
+    expect(a.daf).toBeGreaterThanOrEqual(2);
+    expect([0, 1]).toContain(a.side);
   });
 });
