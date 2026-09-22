@@ -96,7 +96,7 @@ interface Stored {
 
 function defaults(): Stored {
   return {
-    mode: "tv",
+    mode: "all",
     views: {
       tv: { device: "tv", landscape: true, fullscreen: true },
       desktop: { device: "desktop", landscape: true, fullscreen: true },
@@ -107,12 +107,26 @@ function defaults(): Stored {
   };
 }
 
-/** Per-admin convenience: the device last looked at, kept in this browser. */
+/**
+ * The device being looked at - and, because it is the only switcher, the
+ * one being edited.
+ *
+ * How each device is shown (turned, full screen) is remembered between
+ * visits, because that is a preference. WHICH device is not: every visit
+ * starts on "all screens".
+ *
+ * That is deliberate and it is the whole safety of having one switcher.
+ * If the choice persisted, an admin who last looked at the phone would
+ * come back a week later, change the title, and change it on the phone
+ * alone without ever being told - which is the complaint that sinks
+ * editors built this way. Starting on "all" means the careless edit is
+ * the harmless one.
+ */
 export function useDeviceChoice() {
   const [stored, setStored] = useState<Stored>(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null") as Stored | null;
-      if (raw && (raw.mode === "all" || raw.mode in DEVICES)) return { mode: raw.mode, views: { ...defaults().views, ...raw.views } };
+      if (raw?.views) return { mode: "all", views: { ...defaults().views, ...raw.views } };
     } catch {
       /* private mode or bad JSON: defaults */
     }
@@ -120,11 +134,12 @@ export function useDeviceChoice() {
   });
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+      // The mode is left out on purpose; see above.
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ views: stored.views }));
     } catch {
       /* not persisted; fine */
     }
-  }, [stored]);
+  }, [stored.views]);
   const mode = stored.mode;
   const view = mode === "all" ? stored.views.tv : stored.views[mode];
   return {

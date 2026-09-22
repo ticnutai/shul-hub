@@ -425,64 +425,95 @@ test.describe("TV editor", () => {
   });
 
   /**
-   * One board, three screens. The wall in the shul, a computer and a phone
-   * can each be given their own wording, layout and look - and, far more
-   * importantly, an ordinary edit still applies to all three at once.
+   * One board, three screens, one switcher.
+   *
+   * The device strip over the preview is the only place a screen is chosen,
+   * and choosing one there is also choosing what the controls edit. Editors
+   * that separate those two produce the complaint that sinks this kind of
+   * tool: you change something, nothing happens, and it took effect on a
+   * screen you were not looking at.
    */
-  test("each display can differ, and by default none of them do", async ({ page }) => {
-    const scope = page.getByTestId("device-scope");
-    const pick = async (name: string) => {
-      await scope.getByRole("radio", { name, exact: false }).first().click();
-      await page.waitForTimeout(450);
+  test("choosing a device to look at is choosing what you edit", async ({ page }) => {
+    const banner = page.getByTestId("device-scope");
+    const strip = page.getByRole("radiogroup", { name: "מכשיר לתצוגה" });
+    const look = async (name: string) => {
+      await strip.getByRole("radio", { name, exact: true }).click();
+      await page.waitForTimeout(400);
     };
     const skinOf = async () =>
       /is-skin-([a-z]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? null;
 
-    await expect(scope).toBeVisible();
-    await expect(scope.getByRole("radio", { name: "כל התצוגות" })).toHaveAttribute(
-      "aria-checked",
-      "true",
-    );
+    // The one switcher says, in words, what it currently means.
+    await look("כל המסכים");
+    await expect(banner).toHaveAttribute("data-scope", "all");
+    await expect(banner).toContainText("כל התצוגות");
 
     await page.getByRole("tab", { name: "פריסה" }).click();
     const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
-
-    // A style chosen for everybody is what every screen shows.
     await skins.nth(1).click();
     await page.waitForTimeout(300);
-    const shared = await skinOf();
-    expect(shared).toBeTruthy();
 
-    // Now the phone alone gets a different one.
-    await pick("מובייל");
+    // Looking at the phone is editing the phone - no second control.
+    await look("מובייל");
+    await expect(banner).toHaveAttribute("data-scope", "mobile");
+    await expect(banner).toContainText("עורך עכשיו: מובייל");
+    const shared = await skinOf();
+
     await page.getByRole("tab", { name: "פריסה" }).click();
     await skins.nth(4).click();
     await page.waitForTimeout(400);
     const phone = await skinOf();
-    expect(phone).toBeTruthy();
     expect(phone).not.toBe(shared);
 
-    // The wall never moved.
-    await pick("אנדרואיד TV");
-    expect(await skinOf()).toBe(shared);
-
-    // Nor did the computer.
-    await pick("מחשב");
-    expect(await skinOf()).toBe(shared);
-
-    // And the phone kept its own - it was stored, not just previewed.
-    await pick("מובייל");
+    // A tablet is held like a phone, so it edits the same screen.
+    await look("טאבלט");
+    await expect(banner).toHaveAttribute("data-scope", "mobile");
     expect(await skinOf()).toBe(phone);
 
-    // Back to everybody: still the shared one, and the phone is marked as
-    // having something of its own so it cannot disagree in silence.
-    await pick("כל התצוגות");
+    // A laptop is a computer, and the computer never moved.
+    await look("לפטופ");
+    await expect(banner).toHaveAttribute("data-scope", "desktop");
     expect(await skinOf()).toBe(shared);
-    await expect(
-      scope.getByRole("radio", { name: /מובייל/ }).locator("span[aria-label]"),
-    ).toBeVisible();
 
-    await expectNotFrozen(page, "per-display editing");
+    await look("Android TV");
+    await expect(banner).toHaveAttribute("data-scope", "tv");
+    expect(await skinOf()).toBe(shared);
+
+    // The way back is one click, and it is offered where the trouble is.
+    await expect(banner).toContainText("מוגדר בנפרד");
+    await banner.getByRole("button", { name: /מובייל/ }).click();
+    await page.waitForTimeout(400);
+    await expect(banner).not.toContainText("מוגדר בנפרד");
+
+    await look("מובייל");
+    expect(await skinOf()).toBe(shared);
+    await expectNotFrozen(page, "one switcher");
+  });
+
+  test("every display is shown side by side, each with its own board", async ({ page }) => {
+    // The answer to "which screens disagree with each other": look at them.
+    const strip = page.getByRole("radiogroup", { name: "מכשיר לתצוגה" });
+    await strip.getByRole("radio", { name: "מובייל", exact: true }).click();
+    await page.waitForTimeout(350);
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
+    await skins.nth(5).click();
+    await page.waitForTimeout(400);
+
+    await strip.getByRole("radio", { name: "כל המסכים", exact: true }).click();
+    await page.waitForTimeout(350);
+    await page.getByRole("button", { name: /השוואה בין התצוגות/ }).click();
+    await page.waitForTimeout(700);
+
+    const skins_shown = await page
+      .locator(".tv-frame .tv-root")
+      .evaluateAll((els) =>
+        els.map((el) => /is-skin-([a-z]+)/.exec(el.className)?.[1] ?? null),
+      );
+    // Five frames, and the two that are phone-shaped show the phone's board.
+    expect(skins_shown.length).toBeGreaterThanOrEqual(5);
+    expect(new Set(skins_shown).size).toBeGreaterThan(1);
+    await expectNotFrozen(page, "side by side");
   });
 
   test("an edit can be kept to a copy of the theme, leaving the others alone", async ({ page }) => {

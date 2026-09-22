@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { LayoutGrid, Maximize2, RotateCw } from "lucide-react";
+import { Columns2, LayoutGrid, Maximize2, RotateCw } from "lucide-react";
 import { DEVICE_ORDER, DEVICES, viewportOf, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { Button } from "@/components/ui/button";
 
@@ -231,16 +231,21 @@ export function DeviceToolbar({
   mode,
   view,
   actualSize,
+  compare = false,
   onMode,
   onView,
   onActualSize,
+  onCompare,
 }: {
   mode: DeviceMode;
   view: DeviceView;
   actualSize: boolean;
+  /** Only in "all": show every screen's own board next to the others. */
+  compare?: boolean;
   onMode: (m: DeviceMode) => void;
   onView: (v: DeviceView) => void;
   onActualSize: (v: boolean) => void;
+  onCompare?: (v: boolean) => void;
 }) {
   const spec = mode === "all" ? null : DEVICES[mode];
   const vp = mode === "all" ? null : viewportOf(view);
@@ -267,6 +272,25 @@ export function DeviceToolbar({
           );
         })}
       </div>
+      {mode === "all" && onCompare && (
+        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            {compare
+              ? "כל תצוגה עם הלוח שלה, זו לצד זו - כך רואים איפה הן נבדלות."
+              : "השינויים חלים על כל התצוגות. מוצג הלוח כפי שהטלוויזיה מראה אותו."}
+          </span>
+          <Button
+            type="button"
+            variant={compare ? "default" : "outline"}
+            size="sm"
+            className="ms-auto h-7 px-2 text-xs"
+            aria-pressed={compare}
+            onClick={() => onCompare(!compare)}
+          >
+            <Columns2 className="size-3.5" /> השוואה בין התצוגות
+          </Button>
+        </div>
+      )}
       {spec && vp && (
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="tabular-nums" dir="ltr">

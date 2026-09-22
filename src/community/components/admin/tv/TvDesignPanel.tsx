@@ -133,7 +133,9 @@ const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 
 const intervalLabel = (s: number) =>
   s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
 import { FRAME_RADIUS_MAX, type FrameShape } from "@/tv/config";
-import { DeviceScopePicker, type DeviceScope } from "./DeviceScopePicker";
+import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
+import type { DeviceMode } from "./devices";
+import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
@@ -465,6 +467,27 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
    */
   const [scope, setScope] = useState<DeviceScope>("all");
   const scopeDevice = scope === "all" ? null : scope;
+
+  // The device strip over the preview is the only switcher; choosing a
+  // device there is also choosing what these controls edit.
+  const onDeviceChange = useCallback((mode: DeviceMode) => {
+    setScope(mode === "all" ? "all" : classOfPreviewDevice(mode));
+  }, []);
+
+  /** Puts one screen back to following the board. */
+  const clearDevice = useCallback(
+    (device: DeviceClass) =>
+      dispatch({
+        type: "edit",
+        key: `clear:${device}`,
+        update: (c) => {
+          const perDevice = { ...c.perDevice };
+          delete perDevice[device];
+          return { ...c, perDevice };
+        },
+      }),
+    [],
+  );
   /**
    * The board as the chosen screen sees it. Everything on this panel shows
    * this rather than the shared board, so the controls read back what that
@@ -992,7 +1015,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </Button>
       </div>
 
-      <DeviceScopePicker scope={scope} onScope={setScope} config={state.present} />
+      <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid w-full grid-cols-4">
@@ -1918,9 +1941,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     return (
       <>
         <TvDeviceStudio
+          onDeviceChange={onDeviceChange}
           {...board}
           fullscreen
-          config={view}
+          config={state.present}
           index={index}
           cycle={cycle}
           progress={0}
@@ -2011,8 +2035,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </Button>
           </div>
           <TvDeviceStudio
+            onDeviceChange={onDeviceChange}
             {...board}
-            config={view}
+            config={state.present}
             index={index}
             cycle={cycle}
             progress={0}

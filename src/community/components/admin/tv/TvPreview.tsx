@@ -1,6 +1,7 @@
-import { useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import "./tvEdit.css";
-import type { TvConfig } from "@/tv/config";
+import { configForDevice, type TvConfig } from "@/tv/config";
+import { classOfPreviewDevice } from "@/tv/devices";
 import { TvBoard } from "@/tv/TvBoard";
 import type { BoardSlide } from "@/tv/useBoardData";
 import { slideLabel, type useTvSlides } from "./tvPreviewData";
@@ -132,6 +133,7 @@ export function TvDeviceStudio({
   onEdit,
   large = false,
   fullscreen = false,
+  onDeviceChange,
   ...props
 }: BoardProps & {
   /** The live editor window: the board alone on the whole screen, no device frame. */
@@ -142,9 +144,31 @@ export function TvDeviceStudio({
   onEdit?: (key: string, update: (c: TvConfig) => TvConfig) => void;
   /** Expanded / full-screen editing: the preview takes most of the viewport. */
   large?: boolean;
+  /**
+   * Tells the editor which screen is being looked at, so that choosing a
+   * device here is also choosing what the controls edit. One switcher, not
+   * two: the single most common complaint about editors that have both is
+   * changing something and not seeing it, because it went to the other one.
+   */
+  onDeviceChange?: (mode: DeviceMode) => void;
 }) {
   useTvFonts();
   const choice = useDeviceChoice();
+  /**
+   * "כל המסכים" means the edits go everywhere; it does not have to mean
+   * looking at five boards at once. Opening onto five postage stamps is
+   * worse than opening onto the board, so the comparison is a thing you
+   * ask for - and then it is genuinely useful, because each frame shows
+   * that screen's own board and the disagreements are visible at a glance.
+   */
+  const [compare, setCompare] = useState(false);
+
+  useEffect(() => {
+    onDeviceChange?.(choice.mode);
+  }, [choice.mode, onDeviceChange]);
+
+  /** The board as one particular screen shows it. */
+  const boardFor = (id: DeviceId) => configForDevice(props.config, classOfPreviewDevice(id));
   const [actualSize, setActualSize] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const editing = Boolean(props.editing);
@@ -245,6 +269,8 @@ export function TvDeviceStudio({
     <div className={`space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
       {editing && <EditHighlight hovered={hovered} selected={selected} />}
       <DeviceToolbar
+        compare={compare}
+        onCompare={setCompare}
         mode={choice.mode}
         view={choice.view}
         actualSize={actualSize}
@@ -252,7 +278,7 @@ export function TvDeviceStudio({
         onView={choice.setView}
         onActualSize={setActualSize}
       />
-      {choice.mode === "all" ? (
+      {choice.mode === "all" && compare ? (
         <div className="grid grid-cols-2 items-end gap-x-4 gap-y-5 rounded-xl bg-muted/30 p-3 sm:grid-cols-6">
           {DEVICE_ORDER.map((id) => (
             <figure
@@ -260,7 +286,10 @@ export function TvDeviceStudio({
               className={`m-0 space-y-1.5 ${id === "tv" || id === "desktop" || id === "laptop" ? "col-span-2 sm:col-span-3" : id === "tablet" ? "col-span-1 sm:col-span-2" : "col-span-1"}`}
             >
               <DeviceFrame view={choice.views[id]} maxHeight={large ? (id === "tablet" || id === "mobile" ? 520 : 400) : id === "tablet" ? 320 : id === "mobile" ? 300 : 240}>
-                <BoardInFrame {...props} editing={editing} />
+                {/* Each one is that screen's real board, differences and all,
+                    so "כל המסכים" is a comparison rather than the same
+                    picture repeated at five sizes. */}
+                <BoardInFrame {...props} config={boardFor(id)} editing={editing} />
               </DeviceFrame>
               <figcaption className="text-center text-xs text-muted-foreground">
                 <button type="button" className="underline-offset-2 hover:underline" onClick={() => choice.setMode(id)}>
@@ -273,7 +302,11 @@ export function TvDeviceStudio({
       ) : (
         <div className="rounded-xl bg-muted/30 p-3">
           <DeviceFrame view={choice.view as DeviceView} maxHeight={maxH ?? (choice.view.device === "tv" ? 520 : 620)} actualSize={actualSize}>
-            <BoardInFrame {...props} editing={editing} />
+            <BoardInFrame
+              {...props}
+              config={boardFor(choice.mode === "all" ? "tv" : (choice.mode as DeviceId))}
+              editing={editing}
+            />
           </DeviceFrame>
         </div>
       )}
