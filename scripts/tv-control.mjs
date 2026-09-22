@@ -26,6 +26,7 @@
  *   node scripts/tv-control.mjs restart                force-stop and relaunch the app
  *   node scripts/tv-control.mjs install [apk]          install (default: release APK) + launch
  *   node scripts/tv-control.mjs autostart              allow the board to reopen after power-on
+ *   node scripts/tv-control.mjs signage                stop Android's screensaver covering the board
  *
  * Device: the single device in `adb devices`, or TV_ADB=192.168.33.10:41289.
  * The wireless-debugging port changes when the TV reboots; if nothing is
@@ -293,6 +294,36 @@ const commands = {
     console.log(`SYSTEM_ALERT_WINDOW: ${state}`);
     if (!/allow/.test(state)) die("the permission did not stick - is the APK declaring SYSTEM_ALERT_WINDOW?");
     console.log("auto-start after power-on is enabled");
+  },
+
+  /**
+   * Stops Android from putting its own screensaver over the board.
+   *
+   * The app already holds FLAG_KEEP_SCREEN_ON, which keeps the panel lit.
+   * It does not stop Android TV starting a dream: the box was found after
+   * five idle minutes showing a stock photograph of a flower instead of the
+   * prayer times, with the board still running perfectly underneath it.
+   *
+   * Nobody presses a button in front of a wall display, so "idle" is its
+   * normal state and the screensaver is guaranteed to win eventually. These
+   * are secure settings, which an app cannot change about itself - hence a
+   * setup step here rather than something the APK could do.
+   */
+  async signage() {
+    const settings = [
+      ["secure", "screensaver_enabled", "0"],
+      ["secure", "screensaver_activate_on_sleep", "0"],
+      ["secure", "screensaver_activate_on_dock", "0"],
+      // Not "never" - some boxes reject 0 - but longer than the box will live.
+      ["system", "screen_off_timeout", "2147483647"],
+    ];
+    for (const [table, key, value] of settings) shell(`settings put ${table} ${key} ${value}`);
+
+    const wrong = settings.filter(
+      ([table, key, value]) => shell(`settings get ${table} ${key}`).trim() !== value,
+    );
+    if (wrong.length) die(`these did not stick: ${wrong.map(([, k]) => k).join(", ")}`);
+    console.log("screensaver off, screen stays on - the board keeps the wall");
   },
 
   async install(apk = DEFAULT_APK) {
