@@ -22,6 +22,7 @@ import { PWAReloadPrompt } from "@/components/PWAReloadPrompt";
 import { ReminderPopup } from "@/components/ReminderPopup";
 import { OmerEntryPopup } from "@/components/OmerEntryPopup";
 import { useNotifications } from "@/hooks/useNotifications";
+import { DirectionProvider } from "@radix-ui/react-direction";
 import { useNeverFrozen } from "@/hooks/useNeverFrozen";
 import { MetaSyncInitializer } from "@/components/MetaSyncInitializer";
 import { MobilePageSwipeNavigation } from "@/components/MobilePageSwipeNavigation";
@@ -136,6 +137,14 @@ const App = () => {
 
   return (
     <ErrorBoundary fallbackTitle="שגיאה כללית באפליקציה">
+    {/*
+      Radix builds every menu, tab, slider and popover left-to-right unless it
+      is told otherwise - the dir attribute on <html> does not reach it. Until
+      this provider, the tab contents of the TV editor, and every other Radix
+      surface in the admin area, laid themselves out and aligned to the left
+      inside an otherwise right-to-left site. One provider covers them all.
+    */}
+    <DirectionProvider dir="rtl">
     <Trace id="App.root">
     <AuthProvider>
       <QueryClientProvider client={communityQueryClient}>
@@ -228,6 +237,7 @@ const App = () => {
       </QueryClientProvider>
     </AuthProvider>
     </Trace>
+    </DirectionProvider>
   </ErrorBoundary>
   );
 };

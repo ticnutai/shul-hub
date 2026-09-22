@@ -11,6 +11,7 @@
  */
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster } from "sonner";
 import { TvDesignPanel } from "@/community/components/admin/tv/TvDesignPanel";
 import "@/index.css";
@@ -21,9 +22,12 @@ const queryClient = new QueryClient({
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
+    {/* The app wraps everything in this; the harness has to as well. */}
+    <DirectionProvider dir="rtl">
     <div dir="rtl" className="p-3">
       <TvDesignPanel />
     </div>
     <Toaster position="top-center" />
+    </DirectionProvider>
   </QueryClientProvider>,
 );

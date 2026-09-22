@@ -115,7 +115,7 @@ function AutoSlider({
         onChange={(e) => onChange(Number(e.target.value))}
         className={`flex-1 accent-primary disabled:opacity-40 ${compact ? "h-1.5" : "h-2"}`}
       />
-      <span className="w-8 text-left tabular-nums text-muted-foreground">
+      <span className="w-8 text-end tabular-nums text-muted-foreground">
         {value === null ? "—" : value}
       </span>
       <Button
