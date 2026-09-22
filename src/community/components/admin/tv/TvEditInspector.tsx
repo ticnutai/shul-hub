@@ -931,7 +931,9 @@ function BoardElement({
             className={spec.multiline ? "min-h-20" : undefined}
           />
           <p className="text-xs text-muted-foreground">
-            {spec.siteField
+            {spec.hint
+              ? spec.hint
+              : spec.siteField
               ? 'משנה רק את הלוח. כדי לשנות גם באתר - הכפתור "גם באתר".'
               : isTicker
               ? "שורה שרצה בתחתית המסך. (התנועה הרציפה מעמיסה על מעבד הקופסה.)"

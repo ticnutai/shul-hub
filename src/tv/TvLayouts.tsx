@@ -219,7 +219,13 @@ function ShiurimPanel({ items, now }: { items: Shiur[]; now: Date }) {
                   {s.teacher && <small className="tv-dash-sub">{s.teacher}</small>}
                 </span>
                 <span className="tv-dash-time">{when}</span>
-                {isAmud && <span className="tv-dash-amud">כעת לומדים {amud.label}</span>}
+                {isAmud && !edit.hidden("dash.amud") && (
+                  <span className="tv-dash-amud" {...edit.attr("dash.amud")}>
+                    {/* The page turns over by itself; anything in front of it
+                        is the admin's, and there is nothing by default. */}
+                    {[edit.text("dash.amud", "").trim(), amud.label].filter(Boolean).join(" ")}
+                  </span>
+                )}
               </li>
             );
           })}

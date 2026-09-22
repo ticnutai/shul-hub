@@ -97,6 +97,9 @@ const ANNOUNCEMENTS = [
 
 const SHIURIM = [
   { id: "s1", title: "דף יומי", teacher: "הרב נתי פורטנוי", time_text: "08:45", days: [0, 1, 2, 3, 4], active: true, sort_order: 1 },
+  // The one whose page turns over every day, so the board's computed line
+  // is exercised rather than only its absence.
+  { id: "s2", title: "עמוד היומי", teacher: "הרב יעקב טננבוים", time_text: "16:15 · חצי שעה", days: [0, 1, 2, 3, 4], active: true, sort_order: 2 },
 ];
 
 /** Answers every request the editor makes, and remembers what it saved. */

@@ -516,6 +516,32 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "side by side");
   });
 
+  test("the page being learnt is a line the gabbai can reach", async ({ page }) => {
+    // It is computed and turns over by itself, which is exactly why it has
+    // to be selectable: a line nobody can click is a line nobody can fix.
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("button", { name: /לוח מלא/ }).first().click();
+    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+    await page.waitForTimeout(500);
+
+    const line = root(page).locator(".tv-dash-amud").first();
+    await expect(line).toBeVisible();
+    // No wording in front of the page unless somebody asks for one.
+    await expect(line).toHaveText(/^שבת דף/);
+
+    await line.click();
+    await expect(page.getByText(/עמוד היומי: שורת הדף הנלמד/)).toBeVisible();
+
+    const box = page.getByRole("textbox", { name: "עמוד היומי: שורת הדף הנלמד" });
+    await box.fill("כעת לומדים");
+    await expect(line).toHaveText(/^כעת לומדים שבת דף/);
+
+    // And it can come off the board altogether.
+    await page.getByRole("button", { name: /הסתר/ }).first().click();
+    await expect(root(page).locator(".tv-dash-amud")).toHaveCount(0);
+    await expectNotFrozen(page, "amud line edited");
+  });
+
   test("an edit can be kept to a copy of the theme, leaving the others alone", async ({ page }) => {
     // The third answer to "which themes does this apply to": neither all of
     // them nor the one in use, but a copy made for the purpose.

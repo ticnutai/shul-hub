@@ -33,6 +33,8 @@ export interface EditableSpec {
   /** The text normally comes from the site settings (name / address). */
   siteField?: "name" | "address";
   multiline?: boolean;
+  /** Replaces the standard note under the text box, where it needs saying. */
+  hint?: string;
 }
 
 export const SHOWN_ZMANIM: SolarEvent[] = [
@@ -59,6 +61,17 @@ export const EDITABLE: Record<string, EditableSpec> = {
   "dash.zmanim": { label: "לוח מלא: כותרת זמני היום", text: "זמני היום" },
   "dash.announcement": { label: "לוח מלא: כותרת ההודעות", text: "הודעות", hideable: true },
   "dash.shiurim": { label: "לוח מלא: כותרת השיעורים", text: "שיעורים", hideable: true },
+  /**
+   * The page being learnt today, under the Amud Yomi shiur. The page itself
+   * is computed and turns over on its own; what is editable is the words in
+   * front of it, and whether the line is there at all.
+   */
+  "dash.amud": {
+    label: "עמוד היומי: שורת הדף הנלמד",
+    text: "",
+    hideable: true,
+    hint: "הדף מתחלף לבד בכל יום. מה שתכתבו כאן יופיע לפניו - למשל ״כעת לומדים״. ריק = רק הדף.",
+  },
   "dash.clock": { label: "לוח מלא: השעון", hideable: true },
   "dash.strip": { label: "לוח מלא: שורת הפרשה והדף היומי", hideable: true },
   "dash.seasonal": { label: "לדוד ה׳ אורי / משיב הרוח / ותן טל", hideable: true },
