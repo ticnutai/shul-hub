@@ -116,6 +116,13 @@ export function ClockFace({
 
 type PrayerSlide = Extract<BoardSlide, { kind: "prayer" }>;
 
+/**
+ * The key a whole prayer panel is known by: the category it shows.
+ * The slide carries an id of its own ("prayer:<category>"); what is hidden,
+ * and what prayerSchedules filters on, is the category.
+ */
+export const categoryKey = (slideId: string) => `cat:${slideId.replace(/^prayer:/, "")}`;
+
 function PrayerPanel({
   schedule,
   now,
@@ -130,7 +137,7 @@ function PrayerPanel({
   const nextIndex = schedule.rows.findIndex((r) => r.minutes >= nowMin);
   const title = titleKey ? edit.text(titleKey, "זמני התפילות") : schedule.title;
   return (
-    <div className="tv-panel tv-dash-prayers">
+    <div className="tv-panel tv-dash-prayers" {...edit.attr(categoryKey(schedule.id))}>
       <h3 className="tv-panel-title" {...(titleKey ? edit.attr(titleKey) : {})}>
         {title}
         {titleKey && schedule.title && <small> · {schedule.title}</small>}
@@ -225,24 +232,26 @@ export function DashboardStage({
     year: "numeric",
   });
 
-  return (
-    <section className="tv-slide tv-dash">
-      <div className="tv-dash-col">
-        {prayers.length === 0 ? (
-          <div className="tv-panel tv-empty">לא הוגדרו מניינים להיום</div>
-        ) : (
-          prayers.map((p, i) => (
-            <PrayerPanel
-              key={p.id}
-              schedule={p}
-              now={now}
-              titleKey={i === 0 ? "dash.prayers" : null}
-            />
-          ))
-        )}
-      </div>
+  // A column with nothing left in it is dropped, and the rest widen to fill
+  // the board: hiding the last panel of a column must not leave a hole.
+  const columns = [
+    prayers.length === 0 ? (
+      <div className="tv-panel tv-empty">לא הוגדרו מניינים להיום</div>
+    ) : (
+      prayers.map((p, i) => (
+        <PrayerPanel key={p.id} schedule={p} now={now} titleKey={i === 0 ? "dash.prayers" : null} />
+      ))
+    ),
+    [!edit.hidden("dash.clock"), !edit.hidden("dash.announcement")].some(Boolean) ? "center" : null,
+    [true, !edit.hidden("dash.shiurim")].some(Boolean) ? "right" : null,
+  ];
+  const shown = columns.filter(Boolean).length;
 
-      <div className="tv-dash-col tv-dash-center">
+  return (
+    <section className={`tv-slide tv-dash is-cols-${shown}`}>
+      <div className="tv-dash-col">{columns[0]}</div>
+
+      {columns[1] && <div className="tv-dash-col tv-dash-center">
         {!edit.hidden("dash.clock") && (
           <div className="tv-panel tv-dash-clock" {...edit.attr("dash.clock")}>
             <LiveClockFace style={clockStyle} />
@@ -271,12 +280,14 @@ export function DashboardStage({
             )}
           </div>
         )}
-      </div>
+      </div>}
 
-      <div className="tv-dash-col">
-        <ZmanimPanel zmanim={zmanim} now={now} titleKey="dash.zmanim" />
-        {!edit.hidden("dash.shiurim") && <ShiurimPanel items={shiurim} now={now} />}
-      </div>
+      {columns[2] && (
+        <div className="tv-dash-col">
+          <ZmanimPanel zmanim={zmanim} now={now} titleKey="dash.zmanim" />
+          {!edit.hidden("dash.shiurim") && <ShiurimPanel items={shiurim} now={now} />}
+        </div>
+      )}
     </section>
   );
 }

@@ -50,10 +50,10 @@ import {
 } from "@/tv/config";
 import {
   allThemes,
+  duplicateTheme,
   getTheme,
   isLightColor,
   isSafeCssValue,
-  newCustomThemeId,
   newGradientId,
   THEME_VAR_LABELS,
   THEME_VARS,
@@ -734,20 +734,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     const name = naming.value.trim().slice(0, 40);
     if (!name) return toast.error("צריך לתת שם לערכה");
     if (naming.mode === "new") {
-      const vars = currentVars();
-      const t: TvTheme = {
-        id: newCustomThemeId(),
-        name,
-        description: `על בסיס "${theme.name}"`,
-        light: isLightColor(vars["--tv-bg-a"]),
-        vars,
-      };
-      edit("theme-new", (c) => ({
-        ...c,
-        customThemes: [...c.customThemes, t],
-        theme: t.id,
-        themeOverrides: {},
-      }));
+      // The same copy the inspector makes, so the two cannot drift apart.
+      edit("theme-new", (c) => duplicateTheme(c, name).config);
       toast.success(`הערכה "${name}" נשמרה ונבחרה. היא תגיע למסכים ב"שמור ושדר".`);
     } else {
       edit("theme-rename", (c) => ({

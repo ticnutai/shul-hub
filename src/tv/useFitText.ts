@@ -19,9 +19,14 @@ import { useEffect, useRef } from "react";
  *
  * It costs a handful of layout reads when the notice or the box changes -
  * every twenty seconds at most, when the board rotates - and nothing at all
- * while the board sits still. The box is observed rather than the text,
- * because the text's size is what is being changed: observing that would
- * chase its own tail.
+ * while the board sits still.
+ *
+ * Measuring changes the very thing that is measured: the card around the
+ * notice grows and shrinks with the type inside it, and an observer that
+ * reacted to that would set itself off again, forever. So the box is
+ * observed, not the text; a report of the same size as last time is ignored;
+ * and while a measurement is running the observer is deaf. A wall display
+ * cannot afford a loop that never settles.
  */
 const FLOOR = 0.6;
 const STEP = 0.05;
@@ -34,7 +39,21 @@ export function useFitText<T extends HTMLElement>(key: unknown) {
     if (!el) return;
     const box = el.parentElement ?? el;
 
+    let measuring = false;
     const fit = () => {
+      if (measuring) return;
+      measuring = true;
+      try {
+        measure();
+      } finally {
+        // Let the layout that this caused settle before listening again.
+        requestAnimationFrame(() => {
+          measuring = false;
+        });
+      }
+    };
+
+    const measure = () => {
       const body = el.querySelector<HTMLElement>(".tv-card-body") ?? el;
       // Measure the whole notice, not the part a line clamp leaves visible.
       el.style.setProperty("--clamp", "999");
@@ -61,7 +80,15 @@ export function useFitText<T extends HTMLElement>(key: unknown) {
     // Hebrew type arrives after the first paint on a cold TV; measure again.
     void document.fonts?.ready.then(fit).catch(() => {});
 
-    const observer = new ResizeObserver(fit);
+    let lastSize = "";
+    const observer = new ResizeObserver((entries) => {
+      const size = entries
+        .map((e) => `${Math.round(e.contentRect.width)}x${Math.round(e.contentRect.height)}`)
+        .join("|");
+      if (size === lastSize) return;
+      lastSize = size;
+      fit();
+    });
     observer.observe(box);
     return () => observer.disconnect();
   }, [key]);

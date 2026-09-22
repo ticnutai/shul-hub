@@ -318,3 +318,33 @@ export function allGradients(saved?: readonly TvGradient[] | null): TvGradient[]
 function isSafeUrl(value: string): boolean {
   return /^https:\/\/[^\s"'()]+$/i.test(value);
 }
+
+/**
+ * A copy of the theme a board is using, saved under its own name and selected.
+ *
+ * This is the safe way to make a change that must not touch anything else:
+ * the editor offers it beside "all themes" and "only this one", because an
+ * edit meant for one screen has more than once been applied to every theme
+ * at once. The copy carries the colours the board shows right now, overrides
+ * and all, and the overrides are then cleared - they have become the theme.
+ */
+export function duplicateTheme(config: TvConfig, name?: string): { config: TvConfig; theme: TvTheme } {
+  const base = getTheme(config.theme, config.customThemes);
+  const vars = { ...base.vars, ...config.themeOverrides } as Record<ThemeVar, string>;
+  const theme: TvTheme = {
+    id: newCustomThemeId(),
+    name: (name ?? `${base.name} (עותק)`).trim().slice(0, 40),
+    description: `על בסיס "${base.name}"`,
+    light: isLightColor(vars["--tv-bg-a"]),
+    vars,
+  };
+  return {
+    theme,
+    config: {
+      ...config,
+      customThemes: [...config.customThemes, theme],
+      theme: theme.id,
+      themeOverrides: {},
+    },
+  };
+}

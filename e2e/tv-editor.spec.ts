@@ -318,4 +318,46 @@ test.describe("TV editor", () => {
     await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-space-top");
     await expect.poll(async () => (await panel.boundingBox())?.height ?? 0).toBe(before);
   });
+  test("a whole prayer panel can be taken off the board, and the rest fill in", async ({ page }) => {
+    // The case this was built for: סליחות comes off the wall after Yom Kippur.
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("button", { name: /לוח מלא/ }).first().click();
+    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+    await page.waitForTimeout(400);
+
+    const selichot = page.locator(".tv-frame .tv-panel", { hasText: "סליחות" }).first();
+    await expect(selichot).toBeVisible();
+    const before = await page.locator(".tv-frame .tv-panel").count();
+    await selichot.getByText("סליחות").first().click();
+    await expect(page.getByText(/לוח תפילות: סליחות/)).toBeVisible();
+
+    await page.getByRole("button", { name: /הסתרת הלוח מהמסך/ }).click();
+    await expect(page.locator(".tv-frame .tv-panel", { hasText: "סליחות" })).toHaveCount(0);
+    await expect.poll(() => page.locator(".tv-frame .tv-panel").count()).toBe(before - 1);
+    await expectNotFrozen(page, "panel hidden");
+
+    // It comes back from the list of what is hidden.
+    await page.getByRole("button", { name: /לוח תפילות: סליחות/ }).click();
+    await expect(page.locator(".tv-frame .tv-panel", { hasText: "סליחות" })).toHaveCount(1);
+    await expectNotFrozen(page, "panel restored");
+  });
+  test("an edit can be kept to a copy of the theme, leaving the others alone", async ({ page }) => {
+    // The third answer to "which themes does this apply to": neither all of
+    // them nor the one in use, but a copy made for the purpose.
+    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+    await page.locator(".tv-frame .tv-panel-title").first().click();
+    await expect(page.getByText("בערכות נושא:")).toBeVisible();
+
+    const themesBefore = await page.getByRole("button", { name: /^לילה כחול / }).count();
+    await page.getByRole("button", { name: /שכפול לערכה חדשה/ }).click();
+    await expectNotFrozen(page, "theme duplicated");
+
+    // A new theme exists, the board is on it, and the edit is scoped to it.
+    await expect(page.getByTestId("style-scope")).toContainText("(עותק)");
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await expect(
+      page.getByRole("button", { name: "לילה כחול (עותק)", exact: false }).first(),
+    ).toBeVisible();
+    expect(themesBefore).toBe(1);
+  });
 });

@@ -6,6 +6,7 @@ import {
   ArrowUp,
   Crosshair,
   Eye,
+  Copy,
   EyeOff,
   Globe,
   Minus,
@@ -45,7 +46,7 @@ import {
   toggleFlip,
 } from "@/tv/boardEdit";
 import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
-import { allGradients, allThemes } from "@/tv/themes";
+import { allGradients, allThemes, duplicateTheme } from "@/tv/themes";
 import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { getTheme, isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
@@ -74,6 +75,8 @@ const FIELD_LABELS: Record<string, string> = {
   label: "שם המניין",
 };
 const KIND_LABELS = { ann: "מודעה", shiur: "שיעור", minyan: "מניין" } as const;
+/** A whole prayer panel - a category, e.g. "סליחות" - taken off the board. */
+const CATEGORY_RE = /^cat:([0-9a-zA-Z_-]{2,})$/;
 
 export function TvEditInspector({
   selected,
@@ -147,6 +150,11 @@ export function TvEditInspector({
 /** Human name of an element key, for the hidden list and the inspector title. */
 function describeKey(key: string, data: BoardData): string {
   if (EDITABLE[key]) return EDITABLE[key].label;
+  const cat = CATEGORY_RE.exec(key);
+  if (cat) {
+    const row = (data.categories ?? []).find((c) => c.id === cat[1]);
+    return `לוח תפילות${row ? `: ${String(row.name).slice(0, 40)}` : ""}`;
+  }
   const m = key.match(RECORD_RE);
   if (!m) return key;
   const kind = m[1] as keyof typeof KIND_LABELS;
@@ -198,7 +206,9 @@ function Selected({
           <X className="size-4" />
         </Button>
       </div>
-      {k === "board.background" ? (
+      {CATEGORY_RE.test(k) ? (
+        <PrayerPanelElement k={k} config={config} data={data} onEdit={onEdit} onClose={onClose} />
+      ) : k === "board.background" ? (
         <BoardBackground config={config} onEdit={onEdit} />
       ) : (
         <>
@@ -210,6 +220,62 @@ function Selected({
           <ElementLook k={k} config={config} onEdit={onEdit} />
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * A whole prayer panel: the times of one category, as one block.
+ *
+ * This is how a board is kept current without touching the website - סליחות
+ * comes off the wall the day after Yom Kippur, and the panels that remain
+ * widen to fill the board (see DashboardStage). The category itself, and
+ * everyone's ability to see it on the site, is untouched.
+ */
+function PrayerPanelElement({
+  k,
+  config,
+  data,
+  onEdit,
+  onClose,
+}: {
+  k: string;
+  config: TvConfig;
+  data: BoardData;
+  onEdit: Edit;
+  onClose: () => void;
+}) {
+  const id = CATEGORY_RE.exec(k)?.[1] ?? "";
+  const category = (data.categories ?? []).find((c) => c.id === id);
+  const rows = (data.minyanim ?? []).filter((m) => m.category_id === id).length;
+  const hidden = isHidden(config, k);
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        כל לוח ה{category ? `״${category.name}״` : "תפילות"} - {rows} מניינים. הסתרה מורידה את
+        הלוח כולו מהמסך, והלוחות שנשארו מתרחבים למלא את מקומו. באתר עצמו שום דבר לא משתנה, ואפשר
+        להחזיר בכל רגע.
+      </p>
+      <Button
+        type="button"
+        variant={hidden ? "default" : "outline"}
+        size="sm"
+        onClick={() => {
+          onEdit(`hide:${k}`, (c) => setHidden(c, k, !hidden));
+          if (!hidden) onClose();
+        }}
+      >
+        {hidden ? (
+          <>
+            <Eye className="size-4" /> החזרה ללוח
+          </>
+        ) : (
+          <>
+            <EyeOff className="size-4" /> הסתרת הלוח מהמסך
+          </>
+        )}
+      </Button>
     </div>
   );
 }
@@ -479,7 +545,7 @@ function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdi
 
       {/* what this edit applies to: one element or its whole kind, and in
           which themes - the two questions that keep a board tidy */}
-      <div className="space-y-1.5 rounded-md bg-muted/50 p-2">
+      <div data-testid="style-scope" className="space-y-1.5 rounded-md bg-muted/50 p-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
           <span className="font-medium">חל על:</span>
           <label className="flex items-center gap-1">
@@ -526,9 +592,26 @@ function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdi
             />
             רק ב״{themeName}״
           </label>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 px-2 text-[11px]"
+            title="יוצר עותק של הערכה הנוכחית, עובר אליו, ומחיל את השינוי רק עליו"
+            onClick={() =>
+              onEdit(`style:theme-copy:${k}`, (c) => {
+                const { config: withCopy, theme } = duplicateTheme(c);
+                return setElementStyle(withCopy, styleTargetKey(withCopy, k), { theme: theme.id });
+              })
+            }
+          >
+            <Copy className="size-3" /> שכפול לערכה חדשה
+          </Button>
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
           השינוי מוחל בכל המסכים - טלוויזיה, מחשב, לפטופ, טאבלט ונייד - ובכל הפריסות.
+          ״בכולן״ משנה גם ערכות אחרות; ״שכפול לערכה חדשה״ יוצר עותק ושומר את השינוי רק בו,
+          כך ששום ערכה קיימת לא נוגעת.
         </p>
         {inherited && (
           <p className="text-[11px] leading-tight text-amber-700 dark:text-amber-400">

@@ -121,6 +121,9 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
   return data.categories
     .filter(
       (c) =>
+        // Taken off the board by the admin - "סליחות" after Yom Kippur, say.
+        // The website still lists it; only the wall stops showing it.
+        !hidden.has(`cat:${c.id}`) &&
         c.active &&
         (!c.visible_from || c.visible_from <= todayKey) &&
         (!c.visible_until || c.visible_until >= todayKey) &&

@@ -4263,3 +4263,18 @@
 .tv-root.has-space-gap.has-space-gap .tv-learning-grid {
   gap: var(--space-gap);
 }
+
+/*
+ * The full board with one of its columns taken away.
+ *
+ * Hiding the last panel of a column used to leave the column standing,
+ * empty - a third of the wall showing nothing. The columns that remain take
+ * the room instead, keeping the middle one the widest, as it always is.
+ */
+.tv-dash.is-cols-2 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+}
+
+.tv-dash.is-cols-1 {
+  grid-template-columns: minmax(0, 1fr);
+}

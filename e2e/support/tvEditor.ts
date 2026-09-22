@@ -50,9 +50,18 @@ const minyan = (id: string, label: string, fixed: string, order: number) => ({
   updated_at: "2026-01-01T00:00:00Z",
 });
 
-const MINYANIM = [minyan("m1", "שחרית א'", "06:15:00", 1), minyan("m2", "מנחה", "13:30:00", 2)];
+const MINYANIM = [
+  minyan("m1", "שחרית א'", "06:15:00", 1),
+  minyan("m2", "מנחה", "13:30:00", 2),
+  { ...minyan("m3", "סליחות א'", "05:45:00", 1), category_id: "c2", day_type: "custom" },
+];
 
-const CATEGORIES = [{ id: "c1", name: "ימות החול", sort_order: 1, active: true }];
+const CATEGORIES = [
+  { id: "c1", name: "ימות החול", system_key: "weekday", sort_order: 1, active: true, visible_from: null, visible_until: null },
+  // A second panel, the one an admin takes off the board once the season is
+  // over - the case this was built for.
+  { id: "c2", name: "סליחות", system_key: null, sort_order: 2, active: true, visible_from: null, visible_until: null },
+];
 
 const ANNOUNCEMENTS = [
   // A deliberately long notice: the card has to shrink its type to fit it
