@@ -31,6 +31,8 @@ const KIND_LABELS: Record<string, string> = {
   snapshot: "צילום מסך",
   paired: "צימוד",
   background: "אפליקציה אחרת",
+  // The screen protected itself: something ran away and was switched off.
+  watchdog: "הגנה עצמית",
 };
 
 interface Outage {

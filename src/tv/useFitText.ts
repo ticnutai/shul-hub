@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { createBreaker } from "./watchdog";
+
 /**
  * Shrinks a card's type until it fits the room the board gives it.
  *
@@ -27,9 +29,18 @@ import { useEffect, useRef } from "react";
  * observed, not the text; a report of the same size as last time is ignored;
  * and while a measurement is running the observer is deaf. A wall display
  * cannot afford a loop that never settles.
+ *
+ * Those three guards are reasoning, and reasoning can be wrong - it was once,
+ * and the TV ran hot for a week. So behind them sits a breaker that does not
+ * reason: past a rate no honest run of this could need, the fitting switches
+ * itself off for that card and says so. The notice keeps the size it had
+ * reached; the board keeps its frame rate.
  */
 const FLOOR = 0.6;
 const STEP = 0.05;
+/** A slide change costs a handful of runs; forty in five seconds is a spin. */
+const BURST = 40;
+const BURST_MS = 5_000;
 
 export function useFitText<T extends HTMLElement>(key: unknown) {
   const ref = useRef<T>(null);
@@ -39,9 +50,18 @@ export function useFitText<T extends HTMLElement>(key: unknown) {
     if (!el) return;
     const box = el.parentElement ?? el;
 
+    const breaker = createBreaker({
+      name: "התאמת גודל טקסט",
+      limit: BURST,
+      windowMs: BURST_MS,
+      onTrip: () => observer.disconnect(),
+    });
+
     let measuring = false;
     const fit = () => {
       if (measuring) return;
+      // The card keeps whatever size it last reached, and is left alone.
+      if (!breaker.allow()) return;
       measuring = true;
       try {
         measure();

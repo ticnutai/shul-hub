@@ -9,6 +9,7 @@ import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
+import { setWatchdogReport, watchMainThread } from "./watchdog";
 import { WebControls } from "./TvWebControls";
 
 /**
@@ -102,6 +103,20 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     onCommand: (c, l) => commandRef.current(c, l),
     device: !web,
   });
+
+  // The board watches itself: anything that switches itself off - or any spin
+  // no breaker caught - is said out loud in the admin's screen list, where a
+  // screen that is quietly cooking itself would otherwise look perfectly fine.
+  useEffect(() => {
+    setWatchdogReport((level, kind, message, details) =>
+      link.current?.log(level, kind, message, details),
+    );
+    const stop = watchMainThread();
+    return () => {
+      setWatchdogReport(null);
+      stop();
+    };
+  }, [link]);
 
   // The remote's theme choice is kept on the TV. In a browser it lasts only
   // for the visit, so an admin never keeps seeing a stale local theme.
