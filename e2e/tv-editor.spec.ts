@@ -144,6 +144,39 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "gradient kept");
   });
 
+  test("a ready-made background shows on the board before it is taken", async ({ page }) => {
+    const picker = page.getByTestId("backdrop-picker");
+    const bgImage = () =>
+      root(page)
+        .locator(".tv-bg")
+        .first()
+        .evaluate((el) => getComputedStyle(el).backgroundImage);
+
+    await expect(picker).toBeVisible();
+    const before = await bgImage();
+
+    // Clicking one puts it on the board at once.
+    await picker.getByRole("button", { name: "ליל כוכבים" }).click();
+    await expect.poll(bgImage).not.toBe(before);
+    await expect(page.getByText(/עוד לא נשמר/)).toBeVisible();
+
+    // Nothing was written down: leaving the control puts the board back.
+    await page.getByRole("tab", { name: "תוכן" }).click();
+    await page.waitForTimeout(400);
+    await expect.poll(bgImage).toBe(before);
+
+    // Taking it keeps it.
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await picker.getByRole("button", { name: "אבן ירושלים" }).click();
+    await page.getByRole("button", { name: "החלת הרקע הנבחר" }).click();
+    await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-image");
+
+    await page.getByRole("tab", { name: "תוכן" }).click();
+    await page.waitForTimeout(400);
+    await expect.poll(bgImage).not.toBe(before);
+    await expectNotFrozen(page, "backdrop applied");
+  });
+
   test("a theme can be saved as a new one, and the board can be broadcast", async ({ page }) => {
     await page.getByRole("button", { name: /^זהב מלכותי/ }).click();
     await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();

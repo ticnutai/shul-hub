@@ -135,6 +135,7 @@ const intervalLabel = (s: number) =>
 import { FRAME_RADIUS_MAX, type FrameShape } from "@/tv/config";
 import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
 import type { DeviceMode } from "./devices";
+import { BackdropPicker } from "./BackdropPicker";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
@@ -480,6 +481,11 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const onDeviceChange = useCallback((mode: DeviceMode) => {
     setScope(mode === "all" ? "all" : classOfPreviewDevice(mode));
   }, []);
+
+  const previewBackgroundImage = useCallback(
+    (value: string | null) => setPreview(value === null ? null : { backgroundImage: value }),
+    [],
+  );
 
   const previewBackgroundGradient = useCallback(
     (value: string | null) => setPreview(value === null ? null : { backgroundGradient: value }),
@@ -1310,7 +1316,20 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               }}
             />
             <div className="h-px bg-border" />
-            <div className="text-xs font-medium text-muted-foreground">או תמונת רקע</div>
+            <div className="text-xs font-medium text-muted-foreground">
+              או רקע מוכן · לחיצה מציגה על הלוח
+            </div>
+            <BackdropPicker
+              config={view}
+              current={scoped.backgroundImage}
+              onPreview={previewBackgroundImage}
+              onApply={(value) => {
+                setPreview(null);
+                edit("bg-image", (c) => ({ ...c, backgroundImage: value }));
+              }}
+            />
+            <div className="h-px bg-border" />
+            <div className="text-xs font-medium text-muted-foreground">או תמונה משלכם</div>
             <div className="flex flex-wrap items-center gap-2">
               <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
                 <label className="cursor-pointer">

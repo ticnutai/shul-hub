@@ -191,6 +191,20 @@ export const SPACING_EDGES = ["top", "sides", "gap"] as const;
 export type SpacingEdge = (typeof SPACING_EDGES)[number];
 
 /**
+ * How a ready-made background is written down: "backdrop:<id>".
+ *
+ * The rule lives here, with the validation that uses it, and not beside the
+ * pictures - this module must not reach an image import. Everything that
+ * loads a board loads this file, including the end-to-end tests, whose
+ * transpiler reads a .jpg as JavaScript and stops at the first byte.
+ */
+export const BACKDROP_PREFIX = "backdrop:";
+
+export function isBackdropRef(value: string | null | undefined): boolean {
+  return typeof value === "string" && value.startsWith(BACKDROP_PREFIX);
+}
+
+/**
  * The parts of a board one kind of screen may do differently.
  *
  * Deliberately not everything. The list of saved themes, the gradients in
@@ -520,7 +534,13 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     font,
     textScale: num(raw.textScale, d.textScale, 0.8, 1.3),
     themeOverrides: overrides,
-    backgroundImage: typeof raw.backgroundImage === "string" && raw.backgroundImage.startsWith("https://") ? raw.backgroundImage : null,
+    // An uploaded picture, or one of the ready-made backdrops by name
+    // (see backdrops.ts - stored by name so a rebuild cannot break it).
+    backgroundImage:
+      typeof raw.backgroundImage === "string" &&
+      (raw.backgroundImage.startsWith("https://") || isBackdropRef(raw.backgroundImage))
+        ? raw.backgroundImage
+        : null,
     backgroundDim: num(raw.backgroundDim, d.backgroundDim, 0, 0.95),
     slides,
     header: {

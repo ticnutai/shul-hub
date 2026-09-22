@@ -7,6 +7,7 @@ import type { Settings } from "@community/lib/data";
 import { CORNER_SHAPE, type TvConfig } from "./config";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
+import { backdropUrl } from "./backdrops";
 import { getTheme, themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
@@ -70,7 +71,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         overrides: config.themeOverrides,
         font: config.font,
         textScale: config.textScale,
-        backgroundImage: config.backgroundImage,
+        backgroundImage: backdropUrl(config.backgroundImage),
         backgroundGradient: config.backgroundGradient,
         backgroundDim: config.backgroundDim,
       }),
