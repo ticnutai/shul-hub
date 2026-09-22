@@ -15,7 +15,10 @@ import { deviceHealth, useTvDevices } from "./tvAdminData";
  */
 export default function TvAdmin() {
   const [params, setParams] = useSearchParams();
-  const tab = params.get("tvTab") ?? "screens";
+  // Lands on the displays, because that is what the tab is called and what
+  // it is for. "מסכים מחוברים" is about the boxes on the walls - a different
+  // question, asked far less often, and one that has its own alert above.
+  const tab = params.get("tvTab") ?? "design";
   const devices = useTvDevices();
   const now = useNow(15_000).getTime();
   const offline = (devices.data ?? []).filter((d) => d.approved && !deviceHealth(d, now).online);
@@ -45,8 +48,8 @@ export default function TvAdmin() {
         }}
       >
         <TabsList>
-          <TabsTrigger value="screens">מסכים ושליטה</TabsTrigger>
-          <TabsTrigger value="design">עיצוב ופריסה (עורך חי)</TabsTrigger>
+          <TabsTrigger value="design">התצוגות והעיצוב</TabsTrigger>
+          <TabsTrigger value="screens">מסכים מחוברים</TabsTrigger>
           <TabsTrigger value="logs">דוחות ויומן{offline.length ? ` (${offline.length}!)` : ""}</TabsTrigger>
         </TabsList>
         <TabsContent value="screens" className="mt-5">
