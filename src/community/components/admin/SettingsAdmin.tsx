@@ -9,6 +9,7 @@ import { Settings as AppSettings } from "@/components/Settings";
 import { useLiveDesign } from "@/lib/live-design";
 import { useSaveRow } from "@community/lib/admin";
 import { useSettings, type Settings } from "@community/lib/data";
+import { PlacePicker } from "./PlacePicker";
 
 type PreviewMode = "mobile" | "desktop";
 
@@ -248,11 +249,36 @@ export function SettingsAdmin() {
               {field("subtitle", "כותרת משנה")}
               {field("address", "כתובת")}
               {field("phone", "טלפון")}
-              {field("latitude", "קו רוחב", "number")}
-              {field("longitude", "קו אורך", "number")}
-              {field("candle_offset_minutes", "הדלקת נרות — דקות לפני השקיעה", "number")}
-              {field("tzeit_offset_minutes", "צאת הכוכבים — דקות אחרי השקיעה", "number")}
             </div>
+
+            {/* The four numbers above the fold, chosen by name instead. */}
+            <PlacePicker
+              latitude={form.latitude as number | undefined}
+              longitude={form.longitude as number | undefined}
+              candle={form.candle_offset_minutes as number | undefined}
+              onPick={(place) =>
+                setForm({
+                  ...form,
+                  city: place.name,
+                  latitude: place.latitude,
+                  longitude: place.longitude,
+                  elevation: place.elevation,
+                  candle_offset_minutes: place.candle,
+                })
+              }
+            />
+
+            <details className="rounded-2xl border border-border p-4">
+              <summary className="cursor-pointer text-sm font-semibold">
+                כוונון ידני של הקואורדינטות והדקות
+              </summary>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {field("latitude", "קו רוחב", "number")}
+                {field("longitude", "קו אורך", "number")}
+                {field("candle_offset_minutes", "הדלקת נרות — דקות לפני השקיעה", "number")}
+                {field("tzeit_offset_minutes", "צאת הכוכבים — דקות אחרי השקיעה", "number")}
+              </div>
+            </details>
             <fieldset className="space-y-3 rounded-2xl border border-border p-4">
               <legend className="px-2 font-semibold">תצוגת הכותרת העליונה</legend>
               <p className="text-xs text-muted-foreground">

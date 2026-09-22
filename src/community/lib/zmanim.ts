@@ -1,7 +1,27 @@
 /**
- * חישוב זמני היום ההלכתיים (NOAA solar algorithm).
- * כל הזמנים מוחזרים כאובייקטי Date באזור הזמן של הדפדפן/השרת (UTC-based Date).
+ * חישוב זמני היום ההלכתיים.
+ *
+ * The astronomy is @hebcal/core's Zmanim, which implements the NOAA solar
+ * algorithm and is the same engine behind hebcal.com. Everything else here -
+ * the proportional hours, and the two offsets that are customs rather than
+ * calculations - is derived from its sunrise and sunset.
+ *
+ * It did not used to be. The header of this file claimed NOAA while the code
+ * below it was the simplified sunrise equation, which is a different and much
+ * rougher thing. Measured against the reference across 2026 in Bnei Brak, it
+ * put every zman an average of 1.31 minutes late and as much as 2.39 - sunset
+ * on 211 days of the year was wrong by more than a minute, and wrong in the
+ * lenient direction, which is the wrong way for a board in a shul to be wrong.
+ * A gabbai noticed, by comparing the board against a search engine.
+ *
+ * Sea level, deliberately: Zmanim is constructed with useElevation false, so
+ * sunset is computed for the town's coordinates at the horizon. That is what
+ * the luachot in Israel publish, and a board that quietly disagreed with the
+ * luach hanging beside it would be a problem and not a feature.
+ *
+ * כל הזמנים מוחזרים כאובייקטי Date (UTC-based Date).
  */
+import { GeoLocation, Zmanim } from "@hebcal/core";
 
 export type SolarEvent =
   | "alot"
@@ -16,53 +36,6 @@ export type SolarEvent =
   | "sunset"
   | "tzeit";
 
-const DEG = Math.PI / 180;
-
-function toJulian(date: Date): number {
-  return date.getTime() / 86400000 + 2440587.5;
-}
-
-function fromJulian(j: number): Date {
-  return new Date((j - 2440587.5) * 86400000);
-}
-
-/** זמן שמש עבור זווית גובה נתונה. angle במעלות מתחת לאופק (חיובי = מתחת). */
-function solarTime(
-  date: Date,
-  lat: number,
-  lng: number,
-  angle: number,
-  rising: boolean,
-): Date | null {
-  const jDate = Math.floor(toJulian(date) - 0.5) + 0.5;
-  const n = Math.round(jDate - 2451545.0 + 0.0008 - -lng / 360);
-  const jStar = 2451545.0 + 0.0009 + -lng / 360 + n;
-  const M = (357.5291 + 0.98560028 * (jStar - 2451545)) % 360;
-  const C =
-    1.9148 * Math.sin(M * DEG) + 0.02 * Math.sin(2 * M * DEG) + 0.0003 * Math.sin(3 * M * DEG);
-  const lambda = (M + C + 180 + 102.9372) % 360;
-  const jTransit = jStar + 0.0053 * Math.sin(M * DEG) - 0.0069 * Math.sin(2 * lambda * DEG);
-  const delta = Math.asin(Math.sin(lambda * DEG) * Math.sin(23.44 * DEG));
-  const cosOmega =
-    (Math.sin(-angle * DEG) - Math.sin(lat * DEG) * Math.sin(delta)) /
-    (Math.cos(lat * DEG) * Math.cos(delta));
-  if (cosOmega > 1 || cosOmega < -1) return null;
-  const omega = Math.acos(cosOmega) / DEG;
-  const j = rising ? jTransit - omega / 360 : jTransit + omega / 360;
-  return fromJulian(j);
-}
-
-function solarNoon(date: Date, lng: number): Date {
-  const jDate = Math.floor(toJulian(date) - 0.5) + 0.5;
-  const n = Math.round(jDate - 2451545.0 + 0.0008 - -lng / 360);
-  const jStar = 2451545.0 + 0.0009 + -lng / 360 + n;
-  const M = (357.5291 + 0.98560028 * (jStar - 2451545)) % 360;
-  const C =
-    1.9148 * Math.sin(M * DEG) + 0.02 * Math.sin(2 * M * DEG) + 0.0003 * Math.sin(3 * M * DEG);
-  const lambda = (M + C + 180 + 102.9372) % 360;
-  return fromJulian(jStar + 0.0053 * Math.sin(M * DEG) - 0.0069 * Math.sin(2 * lambda * DEG));
-}
-
 export interface ZmanimOptions {
   latitude: number;
   longitude: number;
@@ -73,17 +46,28 @@ export interface ZmanimOptions {
 }
 
 export type Zmanim = Record<SolarEvent, Date | null>;
+/** The same type, under a name that does not collide with hebcal's class. */
+type Zmanim2 = Zmanim;
 
 const addMinutes = (d: Date | null, m: number): Date | null =>
   d ? new Date(d.getTime() + m * 60000) : null;
 
-export function calcZmanim(date: Date, opts: ZmanimOptions): Zmanim {
+export function calcZmanim(date: Date, opts: ZmanimOptions): Zmanim2 {
   const { latitude: lat, longitude: lng } = opts;
-  const sunrise = solarTime(date, lat, lng, 0.833, true);
-  const sunset = solarTime(date, lat, lng, 0.833, false);
-  const alot = solarTime(date, lat, lng, 16.1, true);
-  const misheyakir = solarTime(date, lat, lng, 11.5, true);
-  const chatzot = solarNoon(date, lng);
+
+  // The name is only ever shown back to us in errors; the timezone is what
+  // Zmanim uses to decide which civil day this is.
+  const geo = new GeoLocation("", lat, lng, 0, "Asia/Jerusalem");
+  const z = new Zmanim(geo, date, false);
+
+  const ok = (d: Date | undefined | null): Date | null =>
+    d instanceof Date && Number.isFinite(d.getTime()) ? d : null;
+
+  const sunrise = ok(z.sunrise());
+  const sunset = ok(z.sunset());
+  const chatzot = ok(z.chatzot());
+  const alot = ok(z.alotHaShachar());
+  const misheyakir = ok(z.misheyakir());
 
   let sofShma: Date | null = null;
   let sofTefila: Date | null = null;
@@ -91,6 +75,7 @@ export function calcZmanim(date: Date, opts: ZmanimOptions): Zmanim {
   let plag: Date | null = null;
 
   if (sunrise && sunset) {
+    // The GRA proportional hour: the day from sunrise to sunset in twelve.
     const shaa = (sunset.getTime() - sunrise.getTime()) / 12;
     sofShma = new Date(sunrise.getTime() + shaa * 3);
     sofTefila = new Date(sunrise.getTime() + shaa * 4);
@@ -107,6 +92,8 @@ export function calcZmanim(date: Date, opts: ZmanimOptions): Zmanim {
     chatzot,
     mincha_gedola: minchaGedola,
     plag,
+    // Both of these are minhag, not astronomy: how long before sunset this
+    // town lights, and how long after it this shul counts the stars.
     candle: addMinutes(sunset, -opts.candleOffsetMinutes),
     sunset,
     tzeit: addMinutes(sunset, opts.tzeitOffsetMinutes),
