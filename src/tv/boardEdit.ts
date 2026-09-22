@@ -57,6 +57,13 @@ export const EDITABLE: Record<string, EditableSpec> = {
    */
   "board.background": { label: "רקע הלוח, סגנון ומסגרות" },
   "header.logo": { label: "לוגו קרובים", hideable: true, flip: "header" },
+  /**
+   * The mark of whoever the board belongs to beside the shul - the company
+   * that built the place, or paid for the screen. It sits at the far end of
+   * the header, away from the synagogue's own name, because it is a credit
+   * and not a title.
+   */
+  "header.sponsor": { label: "לוגו אפי קפיטל", hideable: true, flip: "header" },
   "dash.prayers": { label: "לוח מלא: כותרת זמני התפילות", text: "זמני התפילות" },
   "dash.zmanim": { label: "לוח מלא: כותרת זמני היום", text: "זמני היום" },
   "dash.announcement": { label: "לוח מלא: כותרת ההודעות", text: "הודעות", hideable: true },

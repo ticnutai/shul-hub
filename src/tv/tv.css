@@ -164,6 +164,25 @@
   filter: drop-shadow(0 calc(var(--u) * 0.4) calc(var(--u) * 1) color-mix(in srgb, #000 35%, transparent));
 }
 
+/*
+ * The mark of whoever the board belongs to beside the shul.
+ *
+ * Smaller than the synagogue's own logo and without its drop shadow: this
+ * is a credit, and a credit that competes with the name above it has been
+ * given the wrong weight. Slightly held back at rest, because it is read
+ * once and then lived with for years.
+ */
+.tv-sponsor {
+  display: block;
+  flex: 0 0 auto;
+  /* --es: the admin's size for this element (boardEdit.ts). */
+  height: calc(var(--u) * 8.5 * var(--es, 1));
+  width: auto;
+  object-fit: contain;
+  opacity: 0.92;
+  align-self: center;
+}
+
 .tv-title {
   margin: 0;
   font-family: var(--tv-font-display);

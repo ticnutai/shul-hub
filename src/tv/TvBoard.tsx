@@ -7,7 +7,7 @@ import type { Settings } from "@community/lib/data";
 import { CORNER_SHAPE, type TvConfig } from "./config";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
-import { themeStyle } from "./themes";
+import { getTheme, themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
 import { ClockContext } from "./clockContext";
@@ -15,6 +15,8 @@ import { TvShapes } from "./TvShapes";
 import type { BoardData, BoardSlide } from "./useBoardData";
 import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
 import karovimLogo from "./assets/karovim-logo.png";
+import effiLogo from "./assets/effi-capital-logo.png";
+import effiLogoLight from "./assets/effi-capital-logo-light.png";
 import "./tv.css";
 
 /**
@@ -243,6 +245,9 @@ function usePauseChip(paused: boolean): "paused" | "resumed" | null {
 }
 
 function TvHeader({ settings, now, config, clock = true }: { settings: Settings | null; now: Date; config: TvConfig; clock?: boolean }) {
+  // Which cut of a sponsor's mark to use. A board can be parchment or navy,
+  // and a wordmark that reads on one is invisible on the other.
+  const light = getTheme(config.theme, config.customThemes).light;
   const dayKey = now.toDateString();
   const day = useMemo(() => {
     const d = new Date(dayKey);
@@ -270,6 +275,19 @@ function TvHeader({ settings, now, config, clock = true }: { settings: Settings 
   return (
     <header className={`tv-header${edit.flipped("header") ? " is-flipped" : ""}`}>
       <div className="tv-header-brand">
+        {!edit.hidden("header.sponsor") && (
+          <img
+            className="tv-sponsor"
+            /* Two cuts of the same mark: the wordmark is dark grey, which
+               disappears on a navy board and is right on a parchment one.
+               The coloured fan is identical in both - it is the part people
+               recognise, and it is not ours to reinterpret. */
+            src={light ? effiLogo : effiLogoLight}
+            alt="אפי קפיטל נדל״ן"
+            decoding="async"
+            {...edit.attr("header.sponsor")}
+          />
+        )}
         {!edit.hidden("header.logo") && (
           <img
             className="tv-logo"
