@@ -71,6 +71,28 @@ const stars = (seed, freq, k, c, opacity) => `
   </filter></defs>
   <rect width="100%" height="100%" fill="#ffffff" filter="url(#st${seed})" opacity="${opacity}"/>`;
 
+/**
+ * Cumulus: noise with a steep edge, blurred just enough to be soft.
+ *
+ * The difference between cloud and fog is the shape of that curve, not the
+ * noise. A gentle ramp spreads the same turbulence into an even grey wash;
+ * a steep one leaves defined shapes with blue between them, which is what
+ * makes a sky look like a sky. `k` is the steepness, `c` moves the
+ * threshold - higher k and lower c give fewer, whiter, better-defined
+ * clouds - and the blur is how hard their edges are.
+ *
+ * Two layers at different scales read as depth: big shapes far off, small
+ * ones nearer. One layer alone looks like wallpaper.
+ */
+const cloud = (id, freq, octaves, seed, k, c, blur, opacity, colour = "#ffffff") => `
+  <defs><filter id="c${id}" x="-20%" y="-20%" width="140%" height="140%">
+    <feTurbulence type="fractalNoise" baseFrequency="${freq}" numOctaves="${octaves}" seed="${seed}" result="n"/>
+    <feColorMatrix in="n" type="matrix"
+      values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  ${k} 0 0 0 ${c}" result="t"/>
+    <feGaussianBlur in="t" stdDeviation="${blur}"/>
+  </filter></defs>
+  <rect width="100%" height="100%" fill="${colour}" filter="url(#c${id})" opacity="${opacity}"/>`;
+
 /** A glow, for light coming from somewhere rather than everywhere. */
 const glow = (cx, cy, r, colour, opacity) => `
   <defs><radialGradient id="g${cx}${cy}" cx="${cx}" cy="${cy}" r="${r}">
@@ -129,6 +151,48 @@ const BACKDROPS = {
       sky([[0, "#fdf6e6"], [0.5, "#f3e6c8"], [1, "#e4d3ab"]]),
       glow("50%", "-5%", "75%", "#ffffff", 0.75),
       grain("0.03", 4, 31, "0 0 0 0 0.5  0 0 0 0 0.45  0 0 0 0 0.35  0.35 0 0 0 -0.16", 0.4, 0.5),
+    ],
+  },
+
+  /* --------------------------------------------------------- clouds --- */
+  sky: {
+    name: "שמי תכלת",
+    note: "תכלת עם עננים לבנים, כמו יום בהיר",
+    light: true,
+    body: [
+      sky([[0, "#3f93d8"], [0.55, "#79bbeb"], [1, "#bfe0f6"]]),
+      cloud(1, "0.011", 7, 21, 4.2, -2.15, 2.4, 0.95),
+      cloud(2, "0.03", 5, 6, 3.2, -1.9, 1.4, 0.4),
+      glow("50%", "12%", "70%", "#ffffff", 0.22),
+    ],
+  },
+  clouds: {
+    name: "ענני בוקר",
+    note: "עננים רכים ומפוזרים על תכלת בהירה",
+    light: true,
+    body: [
+      sky([[0, "#4a9fe0"], [0.6, "#8cc6ee"], [1, "#cde8f8"]]),
+      cloud(1, "0.009", 6, 3, 3.2, -1.5, 3.2, 0.95),
+      glow("50%", "20%", "75%", "#ffffff", 0.2),
+    ],
+  },
+  haze: {
+    name: "שמיים רכים",
+    note: "תכלת שקטה כמעט בלי צורות - הרקע הכי לא מפריע",
+    light: true,
+    body: [
+      sky([[0, "#6fb4e8"], [0.6, "#a9d6f2"], [1, "#ddf0fb"]]),
+      cloud(1, "0.006", 5, 5, 2.0, -0.95, 8, 0.85),
+    ],
+  },
+  cirrus: {
+    name: "עננים גבוהים",
+    note: "פסי ענן דקים, רגועים",
+    light: true,
+    body: [
+      sky([[0, "#5aa8e4"], [0.6, "#9acdf0"], [1, "#d8eefb"]]),
+      cloud(1, "0.004 0.02", 5, 13, 2.6, -1.3, 4, 0.8),
+      glow("50%", "85%", "60%", "#ffffff", 0.18),
     ],
   },
 

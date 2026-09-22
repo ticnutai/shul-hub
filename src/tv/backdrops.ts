@@ -21,6 +21,14 @@
  */
 import { BACKDROP_PREFIX, isBackdropRef } from "./config";
 
+import skyDay from "./assets/backdrops/sky.jpg";
+import skyDayThumb from "./assets/backdrops/sky-thumb.jpg";
+import clouds from "./assets/backdrops/clouds.jpg";
+import cloudsThumb from "./assets/backdrops/clouds-thumb.jpg";
+import haze from "./assets/backdrops/haze.jpg";
+import hazeThumb from "./assets/backdrops/haze-thumb.jpg";
+import cirrus from "./assets/backdrops/cirrus.jpg";
+import cirrusThumb from "./assets/backdrops/cirrus-thumb.jpg";
 import dawn from "./assets/backdrops/dawn.jpg";
 import dawnThumb from "./assets/backdrops/dawn-thumb.jpg";
 import dusk from "./assets/backdrops/dusk.jpg";
@@ -50,6 +58,11 @@ export interface Backdrop {
 }
 
 export const TV_BACKDROPS: Backdrop[] = [
+  // Daylight skies first: the ones most boards will want.
+  { id: "sky", name: "שמי תכלת", note: "תכלת עם עננים לבנים", light: true, url: skyDay, thumb: skyDayThumb },
+  { id: "clouds", name: "ענני בוקר", note: "עננים רכים ומפוזרים", light: true, url: clouds, thumb: cloudsThumb },
+  { id: "haze", name: "שמיים רכים", note: "תכלת שקטה, כמעט בלי צורות", light: true, url: haze, thumb: hazeThumb },
+  { id: "cirrus", name: "עננים גבוהים", note: "פסי ענן דקים ורגועים", light: true, url: cirrus, thumb: cirrusThumb },
   { id: "dawn", name: "עלות השחר", note: "כחול עמוק שנפתח לאור ראשון", light: false, url: dawn, thumb: dawnThumb },
   { id: "dusk", name: "בין הערביים", note: "אור חם ששוקע לכחול לילה", light: false, url: dusk, thumb: duskThumb },
   { id: "night", name: "ליל כוכבים", note: "לילה עמוק עם כוכבים דקים", light: false, url: night, thumb: nightThumb },

@@ -1,132 +1,70 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TV_CONFIG, normalizeTvConfig, type TvConfig } from "./config";
-import { nextCandleLighting, shabbatNow } from "./shabbat";
-import { buildSlides, type BoardData } from "./useBoardData";
-import { zmanimFor } from "@community/lib/minyan-time";
 
-// Friday 18 Sept 2026 and Saturday 19 Sept 2026, Israel time (UTC+3).
-const at = (iso: string) => new Date(iso);
-const friday = zmanimFor(at("2026-09-18T12:00:00+03:00"), null);
-const saturday = zmanimFor(at("2026-09-19T12:00:00+03:00"), null);
+import { shabbatNow, nextCandleLighting } from "./shabbat";
+import { jerusalemWeekday } from "@community/lib/minyan-time";
 
-const data: BoardData = {
-  settings: null,
-  minyanim: [],
-  categories: [],
-  announcements: [],
-  shiurim: [],
-  stale: false,
-  anyLoaded: true,
-  sync: { status: "live", lastSyncedAt: null },
-};
-const cfg = (over: Partial<TvConfig> = {}): TvConfig => ({
-  ...structuredClone(DEFAULT_TV_CONFIG),
-  ...over,
-});
+/**
+ * The Shabbat screen takes the whole board: no times, no notices, just
+ * "שבת שלום" until Shabbat is out. On the right evening that is the point
+ * of it, and on any other evening it is the worst thing the board can do -
+ * the shul loses its times and nobody in the building can put them back.
+ *
+ * So the question this file answers is not "does it come up on Friday" but
+ * "is it down every other hour of the week".
+ */
+const settings = {
+  latitude: 32.0807,
+  longitude: 34.8338,
+  candle_offset_minutes: 20,
+  tzeit_offset_minutes: 20,
+} as never;
 
-describe("Shabbat window", () => {
-  it("starts exactly at candle lighting on Friday", () => {
-    const candle = friday.candle!;
-    expect(shabbatNow(new Date(candle.getTime() - 60_000), null, 40)).toBeNull();
-    const t = shabbatNow(new Date(candle.getTime() + 1000), null, 40);
-    expect(t?.candle?.getTime()).toBe(candle.getTime());
-    // Friday night already knows when Shabbat ends and Saturday's latest Shema.
-    expect(t?.end?.getTime()).toBe(saturday.sunset!.getTime() + 40 * 60_000);
-    expect(t?.shma?.getTime()).toBe(saturday.sof_zman_shma!.getTime());
+const up = (t: Date) => shabbatNow(t, settings, 20) !== null;
+
+describe("the Shabbat screen", () => {
+  it("is down every hour of a week that is not Shabbat", () => {
+    const wrong: string[] = [];
+    // Sunday 20 September 2026 through Thursday, hour by hour.
+    for (let day = 20; day <= 24; day++) {
+      for (let h = 0; h < 24; h++) {
+        const t = new Date(2026, 8, day, h, 0, 0);
+        const wd = jerusalemWeekday(t);
+        if (wd === 5 || wd === 6) continue;
+        if (up(t)) wrong.push(t.toString());
+      }
+    }
+    expect(wrong).toEqual([]);
   });
 
-  it("lasts through Saturday and ends at sunset + the configured minutes", () => {
-    expect(shabbatNow(at("2026-09-19T10:00:00+03:00"), null, 40)).not.toBeNull();
-    const end = saturday.sunset!.getTime() + 72 * 60_000;
-    expect(shabbatNow(new Date(end - 60_000), null, 72)).not.toBeNull();
-    expect(shabbatNow(new Date(end + 1000), null, 72)).toBeNull();
+  it("comes up on Friday at candle lighting and not before", () => {
+    // Friday 25 September 2026. Candles in Bnei Brak are 20 min before sunset.
+    const before = new Date(2026, 8, 25, 17, 0, 0);
+    const after = new Date(2026, 8, 25, 19, 0, 0);
+    expect(up(before)).toBe(false);
+    expect(up(after)).toBe(true);
   });
 
-  it("is never on a weekday", () => {
-    expect(shabbatNow(at("2026-09-17T21:00:00+03:00"), null, 40)).toBeNull();
-    expect(shabbatNow(at("2026-09-20T10:00:00+03:00"), null, 40)).toBeNull();
+  it("stays up through Shabbat and goes down when it is out", () => {
+    expect(up(new Date(2026, 8, 26, 9, 0, 0))).toBe(true); // Shabbat morning
+    expect(up(new Date(2026, 8, 26, 17, 0, 0))).toBe(true); // Shabbat afternoon
+    // Sunset Saturday is about 18:35; plus 20 minutes it is out.
+    expect(up(new Date(2026, 8, 26, 23, 0, 0))).toBe(false);
+    expect(up(new Date(2026, 8, 27, 9, 0, 0))).toBe(false); // Sunday
   });
 
-  it("the next candle lighting from a weekday is this Friday's", () => {
-    expect(nextCandleLighting(at("2026-09-16T10:00:00+03:00"), null)?.getTime()).toBe(
-      friday.candle!.getTime(),
-    );
-  });
-});
-
-describe("the board on Shabbat", () => {
-  const shabbatTime = at("2026-09-19T11:00:00+03:00");
-
-  it("shows only the Shabbat screen - no rotation", () => {
-    const slides = buildSlides(data, cfg(), shabbatTime, saturday);
-    expect(slides.map((s) => s.kind)).toEqual(["shabbat"]);
+  it("does not come up for Yom Kippur or a weekday Yom Tov", () => {
+    // Yom Kippur 5787 was Monday 21 September 2026. Whatever else the board
+    // should do that day, taking the times off the wall is not it.
+    for (let h = 0; h < 24; h++) {
+      expect(up(new Date(2026, 8, 21, h, 0, 0)), `Yom Kippur ${h}:00`).toBe(false);
+    }
   });
 
-  it("rotates as usual when the Shabbat screen is switched off", () => {
-    const slides = buildSlides(
-      data,
-      cfg({ shabbat: { ...DEFAULT_TV_CONFIG.shabbat, enabled: false } }),
-      shabbatTime,
-      saturday,
-    );
-    expect(slides.some((s) => s.kind === "shabbat")).toBe(false);
-    expect(slides.length).toBeGreaterThan(0);
-  });
-
-  it("an older saved config (no shabbat field) gets the Shabbat screen on, ending 40 minutes after sunset", () => {
-    expect(normalizeTvConfig({ theme: "navy" }).shabbat).toEqual({
-      enabled: true,
-      endMinutesAfterSunset: 40,
-      scenes: ["art:classic"],
-      photos: [],
-      rotate: false,
-      secondsPerScene: 60,
-    });
-    expect(
-      normalizeTvConfig({ shabbat: { enabled: false, endMinutesAfterSunset: 500 } }).shabbat,
-    ).toMatchObject({ enabled: false, endMinutesAfterSunset: 90 });
-  });
-});
-
-describe("Shabbat pictures", () => {
-  const shabbatTime = at("2026-09-19T11:00:00+03:00");
-  const photo = "https://example.supabase.co/storage/v1/object/public/tv/a.jpg";
-
-  it("keeps built-in drawings and https photos, drops the rest, never empty", () => {
-    const c = normalizeTvConfig({
-      shabbat: {
-        scenes: ["art:kiddush", "art:nope", "javascript:alert(1)", "http://x/a.jpg", photo, photo],
-        rotate: true,
-        secondsPerScene: 2,
-      },
-    });
-    expect(c.shabbat.scenes).toEqual(["art:kiddush", photo]);
-    expect(c.shabbat.secondsPerScene).toBe(10);
-    expect(normalizeTvConfig({ shabbat: { scenes: ["bad"] } }).shabbat.scenes).toEqual([
-      "art:classic",
-    ]);
-  });
-
-  it("a slideshow passes every picture to the slide; without it only the first", () => {
-    const shabbat = {
-      ...DEFAULT_TV_CONFIG.shabbat,
-      scenes: ["art:jerusalem", photo],
-      secondsPerScene: 30,
-    };
-    const on = buildSlides(
-      data,
-      cfg({ shabbat: { ...shabbat, rotate: true } }),
-      shabbatTime,
-      saturday,
-    )[0];
-    const off = buildSlides(
-      data,
-      cfg({ shabbat: { ...shabbat, rotate: false } }),
-      shabbatTime,
-      saturday,
-    )[0];
-    expect(on.kind === "shabbat" && on.scenes).toEqual(["art:jerusalem", photo]);
-    expect(on.kind === "shabbat" && on.secondsPerScene).toBe(30);
-    expect(off.kind === "shabbat" && off.scenes).toEqual(["art:jerusalem"]);
+  it("knows when the next candle lighting is, from any day", () => {
+    const from = new Date(2026, 8, 22, 12, 0, 0); // Tuesday
+    const next = nextCandleLighting(from, settings);
+    expect(next).not.toBeNull();
+    expect(jerusalemWeekday(next!)).toBe(5);
+    expect(next!.getTime()).toBeGreaterThan(from.getTime());
   });
 });

@@ -315,8 +315,23 @@ export function allGradients(saved?: readonly TvGradient[] | null): TvGradient[]
   return [...TV_GRADIENTS, ...(saved ?? [])];
 }
 
+/**
+ * A background picture the board may load.
+ *
+ * Two shapes are allowed and nothing else. An https url, which is what an
+ * uploaded picture is; and a path within this build, which is what one of
+ * the ready-made backdrops resolves to (backdrops.ts). Both are checked for
+ * the characters that would let a value escape the url() it is written
+ * into.
+ *
+ * The second shape was missing, and a chosen backdrop therefore reached the
+ * board and then quietly painted nothing: the class said has-bg-image and
+ * the picture was "none".
+ */
 function isSafeUrl(value: string): boolean {
-  return /^https:\/\/[^\s"'()]+$/i.test(value);
+  if (/[\s"'()\\;]/.test(value)) return false;
+  // An uploaded picture, or a file this build shipped.
+  return /^https:\/\/./i.test(value) || /^\/[^/]/.test(value);
 }
 
 /**
