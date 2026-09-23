@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings as AppSettings } from "@/components/Settings";
 import { useLiveDesign } from "@/lib/live-design";
 import { useSaveRow } from "@community/lib/admin";
 import { useSettings, type Settings } from "@community/lib/data";
@@ -361,7 +360,14 @@ export function SettingsAdmin() {
               <Button
                 type="button"
                 className="min-h-11 justify-start gap-2 px-3 text-sm sm:min-h-14 sm:justify-center"
-                onClick={() => window.dispatchEvent(new CustomEvent("open-app-themes"))}
+                onClick={() => {
+                  // Both, like the footer's shortcut does: the dialog is
+                  // lazy-loaded by the shell, and a click that lands before
+                  // its chunk has arrived would otherwise be a click that did
+                  // nothing. The flag is read on mount and cleared there.
+                  document.documentElement.dataset.openAppThemes = "true";
+                  window.dispatchEvent(new CustomEvent("open-app-themes"));
+                }}
               >
                 <Palette className="size-5" /> פתיחת מנהל ערכות הנושא
               </Button>
@@ -383,7 +389,14 @@ export function SettingsAdmin() {
           </section>
         </TabsContent>
       </Tabs>
-      <AppSettings showTrigger={false} />
+      {/* The settings dialog itself is mounted once, by GlobalAppShell, for
+          every page inside the shell - and this page is one of them.
+
+          A second copy here meant two dialogs listening for the same
+          "open-app-themes" event and both opening on one click. Two modals
+          opening in the same tick fight over the dismiss layer: the pointerup
+          that opened them lands outside one of them, it dismisses, and what
+          the admin sees is a flash and nothing. */}
     </>
   );
 }
