@@ -18,6 +18,7 @@ import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, Exter
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -624,15 +625,31 @@ const Divider = () => {
     }} />
   );
 };
-const OrnamentTitle = ({ text, fontSize }: { text: string; fontSize?: number }) => {
+/**
+ * The page's controls, for the title line to pick up.
+ *
+ * The title of the first prayer on the page is a short word in the middle of
+ * an otherwise empty line. On a phone that empty space either side is the only
+ * room left that costs nothing - every other arrangement pushed the prayer
+ * further down the screen. The page puts its controls here; the title takes
+ * them, two on each side. Null on a wide screen, where they stay in the
+ * header and the title is just a title.
+ */
+const SiddurToolsContext = createContext<{ before: React.ReactNode; after: React.ReactNode } | null>(null);
+
+const OrnamentTitle = ({ text, fontSize, withTools = false }: { text: string; fontSize?: number; withTools?: boolean }) => {
   const { theme } = useSiddurTheme();
+  const tools = useContext(SiddurToolsContext);
+  const flank = withTools ? tools : null;
   return (
     <div className="flex items-center justify-center gap-2 my-2">
+      {flank && <span className="flex flex-shrink-0 items-center gap-0.5" dir="ltr">{flank.before}</span>}
       <span style={{ color: theme.accentColor, fontSize: "0.9em" }}>❧</span>
       <span className="font-bold tracking-wide" style={{ color: theme.accentColor, fontFamily: "'Noto Serif Hebrew', 'David Libre', serif", fontSize: fontSize ? `${fontSize}px` : "0.9em" }}>
         {text}
       </span>
-    <span style={{ color: theme.accentColor, fontSize: "0.9em", transform: "scaleX(-1)", display: "inline-block" }}>❧</span>
+      <span style={{ color: theme.accentColor, fontSize: "0.9em", transform: "scaleX(-1)", display: "inline-block" }}>❧</span>
+      {flank && <span className="flex flex-shrink-0 items-center gap-0.5" dir="ltr">{flank.after}</span>}
   </div>
   );
 };
@@ -1553,7 +1570,7 @@ const CategoryPane = ({
 
   return (
     <div className="pb-8">
-      <OrnamentTitle text={catName} fontSize={siddurSettings.siddurSize} />
+      <OrnamentTitle text={catName} fontSize={siddurSettings.siddurSize} withTools />
       <Divider />
       <div className="mt-4">
         {viewMode === "continuous"
@@ -1574,7 +1591,7 @@ const CategoryPane = ({
 /* ─── CategorySectionsBlock (used by FullContinuousPane) ─── */
 const SERIF = "'Noto Serif Hebrew', 'David Libre', serif";
 
-const CategorySectionsBlock = ({ nusach, cat }: { nusach: string; cat: { id: string; name: string } }) => {
+const CategorySectionsBlock = ({ nusach, cat, first = false }: { nusach: string; cat: { id: string; name: string }; first?: boolean }) => {
   const { sections, loading } = useSiddurSections(nusach, cat.id);
   const { settings: siddurSettings } = useFontAndColorSettings();
   const { theme } = useSiddurTheme();
@@ -1597,7 +1614,7 @@ const CategorySectionsBlock = ({ nusach, cat }: { nusach: string; cat: { id: str
   if (!sections?.length) return null;
   return (
     <div className="mb-10">
-      <OrnamentTitle text={cat.name} fontSize={siddurSettings.siddurSize} />
+      <OrnamentTitle text={cat.name} fontSize={siddurSettings.siddurSize} withTools={first} />
       <Divider />
       <div className="mt-4 space-y-6">
         {sections.map((sec, i) => (
@@ -1662,8 +1679,8 @@ const FullContinuousPane = ({ nusach }: { nusach: string }) => {
 
   return (
     <div className="pb-8" dir="rtl">
-      {categories.slice(0, visibleCount).map(cat => (
-        <CategorySectionsBlock key={cat.id} nusach={nusach} cat={cat} />
+      {categories.slice(0, visibleCount).map((cat, i) => (
+        <CategorySectionsBlock key={cat.id} nusach={nusach} cat={cat} first={i === 0} />
       ))}
       {visibleCount < categories.length && (
         <div ref={sentinelRef} className="flex justify-center items-center py-6 gap-2 text-muted-foreground">
@@ -1748,7 +1765,7 @@ const SplitPane = ({ nusach, catId }: { nusach: string; catId: string }) => {
 
       {/* Prayer text (left side in RTL) */}
       <div className="flex-1 min-w-0 pt-4 sm:pt-0 pr-0 sm:pr-4 overflow-y-auto">
-        <OrnamentTitle text={sec.title} fontSize={s.siddurSize} />
+        <OrnamentTitle text={sec.title} fontSize={s.siddurSize} withTools />
         <Divider />
         <div
           data-siddur-card
@@ -1823,7 +1840,7 @@ const BookColumnPane = ({ nusach, catId }: { nusach: string; catId: string }) =>
 
   return (
     <div className="pb-8" dir="rtl">
-      <OrnamentTitle text={catName} fontSize={s.siddurSize} />
+      <OrnamentTitle text={catName} fontSize={s.siddurSize} withTools />
       <Divider />
       <div
         style={{
@@ -1918,33 +1935,91 @@ const TextFiltersBar = ({ scope }: { scope: "siddur" | "tehillim" }) => (
 );
 
 /**
- * The same four toggles, behind one button.
+ * The three text toggles and the margin width, behind one button.
  *
- * On a phone the pills took a whole row of a screen that is mostly meant for
- * reading. They cannot simply be dropped, though: ניקוד, טעמים and תצוגה
- * מפוארת exist nowhere else in the app, and a setting you can no longer reach
- * is not a tidier screen, it is a missing feature. So the row becomes a
- * button, and everything stays where it was, one tap further in.
+ * They are not a choice between each other - ניקוד and טעמים are usually both
+ * on, תצוגה מפוארת is independent of both - so they are checkboxes, and the
+ * menu stays open while they are being set. A menu that shuts after one tap
+ * turns "turn off taamim and switch to plain" into two trips.
+ *
+ * They cannot simply be dropped from a phone, either: these three exist
+ * nowhere else in the app, and a setting you can no longer reach is not a
+ * tidier screen, it is a missing feature.
  */
-const TextFilterMenu = ({ scope, color }: { scope: "siddur" | "tehillim"; color: string }) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <button
-        className="flex h-8 w-8 items-center justify-center rounded-lg transition-opacity hover:opacity-80"
-        title="ניקוד, טעמים ושוליים"
-        aria-label="ניקוד, טעמים ושוליים"
-        style={{ color, background: "transparent" }}
-      >
-        <SlidersHorizontal className="h-4 w-4" />
-      </button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="center" className="w-auto p-2" style={{ direction: "rtl" }}>
-      <div className="flex flex-col items-stretch gap-1.5">
-        <TextFilterPills scope={scope} />
-      </div>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+const TextFilterMenu = ({ scope, color }: { scope: "siddur" | "tehillim"; color: string }) => {
+  const { settings, updateSettings } = useFontAndColorSettings();
+  const { displayStyle, setDisplayStyle } = useSiddurDisplayStyle();
+  const showNikud  = settings.showNikud  ?? true;
+  const showTaamim = settings.showTaamim ?? true;
+
+  const widthOrder: Array<"narrow" | "normal" | "wide" | "full"> = ["narrow", "normal", "wide", "full"];
+  const widthLabels: Record<"narrow" | "normal" | "wide" | "full", string> = {
+    narrow: "צר", normal: "רגיל", wide: "רחב", full: "מלא",
+  };
+  const scopedWidth = scope === "tehillim" ? settings.tehillimContentWidth : settings.siddurContentWidth;
+  const nextWidth = widthOrder[(widthOrder.indexOf(scopedWidth) + 1) % widthOrder.length];
+
+  /** Checking a box must not close the menu - that is what "several" means. */
+  const keepOpen = (e: Event) => e.preventDefault();
+
+  const on = showNikud || showTaamim || displayStyle === "ornate";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-opacity hover:opacity-80"
+          title="ניקוד, טעמים ותצוגה"
+          aria-label="ניקוד, טעמים ותצוגה"
+          style={{ color, background: "transparent", opacity: on ? 1 : 0.65 }}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52" style={{ direction: "rtl" }}>
+        <DropdownMenuLabel className="text-right text-xs text-muted-foreground">תצוגת הטקסט</DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuCheckboxItem
+          checked={showNikud}
+          onSelect={keepOpen}
+          onCheckedChange={v => updateSettings({ showNikud: v })}
+          className="text-right"
+        >
+          ניקוד <span className="mr-1 opacity-60">בָּ</span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={showTaamim}
+          onSelect={keepOpen}
+          onCheckedChange={v => updateSettings({ showTaamim: v })}
+          className="text-right"
+        >
+          טעמים <span className="mr-1 opacity-60">֑</span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuCheckboxItem
+          checked={displayStyle === "ornate"}
+          onSelect={keepOpen}
+          onCheckedChange={v => setDisplayStyle(v ? "ornate" : "classic")}
+          className="text-right"
+        >
+          תצוגה מפוארת <span className="mr-1 opacity-60">✦</span>
+        </DropdownMenuCheckboxItem>
+        <DropdownMenuSeparator />
+        {/* Not a toggle: four widths, tapped through. Kept open for the same
+            reason - finding the right margin means trying more than one. */}
+        <DropdownMenuItem
+          onSelect={e => {
+            keepOpen(e);
+            updateSettings(scope === "tehillim" ? { tehillimContentWidth: nextWidth } : { siddurContentWidth: nextWidth });
+          }}
+          className="flex cursor-pointer justify-between text-right"
+        >
+          <span>שוליים</span>
+          <span className="text-xs font-semibold" style={{ color }}>{widthLabels[scopedWidth]} ↔</span>
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 /* ─── TehillimPane ───────────────────────────────────────── */
 const TEHILLIM_DAILY: Record<number, number>   = { 0: 24, 1: 48, 2: 82, 3: 94, 4: 81, 5: 93, 6: 92 };
@@ -2832,13 +2907,24 @@ export const Siddur = () => {
   // shortcut in its season. Defined once and rendered in exactly one place -
   // the header on a wide screen, the top of the text on a phone - so that the
   // theme panel and the settings panel never exist twice over.
-  const pageTools = (
+  // The controls that style the page, in two halves.
+  //
+  // On a wide screen they sit together in the header. On a phone they flank
+  // the title of the first prayer - two on each side of a short word in the
+  // middle of an otherwise empty line, which is the only room on the screen
+  // that costs the prayer nothing. Defined once and rendered in one place
+  // either way, so the theme panel and the settings panel never exist twice.
+  const toolsAppearance = (
     <>
               {/* Theme picker */}
               <ThemePicker />
               {/* T — text settings */}
               <TextDisplaySettings initialTab={settingsTab} />
+    </>
+  );
 
+  const toolsView = (
+    <>
               {/* View mode dropdown (siddur only) */}
               {!isSpecial && (
                 <DropdownMenu>
@@ -2889,6 +2975,26 @@ export const Siddur = () => {
     </>
   );
 
+  const pageTools = (
+    <>
+      {toolsAppearance}
+      {toolsView}
+    </>
+  );
+
+  const titleTools = isMobile
+    ? {
+        before: toolsAppearance,
+        after: (
+          <>
+            {toolsView}
+            <TextFilterMenu scope={catId === "tehillim" ? "tehillim" : "siddur"} color={hAccent} />
+          </>
+        ),
+      }
+    : null;
+
+
   return (
     <SiddurThemeContext.Provider value={{
       theme: activeTheme,
@@ -2910,6 +3016,7 @@ export const Siddur = () => {
       publishTheme,
     }}>
     <SiddurDisplayStyleContext.Provider value={{ displayStyle, setDisplayStyle }}>
+    <SiddurToolsContext.Provider value={titleTools}>
     <div
       data-siddur-theme={activeTheme.id}
       data-siddur-view-mode={viewMode}
@@ -3128,14 +3235,7 @@ export const Siddur = () => {
             On a phone this row carries the page's controls instead of four
             pills: the pills are one tap further in, and the controls are here
             rather than in the header, which has no row to spare. */}
-        {isMobile ? (
-          <div className="mb-3 flex items-center justify-center gap-1" dir="ltr">
-            {pageTools}
-            <TextFilterMenu scope={catId === "tehillim" ? "tehillim" : "siddur"} color={hAccent} />
-          </div>
-        ) : (
-          <TextFiltersBar scope={catId === "tehillim" ? "tehillim" : "siddur"} />
-        )}
+        {!isMobile && <TextFiltersBar scope={catId === "tehillim" ? "tehillim" : "siddur"} />}
 
         {/* Special — nusach-independent panes */}
         {catId === "tehillim" && <TehillimPane />}
@@ -3166,6 +3266,7 @@ export const Siddur = () => {
         )}
       </main>
     </div>
+    </SiddurToolsContext.Provider>
     </SiddurDisplayStyleContext.Provider>
     </SiddurThemeContext.Provider>
   );
