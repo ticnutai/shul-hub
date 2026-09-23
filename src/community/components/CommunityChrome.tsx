@@ -26,7 +26,6 @@ const navItemClass = (isActive: boolean) =>
 
 export function GlobalAppHeader() {
   const { data: settings } = useSettings();
-  const { user, loading } = useAuth();
   const showKarovimLogo = settings?.home_header_variant === "karovim_logo";
   const karovimLogoDimensions = {
     "--karovim-logo-mobile-width": `${boundedDimension(settings?.karovim_logo_mobile_width, 230, 140, 360)}px`,
@@ -51,15 +50,17 @@ export function GlobalAppHeader() {
           "mx-auto max-w-7xl items-center px-3 py-3 sm:px-5",
           showKarovimLogo
             ? "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-y-2 sm:gap-y-0"
-            : "flex gap-3",
+            // Three columns on a phone, the outer two equal, so the name sits
+            // on the middle of the line itself. A centred flex child is only
+            // centred within what is left over, and what is left over is not
+            // symmetrical - "ב״ה" on one side and an icon on the other are
+            // never the same width, so the name always sat slightly off.
+            : "grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-x-2 sm:flex sm:gap-3",
         )}
       >
         <span
           data-testid="community-header-blessing"
-          className={cn(
-            "shrink-0 text-sm font-bold text-sidebar-primary",
-            showKarovimLogo && "col-start-1 row-start-1 justify-self-start",
-          )}
+          className="col-start-1 row-start-1 shrink-0 justify-self-start text-sm font-bold text-sidebar-primary"
         >
           ב״ה
         </span>
@@ -69,7 +70,7 @@ export function GlobalAppHeader() {
             "min-w-0 text-center",
             showKarovimLogo
               ? "col-span-3 col-start-1 row-start-2 justify-self-center sm:col-span-1 sm:col-start-2 sm:row-start-1"
-              : "flex-1 sm:text-right",
+              : "col-start-2 row-start-1 justify-self-center sm:flex-1 sm:text-right",
           )}
         >
           {showKarovimLogo ? (
@@ -89,26 +90,13 @@ export function GlobalAppHeader() {
         </Link>
         <div
           data-testid="community-header-actions"
-          className={cn(
-            "flex shrink-0 items-center gap-0.5",
-            showKarovimLogo && "col-start-3 row-start-1 justify-self-end",
-          )}
+          /* Only the bell now. The account and the message to the gabbai
+             moved to the corner at the foot of the page, where the site
+             already kept its other two utilities - four small things in one
+             corner read as a set, three scattered across a header read as
+             clutter above the name of the shul. */
+          className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-0.5"
         >
-          <Link
-            to={user && !user.is_anonymous ? "/profile" : "/auth"}
-            aria-label={user && !user.is_anonymous ? "כניסה לאזור האישי" : "כניסה או הרשמה למערכת"}
-            title={user && !user.is_anonymous ? "האזור האישי" : "כניסה או הרשמה"}
-            data-testid="account-entry"
-            className="rounded-full p-2 text-sidebar-primary transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-          >
-            {user && !user.is_anonymous
-              ? <UserRoundCheck className="size-5" aria-hidden="true" />
-              : <LogIn className="size-5" aria-hidden="true" />}
-            <span className="sr-only">{loading ? "בודק חיבור" : "כניסה למערכת"}</span>
-          </Link>
-          <Link to="/community/contact" aria-label="הודעה למנהל" title="הודעה למנהל" className="rounded-full p-2 text-sidebar-foreground/75 transition hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring">
-            <MessageSquareText className="size-5" />
-          </Link>
           <NotificationCenter />
         </div>
       </div>
@@ -135,6 +123,7 @@ export function CommunityHeader() {
 
 export function CommunityFooter() {
   const { data: settings } = useSettings();
+  const { user } = useAuth();
   const contactPhone = settings?.phone ?? "054-647-3461";
   const contactPhoneDigits = contactPhone.replace(/\D/g, "");
   const whatsappPhone = contactPhoneDigits.startsWith("0")
@@ -177,6 +166,11 @@ export function CommunityFooter() {
           </div>
         </div>
         <Link to="/community" className="mt-4 inline-flex items-center gap-1 text-amber-400"><House className="size-4" />חזרה לדף הקהילה</Link>
+        {/* The page's utilities, all four in one corner: who you are, a word
+            to the gabbai, the admin, and the look of the site. Two of them
+            used to sit in the header above the name of the shul; a corner at
+            the foot of the page is where a reader looks for them when they
+            want them, and nowhere near where the eye lands when they do not. */}
         <div
           data-testid="footer-utility-actions"
           className="absolute flex items-center gap-2"
@@ -185,6 +179,26 @@ export function CommunityFooter() {
             bottom: "calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))",
           }}
         >
+          <Link
+            to={user && !user.is_anonymous ? "/profile" : "/auth"}
+            aria-label={user && !user.is_anonymous ? "כניסה לאזור האישי" : "כניסה או הרשמה למערכת"}
+            title={user && !user.is_anonymous ? "האזור האישי" : "כניסה או הרשמה"}
+            data-testid="account-entry"
+            className="inline-flex size-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:bg-white/10 hover:text-amber-400"
+          >
+            {user && !user.is_anonymous
+              ? <UserRoundCheck className="size-4" aria-hidden="true" />
+              : <LogIn className="size-4" aria-hidden="true" />}
+            <span className="sr-only">כניסה למערכת</span>
+          </Link>
+          <Link
+            to="/community/contact"
+            aria-label="הודעה למנהל"
+            title="הודעה למנהל"
+            className="inline-flex size-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:bg-white/10 hover:text-amber-400"
+          >
+            <MessageSquareText className="size-4" />
+          </Link>
           <NavLink
             to="/community/admin?tab=settings"
             aria-label="ניהול האתר"

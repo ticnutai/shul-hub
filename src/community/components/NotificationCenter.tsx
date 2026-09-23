@@ -221,7 +221,10 @@ export function NotificationCenter() {
           variant="ghost"
           size="icon"
           aria-label="הגדרות התראות"
-          className="text-sidebar-foreground hover:bg-sidebar-accent hover:text-gold"
+          /* The same gold as ב״ה on the other side of the header: with the
+             other icons gone it is one of two marks on that line, and the two
+             should look like a pair rather than one shouting. */
+          className="text-sidebar-primary hover:bg-sidebar-accent hover:text-gold"
         >
           <Bell className="size-5" />
         </Button>
