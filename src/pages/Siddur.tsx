@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, createContext, useContext, useCallback, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, createContext, useContext, useCallback, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { TextDisplaySettings } from "@/components/TextDisplaySettings";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,6 +16,7 @@ import { ColorPicker } from "@/components/ColorPicker";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, ThemeAppearanceControls, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
 import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -666,6 +667,175 @@ const OrnamentTitle = ({ text, fontSize, withTools = false }: { text: string; fo
     </div>
   );
 };
+
+/* ─── Choosing, on a phone ───────────────────────────────── */
+
+/**
+ * Jumping to a section from outside the list.
+ *
+ * The strip of section names sits above the text and the cards are below it,
+ * so the two have to agree on "go to this one" without one owning the other.
+ * A counter rather than a plain index, so tapping the same section twice
+ * scrolls back to it - which is what somebody who has scrolled away expects.
+ */
+/** Where a section sits in the page, whatever mode is drawing it. */
+const sectionAnchor = (i: number) => `siddur-sec-${i}`;
+
+/** Clears the two rows of chrome above the text (scroll-margin-top: 6rem). */
+const SECTION_SCROLL_MARGIN = 96;
+
+const SiddurJumpContext = createContext<{ index: number | null; nonce: number; jump: (i: number) => void }>({
+  index: null,
+  nonce: 0,
+  jump: () => {},
+});
+
+/**
+ * One choice, as a grid that uses the width it has.
+ *
+ * A phone screen is 375 points wide and a row of tabs uses maybe a third of
+ * that before it starts scrolling sideways - which hides the options rather
+ * than showing them. The same list as a grid of tiles shows every option at
+ * once, and a choice you can see all of is made once instead of hunted for.
+ */
+function ChoiceDialog({
+  open,
+  onOpenChange,
+  title,
+  items,
+  value,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  title: string;
+  items: { id: string; name: string }[];
+  value: string;
+  onPick: (id: string) => void;
+}) {
+  const { theme } = useSiddurTheme();
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent dir="rtl" className="max-w-md text-right">
+        <DialogHeader className="text-right">
+          <DialogTitle style={{ fontFamily: SERIF }}>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {items.map((it) => {
+            const active = it.id === value;
+            return (
+              <button
+                key={it.id}
+                type="button"
+                onClick={() => {
+                  onPick(it.id);
+                  onOpenChange(false);
+                }}
+                className="min-h-12 rounded-lg border px-2 py-2.5 text-sm font-medium transition"
+                style={
+                  active
+                    ? { background: theme.accentColor, color: "#101827", borderColor: theme.accentColor }
+                    : { borderColor: "hsl(var(--border))" }
+                }
+              >
+                {it.name}
+              </button>
+            );
+          })}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** The trigger: what is chosen now, and that it can be changed. */
+function ChoiceButton({
+  label,
+  value,
+  onClick,
+  color,
+}: {
+  label: string;
+  value: string;
+  onClick: () => void;
+  color: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex min-w-0 flex-1 items-center justify-between gap-1.5 rounded-lg border px-2.5 py-1.5"
+      style={{ borderColor: `${color}55`, color }}
+    >
+      <span className="min-w-0 text-start">
+        <span className="block text-[10px] leading-tight opacity-70">{label}</span>
+        <span className="block truncate text-sm font-semibold leading-tight">{value}</span>
+      </span>
+      <ChevronDown className="h-3.5 w-3.5 flex-shrink-0 opacity-70" />
+    </button>
+  );
+}
+
+/**
+ * The sections of the prayer being said, across the top.
+ *
+ * This is the row somebody actually uses. Which nusach they daven and which
+ * prayer they are at are answered once and then stay answered; where in
+ * שחרית they are changes every minute, and until now the only way to move
+ * was to scroll past everything in between.
+ */
+function SectionStrip({ sections }: { sections: SiddurSection[] }) {
+  const { theme } = useSiddurTheme();
+  const { index, nonce, jump } = useContext(SiddurJumpContext);
+
+  // After the tap: the card (if there is one) has opened in the same commit,
+  // so by the next frame there is something with a height to scroll to.
+  useEffect(() => {
+    if (index === null) return;
+    const timers: number[] = [];
+    timers.push(
+      window.setTimeout(() => {
+        const el = document.getElementById(sectionAnchor(index));
+        if (!el) return;
+        const wanted = el.getBoundingClientRect().top + window.scrollY - SECTION_SCROLL_MARGIN;
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Smooth scrolling is ignored outright in some places - reduced
+        // motion, a background tab, a television WebView. A tap that quietly
+        // does nothing is worse than one that arrives without an animation,
+        // so check afterwards and finish the job.
+        timers.push(
+          window.setTimeout(() => {
+            if (Math.abs(window.scrollY - wanted) > 24) window.scrollTo({ top: wanted });
+          }, 450),
+        );
+      }, 60),
+    );
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [index, nonce]);
+
+  return (
+    <div
+      className="flex gap-1.5 overflow-x-auto px-2 py-1.5 [&::-webkit-scrollbar]:hidden"
+      style={{ scrollbarWidth: "none", borderBottom: `1px solid ${theme.accentColor}30` }}
+    >
+      {sections.map((sec, i) => (
+        <button
+          key={`${sec.title}-${i}`}
+          type="button"
+          onClick={() => jump(i)}
+          className="flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition"
+          style={
+            i === index
+              ? { background: theme.accentColor, color: "#101827" }
+              : { color: theme.textColor, opacity: 0.75 }
+          }
+        >
+          {sec.title}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /* ─── SiddurPagePreview ──────────────────────────────────── */
 const PREVIEW_PRAYER = [
@@ -1404,7 +1574,16 @@ const SiddurLine = ({ html, s }: { html: string; s: SiddurLineSettings }) => {
 };
 
 /* ─── SectionCard ────────────────────────────────────────── */
-const SectionCard = ({ section, initialOpen = false }: { section: SiddurSection; initialOpen?: boolean }) => {
+const SectionCard = ({
+  section,
+  initialOpen = false,
+  index,
+}: {
+  section: SiddurSection;
+  initialOpen?: boolean;
+  /** Its place in the strip above, when there is one. */
+  index?: number;
+}) => {
   const [open, setOpen] = useState(initialOpen);
   const { settings: siddurSettings } = useFontAndColorSettings();
   const { theme } = useSiddurTheme();
@@ -1419,8 +1598,21 @@ const SectionCard = ({ section, initialOpen = false }: { section: SiddurSection;
     wordSpacing: siddurSettings.siddurWordSpacing,
   };
 
+  // Asked for from the strip above: open, then come into view. Opening
+  // first matters - scrolling to a closed card puts a title on screen and
+  // leaves the person to tap again.
+  const jump = useContext(SiddurJumpContext);
+  const cardRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Only opens itself. The strip does the scrolling, so that it works the
+    // same in the reading modes that draw no cards at all.
+    if (index === undefined || jump.index !== index) return;
+    setOpen(true);
+  }, [jump.index, jump.nonce, index]);
+
   return (
-    <div data-siddur-card className="rounded-lg border overflow-hidden mb-2" style={{
+    <div ref={cardRef} id={index === undefined ? undefined : sectionAnchor(index)} data-siddur-card className="rounded-lg border overflow-hidden mb-2" style={{
+      scrollMarginTop: "6rem",
       background: theme.cardBg,
       borderColor: theme.cardBorder,
       ...siddurCardChrome(theme),
@@ -1499,7 +1691,7 @@ const ContinuousReader = ({ sections }: { sections: SiddurSection[] }) => {
   return (
     <div className="space-y-6 pb-8" dir="rtl">
       {sections.slice(0, visibleCount).map((sec, i) => (
-        <div key={i}>
+        <div key={i} id={sectionAnchor(i)} style={{ scrollMarginTop: "6rem" }}>
           <h3
             className="mb-1 flex items-center gap-2"
             style={{
@@ -1591,7 +1783,7 @@ const CategoryPane = ({
           : (
             <div className="space-y-1">
               {sections.map((sec, i) => (
-                <SectionCard key={`${sec.title}-${i}`} section={sec} initialOpen={i === 0} />
+                <SectionCard key={`${sec.title}-${i}`} section={sec} initialOpen={i === 0} index={i} />
               ))}
             </div>
           )
@@ -2884,6 +3076,41 @@ export const Siddur = () => {
   const isSpecial = NUSACH_INDEP.has(catId);
   const settingsTab = catId === "tehillim" ? "tehillim" : catId === "kria" ? "pasuk" : "siddur";
 
+  /* --- On a phone: two choices and a strip, instead of two rows of tabs --- */
+  //
+  // Which nusach somebody davens is answered once in their life; which prayer
+  // they are at, once a day. Both had a permanent row. Where they are inside
+  // שחרית changes every minute and had none - the only way to move was to
+  // scroll past everything in between. So the two settled questions become
+  // buttons that open a grid, and the row they free up carries the sections.
+  const [pickNusach, setPickNusach] = useState(false);
+  const [pickPrayer, setPickPrayer] = useState(false);
+  const [jumpIndex, setJumpIndex] = useState<number | null>(null);
+  const [jumpNonce, setJumpNonce] = useState(0);
+  const jump = useMemo(
+    () => ({
+      index: jumpIndex,
+      nonce: jumpNonce,
+      jump: (i: number) => {
+        setJumpIndex(i);
+        // Tapping the same one again scrolls back to it, which is what
+        // somebody who has read on and wants to return expects.
+        setJumpNonce((n) => n + 1);
+      },
+    }),
+    [jumpIndex, jumpNonce],
+  );
+  // The same cached fetch the pane makes; asking twice costs nothing.
+  const { sections: stripSections } = useSiddurSections(nusach, isSpecial ? "" : catId);
+  useEffect(() => { setJumpIndex(null); }, [catId, nusach]);
+  const prayerChoices = useMemo(
+    () => [...categories.map((c) => ({ id: c.id, name: c.name })), ...STATIC_TABS],
+    [categories],
+  );
+  const prayerName =
+    prayerChoices.find((c) => c.id === catId)?.name ?? "";
+  const nusachName = NUSACHOT.find((n) => n.id === nusach)?.label ?? "";
+
   const activeWidth = catId === "tehillim" ? fontSettings.tehillimContentWidth : fontSettings.siddurContentWidth;
   const containerMaxW =
     activeWidth === "narrow" ? "max-w-2xl" :
@@ -3030,6 +3257,7 @@ export const Siddur = () => {
     }}>
     <SiddurDisplayStyleContext.Provider value={{ displayStyle, setDisplayStyle }}>
     <SiddurToolsContext.Provider value={titleTools}>
+    <SiddurJumpContext.Provider value={jump}>
     <div
       data-siddur-theme={activeTheme.id}
       data-siddur-view-mode={viewMode}
@@ -3086,7 +3314,37 @@ export const Siddur = () => {
           </div>
           )}
 
+          {/* ── Row 2 on a phone: the two settled questions, as buttons ── */}
+          {isMobile && (
+            <div className="flex items-stretch gap-1.5 pb-2.5" dir="rtl">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(-1)}
+                aria-label="חזרה"
+                title="חזרה"
+                className="h-auto w-9 flex-shrink-0 p-0"
+                style={{ color: hText, background: "transparent" }}
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <ChoiceButton
+                label="נוסח"
+                value={nusachName}
+                color={hAccent}
+                onClick={() => setPickNusach(true)}
+              />
+              <ChoiceButton
+                label="תפילה"
+                value={prayerName}
+                color={hAccent}
+                onClick={() => setPickPrayer(true)}
+              />
+            </div>
+          )}
+
           {/* ── Row 2: Nusach pills ── */}
+          {!isMobile && (
           <div
             className="flex gap-1.5 pb-2.5 justify-center overflow-x-auto [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: "none", opacity: isSpecial ? 0.45 : 1, transition: "opacity 0.2s" }}
@@ -3106,10 +3364,44 @@ export const Siddur = () => {
               </button>
             ))}
           </div>
+          )}
         </div>
       </header>
 
+      <ChoiceDialog
+        open={pickNusach}
+        onOpenChange={setPickNusach}
+        title="בחירת נוסח"
+        items={NUSACHOT.map((n) => ({ id: n.id, name: n.label }))}
+        value={nusach}
+        onPick={(id) => {
+          setNusach(id);
+          if (isSpecial) setCatId("shacharit");
+        }}
+      />
+      <ChoiceDialog
+        open={pickPrayer}
+        onOpenChange={setPickPrayer}
+        title="בחירת תפילה"
+        items={prayerChoices}
+        value={catId}
+        onPick={setCatId}
+      />
+
+      {/* ── On a phone: the sections of the prayer being said ──
+
+          This is the row that is actually used. It replaces the prayer tabs,
+          which asked a question that had already been answered by the button
+          above. Empty for תהילים and קריאה בתורה, which have no sections of
+          this kind - and then the row is simply not there. */}
+      {isMobile && !isSpecial && stripSections && stripSections.length > 1 && (
+        <div style={{ background: activeTheme.headerBg }}>
+          <SectionStrip sections={stripSections} />
+        </div>
+      )}
+
       {/* ── Category tabs ── */}
+      {!isMobile && (
       <div
         className="border-b flex items-stretch"
         style={{
@@ -3175,28 +3467,8 @@ export const Siddur = () => {
         </div>
         </div>
 
-        {/* On a phone: the way back, in the slot the duplicate view-mode
-            picker used to hold. The picker is not lost - the same control is
-            in the tool strip below, and having it twice on one screen was the
-            reason this corner looked busy. */}
-        {isMobile && (
-          <div className="flex-shrink-0 flex items-center px-1 border-r border-white/10" dir="ltr">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate(-1)}
-              aria-label="חזרה"
-              title="חזרה"
-              className="h-8 w-8 p-0"
-              style={{ color: hText, background: "transparent" }}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
         {/* View mode picker — clickable dropdown in tab bar */}
-        {!isMobile && !isSpecial && (
+        {!isSpecial && (
           <div className="flex-shrink-0 flex items-center px-2 border-r border-white/10" dir="ltr">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -3230,6 +3502,7 @@ export const Siddur = () => {
           </div>
         )}
       </div>
+      )}
 
       {/* ── Content area ── */}
       <main
@@ -3279,6 +3552,7 @@ export const Siddur = () => {
         )}
       </main>
     </div>
+    </SiddurJumpContext.Provider>
     </SiddurToolsContext.Provider>
     </SiddurDisplayStyleContext.Provider>
     </SiddurThemeContext.Provider>
