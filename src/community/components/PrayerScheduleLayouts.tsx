@@ -34,11 +34,18 @@ function useNextIndex(rows: ResolvedMinyan[]): number {
   // a one-second tick would re-render the whole schedule for nothing.
   const now = useNow(30_000);
   const nowMinutes = jerusalemMinutes(now);
-  return useMemo(() => rows.findIndex((row) => row.minutes >= nowMinutes), [rows, nowMinutes]);
+  // A minyan called off today is not the next minyan - the same rule the
+  // board uses, so the phone and the wall never disagree about which one it is.
+  return useMemo(
+    () => rows.findIndex((row) => row.minutes >= nowMinutes && !row.cancelled),
+    [rows, nowMinutes],
+  );
 }
 
-function details(row: ResolvedMinyan): string {
-  return [row.minyan.room, row.minyan.note, row.source].filter(Boolean).join(" · ");
+export function details(row: ResolvedMinyan): string {
+  // row.note is the one-day exception's own word ("היום בבית מדרש"); it goes
+  // first, because on the day it exists it is the thing that changed.
+  return [row.note, row.minyan.room, row.minyan.note, row.source].filter(Boolean).join(" · ");
 }
 
 /* ------------------------------------------------------------------------- */

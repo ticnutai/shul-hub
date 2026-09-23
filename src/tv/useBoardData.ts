@@ -3,17 +3,19 @@ import {
   useAnnouncements,
   useMinyanCategories,
   useMinyanim,
+  useMinyanOverrides,
   useSettings,
   useShiurim,
   type Announcement,
   type Minyan,
   type MinyanCategory,
+  type MinyanOverrideRow,
   type MinyanSubcategory,
   type Settings,
   type Shiur,
 } from "@community/lib/data";
 import { useMemo } from "react";
-import { dayTypeFor, jerusalemWeekday, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
+import { dayTypeFor, jerusalemWeekday, overridesFor, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
 import type { TvConfig } from "./config";
@@ -33,6 +35,8 @@ export interface BoardData {
   categories: MinyanCategory[] | null;
   announcements: Announcement[] | null;
   shiurim: Shiur[] | null;
+  /** One-day exceptions to the timetable. Empty on almost every day. */
+  overrides: MinyanOverrideRow[] | null;
   /** Some of the data came from the on-device copy, not from the server. */
   stale: boolean;
   anyLoaded: boolean;
@@ -43,15 +47,18 @@ export function useBoardData({ persist, live }: { persist: boolean; live: boolea
   // The admin site already refreshes through its own screens; only the TV
   // needs its own socket.
   const sync = useRealtimeSync(
-    live ? ["settings", "minyanim", "minyan_categories", "announcements", "shiurim"] : [],
+    live ? ["settings", "minyanim", "minyan_categories", "announcements", "shiurim", "minyan_overrides"] : [],
   );
   const settings = useOfflineSnapshot("settings", useSettings().data, persist);
   const minyanim = useOfflineSnapshot("minyanim", useMinyanim().data, persist);
   const categories = useOfflineSnapshot("minyan_categories", useMinyanCategories().data, persist);
   const announcements = useOfflineSnapshot("announcements", useAnnouncements().data, persist);
   const shiurim = useOfflineSnapshot("shiurim", useShiurim().data, persist);
+  // Kept on the device like everything else: a screen that loses the network
+  // on the morning mincha was moved must still move it.
+  const overrides = useOfflineSnapshot("minyan_overrides", useMinyanOverrides().data, persist);
 
-  const parts = [settings, minyanim, categories, announcements, shiurim];
+  const parts = [settings, minyanim, categories, announcements, shiurim, overrides];
   const stale = parts.some((p) => p.isStale);
   const anyLoaded = parts.some((p) => p.data !== null);
   const syncStatus = live ? sync.status : "live";
@@ -66,11 +73,12 @@ export function useBoardData({ persist, live }: { persist: boolean; live: boolea
       categories: categories.data,
       announcements: announcements.data,
       shiurim: shiurim.data,
+      overrides: overrides.data,
       stale,
       anyLoaded,
       sync: { status: syncStatus, lastSyncedAt },
     }),
-    [settings.data, minyanim.data, categories.data, announcements.data, shiurim.data, stale, anyLoaded, syncStatus, lastSyncedAt],
+    [settings.data, minyanim.data, categories.data, announcements.data, shiurim.data, overrides.data, stale, anyLoaded, syncStatus, lastSyncedAt],
   );
 }
 
@@ -113,9 +121,12 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
   const dayType = dayTypeFor(now);
   // Hidden from the board by the admin (the website still lists them).
   const minyanim = (data.minyanim ?? []).filter((m) => !hidden.has(`minyan:${m.id}`));
+  // Today's exceptions, if the gabbai wrote any. Almost always empty, in
+  // which case every line below resolves exactly as it did before.
+  const today = overridesFor(data.overrides, now);
 
   if (!data.categories || data.categories.length === 0) {
-    return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim), subcategories: [] as MinyanSubcategory[] }];
+    return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim, today), subcategories: [] as MinyanSubcategory[] }];
   }
 
   const todayKey = jerusalemDateKey(now);
@@ -137,7 +148,7 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
       subcategories: minyanSubcategories(c),
       rows: minyanim
         .filter((m) => m.active && (m.category_id === c.id || (!m.category_id && m.day_type === c.system_key)))
-        .map((m) => resolveMinyan(m, zmanim))
+        .map((m) => resolveMinyan(m, zmanim, today.get(m.id)))
         .filter((r): r is ResolvedMinyan => r !== null)
         .sort((a, b) => a.minutes - b.minutes),
     }));

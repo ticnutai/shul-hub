@@ -37,6 +37,51 @@ export interface ResolvedMinyan {
   time: string;
   minutes: number;
   source: string;
+  /** Called off for this one day. The row stays, so the wall can say so. */
+  cancelled?: boolean;
+  /** The time came from a one-day exception, not from the timetable. */
+  overridden?: boolean;
+  /** A word from the gabbai about today only ("היום בעזרת הנשים"). */
+  note?: string;
+}
+
+/**
+ * A minyan that is different on one day, without changing the minyan.
+ *
+ * Optional everywhere, and absent by default: a caller that passes no
+ * overrides gets exactly the timetable it got before this existed. That is
+ * the whole design - the regular week stays the truth, and an exception is a
+ * single row that expires by having a date on it.
+ */
+export interface MinyanOverride {
+  minyan_id: string;
+  /** yyyy-mm-dd, as the day is counted in Jerusalem. */
+  on_date: string;
+  /** "13:00" - or null when the override only cancels, or only says something. */
+  at_time: string | null;
+  cancelled: boolean;
+  note: string;
+}
+
+/** The exceptions for one day, by minyan. */
+export function overridesFor(
+  overrides: MinyanOverride[] | null | undefined,
+  date: Date,
+): Map<string, MinyanOverride> {
+  const key = jerusalemDateKey(date);
+  const map = new Map<string, MinyanOverride>();
+  for (const o of overrides ?? []) if (o.on_date === key) map.set(o.minyan_id, o);
+  return map;
+}
+
+/** The date in Jerusalem as yyyy-mm-dd - the day the override is written for. */
+export function jerusalemDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Jerusalem",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
 
 function minutesFromHHMM(t: string): number {
@@ -48,7 +93,38 @@ function minutesInJerusalem(d: Date): number {
   return minutesFromHHMM(formatTime(d));
 }
 
-export function resolveMinyan(minyan: Minyan, zmanim: Zmanim): ResolvedMinyan | null {
+export function resolveMinyan(
+  minyan: Minyan,
+  zmanim: Zmanim,
+  override?: MinyanOverride | null,
+): ResolvedMinyan | null {
+  // An exception for today, laid over the regular answer rather than
+  // replacing the row: the minyan is still the minyan, and tomorrow it is
+  // back to normal without anybody having to remember anything.
+  if (override) {
+    const base = resolveMinyan(minyan, zmanim);
+    if (override.at_time) {
+      const hhmm = override.at_time.slice(0, 5);
+      return {
+        minyan,
+        time: hhmm,
+        minutes: minutesFromHHMM(hhmm),
+        source: override.cancelled ? "מבוטל היום" : "היום בלבד",
+        cancelled: override.cancelled,
+        overridden: true,
+        note: override.note || undefined,
+      };
+    }
+    // No time of its own: keep the timetable's, and say what is different.
+    if (!base) return null;
+    return {
+      ...base,
+      source: override.cancelled ? "מבוטל היום" : base.source,
+      cancelled: override.cancelled,
+      note: override.note || undefined,
+    };
+  }
+
   if (minyan.time_mode === "fixed") {
     if (!minyan.fixed_time) return null;
     const hhmm = minyan.fixed_time.slice(0, 5);
@@ -91,10 +167,15 @@ export const RELATIVE_LABELS: Record<SolarEvent, string> = {
   tzeit: "צאת הכוכבים",
 };
 
-export function resolveDay(minyanim: Minyan[], dayType: DayType, zmanim: Zmanim): ResolvedMinyan[] {
+export function resolveDay(
+  minyanim: Minyan[],
+  dayType: DayType,
+  zmanim: Zmanim,
+  overrides?: Map<string, MinyanOverride>,
+): ResolvedMinyan[] {
   return minyanim
     .filter((m) => m.active && m.day_type === dayType)
-    .map((m) => resolveMinyan(m, zmanim))
+    .map((m) => resolveMinyan(m, zmanim, overrides?.get(m.id)))
     .filter((r): r is ResolvedMinyan => r !== null)
     .sort((a, b) => a.minutes - b.minutes);
 }

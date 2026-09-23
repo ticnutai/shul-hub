@@ -342,6 +342,33 @@
   vertical-align: middle;
 }
 
+/* A one-day exception to the timetable (minyan_overrides).
+
+   Deliberately loud. The rest of the board is a standing timetable that is
+   read at a glance and believed; a line that is true only today has to
+   interrupt that reading, or it will be taken for the new normal by somebody
+   who then arrives at the wrong time for a fortnight. */
+.tv-badge.is-warn {
+  background: var(--tv-warn, #b45309);
+  color: #fff;
+}
+
+.tv-dash-row.is-cancelled .tv-dash-time {
+  text-decoration: line-through;
+  text-decoration-thickness: 0.08em;
+  opacity: 0.55;
+}
+
+.tv-dash-row.is-cancelled .tv-dash-name > span:first-child {
+  opacity: 0.7;
+}
+
+/* Not faded like a minyan that has passed: this one still matters today. */
+.tv-dash-row.is-today-only.is-past,
+.tv-dash-row.is-cancelled.is-past {
+  opacity: 1;
+}
+
 .tv-frame .is-past {
   opacity: 0.45;
 }

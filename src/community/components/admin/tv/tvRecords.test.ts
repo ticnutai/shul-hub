@@ -15,6 +15,7 @@ const data = (over: Partial<BoardData> = {}): BoardData => ({
   categories: [],
   announcements: [],
   shiurim: [],
+  overrides: [],
   stale: false,
   anyLoaded: true,
   sync: { status: "live", lastSyncedAt: null },

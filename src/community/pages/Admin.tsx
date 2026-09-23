@@ -6,6 +6,7 @@ import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MinyanimAdmin } from "@community/components/admin/MinyanimAdmin";
+import { MinyanOverridesAdmin } from "@community/components/admin/MinyanOverridesAdmin";
 import { AnnouncementsAdmin, ChavrutotAdmin, ShiurimAdmin } from "@community/components/admin/ContentAdmin";
 import { MessagesAdmin } from "@community/components/admin/MessagesAdmin";
 import { SettingsAdmin } from "@community/components/admin/SettingsAdmin";
@@ -137,8 +138,12 @@ export function AdminPage() {
             <TabsContent value="communities" className="mt-6">
               <CommunitiesAdmin />
             </TabsContent>
-            <TabsContent value="minyanim" className="mt-6">
+            <TabsContent value="minyanim" className="mt-6 space-y-6">
               <MinyanimAdmin />
+              {/* Under the timetable, because it is about the timetable and
+                  not instead of it: the regular week first, then whatever is
+                  different about one day. */}
+              <MinyanOverridesAdmin />
             </TabsContent>
             <TabsContent value="announcements" className="mt-6">
               <AnnouncementsAdmin />

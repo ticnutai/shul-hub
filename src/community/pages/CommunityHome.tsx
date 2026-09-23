@@ -26,8 +26,9 @@ import {
   DAYS_HE,
   minyanSubcategories,
   prayerLabel,
+  useMinyanOverrides,
 } from "@community/lib/data";
-import { dayTypeFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { dayTypeFor, overridesFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
 import { QuickAddButton } from "@community/components/QuickAddButton";
@@ -155,6 +156,10 @@ export function CommunityHome() {
   const [prayer, setPrayer] = useState("shacharit");
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
+  // One-day exceptions to the timetable. Empty on almost every day, and on
+  // those days nothing below behaves any differently.
+  const { data: overrideRows } = useMinyanOverrides();
+  const todayOverrides = useMemo(() => overridesFor(overrideRows, today), [overrideRows, today]);
   const todayKey = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Jerusalem",
     year: "numeric",
@@ -185,10 +190,12 @@ export function CommunityHome() {
             (minyan.category_id === selectedCategory?.id ||
               (!minyan.category_id && minyan.day_type === selectedCategory?.system_key)),
         )
-        .map((minyan) => resolveMinyan(minyan, zmanim))
+        // The phone must agree with the wall: the same one-day exceptions,
+        // resolved by the same function.
+        .map((minyan) => resolveMinyan(minyan, zmanim, todayOverrides.get(minyan.id)))
         .filter((row): row is NonNullable<typeof row> => row !== null)
         .sort((a, b) => a.minutes - b.minutes),
-    [minyanim, selectedCategory, zmanim],
+    [minyanim, selectedCategory, zmanim, todayOverrides],
   );
   const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
   const hasSubcategories = prayerTabs.length > 0;

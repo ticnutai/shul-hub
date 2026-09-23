@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@community/integrations/supabase/client";
 import type { Tables } from "@community/integrations/supabase/types";
 import { communityId, useCommunityId } from "@/community/lib/community";
+import { jerusalemDateKey } from "@community/lib/minyan-time";
 
 export type Settings = Tables<"settings">;
 export type Minyan = Tables<"minyanim">;
@@ -76,6 +77,40 @@ export function useSettings() {
         .maybeSingle();
       if (error) throw error;
       return data;
+    },
+  });
+}
+
+export interface MinyanOverrideRow {
+  id: string;
+  minyan_id: string;
+  on_date: string;
+  at_time: string | null;
+  cancelled: boolean;
+  note: string;
+}
+
+/**
+ * The exceptions to the timetable, from today forward.
+ *
+ * Only forward: an override is a dated fact, not a rule, and nothing on a
+ * board or a phone has any use for what happened last month. Empty is the
+ * normal case and costs one small query.
+ */
+export function useMinyanOverrides() {
+  const community = useCommunityId();
+  return useQuery({
+    queryKey: ["minyan-overrides", community],
+    enabled: Boolean(community),
+    queryFn: async (): Promise<MinyanOverrideRow[]> => {
+      const { data, error } = await supabase
+        .from("minyan_overrides")
+        .select("id, minyan_id, on_date, at_time, cancelled, note")
+        .eq("community_id", communityId())
+        .gte("on_date", jerusalemDateKey(new Date()))
+        .order("on_date");
+      if (error) throw error;
+      return (data ?? []) as unknown as MinyanOverrideRow[];
     },
   });
 }

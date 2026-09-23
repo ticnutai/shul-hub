@@ -137,7 +137,9 @@ function PrayerPanel({
 }) {
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
-  const nextIndex = schedule.rows.findIndex((r) => r.minutes >= nowMin);
+  // A minyan called off today is not the next minyan. Pointing "הבא" at one
+  // is the single most misleading thing this panel could do.
+  const nextIndex = schedule.rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
   const title = titleKey ? edit.text(titleKey, "זמני התפילות") : schedule.title;
   const listRef = useFitRows<HTMLUListElement>(schedule.rows.length);
   return (
@@ -161,12 +163,19 @@ function PrayerPanel({
               key={r.minyan.id}
               className={`tv-dash-row${i === nextIndex ? " is-next" : ""}${
                 nextIndex === -1 || i < nextIndex ? " is-past" : ""
-              }`}
+              }${r.cancelled ? " is-cancelled" : ""}${r.overridden ? " is-today-only" : ""}`}
               {...edit.attr(`minyan:${r.minyan.id}`)}
             >
               <span className="tv-dash-name">
                 <span {...edit.attr(`minyan:${r.minyan.id}:label`)}>{r.minyan.label}</span>
                 {i === nextIndex && <span className="tv-badge">הבא</span>}
+                {/* A one-day exception says so on the line itself. Somebody
+                    who walks in at the usual time and finds nothing must be
+                    able to see why from the doorway - an absence explains
+                    nothing, and a changed time that looks permanent is worse. */}
+                {r.cancelled && <span className="tv-badge is-warn">מבוטל היום</span>}
+                {r.overridden && !r.cancelled && <span className="tv-badge is-warn">היום בלבד</span>}
+                {r.note && <small className="tv-dash-sub">{r.note}</small>}
               </span>
               <span className="tv-dash-time">{r.time}</span>
             </li>
