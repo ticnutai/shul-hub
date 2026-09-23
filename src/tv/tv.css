@@ -320,6 +320,10 @@
   font-weight: 700;
   color: var(--tv-accent-2);
   flex: 0 0 auto;
+  /* Unset = "normal", which is exactly what every board had before this
+     variable existed. A skin may set a default; the admin's own setting is
+     written inline on the root and beats both. */
+  letter-spacing: var(--tv-tracking, normal);
 }
 
 .tv-empty {
@@ -4454,8 +4458,13 @@
   content: none;
 }
 
+.tv-root.is-skin-printed {
+  /* The skin's own taste, expressed through the setting the admin can also
+     reach - so moving the slider adjusts this skin instead of fighting it. */
+  --tv-tracking: 0.16em;
+}
+
 .tv-root.is-skin-printed .tv-panel-title {
-  letter-spacing: 0.16em;
   font-weight: 500;
   color: var(--tv-accent);
 }

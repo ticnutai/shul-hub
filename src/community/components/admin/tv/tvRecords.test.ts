@@ -156,3 +156,25 @@ describe("options that must stay off until somebody turns them on", () => {
     expect(normalizeTvConfig({ skin: "printed" }).skin).toBe("printed");
   });
 });
+
+describe("letter spacing in titles", () => {
+  it("is 'as the skin draws it' until somebody moves it", () => {
+    expect(normalizeTvConfig({}).tracking).toBeNull();
+    expect(normalizeTvConfig({ skin: "printed" }).tracking).toBeNull();
+  });
+
+  it("keeps a value that was chosen", () => {
+    expect(normalizeTvConfig({ tracking: 0.18 }).tracking).toBe(0.18);
+  });
+
+  it("can be put back to the skin's own", () => {
+    expect(normalizeTvConfig({ tracking: null }).tracking).toBeNull();
+  });
+
+  it("refuses a spacing that would pull the words apart", () => {
+    // Above roughly a quarter of an em a Hebrew word stops reading as a word.
+    expect(normalizeTvConfig({ tracking: 9 }).tracking).toBe(0.3);
+    expect(normalizeTvConfig({ tracking: -4 }).tracking).toBe(0);
+    expect(normalizeTvConfig({ tracking: "wide" }).tracking).toBe(0);
+  });
+});

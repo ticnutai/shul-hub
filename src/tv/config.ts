@@ -263,6 +263,17 @@ export interface TvConfig {
   backgroundGradient: string | null;
   font: TvFontId;
   textScale: number;
+  /**
+   * How far apart the letters of a title are set, in em. null = as the skin
+   * draws it, which is how every board reads until somebody moves this.
+   *
+   * It is here rather than inside a skin because it is the cheapest
+   * hierarchy there is: a Hebrew title set wide reads as a title without
+   * being bigger or louder, so it buys separation without spending
+   * contrast - and contrast is the whole budget on a wall seen from thirty
+   * metres. Titles only; body text set wide stops being readable at speed.
+   */
+  tracking: number | null;
   /** Live-editor colour overrides on top of the theme (CSS var -> colour). */
   themeOverrides: Record<string, string>;
   backgroundImage: string | null;
@@ -349,6 +360,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   theme: "navy",
   font: "classic",
   textScale: 1,
+  tracking: null,
   themeOverrides: {},
   backgroundImage: null,
   backgroundDim: 0.55,
@@ -547,6 +559,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     theme,
     font,
     textScale: num(raw.textScale, d.textScale, 0.8, 1.3),
+    tracking: raw.tracking === null || raw.tracking === undefined ? null : num(raw.tracking, 0, 0, 0.3),
     themeOverrides: overrides,
     // An uploaded picture, or one of the ready-made backdrops by name
     // (see backdrops.ts - stored by name so a rebuild cannot break it).
@@ -636,7 +649,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
 const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
   screenLayout: true, clockStyle: true, skin: true, frame: true, spacing: true,
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true,
-  backgroundDim: true, font: true, textScale: true, texts: true, hidden: true,
+  backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,
 };
 

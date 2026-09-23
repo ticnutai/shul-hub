@@ -105,8 +105,12 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       vars[`--space-${edge}`] = `calc(var(--u) * ${value})`;
       classes += ` has-space-${edge}`;
     }
+    // Set as an inline variable so it beats whatever a skin chose, and left
+    // out entirely when the admin has not asked - which is how the skin keeps
+    // its own answer.
+    if (config.tracking !== null) vars["--tv-tracking"] = `${config.tracking}em`;
     return { vars, classes };
-  }, [config.frame, config.spacing]);
+  }, [config.frame, config.spacing, config.tracking]);
 
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   const shabbat = slides[0]?.kind === "shabbat";

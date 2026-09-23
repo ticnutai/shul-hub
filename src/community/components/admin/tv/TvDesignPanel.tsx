@@ -1407,6 +1407,26 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   onChange={(v) => edit("scale", (c) => ({ ...c, textScale: v / 100 }))}
                 />
               </div>
+              <div className="space-y-1">
+                <Label>מרווח אותיות בכותרות</Label>
+                <Stepper
+                  label="מרווח אותיות בכותרות"
+                  // -1 is "as the skin draws it" - the state every board is in
+                  // until somebody moves this, and a value it can return to.
+                  value={draft.tracking === null ? -1 : Math.round(draft.tracking * 100)}
+                  min={-1}
+                  max={24}
+                  step={1}
+                  format={(v) => (v < 0 ? "כמו הסקין" : `${(v / 100).toFixed(2)}em`)}
+                  onChange={(v) =>
+                    edit("track", (c) => ({ ...c, tracking: v < 0 ? null : v / 100 }))
+                  }
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  כותרת עברית פרושה רחב נקראת ככותרת בלי להיות גדולה יותר. 0.16–0.18em הוא הטווח
+                  שנראה מודפס; מעל זה המילים מתחילות להתפרק. משפיע על כותרות בלבד.
+                </p>
+              </div>
             </div>
           </Section>
         </TabsContent>
