@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, createContext, useContext, useCallback, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { TextDisplaySettings } from "@/components/TextDisplaySettings";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRoles } from "@/hooks/useUserRoles";
@@ -13,7 +14,7 @@ import type { FlatPasuk } from "@/types/torah";
 import { TEHILLIM_COMMENTATORS } from "@/hooks/useCommentaries";
 import { ColorPicker } from "@/components/ColorPicker";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, ThemeAppearanceControls, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
-import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, type LucideProps } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -1866,7 +1867,7 @@ const BookColumnPane = ({ nusach, catId }: { nusach: string; catId: string }) =>
 };
 
 /* ─── TextFiltersBar (nikud / taamim toggles) ───────────── */
-const TextFiltersBar = ({ scope }: { scope: "siddur" | "tehillim" }) => {
+const TextFilterPills = ({ scope }: { scope: "siddur" | "tehillim" }) => {
   const { settings, updateSettings } = useFontAndColorSettings();
   const { displayStyle, setDisplayStyle } = useSiddurDisplayStyle();
   const { theme } = useSiddurTheme();
@@ -1900,14 +1901,50 @@ const TextFiltersBar = ({ scope }: { scope: "siddur" | "tehillim" }) => {
   );
 
   return (
-    <div className="flex flex-wrap justify-center gap-2 mb-3">
+    <>
       {pill(showNikud,  () => updateSettings({ showNikud:  !showNikud  }), "ניקוד",  "בָּ")}
       {pill(showTaamim, () => updateSettings({ showTaamim: !showTaamim }), "טעמים", "֑")}
       {pill(true, () => updateSettings(scope === "tehillim" ? { tehillimContentWidth: scopedNextWidth } : { siddurContentWidth: scopedNextWidth }), `שוליים: ${widthLabels[scopedWidth]}`, "↔")}
       {pill(displayStyle === "ornate", () => setDisplayStyle(displayStyle === "ornate" ? "classic" : "ornate"), "תצוגה מפוארת", "✦")}
-    </div>
+    </>
   );
 };
+
+/** The pills as their own row - the wide-screen arrangement. */
+const TextFiltersBar = ({ scope }: { scope: "siddur" | "tehillim" }) => (
+  <div className="flex flex-wrap justify-center gap-2 mb-3">
+    <TextFilterPills scope={scope} />
+  </div>
+);
+
+/**
+ * The same four toggles, behind one button.
+ *
+ * On a phone the pills took a whole row of a screen that is mostly meant for
+ * reading. They cannot simply be dropped, though: ניקוד, טעמים and תצוגה
+ * מפוארת exist nowhere else in the app, and a setting you can no longer reach
+ * is not a tidier screen, it is a missing feature. So the row becomes a
+ * button, and everything stays where it was, one tap further in.
+ */
+const TextFilterMenu = ({ scope, color }: { scope: "siddur" | "tehillim"; color: string }) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <button
+        className="flex h-8 w-8 items-center justify-center rounded-lg transition-opacity hover:opacity-80"
+        title="ניקוד, טעמים ושוליים"
+        aria-label="ניקוד, טעמים ושוליים"
+        style={{ color, background: "transparent" }}
+      >
+        <SlidersHorizontal className="h-4 w-4" />
+      </button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="center" className="w-auto p-2" style={{ direction: "rtl" }}>
+      <div className="flex flex-col items-stretch gap-1.5">
+        <TextFilterPills scope={scope} />
+      </div>
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
 /* ─── TehillimPane ───────────────────────────────────────── */
 const TEHILLIM_DAILY: Record<number, number>   = { 0: 24, 1: 48, 2: 82, 3: 94, 4: 81, 5: 93, 6: 92 };
@@ -2569,6 +2606,9 @@ const KriaPane = ({ onNavigate }: { onNavigate: (seferId?: number, perek?: numbe
 
 /* ─── Main Siddur component ──────────────────────────────── */
 export const Siddur = () => {
+  // A phone has one screen's worth of room and four rows of chrome above the
+  // prayer. Which of them survive is decided here, once.
+  const isMobile = useIsMobile();
   const navigate                = useNavigate();
   const omerInSeason            = useOmerSeason();
   const [nusach, setNusach]    = useState("sefard");
@@ -2788,6 +2828,67 @@ export const Siddur = () => {
     { id: "book",       icon: <Columns2       className="h-4 w-4" />, title: "שתי עמודות",   desc: "פריסת ספר" },
   ];
 
+  // The controls that style the page: colours, text, view mode, and the omer
+  // shortcut in its season. Defined once and rendered in exactly one place -
+  // the header on a wide screen, the top of the text on a phone - so that the
+  // theme panel and the settings panel never exist twice over.
+  const pageTools = (
+    <>
+              {/* Theme picker */}
+              <ThemePicker />
+              {/* T — text settings */}
+              <TextDisplaySettings initialTab={settingsTab} />
+
+              {/* View mode dropdown (siddur only) */}
+              {!isSpecial && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 gap-1 px-2 text-xs font-medium rounded-lg"
+                      style={{ color: hAccent, background: "transparent", border: "none" }}
+                    >
+                      <Layers className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="hidden md:inline max-w-[80px] truncate">{VIEW_MODES.find(m => m.id === viewMode)?.title ?? "תצוגה"}</span>
+                      <ChevronDown className="h-3 w-3 opacity-60 flex-shrink-0" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56" style={{ direction: "rtl" }}>
+                    <DropdownMenuLabel className="text-right text-xs text-muted-foreground">מצב תצוגה</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {VIEW_MODES.map(m => (
+                      <DropdownMenuItem
+                        key={m.id}
+                        onClick={() => setMode(m.id)}
+                        className="flex items-center gap-2 cursor-pointer"
+                      >
+                        <span style={{ color: viewMode === m.id ? activeTheme.accentColor : "hsl(var(--muted-foreground))" }}>{m.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className={cn("block text-sm", viewMode === m.id && "font-semibold text-foreground")}>{m.title}</span>
+                          {m.desc && <span className="block text-[10px] text-muted-foreground">{m.desc}</span>}
+                        </div>
+                        {viewMode === m.id && <span className="text-xs flex-shrink-0" style={{ color: hAccent }}>✓</span>}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {omerInSeason && (
+                <button
+                  onClick={() => navigate('/omer')}
+                  className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium transition-opacity hover:opacity-80"
+                  style={{ color: hAccent }}
+                  title="ספירת העומר"
+                >
+                  <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="hidden sm:inline">עומר</span>
+                </button>
+              )}
+    </>
+  );
+
   return (
     <SiddurThemeContext.Provider value={{
       theme: activeTheme,
@@ -2841,7 +2942,13 @@ export const Siddur = () => {
         <div className="w-full px-3 sm:px-5">
 
           <h1 className="sr-only">סידור</h1>
-          {/* Siddur-specific controls. Main destinations live in GlobalAppHeader. */}
+          {/* Siddur-specific controls. Main destinations live in GlobalAppHeader.
+
+              On a phone this row is not rendered at all: its controls move down
+              to the top of the text, and the back arrow moves into the tab bar.
+              A row kept for one arrow is a row taken from the page somebody
+              came here to read. */}
+          {!isMobile && (
           <div className="relative flex items-center justify-center gap-1.5 py-2" dir="ltr">
               <Button
                 variant="ghost"
@@ -2855,59 +2962,9 @@ export const Siddur = () => {
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden md:inline">חזרה</span>
               </Button>
-              {/* Theme picker */}
-              <ThemePicker />
-              {/* T — text settings */}
-              <TextDisplaySettings initialTab={settingsTab} />
-
-              {/* View mode dropdown (siddur only) */}
-              {!isSpecial && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 gap-1 px-2 text-xs font-medium rounded-lg"
-                      style={{ color: hAccent, background: "transparent", border: "none" }}
-                    >
-                      <Layers className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="hidden md:inline max-w-[80px] truncate">{VIEW_MODES.find(m => m.id === viewMode)?.title ?? "תצוגה"}</span>
-                      <ChevronDown className="h-3 w-3 opacity-60 flex-shrink-0" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-56" style={{ direction: "rtl" }}>
-                    <DropdownMenuLabel className="text-right text-xs text-muted-foreground">מצב תצוגה</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {VIEW_MODES.map(m => (
-                      <DropdownMenuItem
-                        key={m.id}
-                        onClick={() => setMode(m.id)}
-                        className="flex items-center gap-2 cursor-pointer"
-                      >
-                        <span style={{ color: viewMode === m.id ? activeTheme.accentColor : "hsl(var(--muted-foreground))" }}>{m.icon}</span>
-                        <div className="flex-1 min-w-0">
-                          <span className={cn("block text-sm", viewMode === m.id && "font-semibold text-foreground")}>{m.title}</span>
-                          {m.desc && <span className="block text-[10px] text-muted-foreground">{m.desc}</span>}
-                        </div>
-                        {viewMode === m.id && <span className="text-xs flex-shrink-0" style={{ color: hAccent }}>✓</span>}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-
-              {omerInSeason && (
-                <button
-                  onClick={() => navigate('/omer')}
-                  className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium transition-opacity hover:opacity-80"
-                  style={{ color: hAccent }}
-                  title="ספירת העומר"
-                >
-                  <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
-                  <span className="hidden sm:inline">עומר</span>
-                </button>
-              )}
+              {pageTools}
           </div>
+          )}
 
           {/* ── Row 2: Nusach pills ── */}
           <div
@@ -2998,8 +3055,28 @@ export const Siddur = () => {
         </div>
         </div>
 
+        {/* On a phone: the way back, in the slot the duplicate view-mode
+            picker used to hold. The picker is not lost - the same control is
+            in the tool strip below, and having it twice on one screen was the
+            reason this corner looked busy. */}
+        {isMobile && (
+          <div className="flex-shrink-0 flex items-center px-1 border-r border-white/10" dir="ltr">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => navigate(-1)}
+              aria-label="חזרה"
+              title="חזרה"
+              className="h-8 w-8 p-0"
+              style={{ color: hText, background: "transparent" }}
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+
         {/* View mode picker — clickable dropdown in tab bar */}
-        {!isSpecial && (
+        {!isMobile && !isSpecial && (
           <div className="flex-shrink-0 flex items-center px-2 border-r border-white/10" dir="ltr">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -3046,8 +3123,19 @@ export const Siddur = () => {
             : "px-5 sm:px-7"
         )}
       >
-        {/* ── Text filter toggles (nikud / taamim) ── */}
-        <TextFiltersBar scope={catId === "tehillim" ? "tehillim" : "siddur"} />
+        {/* ── Text filter toggles (nikud / taamim) ──
+
+            On a phone this row carries the page's controls instead of four
+            pills: the pills are one tap further in, and the controls are here
+            rather than in the header, which has no row to spare. */}
+        {isMobile ? (
+          <div className="mb-3 flex items-center justify-center gap-1" dir="ltr">
+            {pageTools}
+            <TextFilterMenu scope={catId === "tehillim" ? "tehillim" : "siddur"} color={hAccent} />
+          </div>
+        ) : (
+          <TextFiltersBar scope={catId === "tehillim" ? "tehillim" : "siddur"} />
+        )}
 
         {/* Special — nusach-independent panes */}
         {catId === "tehillim" && <TehillimPane />}
