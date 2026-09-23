@@ -20,6 +20,14 @@ export default defineConfig(({ mode }) => ({
       host: 'localhost',
     },
   },
+  // Vite 5 builds an imported .json into a JavaScript object literal, which
+  // the engine then has to parse as code. `stringify` makes it
+  // `JSON.parse("...")` instead, and the JSON parser is a great deal faster
+  // at this than the JavaScript parser. Measured here on one 1.2 MB siddur
+  // file: 5.0ms as a literal, 2.7ms through JSON.parse - and the machine that
+  // matters is a television, not this one. There are 92 MB of these files.
+  // (Vite 6 makes this the default for anything over 10 kB.)
+  json: { stringify: true },
   plugins: [
     react(),
     mode === "development" && componentTagger(),
@@ -79,6 +87,26 @@ export default defineConfig(({ mode }) => ({
           '**/assets/data-*.js', // chumash: bereishit .. devarim
           '**/assets/siddur_*.js', // siddur nusachim
           '**/assets/*_on_*.js', // Sefaria commentaries (Rashi_on_Genesis, ...)
+          // Nevi'im and Ketuvim. These were meant to be covered by the rule
+          // above and were not: their chunks are named after the book, so
+          // "data-" never matched them, and 2.8 MB of scripture was pulled on
+          // every install. Same treatment as the chumash - fetched when
+          // somebody opens them, kept afterwards by the runtime rule below.
+          '**/assets/i_samuel-*.js',
+          '**/assets/ii_samuel-*.js',
+          '**/assets/i_kings-*.js',
+          '**/assets/ii_kings-*.js',
+          '**/assets/joshua-*.js',
+          '**/assets/judges-*.js',
+          '**/assets/esther-*.js',
+          '**/assets/tehillim-*.js',
+          // The management screens. Every visitor was downloading 1.4 MB of
+          // an editor they will never open; a gabbai who does open it is by
+          // definition online, because it exists to write to the server.
+          '**/assets/Admin-*.js',
+          '**/assets/TvDesignPanel-*.js',
+          '**/assets/TvDesignPanel-*.css',
+          '**/assets/tvAdminData-*.js',
         ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         // NOTE: Google Fonts (fonts.googleapis.com / fonts.gstatic.com) are intentionally
