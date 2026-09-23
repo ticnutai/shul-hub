@@ -135,7 +135,8 @@ export type BoardSkin =
   | "heichal"
   | "dome"
   | "stone"
-  | "medallion";
+  | "medallion"
+  | "printed";
 export const BOARD_SKINS: BoardSkin[] = [
   "plain",
   "gold",
@@ -153,6 +154,7 @@ export const BOARD_SKINS: BoardSkin[] = [
   "dome",
   "stone",
   "medallion",
+  "printed",
 ];
 export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
 
@@ -278,6 +280,16 @@ export interface TvConfig {
   };
   ticker: { enabled: boolean; text: string };
   /**
+   * A live count to the next minyan, under the prayer times.
+   *
+   * Off unless it is switched on: a board that has run for months without it
+   * keeps looking exactly as it did. What it adds is the one question a
+   * person crossing the hall actually has - not "when is mincha" but "have I
+   * missed it" - and a number that moves answers that faster than a time
+   * they have to subtract from a clock.
+   */
+  countdown: { enabled: boolean };
+  /**
    * The Shabbat screen: from candle lighting on Friday until the end of
    * Shabbat the board shows only it (see shabbat.ts).
    */
@@ -355,6 +367,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
     popupSeconds: 40,
   },
   ticker: { enabled: false, text: "" },
+  countdown: { enabled: false },
   shabbat: { enabled: true, endMinutesAfterSunset: 40, scenes: ["art:classic"], photos: [], rotate: false, secondsPerScene: 60 },
   slideshow: { images: [], secondsPerImage: 8 },
   texts: {},
@@ -520,6 +533,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
   const header = isObj(raw.header) ? raw.header : {};
   const alerts = isObj(raw.alerts) ? raw.alerts : {};
   const ticker = isObj(raw.ticker) ? raw.ticker : {};
+  const countdown = isObj(raw.countdown) ? raw.countdown : {};
   const shabbat = isObj(raw.shabbat) ? raw.shabbat : {};
   const slideshow = isObj(raw.slideshow) ? raw.slideshow : {};
 
@@ -557,6 +571,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
       popupSeconds: num(alerts.popupSeconds, d.alerts.popupSeconds, 10, 300),
     },
     ticker: { enabled: bool(ticker.enabled, d.ticker.enabled), text: str(ticker.text, "", 400) },
+    countdown: { enabled: bool(countdown.enabled, d.countdown.enabled) },
     shabbat: {
       enabled: bool(shabbat.enabled, d.shabbat.enabled),
       endMinutesAfterSunset: Math.round(num(shabbat.endMinutesAfterSunset, d.shabbat.endMinutesAfterSunset, 18, 90)),
@@ -622,7 +637,7 @@ const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
   screenLayout: true, clockStyle: true, skin: true, frame: true, spacing: true,
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true,
   backgroundDim: true, font: true, textScale: true, texts: true, hidden: true,
-  flipped: true, styles: true, header: true, ticker: true,
+  flipped: true, styles: true, header: true, ticker: true, countdown: true,
 };
 
 /**

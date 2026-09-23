@@ -183,6 +183,28 @@ export const TV_THEMES: TvTheme[] = [
       "--tv-pinned": "#b08a3e",
     },
   },
+  {
+    // Built to sit under the "דפוס" skin, though it works under any of them.
+    // No white and no black: the page is a deep blue and the text is warm
+    // paper, which is what stops a dark board looking like a switched-off
+    // television across a lit hall.
+    id: "print",
+    name: "דפוס",
+    description: "כחול לילה, ברונזה וזהב — נקי כמו לוח מודפס",
+    light: false,
+    vars: {
+      "--tv-bg-a": "#071321",
+      "--tv-bg-b": "#0d1c2d",
+      "--tv-bg-c": "#071321",
+      "--tv-accent": "#e2bd69",
+      "--tv-accent-2": "#765a29",
+      "--tv-text": "#f5f1e8",
+      "--tv-text-dim": "#b8b1a2",
+      "--tv-panel": "rgba(13, 28, 45, 0.4)",
+      "--tv-on-accent": "#071321",
+      "--tv-pinned": "#c99a3d",
+    },
+  },
 ];
 
 export type TvFontId = "classic" | "modern" | "soft" | "traditional" | "bold";

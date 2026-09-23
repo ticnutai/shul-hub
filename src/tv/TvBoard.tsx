@@ -147,7 +147,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             </div>
           ) : dashboard ? (
             <ClockContext.Provider value={now}>
-              <MemoDashboard slides={slides} now={minuteNow} zmanim={zmanim} index={index} clockStyle={config.clockStyle} />
+              <MemoDashboard slides={slides} now={minuteNow} zmanim={zmanim} index={index} clockStyle={config.clockStyle} countdown={config.countdown.enabled} />
             </ClockContext.Provider>
           ) : layout === "split" ? (
             <div className="tv-split">

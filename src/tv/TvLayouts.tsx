@@ -126,14 +126,50 @@ type PrayerSlide = Extract<BoardSlide, { kind: "prayer" }>;
  */
 export const categoryKey = (slideId: string) => `cat:${slideId.replace(/^prayer:/, "")}`;
 
+/**
+ * How long until the next minyan.
+ *
+ * The question somebody crossing the hall actually has is not "when is
+ * mincha" but "have I missed it", and a number that moves answers that
+ * faster than a time they have to subtract from a clock. It reads from the
+ * board's own second-by-second clock rather than a timer of its own, so an
+ * idle board still ticks exactly once a second.
+ *
+ * Under an hour it drops the hours, because "07:12" on a wall is read as a
+ * time of day and "12:40 דק׳" is not.
+ */
+function NextPrayerCountdown({ target }: { target: ResolvedMinyan }) {
+  const now = useContext(ClockContext);
+  const edit = useBoardEdit();
+  const nowSec = jerusalemMinutes(now) * 60 + now.getSeconds();
+  const left = Math.max(0, target.minutes * 60 - nowSec);
+  const h = Math.floor(left / 3600);
+  const m = Math.floor((left % 3600) / 60);
+  const sec = left % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return (
+    <p className="tv-dash-countdown" {...edit.attr("dash.countdown")}>
+      <span className="tv-dash-countdown-label">
+        {edit.text("dash.countdown", "עד התפילה הבאה")}
+      </span>
+      <span className="tv-dash-countdown-value">
+        {h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`}
+      </span>
+    </p>
+  );
+}
+
 function PrayerPanel({
   schedule,
   now,
   titleKey,
+  countdown = false,
 }: {
   schedule: PrayerSlide;
   now: Date;
   titleKey: string | null;
+  /** Off unless the admin switched it on; see TvConfig.countdown. */
+  countdown?: boolean;
 }) {
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
@@ -181,6 +217,9 @@ function PrayerPanel({
             </li>
           ))}
         </ul>
+      )}
+      {countdown && nextIndex >= 0 && !edit.hidden("dash.countdown") && (
+        <NextPrayerCountdown target={schedule.rows[nextIndex]} />
       )}
     </div>
   );
@@ -252,6 +291,7 @@ export function DashboardStage({
   zmanim,
   index,
   clockStyle,
+  countdown = false,
 }: {
   slides: BoardSlide[];
   /** Minute precision - the panels. */
@@ -260,6 +300,8 @@ export function DashboardStage({
   /** The board's rotation counter: steps the featured announcement. */
   index: number;
   clockStyle: ClockStyle;
+  /** Show a live count to the next minyan (TvConfig.countdown). */
+  countdown?: boolean;
 }) {
   const edit = useBoardEdit();
   const prayers = slides.filter((s): s is PrayerSlide => s.kind === "prayer").slice(0, 2);
@@ -283,7 +325,15 @@ export function DashboardStage({
       <div className="tv-panel tv-empty">לא הוגדרו מניינים להיום</div>
     ) : (
       prayers.map((p, i) => (
-        <PrayerPanel key={p.id} schedule={p} now={now} titleKey={i === 0 ? "dash.prayers" : null} />
+        <PrayerPanel
+          key={p.id}
+          schedule={p}
+          now={now}
+          titleKey={i === 0 ? "dash.prayers" : null}
+          // Only under the first panel: one count, for the next minyan on the
+          // board, not one per category.
+          countdown={countdown && i === 0}
+        />
       ))
     ),
     [!edit.hidden("dash.clock"), !edit.hidden("dash.announcement")].some(Boolean) ? "center" : null,

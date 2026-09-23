@@ -184,6 +184,17 @@ export const SKIN_CHOICES: Array<{
     ),
   },
   {
+    id: "printed",
+    name: "דפוס",
+    hint: "פינות ישרות, מסגרת ברונזה דקה, בלי צללים — כמו לוח שנתלה מודפס",
+    preview: (
+      <span className="flex h-full w-full gap-1 bg-[#071321] p-1.5">
+        <i className="flex-1 border border-[#765a29] bg-[#0d1c2d]" />
+        <i className="flex-1 border border-[#765a29] bg-[#0d1c2d]" />
+      </span>
+    ),
+  },
+  {
     id: "medallion",
     name: "מדליונים",
     hint: "לוחות בקצוות מסולסלים, כותרת על מגן ושעון עגול",

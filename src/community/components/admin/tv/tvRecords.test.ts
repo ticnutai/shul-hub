@@ -133,3 +133,26 @@ describe("content edits (records)", () => {
     expect(d.announcements).toHaveLength(2);
   });
 });
+
+describe("options that must stay off until somebody turns them on", () => {
+  it("a board saved before the countdown existed does not grow one", () => {
+    // The whole promise of an option is that boards which never heard of it
+    // keep looking exactly as they did.
+    const old = normalizeTvConfig({ skin: "plain", theme: "navy" });
+    expect(old.countdown.enabled).toBe(false);
+  });
+
+  it("keeps it once it is switched on", () => {
+    expect(normalizeTvConfig({ countdown: { enabled: true } }).countdown.enabled).toBe(true);
+  });
+
+  it("ignores rubbish in its place rather than taking the board down", () => {
+    expect(normalizeTvConfig({ countdown: "yes" }).countdown.enabled).toBe(false);
+    expect(normalizeTvConfig({ countdown: { enabled: "yes" } }).countdown.enabled).toBe(false);
+  });
+
+  it("the printed skin is a choice, not the new default", () => {
+    expect(normalizeTvConfig({}).skin).toBe("plain");
+    expect(normalizeTvConfig({ skin: "printed" }).skin).toBe("printed");
+  });
+});

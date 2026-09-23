@@ -1860,6 +1860,21 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           </Section>
 
           <Section
+            title="ספירה לתפילה הבאה"
+            hint="שורה מתחת לזמני התפילות שסופרת כמה נשאר למניין הבא. השאלה של מי שחוצה את האולם היא לא ״מתי מנחה״ אלא ״פספסתי?״, ומספר שזז עונה על זה מהר יותר משעה שצריך לחסר משעון. פעיל רק בפריסת ״לוח מלא״."
+          >
+            <label className="flex items-center gap-3">
+              <Switch
+                checked={draft.countdown.enabled}
+                onCheckedChange={(on) =>
+                  edit("cd-on", (c) => ({ ...c, countdown: { ...c.countdown, enabled: on } }))
+                }
+              />
+              הצגת ספירה
+            </label>
+          </Section>
+
+          <Section
             title="סרגל הודעה רץ"
             hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (~45%) כל עוד הסרגל פעיל."
           >

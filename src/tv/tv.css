@@ -4424,3 +4424,93 @@
 .tv-root.is-light .tv-tl-row.is-past .tv-dash-time {
   color: var(--tv-text-dim);
 }
+
+
+/* --- דפוס: a board that reads like a printed notice ---------------------
+
+   Everything a screen usually adds to look like software, taken away: no
+   rounded corners, no shadow, no panel fill beyond a wash. What is left is
+   a rule around a block of text, which is how a printed shul board has been
+   set for a century, and it is legible across a hall for the same reason -
+   nothing on it competes with the words.
+
+   The tracking is the other half. A line of Hebrew capitals-in-spirit, set
+   wide, reads as a heading without being made bigger or louder; it buys
+   hierarchy without spending any contrast, which matters on a wall where
+   contrast is the whole budget.
+
+   An option among sixteen others. Nothing here applies unless it is chosen. */
+
+.tv-root.is-skin-printed .tv-panel {
+  border: 1px solid color-mix(in srgb, var(--tv-accent-2) 45%, transparent);
+  border-radius: 0;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--tv-panel) 100%, transparent);
+  backdrop-filter: none;
+}
+
+.tv-root.is-skin-printed .tv-panel::before,
+.tv-root.is-skin-printed .tv-panel::after {
+  content: none;
+}
+
+.tv-root.is-skin-printed .tv-panel-title {
+  letter-spacing: 0.16em;
+  font-weight: 500;
+  color: var(--tv-accent);
+}
+
+.tv-root.is-skin-printed .tv-head-title,
+.tv-root.is-skin-printed .tv-slide-title {
+  letter-spacing: 0.04em;
+  font-weight: 500;
+}
+
+/* A rule under the title instead of a filled bar. */
+.tv-root.is-skin-printed .tv-panel-title {
+  border-bottom: 1px solid color-mix(in srgb, var(--tv-accent-2) 35%, transparent);
+  padding-bottom: calc(var(--u) * 0.8);
+}
+
+.tv-root.is-skin-printed .tv-badge {
+  border-radius: 0;
+  font-weight: 600;
+}
+
+.tv-root.is-skin-printed .tv-dash-row {
+  border-bottom: 1px solid color-mix(in srgb, var(--tv-accent-2) 18%, transparent);
+}
+
+.tv-root.is-skin-printed .tv-dash-row:last-child {
+  border-bottom: 0;
+}
+
+
+/* The live count to the next minyan (TvConfig.countdown).
+
+   Sits under the times rather than among them: it is not another minyan, it
+   is a fact about the next one. Tabular figures so the digits do not shuffle
+   sideways every second - a number that jitters on a wall reads as broken. */
+
+.tv-dash-countdown {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: calc(var(--u) * 1.5);
+  margin-top: calc(var(--u) * 1.2);
+  padding-top: calc(var(--u) * 1.2);
+  border-top: 1px solid color-mix(in srgb, var(--tv-accent-2) 30%, transparent);
+}
+
+.tv-dash-countdown-label {
+  color: var(--tv-text-dim);
+  font-size: calc(var(--fs) * 1.7);
+}
+
+.tv-dash-countdown-value {
+  color: var(--tv-accent);
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 2.6);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
