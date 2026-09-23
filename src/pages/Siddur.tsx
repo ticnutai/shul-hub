@@ -641,16 +641,29 @@ const OrnamentTitle = ({ text, fontSize, withTools = false }: { text: string; fo
   const { theme } = useSiddurTheme();
   const tools = useContext(SiddurToolsContext);
   const flank = withTools ? tools : null;
-  return (
-    <div className="flex items-center justify-center gap-2 my-2">
-      {flank && <span className="flex flex-shrink-0 items-center gap-0.5" dir="ltr">{flank.before}</span>}
+  const title = (
+    <>
       <span style={{ color: theme.accentColor, fontSize: "0.9em" }}>❧</span>
       <span className="font-bold tracking-wide" style={{ color: theme.accentColor, fontFamily: "'Noto Serif Hebrew', 'David Libre', serif", fontSize: fontSize ? `${fontSize}px` : "0.9em" }}>
         {text}
       </span>
       <span style={{ color: theme.accentColor, fontSize: "0.9em", transform: "scaleX(-1)", display: "inline-block" }}>❧</span>
-      {flank && <span className="flex flex-shrink-0 items-center gap-0.5" dir="ltr">{flank.after}</span>}
-  </div>
+    </>
+  );
+
+  if (!flank) {
+    return <div className="flex items-center justify-center gap-2 my-2">{title}</div>;
+  }
+
+  // Pushed out to the edges rather than huddled around the word: the title
+  // stays centred on the line it always had, and the controls sit where a
+  // thumb reaches them without covering the text.
+  return (
+    <div className="flex items-center justify-between gap-2 my-2">
+      <span className="flex flex-shrink-0 items-center gap-1" dir="ltr">{flank.before}</span>
+      <span className="flex min-w-0 flex-1 items-center justify-center gap-2">{title}</span>
+      <span className="flex flex-shrink-0 items-center gap-1" dir="ltr">{flank.after}</span>
+    </div>
   );
 };
 
