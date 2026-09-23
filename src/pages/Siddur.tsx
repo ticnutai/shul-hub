@@ -681,8 +681,22 @@ const OrnamentTitle = ({ text, fontSize, withTools = false }: { text: string; fo
 /** Where a section sits in the page, whatever mode is drawing it. */
 const sectionAnchor = (i: number) => `siddur-sec-${i}`;
 
-/** Clears the two rows of chrome above the text (scroll-margin-top: 6rem). */
-const SECTION_SCROLL_MARGIN = 96;
+/**
+ * How much of the top of the screen something else is already covering.
+ *
+ * Only what is pinned there counts: the page's own header scrolls away with
+ * everything else and must not be subtracted, or the section lands that far
+ * too low.
+ */
+function stickyChromeHeight(): number {
+  let bottom = 0;
+  for (const el of document.querySelectorAll<HTMLElement>("header, [data-sticky-chrome]")) {
+    const pos = getComputedStyle(el).position;
+    if (pos !== "sticky" && pos !== "fixed") continue;
+    bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+  }
+  return Math.max(0, Math.round(bottom));
+}
 
 const SiddurJumpContext = createContext<{ index: number | null; nonce: number; jump: (i: number) => void }>({
   index: null,
@@ -784,8 +798,16 @@ function ChoiceButton({
  * שחרית they are changes every minute, and until now the only way to move
  * was to scroll past everything in between.
  */
-function SectionStrip({ sections }: { sections: SiddurSection[] }) {
-  const { theme } = useSiddurTheme();
+function SectionStrip({
+  sections,
+  color,
+  accent,
+}: {
+  sections: SiddurSection[];
+  /** The header's own text colour - the strip sits on the header, not on the page. */
+  color: string;
+  accent: string;
+}) {
   const { index, nonce, jump } = useContext(SiddurJumpContext);
 
   // After the tap: the card (if there is one) has opened in the same commit,
@@ -797,8 +819,13 @@ function SectionStrip({ sections }: { sections: SiddurSection[] }) {
       window.setTimeout(() => {
         const el = document.getElementById(sectionAnchor(index));
         if (!el) return;
-        const wanted = el.getBoundingClientRect().top + window.scrollY - SECTION_SCROLL_MARGIN;
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        // Measured, not guessed. The only thing that stays over the text is
+        // the app header, and how tall that is depends on the synagogue - a
+        // board showing the קרובים logo has a header twice the height of one
+        // showing a name. A fixed number landed somewhere in the middle of
+        // the section, which is the one place a title is no use.
+        const wanted = Math.max(0, el.getBoundingClientRect().top + window.scrollY - stickyChromeHeight() - 8);
+        window.scrollTo({ top: wanted, behavior: "smooth" });
         // Smooth scrolling is ignored outright in some places - reduced
         // motion, a background tab, a television WebView. A tap that quietly
         // does nothing is worse than one that arrives without an animation,
@@ -816,7 +843,7 @@ function SectionStrip({ sections }: { sections: SiddurSection[] }) {
   return (
     <div
       className="flex gap-1.5 overflow-x-auto px-2 py-1.5 [&::-webkit-scrollbar]:hidden"
-      style={{ scrollbarWidth: "none", borderBottom: `1px solid ${theme.accentColor}30` }}
+      style={{ scrollbarWidth: "none", borderBottom: `1px solid ${accent}30` }}
     >
       {sections.map((sec, i) => (
         <button
@@ -826,8 +853,8 @@ function SectionStrip({ sections }: { sections: SiddurSection[] }) {
           className="flex-shrink-0 rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap transition"
           style={
             i === index
-              ? { background: theme.accentColor, color: "#101827" }
-              : { color: theme.textColor, opacity: 0.75 }
+              ? { background: accent, color: "hsl(var(--sidebar-background))" }
+              : { color, opacity: 0.8 }
           }
         >
           {sec.title}
@@ -3396,7 +3423,7 @@ export const Siddur = () => {
           this kind - and then the row is simply not there. */}
       {isMobile && !isSpecial && stripSections && stripSections.length > 1 && (
         <div style={{ background: activeTheme.headerBg }}>
-          <SectionStrip sections={stripSections} />
+          <SectionStrip sections={stripSections} color={hText} accent={hAccent} />
         </div>
       )}
 
