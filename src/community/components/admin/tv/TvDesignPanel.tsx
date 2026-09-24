@@ -166,6 +166,7 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { ILLUSTRATION_PICTURES } from "@/tv/illustrationPictures";
+import { IllustratedLookEditor } from "./IllustratedLookEditor";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -1583,6 +1584,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                     </div>
                   ))}
                 </div>
+                <IllustratedLookEditor config={draft} onEdit={edit} />
               </div>
             )}
             {/* A painted board brings its own frames; the style and corners apply to the others. */}

@@ -253,6 +253,11 @@ export interface TvConfig {
   illustration: string;
   /** Painted boards imported from a design-tokens file (pictures in storage). */
   customIllustrations: CustomIllustration[];
+  /**
+   * The admin's adjustments to the painted board: type size, how many
+   * minyanim a frame shows, and the inks (null = the picture's own).
+   */
+  illustratedStyle: IllustratedStyle;
   clockStyle: ClockStyle;
   skin: BoardSkin;
   /**
@@ -407,6 +412,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   screenLayout: "rotate",
   illustration: "curtain",
   customIllustrations: [],
+  illustratedStyle: { scale: 1, rows: 7, ink: null, accent: null, clockInk: null },
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
@@ -528,6 +534,30 @@ function normalizeSpacing(raw: unknown): TvConfig["spacing"] {
   return { top: size(r.top), sides: size(r.sides), gap: size(r.gap) };
 }
 
+export interface IllustratedStyle {
+  /** Type size, 0.8–1.3 of what the picture was drawn for. */
+  scale: number;
+  /** Minyanim per frame, 4–10. */
+  rows: number;
+  ink: string | null;
+  accent: string | null;
+  clockInk: string | null;
+}
+
+function normalizeIllustratedStyle(raw: unknown): IllustratedStyle {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const colour = (v: unknown) => (typeof v === "string" && isSafeCssValue(v) ? v.trim() : null);
+  const n = (v: unknown, d: number, lo: number, hi: number) =>
+    typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d;
+  return {
+    scale: Math.round(n(r.scale, 1, 0.8, 1.3) * 100) / 100,
+    rows: Math.round(n(r.rows, 7, 4, 10)),
+    ink: colour(r.ink),
+    accent: colour(r.accent),
+    clockInk: colour(r.clockInk),
+  };
+}
+
 export function normalizeTvConfig(raw: unknown): TvConfig {
   const d = DEFAULT_TV_CONFIG;
   if (!isObj(raw)) return structuredClone(d);
@@ -632,6 +662,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     customIllustrations,
+    illustratedStyle: normalizeIllustratedStyle(raw.illustratedStyle),
     illustration:
       (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
       customIllustrations.some((i) => i.id === raw.illustration)

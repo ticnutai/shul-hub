@@ -4,6 +4,7 @@ import type { Settings } from "@community/lib/data";
 import { jerusalemWeekday, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit } from "./boardEdit";
+import type { IllustratedStyle } from "./config";
 import { illustrationDef, rowWindow, type Box, type CustomIllustration, type Illustration } from "./illustrated";
 import { weeklyParasha } from "./learning";
 import { nextCandleLighting } from "./shabbat";
@@ -46,22 +47,21 @@ function useMark() {
 
 /** What a full frame of zmanim gives up first, so dawn, sunrise and nightfall always stay. */
 const ZMAN_DROP_ORDER = ["misheyakir", "mincha_gedola", "plag", "sof_zman_tefila", "candle", "chatzot"];
-const ZMAN_ROWS = 7;
 
 /** Row type size: a narrow frame (the carved wood's side panels) gets smaller type, not clipped names. */
-const rowSize = (b: Box) => (b[2] - b[0] < 25 ? 1.55 : 1.95);
+const rowSize = (b: Box) => `calc(${b[2] - b[0] < 25 ? 1.55 : 1.95}cqw * var(--ill-k, 1))`;
 
-function PrayerFrame({ d, schedule, now }: { d: Illustration; schedule: PrayerSlide | undefined; now: Date }) {
+function PrayerFrame({ d, schedule, now, max }: { d: Illustration; schedule: PrayerSlide | undefined; now: Date; max: number }) {
   const edit = useBoardEdit();
   const mark = useMark();
   const b = d.boxes.panelR;
   const rows = schedule?.rows ?? [];
   const nowMin = jerusalemMinutes(now);
   const next = rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
-  const [from, to] = rowWindow(rows.length, next);
+  const [from, to] = rowWindow(rows.length, next, max);
   return (
     <At b={b}>
-      <div className="tv-ill-list" style={{ "--ill-size": `${rowSize(b)}cqw` } as CSSProperties}>
+      <div className="tv-ill-list" style={{ "--ill-size": rowSize(b) } as CSSProperties}>
         <div className="tv-ill-title" style={{ color: d.accent }} {...mark("dash.prayers")}>
           {edit.text("dash.prayers", "תפילות היום")}
         </div>
@@ -92,18 +92,18 @@ function PrayerFrame({ d, schedule, now }: { d: Illustration; schedule: PrayerSl
   );
 }
 
-function ZmanimFrame({ d, zmanim, box }: { d: Illustration; zmanim: Zmanim; box: Box }) {
+function ZmanimFrame({ d, zmanim, box, max }: { d: Illustration; zmanim: Zmanim; box: Box; max: number }) {
   const edit = useBoardEdit();
   const mark = useMark();
   let shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
   for (const drop of ZMAN_DROP_ORDER) {
-    if (shown.length <= ZMAN_ROWS) break;
+    if (shown.length <= max) break;
     shown = shown.filter((e) => e !== drop);
   }
-  shown = shown.slice(0, ZMAN_ROWS);
+  shown = shown.slice(0, max);
   return (
     <At b={box}>
-      <div className="tv-ill-list" style={{ "--ill-size": `${rowSize(box)}cqw` } as CSSProperties}>
+      <div className="tv-ill-list" style={{ "--ill-size": rowSize(box) } as CSSProperties}>
         <div className="tv-ill-title" style={{ color: d.accent }} {...mark("dash.zmanim")}>
           {edit.text("dash.zmanim", "זמני היום")}
         </div>
@@ -125,6 +125,7 @@ function ZmanimFrame({ d, zmanim, box }: { d: Illustration; zmanim: Zmanim; box:
 export function IllustratedStage({
   illustration,
   customIllustrations,
+  look,
   slides,
   now,
   zmanim,
@@ -133,6 +134,8 @@ export function IllustratedStage({
 }: {
   illustration: string;
   customIllustrations: readonly CustomIllustration[];
+  /** The admin's adjustments: type size, rows per frame, inks. */
+  look: IllustratedStyle;
   slides: BoardSlide[];
   /** Minute precision. */
   now: Date;
@@ -143,8 +146,15 @@ export function IllustratedStage({
 }) {
   const edit = useBoardEdit();
   const mark = useMark();
-  const d = illustrationDef(illustration, customIllustrations);
-  const picture = "image" in d ? d.image : ILLUSTRATION_PICTURES[d.id as keyof typeof ILLUSTRATION_PICTURES];
+  const def = illustrationDef(illustration, customIllustrations);
+  // The admin's inks, where set, over the picture's own.
+  const d = {
+    ...def,
+    ink: look.ink ?? def.ink,
+    accent: look.accent ?? def.accent,
+    clockInk: look.clockInk ?? def.clockInk,
+  };
+  const picture = "image" in def ? def.image : ILLUSTRATION_PICTURES[def.id as keyof typeof ILLUSTRATION_PICTURES];
   const b = d.boxes;
   const dayKey = now.toDateString();
   const day = useMemo(() => {
@@ -167,7 +177,7 @@ export function IllustratedStage({
   return (
     <section
       className={`tv-slide tv-ill is-${d.id}`}
-      style={{ backgroundImage: `url("${picture}")`, color: d.ink }}
+      style={{ backgroundImage: `url("${picture}")`, color: d.ink, "--ill-k": look.scale } as CSSProperties}
       aria-label={title}
     >
       <At b={b.clock}>
@@ -196,8 +206,8 @@ export function IllustratedStage({
               <div className="tv-ill-shabbat-bless" style={{ color: d.accent }}>שבת שלום ומבורך</div>
             </At>
           )}
-          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} />
-          <PrayerFrame d={d} schedule={schedule} now={now} />
+          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} />
+          <PrayerFrame d={d} schedule={schedule} now={now} max={look.rows} />
         </>
       ) : (
         <>
@@ -207,8 +217,8 @@ export function IllustratedStage({
           <At b={b.plaqueL}>
             <span className="tv-ill-plaque">{day.hebrew}</span>
           </At>
-          <PrayerFrame d={d} schedule={schedule} now={now} />
-          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} />
+          <PrayerFrame d={d} schedule={schedule} now={now} max={look.rows} />
+          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} />
           {b.barR && (
             <At b={b.barR}>
               <span className="tv-ill-bar" {...mark("header.title")}>{title}</span>

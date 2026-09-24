@@ -4562,6 +4562,7 @@
 }
 
 .tv-ill-list {
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -4627,48 +4628,50 @@
   opacity: 0.8;
 }
 
+/* The clock sits in a painted medallion of fixed size: it keeps its own size and one line. */
 .tv-ill-clock {
   font-size: 3.4cqw;
+  white-space: nowrap;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .tv-ill-plaque {
-  font-size: 2.6cqw;
+  font-size: calc(2.6cqw * var(--ill-k, 1));
   font-weight: 700;
 }
 
 .tv-ill-bar {
-  font-size: 1.5cqw;
+  font-size: calc(1.5cqw * var(--ill-k, 1));
   font-weight: 700;
 }
 
 .tv-ill-name-big {
-  font-size: 2.6cqw;
+  font-size: calc(2.6cqw * var(--ill-k, 1));
   font-weight: 700;
 }
 
 .tv-ill-day {
-  font-size: 1.8cqw;
+  font-size: calc(1.8cqw * var(--ill-k, 1));
   font-weight: 700;
 }
 
 .tv-ill-sub {
-  font-size: 1.4cqw;
+  font-size: calc(1.4cqw * var(--ill-k, 1));
 }
 
 .tv-ill-shabbat-title {
-  font-size: 2.1cqw;
+  font-size: calc(2.1cqw * var(--ill-k, 1));
   font-weight: 700;
 }
 
 .tv-ill-shabbat-line {
   margin-top: 2%;
-  font-size: 1.7cqw;
+  font-size: calc(1.7cqw * var(--ill-k, 1));
 }
 
 .tv-ill-shabbat-bless {
   margin-top: 6%;
-  font-size: 2.5cqw;
+  font-size: calc(2.5cqw * var(--ill-k, 1));
   font-weight: 700;
 }
