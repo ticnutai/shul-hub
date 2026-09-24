@@ -1,0 +1,330 @@
+{
+  "format": "design-tokens",
+  "version": 1,
+  "app": "shul-hub-tv",
+  "exportedAt": "2026-09-24T12:00:00.000Z",
+  "themes": [
+    {
+      "name": "ירושלים של זהב",
+      "description": "לילה חם וזהב - עם אבני ירושלים או היכל שיש",
+      "mode": "dark",
+      "roles": {
+        "background": "#1a1510",
+        "backgroundGlowTop": "#2b2217",
+        "backgroundGlowBottom": "#221a12",
+        "surface": "rgba(255, 236, 200, 0.05)",
+        "text": "#f7efe1",
+        "textMuted": "#c9b79a",
+        "accent": "#e8b85a",
+        "accentAlt": "#a9803a",
+        "onAccent": "#1a1510",
+        "highlight": "#e07a4f"
+      }
+    },
+    {
+      "name": "תכלת",
+      "description": "כחול עמוק ותכלת - עם נקי או מודרני",
+      "mode": "dark",
+      "roles": {
+        "background": "#0a1a2f",
+        "backgroundGlowTop": "#12305a",
+        "backgroundGlowBottom": "#0e2645",
+        "surface": "rgba(170, 210, 255, 0.06)",
+        "text": "#eef5ff",
+        "textMuted": "#9db6d6",
+        "accent": "#7cc4ff",
+        "accentAlt": "#3f86c6",
+        "onAccent": "#0a1a2f",
+        "highlight": "#ffd166"
+      }
+    },
+    {
+      "name": "שבת מלכתא",
+      "description": "בורדו וזהב לשבת - עם קטיפה מלכותית או מדליונים",
+      "mode": "dark",
+      "roles": {
+        "background": "#1e0b12",
+        "backgroundGlowTop": "#3a1522",
+        "backgroundGlowBottom": "#2a0f19",
+        "surface": "rgba(255, 220, 230, 0.05)",
+        "text": "#fbeff2",
+        "textMuted": "#d4a9b5",
+        "accent": "#f2c46d",
+        "accentAlt": "#b88a3a",
+        "onAccent": "#1e0b12",
+        "highlight": "#ff9a6b"
+      }
+    },
+    {
+      "name": "ימים נוראים",
+      "description": "לבן וכסף, כחול מלכותי - עם שיש מוזהב או נקי",
+      "mode": "light",
+      "roles": {
+        "background": "#f4f5f7",
+        "backgroundGlowTop": "#ffffff",
+        "backgroundGlowBottom": "#e6e9ee",
+        "surface": "rgba(20, 33, 61, 0.05)",
+        "text": "#14213d",
+        "textMuted": "#56627a",
+        "accent": "#1f4e8c",
+        "accentAlt": "#8a96a8",
+        "onAccent": "#ffffff",
+        "highlight": "#9a6b00"
+      }
+    },
+    {
+      "name": "סוכות",
+      "description": "ירוק לולב וזהב אתרוג - עם עץ אגוז או היכל עמודים",
+      "mode": "dark",
+      "roles": {
+        "background": "#0f1f14",
+        "backgroundGlowTop": "#1d3a24",
+        "backgroundGlowBottom": "#16301d",
+        "surface": "rgba(220, 255, 220, 0.05)",
+        "text": "#f1f8ef",
+        "textMuted": "#a9c4a6",
+        "accent": "#e9c46a",
+        "accentAlt": "#8fb86b",
+        "onAccent": "#0f1f14",
+        "highlight": "#f4a261"
+      }
+    },
+    {
+      "name": "חנוכה",
+      "description": "כחול לילה ואור נרות - עם מסגרת זהב או כיפות זהב",
+      "mode": "dark",
+      "roles": {
+        "background": "#0b1030",
+        "backgroundGlowTop": "#1b2366",
+        "backgroundGlowBottom": "#141a4d",
+        "surface": "rgba(200, 210, 255, 0.06)",
+        "text": "#f3f5ff",
+        "textMuted": "#a7b0de",
+        "accent": "#ffc94d",
+        "accentAlt": "#7c8cff",
+        "onAccent": "#0b1030",
+        "highlight": "#ff8a3d"
+      }
+    },
+    {
+      "name": "פורים",
+      "description": "סגול חגיגי וזהב - עם מדליונים",
+      "mode": "dark",
+      "roles": {
+        "background": "#1a0f2e",
+        "backgroundGlowTop": "#33205a",
+        "backgroundGlowBottom": "#261845",
+        "surface": "rgba(235, 220, 255, 0.06)",
+        "text": "#f8f3ff",
+        "textMuted": "#c3b2e0",
+        "accent": "#ffd24c",
+        "accentAlt": "#e45fb0",
+        "onAccent": "#1a0f2e",
+        "highlight": "#4fd1c5"
+      }
+    },
+    {
+      "name": "פסח",
+      "description": "לבן אביבי וזהב - עם קלף או שיש מוזהב",
+      "mode": "light",
+      "roles": {
+        "background": "#fbf8f0",
+        "backgroundGlowTop": "#ffffff",
+        "backgroundGlowBottom": "#efe8d6",
+        "surface": "rgba(60, 50, 20, 0.05)",
+        "text": "#2b2413",
+        "textMuted": "#655b46",
+        "accent": "#835a0c",
+        "accentAlt": "#4f7a3a",
+        "onAccent": "#ffffff",
+        "highlight": "#a63a1c"
+      }
+    },
+    {
+      "name": "שבועות",
+      "description": "ירוק פרחוני בהיר - עם תכלת או נקי",
+      "mode": "light",
+      "roles": {
+        "background": "#f3f8f1",
+        "backgroundGlowTop": "#ffffff",
+        "backgroundGlowBottom": "#e2eedd",
+        "surface": "rgba(20, 60, 30, 0.05)",
+        "text": "#16301f",
+        "textMuted": "#4a6552",
+        "accent": "#276a35",
+        "accentAlt": "#a8761f",
+        "onAccent": "#ffffff",
+        "highlight": "#a8401c"
+      }
+    },
+    {
+      "name": "בין המצרים",
+      "description": "אפור שקט ומאופק לימי אבל - עם נקי",
+      "mode": "dark",
+      "roles": {
+        "background": "#16181b",
+        "backgroundGlowTop": "#202328",
+        "backgroundGlowBottom": "#1b1e22",
+        "surface": "rgba(255, 255, 255, 0.04)",
+        "text": "#e6e7e9",
+        "textMuted": "#9a9ea6",
+        "accent": "#c9ccd2",
+        "accentAlt": "#7d828b",
+        "onAccent": "#16181b",
+        "highlight": "#b8a47a"
+      }
+    },
+    {
+      "name": "לילה עמוק OLED",
+      "description": "כמעט שחור, נמוך בצריבה - למסכי OLED שדולקים ימים",
+      "mode": "dark",
+      "roles": {
+        "background": "#05070b",
+        "backgroundGlowTop": "#0b1220",
+        "backgroundGlowBottom": "#080d17",
+        "surface": "rgba(255, 255, 255, 0.035)",
+        "text": "#d9e1ec",
+        "textMuted": "#8a97aa",
+        "accent": "#d6a84a",
+        "accentAlt": "#8a6d33",
+        "onAccent": "#05070b",
+        "highlight": "#d9774a"
+      }
+    },
+    {
+      "name": "אבן ירושלים בהירה",
+      "description": "אבן גזית בהירה - עם אבני ירושלים או לוחות אבן",
+      "mode": "light",
+      "roles": {
+        "background": "#efe7d8",
+        "backgroundGlowTop": "#f8f2e6",
+        "backgroundGlowBottom": "#e2d6c0",
+        "surface": "rgba(70, 50, 20, 0.06)",
+        "text": "#2d2416",
+        "textMuted": "#5f523c",
+        "accent": "#7a4f10",
+        "accentAlt": "#4d6878",
+        "onAccent": "#ffffff",
+        "highlight": "#9a2e1c"
+      }
+    },
+    {
+      "name": "ים וטורקיז",
+      "description": "טורקיז עמוק וזהב - עם מודרני או נקי",
+      "mode": "dark",
+      "roles": {
+        "background": "#062126",
+        "backgroundGlowTop": "#0c3a40",
+        "backgroundGlowBottom": "#093036",
+        "surface": "rgba(200, 255, 250, 0.05)",
+        "text": "#eafbf9",
+        "textMuted": "#9cc9c4",
+        "accent": "#f4c95d",
+        "accentAlt": "#3fb8aa",
+        "onAccent": "#062126",
+        "highlight": "#ff8c61"
+      }
+    },
+    {
+      "name": "כסף מודרני",
+      "description": "אפור גרפיט ותכלת קרה - עם מודרני",
+      "mode": "dark",
+      "roles": {
+        "background": "#121417",
+        "backgroundGlowTop": "#1c2026",
+        "backgroundGlowBottom": "#171a1f",
+        "surface": "rgba(255, 255, 255, 0.05)",
+        "text": "#f2f4f7",
+        "textMuted": "#9aa3ae",
+        "accent": "#7dd3fc",
+        "accentAlt": "#94a3b8",
+        "onAccent": "#0b1220",
+        "highlight": "#fbbf24"
+      }
+    },
+    {
+      "name": "פרוכת אדומה",
+      "description": "קטיפה אדומה וזהב - עם פרוכת או אולם קטיפה",
+      "mode": "dark",
+      "roles": {
+        "background": "#2a0a0e",
+        "backgroundGlowTop": "#4a1219",
+        "backgroundGlowBottom": "#380d13",
+        "surface": "rgba(255, 215, 160, 0.06)",
+        "text": "#fdf2e6",
+        "textMuted": "#d9b8a0",
+        "accent": "#e7b75f",
+        "accentAlt": "#b0843c",
+        "onAccent": "#2a0a0e",
+        "highlight": "#ff8f70"
+      }
+    },
+    {
+      "name": "ראש חודש",
+      "description": "כחול לילה וכסף ירח - עם עמודי שיש",
+      "mode": "dark",
+      "roles": {
+        "background": "#0d1b2a",
+        "backgroundGlowTop": "#1b263b",
+        "backgroundGlowBottom": "#152235",
+        "surface": "rgba(224, 225, 221, 0.05)",
+        "text": "#f0f2f5",
+        "textMuted": "#a8b2c1",
+        "accent": "#e0e1dd",
+        "accentAlt": "#778da9",
+        "onAccent": "#0d1b2a",
+        "highlight": "#f2c14e"
+      }
+    }
+  ],
+  "gradients": [
+    {
+      "name": "שקיעה ירושלמית",
+      "value": "linear-gradient(170deg, #2b2217, #1a1510 55%, #0f0b07)"
+    },
+    {
+      "name": "זהב עולה",
+      "value": "radial-gradient(circle at 50% 0%, #6b4f1d, #1a1510 65%)"
+    },
+    {
+      "name": "לילה כחול עמוק",
+      "value": "linear-gradient(160deg, #12305a, #0a1a2f 60%, #050d18)"
+    },
+    {
+      "name": "קטיפה בורדו",
+      "value": "radial-gradient(ellipse at 50% 20%, #4a1522, #1e0b12 70%)"
+    },
+    {
+      "name": "אור נרות",
+      "value": "radial-gradient(circle at 50% 100%, #5a3a10, #0b1030 60%)"
+    },
+    {
+      "name": "סוכה",
+      "value": "linear-gradient(180deg, #1d3a24, #0f1f14 70%)"
+    },
+    {
+      "name": "פורים",
+      "value": "linear-gradient(135deg, #33205a, #1a0f2e 55%, #3a1440)"
+    },
+    {
+      "name": "תכלת",
+      "value": "linear-gradient(180deg, #12305a, #0a1a2f)"
+    },
+    {
+      "name": "אבן בהירה",
+      "value": "linear-gradient(180deg, #f8f2e6, #e2d6c0)"
+    },
+    {
+      "name": "בוקר לבן",
+      "value": "radial-gradient(circle at 50% 0%, #ffffff, #e6e9ee 70%)"
+    },
+    {
+      "name": "OLED שקט",
+      "value": "linear-gradient(180deg, #0b1220, #05070b 40%)"
+    },
+    {
+      "name": "ים",
+      "value": "linear-gradient(160deg, #0c3a40, #062126 65%)"
+    }
+  ]
+}
