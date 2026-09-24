@@ -1,5 +1,5 @@
 import type { Settings } from "@community/lib/data";
-import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
+import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 
 /**
  * Shabbat on the wall: from candle lighting on Friday until the end of
@@ -23,12 +23,17 @@ export interface ShabbatTimes {
   end: Date | null;
 }
 
-const DAY_MS = 86_400_000;
 
-/** Noon of the calendar day `offset` days from `now` - a safe anchor for zmanim. */
+/**
+ * Midday in Jerusalem of the day `offset` days from `now` - a safe anchor for
+ * zmanim. The day is Jerusalem's, not the device's: a box whose clock is set
+ * to another timezone (Tokyo's Saturday starts during Friday evening here)
+ * computed candle lighting for the wrong day and kept the Shabbat screen down.
+ */
 function dayAt(now: Date, offsetDays: number): Date {
-  const d = new Date(now.getTime() + offsetDays * DAY_MS);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12);
+  const [y, m, d] = jerusalemDateKey(now).split("-").map(Number);
+  // 09:00 UTC is 11:00 or 12:00 in Jerusalem: mid-day in both winter and summer time.
+  return new Date(Date.UTC(y, m - 1, d + offsetDays, 9));
 }
 
 /**

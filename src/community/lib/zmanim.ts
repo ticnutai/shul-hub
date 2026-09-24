@@ -21,7 +21,7 @@
  *
  * כל הזמנים מוחזרים כאובייקטי Date (UTC-based Date).
  */
-import { GeoLocation, Zmanim } from "@hebcal/core";
+import { GeoLocation, Zmanim as HebcalZmanim } from "@hebcal/core";
 
 export type SolarEvent =
   | "alot"
@@ -46,7 +46,7 @@ export interface ZmanimOptions {
 }
 
 export type Zmanim = Record<SolarEvent, Date | null>;
-/** The same type, under a name that does not collide with hebcal's class. */
+/** The same type (kept for the signature below; hebcal's class is imported as HebcalZmanim). */
 type Zmanim2 = Zmanim;
 
 const addMinutes = (d: Date | null, m: number): Date | null =>
@@ -58,7 +58,7 @@ export function calcZmanim(date: Date, opts: ZmanimOptions): Zmanim2 {
   // The name is only ever shown back to us in errors; the timezone is what
   // Zmanim uses to decide which civil day this is.
   const geo = new GeoLocation("", lat, lng, 0, "Asia/Jerusalem");
-  const z = new Zmanim(geo, date, false);
+  const z = new HebcalZmanim(geo, date, false);
 
   const ok = (d: Date | undefined | null): Date | null =>
     d instanceof Date && Number.isFinite(d.getTime()) ? d : null;

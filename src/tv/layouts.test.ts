@@ -22,6 +22,7 @@ describe("screen layout and clock", () => {
       categories: [],
       announcements: [],
       shiurim: [],
+      overrides: [],
       stale: false,
       anyLoaded: true,
       sync: { status: "live", lastSyncedAt: null },

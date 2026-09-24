@@ -108,7 +108,7 @@ describe("a board seen by one kind of screen", () => {
 
 describe("reading a board back", () => {
   it("survives a board saved before screens existed", () => {
-    const old = structuredClone(DEFAULT_TV_CONFIG) as Record<string, unknown>;
+    const old = structuredClone(DEFAULT_TV_CONFIG) as unknown as Record<string, unknown>;
     delete old.perDevice;
     const c = normalizeTvConfig(old);
     expect(c.perDevice).toEqual({});

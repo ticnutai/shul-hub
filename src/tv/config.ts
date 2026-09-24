@@ -236,6 +236,10 @@ export interface DeviceOverlay {
   backgroundDim?: number;
   font?: TvFontId;
   textScale?: number;
+  /** Title letter-spacing; listed in DEVICE_OVERLAY_KEYS, so a screen may set its own. */
+  tracking?: number | null;
+  /** The live count to the next minyan; also listed in DEVICE_OVERLAY_KEYS. */
+  countdown?: TvConfig["countdown"];
   texts?: Record<string, string>;
   hidden?: string[];
   flipped?: FlipArea[];
@@ -785,8 +789,8 @@ function overlayFrom(base: TvConfig, after: TvConfig): DeviceOverlay {
 
   for (const key of Object.keys(DEVICE_OVERLAY_KEYS) as (keyof DeviceOverlay)[]) {
     if (key === "texts" || key === "styles" || key === "themeOverrides") continue;
-    const a = (after as Record<string, unknown>)[key];
-    const b = (base as Record<string, unknown>)[key];
+    const a = (after as unknown as Record<string, unknown>)[key];
+    const b = (base as unknown as Record<string, unknown>)[key];
     if (JSON.stringify(a) !== JSON.stringify(b)) set(key, a as never);
   }
 

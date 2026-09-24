@@ -7,7 +7,7 @@ import type { BoardSlide } from "@/tv/useBoardData";
 import { slideLabel, type useTvSlides } from "./tvPreviewData";
 import { DeviceFrame, DeviceToolbar } from "./DevicePreview";
 import { setElementStyle, styleTargetKey } from "@/tv/boardEdit";
-import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceView } from "./devices";
+import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
 
 /**

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import type { TvConfig } from "./config";
 
 /**
  * Visual themes for the wall display.
