@@ -116,6 +116,16 @@ export interface ElementStyle {
 export type ScreenLayout = "rotate" | "split" | "dashboard" | "illustrated";
 export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard", "illustrated"];
 
+/** Kinds of day that can have their own look (see dayLooks.ts), highest first. */
+export const DAY_KINDS = ["shabbat", "festival", "roshChodesh", "friday"] as const;
+export type DayKind = (typeof DAY_KINDS)[number];
+/** A day's look: whatever it names replaces the ordinary; what it leaves out stays. */
+export interface DayLook {
+  screenLayout?: ScreenLayout;
+  illustration?: string;
+  theme?: string;
+}
+
 /** The painted boards the "illustrated" layout can draw (pictures in TvIllustrated.tsx). */
 export const ILLUSTRATIONS = ["curtain", "stone", "wood", "modern"] as const;
 export type IllustrationId = (typeof ILLUSTRATIONS)[number];
@@ -262,6 +272,8 @@ export interface TvConfig {
    * minyanim a frame shows, and the inks (null = the picture's own).
    */
   illustratedStyle: IllustratedStyle;
+  /** A look per kind of day, switched automatically (dayLooks.ts). */
+  dayLooks: Partial<Record<DayKind, DayLook>>;
   clockStyle: ClockStyle;
   skin: BoardSkin;
   /**
@@ -417,6 +429,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   illustration: "curtain",
   customIllustrations: [],
   illustratedStyle: { scale: 1, rows: 7, ink: null, accent: null, clockInk: null },
+  dayLooks: {},
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
@@ -548,6 +561,22 @@ export interface IllustratedStyle {
   clockInk: string | null;
 }
 
+/** Day looks from storage: only known kinds, and only layouts, boards and themes that exist. */
+function normalizeDayLooks(raw: unknown, themes: string[], illustrations: string[]): TvConfig["dayLooks"] {
+  const out: TvConfig["dayLooks"] = {};
+  const r = (raw ?? {}) as Record<string, unknown>;
+  for (const kind of DAY_KINDS) {
+    const v = r[kind] as Record<string, unknown> | undefined;
+    if (!v || typeof v !== "object") continue;
+    const look: DayLook = {};
+    if (SCREEN_LAYOUTS.includes(v.screenLayout as ScreenLayout)) look.screenLayout = v.screenLayout as ScreenLayout;
+    if (typeof v.illustration === "string" && illustrations.includes(v.illustration)) look.illustration = v.illustration;
+    if (typeof v.theme === "string" && themes.includes(v.theme)) look.theme = v.theme;
+    if (Object.keys(look).length) out[kind] = look;
+  }
+  return out;
+}
+
 function normalizeIllustratedStyle(raw: unknown): IllustratedStyle {
   const r = (raw ?? {}) as Record<string, unknown>;
   const colour = (v: unknown) => (typeof v === "string" && isSafeCssValue(v) ? v.trim() : null);
@@ -667,6 +696,10 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     customIllustrations,
     illustratedStyle: normalizeIllustratedStyle(raw.illustratedStyle),
+    dayLooks: normalizeDayLooks(raw.dayLooks, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)], [
+      ...ILLUSTRATIONS,
+      ...customIllustrations.map((i) => i.id),
+    ]),
     illustration:
       (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
       customIllustrations.some((i) => i.id === raw.illustration)

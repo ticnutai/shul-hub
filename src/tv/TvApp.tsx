@@ -1,3 +1,4 @@
+import { applyDayLook } from "./dayLooks";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
@@ -146,19 +147,20 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   // asked for that is the same board on all three (see devices.ts).
   const deviceClass = useDeviceClass(!web);
 
+  // Slides change at most once a minute (expiring notices, the day rolling
+  // over); rebuilding them on every clock tick only re-rendered the board.
+  const minuteStamp = Math.floor(now.getTime() / 60_000);
+  const minuteNow = useMemo(() => new Date(minuteStamp * 60_000), [minuteStamp]);
+
   const config = useMemo<TvConfig>(() => {
     const chosen =
       // A remote choice the admin has since deleted is simply ignored.
       themeOverride && themes.some((t) => t.id === themeOverride)
         ? { ...baseConfig, theme: themeOverride, themeOverrides: {} }
         : baseConfig;
-    return configForDevice(chosen, deviceClass);
-  }, [baseConfig, themeOverride, themes, deviceClass]);
-
-  // Slides change at most once a minute (expiring notices, the day rolling
-  // over); rebuilding them on every clock tick only re-rendered the board.
-  const minuteStamp = Math.floor(now.getTime() / 60_000);
-  const minuteNow = useMemo(() => new Date(minuteStamp * 60_000), [minuteStamp]);
+    // Shabbat, a festival, Rosh Chodesh or Friday may have a look of its own.
+    return applyDayLook(configForDevice(chosen, deviceClass), minuteNow, data.settings);
+  }, [baseConfig, themeOverride, themes, deviceClass, minuteNow, data.settings]);
   const slides = useMemo(() => buildSlides(data, config, minuteNow, zmanim), [data, config, minuteNow, zmanim]);
 
   const [currentId, setCurrentId] = useState<string | null>(null);
