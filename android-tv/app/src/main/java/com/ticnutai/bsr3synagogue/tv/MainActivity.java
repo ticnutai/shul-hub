@@ -2,6 +2,7 @@ package com.ticnutai.bsr3synagogue.tv;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.View;
 import android.view.WindowManager;
 
@@ -17,9 +18,16 @@ import com.getcapacitor.BridgeActivity;
  */
 public class MainActivity extends BridgeActivity {
 
+    private long createdAt;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // A fresh screen every night (see NightlyRestart).
+        createdAt = SystemClock.elapsedRealtime();
+        NightlyRestart.boardCreatedAt = createdAt;
+        NightlyRestart.schedule(this);
 
         // The board is useless once the panel sleeps, and a TV with no input
         // events sleeps on its own schedule. The web layer also requests a
@@ -47,5 +55,13 @@ public class MainActivity extends BridgeActivity {
                 | View.SYSTEM_UI_FLAG_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         );
+    }
+
+    @Override
+    public void onDestroy() {
+        // During the nightly restart the new screen is created before the old
+        // one is destroyed; only clear the mark if it is still ours.
+        if (NightlyRestart.boardCreatedAt == createdAt) NightlyRestart.boardCreatedAt = 0;
+        super.onDestroy();
     }
 }

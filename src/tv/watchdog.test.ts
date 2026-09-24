@@ -4,6 +4,8 @@ import {
   blockedRatio,
   createBreaker,
   createRunawayWatch,
+  isNightlyRefreshDue,
+  scheduleNightlyRefresh,
   setWatchdogReport,
   watchMainThread,
 } from "./watchdog";
@@ -203,5 +205,40 @@ describe("the watchdog on the board", () => {
     const reload = vi.fn();
     expect(() => watchMainThread({ reload })()).not.toThrow();
     expect(reload).not.toHaveBeenCalled();
+  });
+});
+
+describe("the nightly refresh", () => {
+  const at = (h: number, m: number) => new Date(2026, 8, 24, h, m);
+  const HOUR = 3_600_000;
+
+  it("is due at half past three, for an hour", () => {
+    expect(isNightlyRefreshDue(at(3, 29), 20 * HOUR)).toBe(false);
+    expect(isNightlyRefreshDue(at(3, 30), 20 * HOUR)).toBe(true);
+    expect(isNightlyRefreshDue(at(4, 29), 20 * HOUR)).toBe(true);
+    expect(isNightlyRefreshDue(at(4, 30), 20 * HOUR)).toBe(false);
+    expect(isNightlyRefreshDue(at(15, 30), 20 * HOUR)).toBe(false);
+  });
+
+  it("leaves a board alone that started within the hour", () => {
+    // After a power cut at 03:10, or right after its own reload.
+    expect(isNightlyRefreshDue(at(3, 45), 35 * 60_000)).toBe(false);
+  });
+
+  it("reloads once, says so, and stops checking", () => {
+    vi.useFakeTimers();
+    const reload = vi.fn();
+    const report = vi.fn();
+    setWatchdogReport(report);
+    let now = at(3, 0);
+    scheduleNightlyRefresh({ reload, now: () => now, uptime: () => 20 * HOUR });
+    vi.advanceTimersByTime(60_000);
+    expect(reload).not.toHaveBeenCalled();
+    now = at(3, 31);
+    vi.advanceTimersByTime(5 * 60_000);
+    expect(reload).toHaveBeenCalledTimes(1);
+    expect(report).toHaveBeenCalledWith("info", "watchdog", expect.stringContaining("רענון לילי"), expect.anything());
+    setWatchdogReport(null);
+    vi.useRealTimers();
   });
 });

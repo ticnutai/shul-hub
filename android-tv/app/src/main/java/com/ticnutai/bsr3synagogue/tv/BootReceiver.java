@@ -51,6 +51,9 @@ public class BootReceiver extends BroadcastReceiver {
             return;
         }
 
+        // Alarms do not survive a reboot; arm tonight's restart again.
+        NightlyRestart.schedule(context);
+
         boolean mayStartFromBackground =
             Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || Settings.canDrawOverlays(context);
 

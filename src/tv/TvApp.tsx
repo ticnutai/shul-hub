@@ -12,7 +12,7 @@ import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
-import { setWatchdogReport, watchMainThread } from "./watchdog";
+import { scheduleNightlyRefresh, setWatchdogReport, watchMainThread } from "./watchdog";
 import { WebControls } from "./TvWebControls";
 
 /**
@@ -115,11 +115,15 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       link.current?.log(level, kind, message, details),
     );
     const stop = watchMainThread();
+    // Only on the screen itself: an admin previewing in a browser at 03:30
+    // should not have the page reload under them.
+    const stopNightly = web ? () => {} : scheduleNightlyRefresh();
     return () => {
       setWatchdogReport(null);
       stop();
+      stopNightly();
     };
-  }, [link]);
+  }, [link, web]);
 
   // The remote's theme choice is kept on the TV. In a browser it lasts only
   // for the visit, so an admin never keeps seeing a stale local theme.

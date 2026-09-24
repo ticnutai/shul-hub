@@ -205,3 +205,48 @@ export function watchMainThread({
     window.clearInterval(timer);
   };
 }
+
+/* ----------------------------------------------------- nightly refresh -- */
+
+/**
+ * A fresh start every night.
+ *
+ * The watcher above catches a board that spins. What it cannot catch is a
+ * board that slowly fills up - memory a long-lived page never gives back,
+ * timers that pile up, a WebView that gets heavier by the week. Signage that
+ * runs for months answers this the boring way, with a restart every night
+ * while nobody is looking (a device reboot is out of reach for an app on
+ * Android; a fresh page is what it can do).
+ *
+ * At 03:30 local time, give or take the minute the check runs. A board that
+ * came up less than an hour ago - after a power cut, or this very reload -
+ * is fresh already, and that is also what keeps it from reloading twice.
+ */
+export const NIGHTLY_REFRESH = { hour: 3, minute: 30, windowMinutes: 60, minUptimeMs: 60 * 60_000 };
+
+export function isNightlyRefreshDue(now: Date, uptimeMs: number, cfg = NIGHTLY_REFRESH): boolean {
+  if (uptimeMs < cfg.minUptimeMs) return false;
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  const start = cfg.hour * 60 + cfg.minute;
+  return minutes >= start && minutes < start + cfg.windowMinutes;
+}
+
+export function scheduleNightlyRefresh({
+  reload = () => window.location.reload(),
+  now = () => new Date(),
+  uptime = () => performance.now(),
+  everyMs = 60_000,
+}: {
+  reload?: () => void;
+  now?: () => Date;
+  uptime?: () => number;
+  everyMs?: number;
+} = {}): () => void {
+  const timer = window.setInterval(() => {
+    if (!isNightlyRefreshDue(now(), uptime())) return;
+    window.clearInterval(timer);
+    reportWatchdog("info", "רענון לילי של הלוח", { uptimeHours: Math.round(uptime() / 3_600_000) });
+    reload();
+  }, everyMs);
+  return () => window.clearInterval(timer);
+}

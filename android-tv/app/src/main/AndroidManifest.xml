@@ -60,6 +60,12 @@
             </intent-filter>
         </receiver>
 
+        <!-- Starts the board afresh every night at 03:45. Only the app's own
+             alarm sends this, so it is not exported. -->
+        <receiver
+            android:name=".NightlyRestart"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
