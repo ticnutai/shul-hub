@@ -23,6 +23,8 @@ const TABLE_QUERY_KEYS = {
   shiur_categories: "shiur_categories",
   chavrutot: "chavrutot",
   home_widgets: "home_widgets",
+  // One-day exceptions (data.ts caches them as "minyan-overrides").
+  minyan_overrides: "minyan-overrides",
 } as const;
 
 export type SyncedTable = keyof typeof TABLE_QUERY_KEYS;

@@ -1,5 +1,9 @@
 import type { IllustrationId } from "./config";
 import { isSafeCssValue, isSafeUrl } from "./themes";
+import type { ResolvedMinyan } from "@community/lib/minyan-time";
+import type { BoardSlide } from "./useBoardData";
+
+type PrayerSlide = Extract<BoardSlide, { kind: "prayer" }>;
 
 /**
  * The painted boards of the "illustrated" layout: one picture each, with the
@@ -287,3 +291,18 @@ export async function urlToDataUrl(url: string): Promise<string> {
     reader.readAsDataURL(blob);
   });
 }
+
+/**
+ * One frame holds all of today's minyanim: every prayer schedule on the board
+ * (today's category and any that stand alone, like סליחות), in time order.
+ * Taking only the first schedule dropped סליחות on a Friday.
+ */
+export function todaysRows(slides: BoardSlide[]): ResolvedMinyan[] {
+  const seen = new Set<string>();
+  return slides
+    .filter((s): s is PrayerSlide => s.kind === "prayer")
+    .flatMap((s) => s.rows)
+    .filter((r) => (seen.has(r.minyan.id) ? false : (seen.add(r.minyan.id), true)))
+    .sort((a, b) => a.minutes - b.minutes);
+}
+

@@ -233,6 +233,30 @@ export type Database = {
         }
         Relationships: []
       }
+      communities: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       commentaries: {
         Row: {
           commentator: string
@@ -424,6 +448,57 @@ export type Database = {
           visible_until?: string | null
         }
         Relationships: []
+      }
+      minyan_overrides: {
+        Row: {
+          at_time: string | null
+          cancelled: boolean
+          community_id: string
+          created_at: string
+          id: string
+          minyan_id: string
+          note: string
+          on_date: string
+          updated_at: string
+        }
+        Insert: {
+          at_time?: string | null
+          cancelled?: boolean
+          community_id: string
+          created_at?: string
+          id?: string
+          minyan_id: string
+          note?: string
+          on_date: string
+          updated_at?: string
+        }
+        Update: {
+          at_time?: string | null
+          cancelled?: boolean
+          community_id?: string
+          created_at?: string
+          id?: string
+          minyan_id?: string
+          note?: string
+          on_date?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "minyan_overrides_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "minyan_overrides_minyan_id_fkey"
+            columns: ["minyan_id"]
+            isOneToOne: false
+            referencedRelation: "minyanim"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       minyanim: {
         Row: {
@@ -1368,9 +1443,32 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_admin: { Args: never; Returns: boolean }
-      list_approved_chavruta_requests: {
+      communities_overview: {
         Args: never
+        Returns: {
+          active: boolean
+          announcements: number
+          created_at: string
+          id: string
+          minyanim: number
+          name: string
+          screens: number
+          slug: string
+        }[]
+      }
+      create_community: { Args: { p_name: string; p_slug?: string }; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
+      is_admin_of: { Args: { _community: string }; Returns: boolean }
+      is_platform_admin: { Args: never; Returns: boolean }
+      my_communities: {
+        Args: never
+        Returns: { active: boolean; id: string; name: string; slug: string }[]
+      }
+      prune_minyan_overrides: { Args: never; Returns: number }
+      sole_community: { Args: never; Returns: string }
+      tv_community: { Args: { p_device_id: string; p_secret: string }; Returns: string }
+      list_approved_chavruta_requests: {
+        Args: { p_community?: string }
         Returns: {
           availability: string
           created_at: string

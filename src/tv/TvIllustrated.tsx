@@ -5,7 +5,7 @@ import { jerusalemWeekday, zmanimFor, type ResolvedMinyan } from "@community/lib
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit } from "./boardEdit";
 import type { IllustratedStyle } from "./config";
-import { illustrationDef, rowWindow, type Box, type CustomIllustration, type Illustration } from "./illustrated";
+import { illustrationDef, rowWindow, todaysRows, type Box, type CustomIllustration, type Illustration } from "./illustrated";
 import { weeklyParasha } from "./learning";
 import { nextCandleLighting } from "./shabbat";
 import { jerusalemMinutes, type BoardSlide } from "./useBoardData";
@@ -51,11 +51,10 @@ const ZMAN_DROP_ORDER = ["misheyakir", "mincha_gedola", "plag", "sof_zman_tefila
 /** Row type size: a narrow frame (the carved wood's side panels) gets smaller type, not clipped names. */
 const rowSize = (b: Box) => `calc(${b[2] - b[0] < 25 ? 1.55 : 1.95}cqw * var(--ill-k, 1))`;
 
-function PrayerFrame({ d, schedule, now, max }: { d: Illustration; schedule: PrayerSlide | undefined; now: Date; max: number }) {
+function PrayerFrame({ d, rows, now, max }: { d: Illustration; rows: ResolvedMinyan[]; now: Date; max: number }) {
   const edit = useBoardEdit();
   const mark = useMark();
   const b = d.boxes.panelR;
-  const rows = schedule?.rows ?? [];
   const nowMin = jerusalemMinutes(now);
   const next = rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
   const [from, to] = rowWindow(rows.length, next, max);
@@ -171,7 +170,7 @@ export function IllustratedStage({
   }, [dayKey, settings, shabbatEndMinutes]);
   const weekday = `יום ${WEEKDAYS[jerusalemWeekday(now)]}`;
   const title = edit.text("header.title", settings?.name ?? "בית הכנסת");
-  const schedule = slides.find((s): s is PrayerSlide => s.kind === "prayer");
+  const rows = todaysRows(slides);
   const candleLine = day.candle ? `הדלקת נרות ${formatTime(day.candle)}` : "";
 
   return (
@@ -207,7 +206,7 @@ export function IllustratedStage({
             </At>
           )}
           <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} />
-          <PrayerFrame d={d} schedule={schedule} now={now} max={look.rows} />
+          <PrayerFrame d={d} rows={rows} now={now} max={look.rows} />
         </>
       ) : (
         <>
@@ -217,7 +216,7 @@ export function IllustratedStage({
           <At b={b.plaqueL}>
             <span className="tv-ill-plaque">{day.hebrew}</span>
           </At>
-          <PrayerFrame d={d} schedule={schedule} now={now} max={look.rows} />
+          <PrayerFrame d={d} rows={rows} now={now} max={look.rows} />
           <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} />
           {b.barR && (
             <At b={b.barR}>

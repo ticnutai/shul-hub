@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TV_CONFIG, ILLUSTRATIONS, normalizeTvConfig } from "./config";
-import { ILLUSTRATED_ROWS, ILLUSTRATION_DEFS, illustrationDef, rowWindow } from "./illustrated";
+import { ILLUSTRATED_ROWS, ILLUSTRATION_DEFS, illustrationDef, rowWindow, todaysRows } from "./illustrated";
 
 describe("the illustrated layout's config", () => {
   it("is a layout like the others, with a painted board to choose", () => {
@@ -61,5 +61,17 @@ describe("the painted board's editing options", () => {
 
   it("windows the minyanim by the chosen number of rows", () => {
     expect(rowWindow(14, 5, 5)).toEqual([4, 9]);
+  });
+});
+
+describe("today's minyanim in one painted frame", () => {
+  it("takes every prayer schedule on the board, in time order (סליחות on a Friday)", () => {
+    const row = (id: string, minutes: number) => ({ minyan: { id, label: id }, minutes, time: "", cancelled: false }) as never;
+    const slides = [
+      { id: "prayer:friday", kind: "prayer", title: "יום שישי", rows: [row("shacharit", 510)], subcategories: [], seconds: 20, layout: "split" },
+      { id: "prayer:slichot", kind: "prayer", title: "סליחות", rows: [row("slichot", 480), row("shacharit", 510)], subcategories: [], seconds: 20, layout: "split" },
+      { id: "learning", kind: "learning", seconds: 15, layout: "cards" },
+    ] as never;
+    expect(todaysRows(slides).map((r) => r.minyan.id)).toEqual(["slichot", "shacharit"]);
   });
 });

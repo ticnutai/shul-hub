@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 import { buildSlides } from "./useBoardData";
 import { DEFAULT_TV_CONFIG } from "./config";
@@ -24,6 +24,13 @@ const settings = {
 
 const up = (t: Date) => shabbatNow(t, settings, 20) !== null;
 
+/**
+ * An hour in Bnei Brak, whatever the machine's timezone: in September Israel
+ * is on UTC+3. (new Date(2026, 8, 25, 17) meant 17:00 wherever the tests ran,
+ * which on a UTC build server is 20:00 here - already Shabbat.)
+ */
+const il = (day: number, hour: number) => new Date(Date.UTC(2026, 8, day, hour - 3, 0, 0));
+
 describe("the Shabbat screen", () => {
   it("is down every hour of a week that is not Shabbat", () => {
     const wrong: string[] = [];
@@ -41,18 +48,18 @@ describe("the Shabbat screen", () => {
 
   it("comes up on Friday at candle lighting and not before", () => {
     // Friday 25 September 2026. Candles in Bnei Brak are 20 min before sunset.
-    const before = new Date(2026, 8, 25, 17, 0, 0);
-    const after = new Date(2026, 8, 25, 19, 0, 0);
+    const before = il(25, 17);
+    const after = il(25, 19);
     expect(up(before)).toBe(false);
     expect(up(after)).toBe(true);
   });
 
   it("stays up through Shabbat and goes down when it is out", () => {
-    expect(up(new Date(2026, 8, 26, 9, 0, 0))).toBe(true); // Shabbat morning
-    expect(up(new Date(2026, 8, 26, 17, 0, 0))).toBe(true); // Shabbat afternoon
+    expect(up(il(26, 9))).toBe(true); // Shabbat morning
+    expect(up(il(26, 17))).toBe(true); // Shabbat afternoon
     // Sunset Saturday is about 18:35; plus 20 minutes it is out.
-    expect(up(new Date(2026, 8, 26, 23, 0, 0))).toBe(false);
-    expect(up(new Date(2026, 8, 27, 9, 0, 0))).toBe(false); // Sunday
+    expect(up(il(26, 23))).toBe(false);
+    expect(up(il(27, 9))).toBe(false); // Sunday
   });
 
   it("does not come up for Yom Kippur or a weekday Yom Tov", () => {
@@ -96,7 +103,7 @@ describe("the Shabbat screen and a clock that cannot be trusted", () => {
   beforeEach(() => forgetServerTime());
 
   it("comes up on Friday evening when the clock is sound", () => {
-    expect(isShabbat(new Date(2026, 8, 25, 19, 0, 0))).toBe(true);
+    expect(isShabbat(il(25, 19))).toBe(true);
   });
 
   it("stays down when the clock reads before the software existed", () => {
@@ -105,13 +112,13 @@ describe("the Shabbat screen and a clock that cannot be trusted", () => {
   });
 
   it("stays down when the clock has gone backwards since the server last spoke", () => {
-    noteServerTime(new Date(2026, 8, 25, 20, 0).getTime());
+    noteServerTime(il(25, 20).getTime());
     // The box came back believing it is the Friday a week earlier.
-    expect(isShabbat(new Date(2026, 8, 18, 19, 0, 0))).toBe(false);
+    expect(isShabbat(il(18, 19))).toBe(false);
   });
 
   it("comes up again once the clock is back where it should be", () => {
-    noteServerTime(new Date(2026, 8, 25, 18, 0).getTime());
-    expect(isShabbat(new Date(2026, 8, 25, 19, 0, 0))).toBe(true);
+    noteServerTime(il(25, 18).getTime());
+    expect(isShabbat(il(25, 19))).toBe(true);
   });
 });
