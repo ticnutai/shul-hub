@@ -11,27 +11,11 @@ function collectRuntimeErrors(page: Page) {
   return errors;
 }
 
-test("the synagogue announcement opens the complete event page", async ({ page }) => {
+// The notice that led here is an ordinary announcement now (admin-editable,
+// expired after 21.9), so the page is reached directly, as shared links do.
+test("the event page stays available at its shared address", async ({ page }) => {
   const errors = collectRuntimeErrors(page);
-  await page.goto("/chumash");
-  await expect(page.getByTestId("yamim-noraim-announcement")).toHaveCount(0);
-
-  await page.goto("/community");
-  await expect(page.getByTestId("yamim-noraim-announcement")).toBeVisible({ timeout: 30_000 });
-
-  await page.goto("/community/announcements");
-
-  const announcement = page.getByTestId("yamim-noraim-announcement");
-  await expect(announcement).toBeVisible({ timeout: 30_000 });
-  await expect(announcement).toContainText("תפילות הימים הנוראים");
-  await expect(announcement).toContainText("אולמי קונקורד");
-  await expect(announcement).toContainText("054-6473461");
-  const whatsapp = page.getByTestId("yamim-noraim-whatsapp");
-  await expect(whatsapp).toBeVisible();
-  await expect(whatsapp).toHaveAttribute("href", /wa\.me\/972546473461\?text=/);
-  await expect(whatsapp).toHaveAttribute("href", /%D7%A9%D7%9C%D7%95%D7%9D/);
-  await expect(whatsapp).toHaveText("");
-  await announcement.getByRole("link", { name: "פתח את כל פרטי תפילות הימים הנוראים" }).click();
+  await page.goto(eventPath);
 
   await expect(page).toHaveURL(new RegExp(`${eventPath}$`));
   await expect(page.getByTestId("yamim-noraim-event-page")).toBeVisible();

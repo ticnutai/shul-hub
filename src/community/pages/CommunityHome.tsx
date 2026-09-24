@@ -14,7 +14,6 @@ import { CommunityHeader } from "@community/components/CommunityChrome";
 import { CommunityFooter } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { AnnouncementCard } from "@community/components/AnnouncementCard";
-import { YamimNoraimAnnouncement } from "@/components/YamimNoraimAnnouncement";
 import {
   useAnnouncements,
   useChavrutot,
@@ -512,9 +511,6 @@ export function CommunityHome() {
                       כל המודעות <ChevronLeft className="size-4" />
                     </Link>
                   </Button>
-                </div>
-                <div className="mt-4">
-                  <YamimNoraimAnnouncement />
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   {homeAnnouncements.map((a) => (
