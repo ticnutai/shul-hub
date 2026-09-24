@@ -245,9 +245,15 @@ export function parseImport(text: string) {
 | `archRadius` ≥ 35 (לוחות מקושתים) | סגנון `tablets` (או `arch` על שיש) |
 | `archRadius` נמוך יותר | מסגרת `round`, רדיוס ב-`--u` |
 | `wallTexture` | סגנון: אבן → `stone`, שיש → `crown`, קטיפה → `velvet`, עץ → `wood` |
-| `tabletsGap` | `spacing.gap` |
-| `tabletWidth` | `spacing.sides` |
-| `topOffset` | `spacing.top` (פחות 10% של השעון) |
+| `tabletsGap` | `spacing.gap` (יחסי) |
+| `tabletWidth` (השוליים שנשארים בצדדים) | `spacing.sides` (יחסי) |
+| `topOffset` | `spacing.top` (יחסי) |
+
+**המרווחים יחסיים ולא מומרים אחד לאחד.** בעורך יש שני לוחות, וכאן שלוש עמודות, ולכן אותו
+אחוז לא נותן אותו אוויר. ברירת המחדל של העורך (מרווח 6, רוחב 40, מלמעלה 14) משאירה את
+המרווחים של הסגנון כמו שהם (`null`). שינוי בעורך מזיז את ברירת המחדל של הלוח באותו יחס:
+חצי מרווח שם הוא חצי מרווח כאן. ברירות המחדל נמדדו בפריסת הלוח המלא עם הסגנון `tablets`
+(מרווח 2u, צדדים 7u, מלמעלה 2.6u).
 | `rowSize` | `textScale` (1.9 = 1) |
 | `header.shulName` | `texts["header.title"]` |
 

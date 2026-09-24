@@ -14,15 +14,22 @@ import { FRAME_RADIUS_MAX, SPACING_MAX, normalizeTvConfig, type BoardSkin, type 
  *   arched tablets (archRadius≥35)  skin "tablets" ("arch" on marble)
  *   flat / rounded tablets          frame: round corners, radius in --u
  *   wallTexture                     skin (stone / velvet / wood / crown)
- *   tabletsGap (% width)            spacing.gap   (--u)
- *   tabletWidth (% width)           spacing.sides (--u)
- *   topOffset (% height)            spacing.top   (--u)
+ *   tabletsGap (% width)            spacing.gap   (scaled, see below)
+ *   outer margin (% width)          spacing.sides (scaled)
+ *   topOffset (% height)            spacing.top   (scaled)
  *   rowSize (cqw)                   textScale
  *   header.shulName                 texts["header.title"]
  *
- * The editor's percentages are of a 16:9 board, and --u is one percent of
- * the board's height, so one percent of the width is 16/9 of a --u. The
- * clock, wreath, gold stroke, row gap and colours of the tablets have no
+ * Spacing is relative, not converted. The editor lays out two tablets and
+ * this board three columns, so the same percentage does not mean the same
+ * air: taken literally, the editor's default gap came out five times this
+ * board's and cut the last rows off the short panels. Instead the editor's
+ * defaults stand for "as the style draws it" (null), and a change in the
+ * editor moves the board's own default by the same proportion - half the
+ * gap there is half the gap here. The defaults were measured on the
+ * dashboard layout with the tablets skin.
+ *
+ * The clock, wreath, gold stroke, row gap and colours of the tablets have no
  * counterpart here and are not carried. Prayer times are not design: they
  * come from the minyanim table, never from a file.
  *
@@ -61,8 +68,12 @@ type WallTexture = "jerusalem-stone" | "smooth-marble" | "dark-velvet" | "wood";
 
 /** One percent of a 16:9 board's width, in --u (percent of its height). */
 const WIDTH_TO_U = 16 / 9;
-/** The editor's clock and cornice take this much of the height above the tablets. */
-const HEADER_HEIGHT = 10;
+/** The editor's own defaults: the layout that means "leave the spacing alone". */
+const EDITOR = { gap: 6, margin: 7, top: 14 };
+/** What this board draws when spacing is left alone, in --u (measured, see above). */
+const BOARD = { gap: 2, sides: 7, top: 2.6 };
+/** Closer to the editor's default than this, and the board keeps its own. */
+const SAME = 0.05;
 /** The editor's row size that reads as textScale 1. */
 const BASE_ROW_SIZE = 1.9;
 /** From this curve on, the tablets are arches, not rounded boxes. */
@@ -102,6 +113,18 @@ function num(v: unknown, fallback: number, min: number, max: number): number {
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const clamp = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n));
 
+/** The editor's value as this board's, in proportion to both defaults; null at the default. */
+function scaled(value: number, editorDefault: number, boardDefault: number): number | null {
+  const ratio = value / editorDefault;
+  if (Math.abs(ratio - 1) < SAME) return null;
+  return round1(clamp(boardDefault * ratio, 0, SPACING_MAX));
+}
+
+/** This board's value back in the editor's terms. */
+function unscaled(value: number | null, editorDefault: number, boardDefault: number): number {
+  return value == null ? editorDefault : round1((value / boardDefault) * editorDefault);
+}
+
 /**
  * Reads the editor's layout from a theme entry (or a top-level `board`).
  * null when the entry carries no layout at all - a colours-only file.
@@ -135,11 +158,13 @@ export function boardFromTablets(entry: unknown): BoardLayoutPatch | null {
   return {
     skin,
     frame,
-    spacing: {
-      top: L ? round1(clamp(top - HEADER_HEIGHT, 0, SPACING_MAX)) : null,
-      sides: L ? round1(clamp((50 - gap / 2 - width) * WIDTH_TO_U, 0, SPACING_MAX)) : null,
-      gap: L ? round1(clamp(gap * WIDTH_TO_U, 0, SPACING_MAX)) : null,
-    },
+    spacing: L
+      ? {
+          top: scaled(top, EDITOR.top, BOARD.top),
+          sides: scaled(Math.max(0, 50 - gap / 2 - width), EDITOR.margin, BOARD.sides),
+          gap: scaled(gap, EDITOR.gap, BOARD.gap),
+        }
+      : { top: null, sides: null, gap: null },
     textScale: Math.round(clamp(num(A?.rowSize, BASE_ROW_SIZE, 0.8, 5) / BASE_ROW_SIZE, 0.8, 1.3) * 100) / 100,
     title: title || null,
   };
@@ -164,10 +189,9 @@ export function applyBoardLayout(config: TvConfig, patch: BoardLayoutPatch): TvC
  * are written as the editor's own defaults.
  */
 export function tabletsFromBoard(config: TvConfig): TabletsLayout {
-  const gapU = config.spacing.gap ?? 6 * WIDTH_TO_U;
-  const gap = round1(gapU / WIDTH_TO_U);
-  const sides = config.spacing.sides != null ? config.spacing.sides / WIDTH_TO_U : 50 - gap / 2 - 40;
-  const width = round1(clamp(50 - gap / 2 - sides, 15, 48));
+  const gap = clamp(unscaled(config.spacing.gap, EDITOR.gap, BOARD.gap), 0, 40);
+  const margin = unscaled(config.spacing.sides, EDITOR.margin, BOARD.sides);
+  const width = round1(clamp(50 - gap / 2 - margin, 15, 48));
   const arched = config.frame.top == null && ARCHED_SKINS.includes(config.skin);
   const archRadius = arched
     ? 50
@@ -177,7 +201,7 @@ export function tabletsFromBoard(config: TvConfig): TabletsLayout {
   return {
     layout: {
       tabletsGap: gap,
-      topOffset: round1((config.spacing.top ?? 4) + HEADER_HEIGHT),
+      topOffset: round1(clamp(unscaled(config.spacing.top, EDITOR.top, BOARD.top), 0, 50)),
       tabletWidth: width,
       archRadius,
       archHeight: arched ? 34 : round1(archRadius / 2),

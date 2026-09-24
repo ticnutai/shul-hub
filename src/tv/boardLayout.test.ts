@@ -24,8 +24,8 @@ describe("a file from the tablets editor", () => {
       // arched tablets on a stone wall
       skin: "tablets",
       frame: { shape: "auto", top: null, bottom: null },
-      // 6% of the width is 10.7u, clamped to the most this board allows
-      spacing: { top: 4, sides: 10, gap: 10 },
+      // the editor's default spacing leaves this board's own alone
+      spacing: { top: null, sides: null, gap: null },
       textScale: 1,
       title: "בית הכנסת אוהל יצחק",
     });
@@ -35,7 +35,7 @@ describe("a file from the tablets editor", () => {
     const r = parseImport(text, newCustomThemeId, newGradientId);
     const next = applyImport(DEFAULT_TV_CONFIG, r);
     expect(next.skin).toBe("tablets");
-    expect(next.spacing).toEqual({ top: 4, sides: 10, gap: 10 });
+    expect(next.spacing).toEqual({ top: null, sides: null, gap: null });
     expect(next.texts["header.title"]).toBe("בית הכנסת אוהל יצחק");
     expect(next.customThemes.map((t) => t.name)).toEqual(["אבן ירושלים (2)"]);
     expect(normalizeTvConfig(next)).toEqual(next);
@@ -57,7 +57,8 @@ describe("a file from the tablets editor", () => {
       newGradientId,
     );
     expect(r.themes).toHaveLength(0);
-    expect(r.board?.spacing.gap).toBe(5.3);
+    // half the editor's default gap is half this board's (2u)
+    expect(r.board?.spacing).toEqual({ top: null, sides: 8.5, gap: 1 });
   });
 });
 
@@ -69,7 +70,7 @@ describe("the translation table", () => {
     })!;
     expect(b.skin).toBe("wood");
     expect(b.frame).toEqual({ shape: "round", top: 7, bottom: 1 });
-    expect(b.spacing).toEqual({ top: 2, sides: 10, gap: 3.6 });
+    expect(b.spacing).toEqual({ top: 2.2, sides: 9, gap: 0.7 });
     expect(b.textScale).toBe(1.2);
   });
 
@@ -105,6 +106,26 @@ describe("the translation table", () => {
     expect(boardFromTablets({ name: "x", roles: {} })).toBeNull();
     expect(boardFromTablets(null)).toBeNull();
     expect(boardFromTablets("layout")).toBeNull();
+  });
+});
+
+describe("spacing that fits", () => {
+  it("never gives the tablets skin more air than the editor asked for", () => {
+    // A modest change in the editor stays a modest change here: the default
+    // gap mapped to the maximum once, and the short panels lost their last rows.
+    const b = boardFromTablets({ layout: { tabletsGap: 7.5, tabletWidth: 39, topOffset: 15 } })!;
+    expect(b.spacing.gap).toBe(2.5);
+    // 7.25% against the editor's 7% is close enough to keep the board's own
+    expect(b.spacing.sides).toBeNull();
+    expect(b.spacing.top).toBe(2.8);
+  });
+
+  it("round-trips a changed spacing through the editor's terms", () => {
+    const b = boardFromTablets({ layout: { tabletsGap: 3, tabletWidth: 44, topOffset: 18 } })!;
+    const back = tabletsFromBoard(applyBoardLayout(DEFAULT_TV_CONFIG, b)).layout;
+    expect(back.tabletsGap).toBe(3);
+    expect(back.tabletWidth).toBe(44);
+    expect(back.topOffset).toBeCloseTo(18, 0);
   });
 });
 
