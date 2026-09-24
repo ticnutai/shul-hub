@@ -51,3 +51,15 @@ describe("which minyanim a painted frame shows", () => {
     expect(rowWindow(14, -1)).toEqual([7, 14]);
   });
 });
+
+describe("the painted board's editing options", () => {
+  it("keeps sizes, rows and inks in range", () => {
+    const c = normalizeTvConfig({ illustratedStyle: { scale: 9, rows: 2, ink: "#123456", accent: "red", clockInk: "url(x)" } });
+    expect(c.illustratedStyle).toEqual({ scale: 1.3, rows: 4, ink: "#123456", accent: null, clockInk: null });
+    expect(DEFAULT_TV_CONFIG.illustratedStyle).toEqual({ scale: 1, rows: 7, ink: null, accent: null, clockInk: null });
+  });
+
+  it("windows the minyanim by the chosen number of rows", () => {
+    expect(rowWindow(14, 5, 5)).toEqual([4, 9]);
+  });
+});
