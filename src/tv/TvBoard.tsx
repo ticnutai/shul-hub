@@ -155,6 +155,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           ) : illustrated ? (
             <IllustratedStage
               illustration={config.illustration}
+              customIllustrations={config.customIllustrations}
               slides={slides}
               now={minuteNow}
               zmanim={zmanim}

@@ -1,3 +1,4 @@
+import { normalizeCustomIllustrations, type CustomIllustration } from "./illustrated";
 import type { SolarEvent } from "@community/lib/zmanim";
 import { DEVICE_CLASSES, type DeviceClass } from "./devices";
 import {
@@ -245,8 +246,13 @@ export interface DeviceOverlay {
 
 export interface TvConfig {
   screenLayout: ScreenLayout;
-  /** Which painted board the "illustrated" layout shows. Ignored by the others. */
-  illustration: IllustrationId;
+  /**
+   * Which painted board the "illustrated" layout shows: a built-in id or the
+   * id of one of `customIllustrations`. Ignored by the other layouts.
+   */
+  illustration: string;
+  /** Painted boards imported from a design-tokens file (pictures in storage). */
+  customIllustrations: CustomIllustration[];
   clockStyle: ClockStyle;
   skin: BoardSkin;
   /**
@@ -400,6 +406,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   styles: {},
   screenLayout: "rotate",
   illustration: "curtain",
+  customIllustrations: [],
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
@@ -526,6 +533,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
   if (!isObj(raw)) return structuredClone(d);
 
   const customThemes = normalizeCustomThemes(raw.customThemes);
+  const customIllustrations = normalizeCustomIllustrations(raw.customIllustrations);
   const theme =
     TV_THEMES.some((t) => t.id === raw.theme) || customThemes.some((t) => t.id === raw.theme) ? String(raw.theme) : d.theme;
   const font = TV_FONTS.some((f) => f.id === raw.font) ? (raw.font as TvFontId) : d.font;
@@ -623,7 +631,12 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
-    illustration: (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ? (raw.illustration as IllustrationId) : d.illustration,
+    customIllustrations,
+    illustration:
+      (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
+      customIllustrations.some((i) => i.id === raw.illustration)
+        ? String(raw.illustration)
+        : d.illustration,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
     skin: BOARD_SKINS.includes(raw.skin as BoardSkin) ? (raw.skin as BoardSkin) : d.skin,
     frame: normalizeFrame(raw.frame, d.frame),

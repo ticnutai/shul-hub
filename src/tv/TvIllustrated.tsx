@@ -4,8 +4,7 @@ import type { Settings } from "@community/lib/data";
 import { jerusalemWeekday, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit } from "./boardEdit";
-import type { IllustrationId } from "./config";
-import { illustrationDef, rowWindow, type Box, type Illustration } from "./illustrated";
+import { illustrationDef, rowWindow, type Box, type CustomIllustration, type Illustration } from "./illustrated";
 import { weeklyParasha } from "./learning";
 import { nextCandleLighting } from "./shabbat";
 import { jerusalemMinutes, type BoardSlide } from "./useBoardData";
@@ -125,13 +124,15 @@ function ZmanimFrame({ d, zmanim, box }: { d: Illustration; zmanim: Zmanim; box:
 
 export function IllustratedStage({
   illustration,
+  customIllustrations,
   slides,
   now,
   zmanim,
   settings,
   shabbatEndMinutes,
 }: {
-  illustration: IllustrationId;
+  illustration: string;
+  customIllustrations: readonly CustomIllustration[];
   slides: BoardSlide[];
   /** Minute precision. */
   now: Date;
@@ -142,7 +143,8 @@ export function IllustratedStage({
 }) {
   const edit = useBoardEdit();
   const mark = useMark();
-  const d = illustrationDef(illustration);
+  const d = illustrationDef(illustration, customIllustrations);
+  const picture = "image" in d ? d.image : ILLUSTRATION_PICTURES[d.id as keyof typeof ILLUSTRATION_PICTURES];
   const b = d.boxes;
   const dayKey = now.toDateString();
   const day = useMemo(() => {
@@ -165,7 +167,7 @@ export function IllustratedStage({
   return (
     <section
       className={`tv-slide tv-ill is-${d.id}`}
-      style={{ backgroundImage: `url(${ILLUSTRATION_PICTURES[d.id]})`, color: d.ink }}
+      style={{ backgroundImage: `url("${picture}")`, color: d.ink }}
       aria-label={title}
     >
       <At b={b.clock}>
