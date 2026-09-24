@@ -1,5 +1,14 @@
 import { applyBoardLayout, boardFromTablets, tabletsFromBoard, type BoardLayoutPatch, type TabletsLayout } from "./boardLayout";
 import { normalizeGradients, normalizeTvConfig, type TvConfig } from "./config";
+import {
+  ILLUSTRATION_DEFS,
+  MAX_CUSTOM_ILLUSTRATIONS,
+  builtinTwin,
+  newIllustrationId,
+  readPortableIllustration,
+  type CustomIllustration,
+  type PortableIllustration,
+} from "./illustrated";
 import { THEME_VARS, TV_GRADIENTS, TV_THEMES, type ThemeVar, type TvGradient, type TvTheme } from "./themes";
 
 /**
@@ -82,6 +91,11 @@ export interface TransferFile {
    * does not know it ignores it and takes the colours, as the format says.
    */
   board?: TabletsLayout;
+  /**
+   * Optional: painted boards for the "illustrated" layout, each with its
+   * picture inside the file (see illustrated.ts, DESIGN_TOKENS_SPEC.md §8.2).
+   */
+  illustrations?: PortableIllustration[];
 }
 
 export interface ImportResult {
@@ -91,6 +105,8 @@ export interface ImportResult {
   skipped: number;
   /** The board's shape, when the file carries one (see boardLayout.ts). */
   board: BoardLayoutPatch | null;
+  /** Painted boards that passed validation; their pictures still have to be uploaded. */
+  illustrations: PortableIllustration[];
 }
 
 /* ------------------------------------------------------------ export -- */
@@ -101,9 +117,15 @@ export function toPortableTheme(theme: TvTheme): PortableTheme {
   return { name: theme.name, description: theme.description || undefined, mode: theme.light ? "light" : "dark", roles };
 }
 
+/**
+ * `illustrations`: the painted boards to include, already with their
+ * pictures inside (fetching a picture is asynchronous; see
+ * TvDesignPanel's export).
+ */
 export function buildExport(
   config: TvConfig,
   pick: { themes?: boolean; gradients?: boolean; board?: boolean } = {},
+  illustrations: PortableIllustration[] = [],
 ): TransferFile {
   return {
     format: TRANSFER_FORMAT,
@@ -113,6 +135,7 @@ export function buildExport(
     themes: (pick.themes ?? true) ? config.customThemes.map(toPortableTheme) : [],
     gradients: (pick.gradients ?? true) ? config.gradients.map((g) => ({ name: g.name, value: g.value })) : [],
     ...(pick.board ? { board: tabletsFromBoard(config) } : {}),
+    ...(illustrations.length ? { illustrations } : {}),
   };
 }
 
@@ -177,12 +200,22 @@ export function parseImport(text: string, newThemeId: () => string, newGradientI
   // (where the tablets editor writes it).
   const board = boardFromTablets(raw.board) ?? boardFromTablets(rawThemes[0]);
 
-  if (!themes.length && !gradients.length && !board) throw new Error("לא נמצאו ערכות נושא או גרדיאנטים תקינים בקובץ");
+  const rawIllustrations = Array.isArray(raw.illustrations) ? raw.illustrations.slice(0, MAX_CUSTOM_ILLUSTRATIONS * 2) : [];
+  const illustrations = rawIllustrations
+    .map(readPortableIllustration)
+    .filter((i): i is PortableIllustration => i !== null);
+
+  if (!themes.length && !gradients.length && !board && !illustrations.length)
+    throw new Error("לא נמצאו ערכות נושא או גרדיאנטים תקינים בקובץ");
   return {
     themes,
     gradients,
-    skipped: rawThemes.length - themes.length + (rawGradients.length - gradients.length),
+    skipped:
+      rawThemes.length - themes.length +
+      (rawGradients.length - gradients.length) +
+      (rawIllustrations.length - illustrations.length),
     board,
+    illustrations,
   };
 }
 
@@ -203,8 +236,52 @@ export function mergeImport(config: TvConfig, incoming: ImportResult): TvConfig 
   };
 }
 
-/** Everything an import brings: the new themes and gradients, and the board's shape if the file has one. */
-export function applyImport(config: TvConfig, incoming: ImportResult): TvConfig {
+/**
+ * The painted boards of an import, split by what has to happen to them:
+ * one identical to a built-in needs nothing; the rest need their picture
+ * uploaded before they can be added (see addIllustrations).
+ */
+export function planIllustrations(incoming: ImportResult): {
+  builtin: string[];
+  upload: PortableIllustration[];
+} {
+  const builtin: string[] = [];
+  const upload: PortableIllustration[] = [];
+  for (const i of incoming.illustrations) {
+    const twin = builtinTwin(i);
+    if (twin) builtin.push(twin);
+    else upload.push(i);
+  }
+  return { builtin, upload };
+}
+
+/** Adds uploaded painted boards: new ids, a free name for each, at most MAX_CUSTOM_ILLUSTRATIONS. */
+export function addIllustrations(config: TvConfig, uploaded: Array<Omit<CustomIllustration, "id">>): TvConfig {
+  const taken = new Set([...ILLUSTRATION_DEFS, ...config.customIllustrations].map((i) => i.name));
+  const unique = (name: string) => {
+    let candidate = name;
+    for (let n = 2; taken.has(candidate); n++) candidate = `${name} (${n})`;
+    taken.add(candidate);
+    return candidate;
+  };
+  const added = uploaded.map((i) => ({ ...i, id: newIllustrationId(), name: unique(i.name) }));
+  return normalizeTvConfig({
+    ...config,
+    customIllustrations: [...config.customIllustrations, ...added].slice(0, MAX_CUSTOM_ILLUSTRATIONS),
+  });
+}
+
+/**
+ * Everything an import brings: the new themes and gradients, the board's
+ * shape if the file has one, and the painted boards whose pictures are
+ * already uploaded.
+ */
+export function applyImport(
+  config: TvConfig,
+  incoming: ImportResult,
+  uploaded: Array<Omit<CustomIllustration, "id">> = [],
+): TvConfig {
   const merged = mergeImport(config, incoming);
-  return incoming.board ? applyBoardLayout(merged, incoming.board) : merged;
+  const shaped = incoming.board ? applyBoardLayout(merged, incoming.board) : merged;
+  return uploaded.length ? addIllustrations(shaped, uploaded) : shaped;
 }

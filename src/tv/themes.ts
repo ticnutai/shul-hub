@@ -350,7 +350,7 @@ export function allGradients(saved?: readonly TvGradient[] | null): TvGradient[]
  * board and then quietly painted nothing: the class said has-bg-image and
  * the picture was "none".
  */
-function isSafeUrl(value: string): boolean {
+export function isSafeUrl(value: string): boolean {
   if (/[\s"'()\\;]/.test(value)) return false;
   // An uploaded picture, or a file this build shipped.
   return /^https:\/\/./i.test(value) || /^\/[^/]/.test(value);

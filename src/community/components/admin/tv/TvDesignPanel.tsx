@@ -157,9 +157,16 @@ import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
-import { ILLUSTRATION_DEFS } from "@/tv/illustrated";
+import {
+  ILLUSTRATION_DEFS,
+  dataUrlToFile,
+  toPortableIllustration,
+  urlToDataUrl,
+  type CustomIllustration,
+  type PortableIllustration,
+} from "@/tv/illustrated";
 import { ILLUSTRATION_PICTURES } from "@/tv/illustrationPictures";
-import { applyImport, buildExport, exportFileName, parseImport } from "@/tv/transfer";
+import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
 import { commitRecordEdits } from "./tvRecords";
@@ -866,20 +873,38 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     }));
   /* --------------------------------------------- import and export -- */
 
-  const doExport = (what: "themes" | "gradients" | "all", how: "file" | "clipboard") => {
-    const payload = buildExport(draft, {
-      themes: what !== "gradients",
-      gradients: what !== "themes",
-      // "הכל" also carries the board's shape, for the tablets editor
-      board: what === "all",
-    });
-    const count = payload.themes.length + payload.gradients.length;
+  const doExport = async (what: "themes" | "gradients" | "all", how: "file" | "clipboard") => {
+    // "הכל" also carries the painted boards imported here, pictures inside,
+    // so the file stands on its own in another system.
+    let illustrations: PortableIllustration[] = [];
+    let missing = 0;
+    if (what === "all" && draft.customIllustrations.length) {
+      const results = await Promise.allSettled(
+        draft.customIllustrations.map(async (i) => toPortableIllustration(i, await urlToDataUrl(i.image))),
+      );
+      illustrations = results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+      missing = results.length - illustrations.length;
+    }
+    const payload = buildExport(
+      draft,
+      {
+        themes: what !== "gradients",
+        gradients: what !== "themes",
+        // "הכל" also carries the board's shape, for the tablets editor
+        board: what === "all",
+      },
+      illustrations,
+    );
+    const count = payload.themes.length + payload.gradients.length + illustrations.length;
     if (!count && !payload.board) return toast.error("אין עדיין ערכות נושא או גרדיאנטים משלכם לייצוא");
+    const what_ = `${count} פריטים${payload.board ? " ומבנה הלוח" : ""}${
+      missing ? ` · ${missing} תבניות לא יוצאו כי התמונה שלהן לא נטענה` : ""
+    }`;
     const text = JSON.stringify(payload, null, 2);
     if (how === "clipboard") {
       void navigator.clipboard
         .writeText(text)
-        .then(() => toast.success(`${count} פריטים${payload.board ? " ומבנה הלוח" : ""} הועתקו ללוח`))
+        .then(() => toast.success(`${what_} הועתקו ללוח`))
         .catch(() => toast.error("ההעתקה נכשלה"));
       return;
     }
@@ -889,23 +914,50 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     a.href = url;
     a.download = exportFileName(what);
     a.click();
-    URL.revokeObjectURL(url);
-    toast.success(`${count} פריטים${payload.board ? " ומבנה הלוח" : ""} יוצאו לקובץ`);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast.success(`${what_} יוצאו לקובץ`);
   };
 
-  const doImport = (text: string) => {
+  const doImport = async (text: string) => {
     try {
       const incoming = parseImport(text, newCustomThemeId, newGradientId);
-      edit("import", (c) => applyImport(c, incoming));
+      // Painted boards: the four built in are recognised and not uploaded
+      // again; every other picture goes through the same uploader as a
+      // background (decoded, resampled for the TV, stored) before the board
+      // is added - the config keeps the stored URL, never the picture.
+      const plan = planIllustrations(incoming);
+      const uploaded: Array<Omit<CustomIllustration, "id">> = [];
+      let failed = 0;
+      for (const p of plan.upload) {
+        try {
+          const { url } = await uploadTvImage(dataUrlToFile(p.image, p.name));
+          const { image: _picture, ...shape } = p;
+          uploaded.push({ ...shape, image: url });
+        } catch {
+          failed++;
+        }
+      }
+      edit("import", (c) => {
+        const next = applyImport(c, incoming, uploaded);
+        // The first painted board of the file becomes the one the
+        // illustrated layout shows (the layout itself is left alone).
+        const added = next.customIllustrations.filter((i) => !c.customIllustrations.some((o) => o.id === i.id));
+        const first = plan.builtin[0] ?? added[0]?.id;
+        return first ? { ...next, illustration: first } : next;
+      });
       const parts = [
         incoming.themes.length ? `${incoming.themes.length} ערכות נושא` : "",
         incoming.gradients.length ? `${incoming.gradients.length} גרדיאנטים` : "",
+        uploaded.length ? `${uploaded.length} תבניות מאוירות` : "",
       ].filter(Boolean);
       toast.success(
         [
           parts.length ? `יובאו ${parts.join(" ו-")}` : "",
           // Shape from the tablets editor: style, corners, spacing, text size, name
           incoming.board ? "הוחל מבנה הלוח (סגנון, פינות, מרווחים, גודל טקסט ושם)" : "",
+          plan.builtin.length ? `${plan.builtin.length} תבניות מאוירות כבר קיימות כאן ולא הועלו שוב` : "",
+          uploaded.length || plan.builtin.length ? "לבחירה: פריסה ← תבנית מאוירת" : "",
+          failed ? `${failed} תמונות לא הועלו` : "",
           incoming.skipped ? `${incoming.skipped} פריטים לא תקינים דולגו` : "",
         ]
           .filter(Boolean)
@@ -1490,29 +1542,45 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   איזה לוח מצויר · הזמנים, התאריך והפרשה נכתבים בתוך המסגרות
                 </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {ILLUSTRATION_DEFS.map((d) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      aria-pressed={draft.illustration === d.id}
-                      onClick={() => edit("illustration", (c) => ({ ...c, illustration: d.id }))}
-                      className={`overflow-hidden rounded-lg border text-right transition ${
-                        draft.illustration === d.id
-                          ? "ring-2 ring-primary ring-offset-2"
-                          : "hover:border-primary/50"
-                      }`}
-                    >
-                      <img
-                        src={ILLUSTRATION_PICTURES[d.id]}
-                        alt=""
-                        className="aspect-video w-full object-cover"
-                        loading="lazy"
-                      />
-                      <span className="block px-2 pt-1 text-sm font-medium">{d.name}</span>
-                      <span className="block px-2 pb-1.5 text-[11px] leading-tight text-muted-foreground">
-                        {d.hint}
-                      </span>
-                    </button>
+                  {[
+                    ...ILLUSTRATION_DEFS.map((d) => ({ ...d, picture: ILLUSTRATION_PICTURES[d.id as keyof typeof ILLUSTRATION_PICTURES], custom: false })),
+                    ...draft.customIllustrations.map((d) => ({ ...d, picture: d.image, custom: true })),
+                  ].map((d) => (
+                    <div key={d.id} className="relative">
+                      <button
+                        type="button"
+                        aria-pressed={draft.illustration === d.id}
+                        onClick={() => edit("illustration", (c) => ({ ...c, illustration: d.id }))}
+                        className={`w-full overflow-hidden rounded-lg border text-right transition ${
+                          draft.illustration === d.id
+                            ? "ring-2 ring-primary ring-offset-2"
+                            : "hover:border-primary/50"
+                        }`}
+                      >
+                        <img src={d.picture} alt="" className="aspect-video w-full object-cover" loading="lazy" />
+                        <span className="block px-2 pt-1 text-sm font-medium">{d.name}</span>
+                        <span className="block px-2 pb-1.5 text-[11px] leading-tight text-muted-foreground">
+                          {d.custom ? d.hint || "יובאה מקובץ" : d.hint}
+                        </span>
+                      </button>
+                      {d.custom && (
+                        <button
+                          type="button"
+                          aria-label={`מחיקת ${d.name}`}
+                          title="מחיקה"
+                          onClick={() =>
+                            edit("illustration-delete", (c) => ({
+                              ...c,
+                              customIllustrations: c.customIllustrations.filter((i) => i.id !== d.id),
+                              ...(c.illustration === d.id ? { illustration: "curtain" } : {}),
+                            }))
+                          }
+                          className="absolute left-1 top-1 rounded-md bg-background/90 px-1.5 text-xs shadow hover:text-destructive"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
