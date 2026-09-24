@@ -167,6 +167,7 @@ import {
 } from "@/tv/illustrated";
 import { ILLUSTRATION_PICTURES } from "@/tv/illustrationPictures";
 import { IllustratedLookEditor } from "./IllustratedLookEditor";
+import { DayLooksEditor } from "./DayLooksEditor";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -1587,6 +1588,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 <IllustratedLookEditor config={draft} onEdit={edit} />
               </div>
             )}
+            <DayLooksEditor config={draft} onEdit={edit} />
             {/* A painted board brings its own frames; the style and corners apply to the others. */}
             {draft.screenLayout !== "illustrated" && (
               <>
