@@ -14,7 +14,7 @@ import type { FlatPasuk } from "@/types/torah";
 import { TEHILLIM_COMMENTATORS } from "@/hooks/useCommentaries";
 import { ColorPicker } from "@/components/ColorPicker";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, ThemeAppearanceControls, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
-import { ArrowLeft, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
+import { ArrowLeft, Search, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { normalizeHebrewText } from "@/utils/textUtils";
 import { useSiddurCategories, useSiddurSections, useTehillimData, preloadSiddurNusach } from "@/hooks/useSiddurData";
+import { SiddurSearchDialog, type SiddurSearchHit } from "@/components/siddur/SiddurSearchDialog";
 import { getWeekdayLeyning, getCalendarPreference, type WeekdayLeyning } from "@/utils/parshaUtils";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
 
@@ -808,37 +809,7 @@ function SectionStrip({
   color: string;
   accent: string;
 }) {
-  const { index, nonce, jump } = useContext(SiddurJumpContext);
-
-  // After the tap: the card (if there is one) has opened in the same commit,
-  // so by the next frame there is something with a height to scroll to.
-  useEffect(() => {
-    if (index === null) return;
-    const timers: number[] = [];
-    timers.push(
-      window.setTimeout(() => {
-        const el = document.getElementById(sectionAnchor(index));
-        if (!el) return;
-        // Measured, not guessed. The only thing that stays over the text is
-        // the app header, and how tall that is depends on the synagogue - a
-        // board showing the קרובים logo has a header twice the height of one
-        // showing a name. A fixed number landed somewhere in the middle of
-        // the section, which is the one place a title is no use.
-        const wanted = Math.max(0, el.getBoundingClientRect().top + window.scrollY - stickyChromeHeight() - 8);
-        window.scrollTo({ top: wanted, behavior: "smooth" });
-        // Smooth scrolling is ignored outright in some places - reduced
-        // motion, a background tab, a television WebView. A tap that quietly
-        // does nothing is worse than one that arrives without an animation,
-        // so check afterwards and finish the job.
-        timers.push(
-          window.setTimeout(() => {
-            if (Math.abs(window.scrollY - wanted) > 24) window.scrollTo({ top: wanted });
-          }, 450),
-        );
-      }, 60),
-    );
-    return () => timers.forEach((t) => window.clearTimeout(t));
-  }, [index, nonce]);
+  const { index, jump } = useContext(SiddurJumpContext);
 
   return (
     <div
@@ -862,6 +833,50 @@ function SectionStrip({
       ))}
     </div>
   );
+}
+
+/**
+ * Brings a jumped-to section into view. Lives on the page, not in the strip,
+ * because the strip exists only on a phone and search jumps on every screen.
+ */
+function SectionJumpScroller() {
+  const { index, nonce } = useContext(SiddurJumpContext);
+
+  // After the tap: the card (if there is one) has opened in the same commit,
+  // so by the next frame there is something with a height to scroll to.
+  useEffect(() => {
+    if (index === null) return;
+    const timers: number[] = [];
+    // Coming from search in another prayer, that prayer may still be
+    // loading; wait for the section to exist rather than give up.
+    const attempt = (tries: number) => {
+      const el = document.getElementById(sectionAnchor(index));
+      if (!el) {
+        if (tries < 20) timers.push(window.setTimeout(() => attempt(tries + 1), 100));
+        return;
+      }
+      // Measured, not guessed. The only thing that stays over the text is
+      // the app header, and how tall that is depends on the synagogue - a
+      // board showing the קרובים logo has a header twice the height of one
+      // showing a name. A fixed number landed somewhere in the middle of
+      // the section, which is the one place a title is no use.
+      const wanted = Math.max(0, el.getBoundingClientRect().top + window.scrollY - stickyChromeHeight() - 8);
+      window.scrollTo({ top: wanted, behavior: "smooth" });
+      // Smooth scrolling is ignored outright in some places - reduced
+      // motion, a background tab, a television WebView. A tap that quietly
+      // does nothing is worse than one that arrives without an animation,
+      // so check afterwards and finish the job.
+      timers.push(
+        window.setTimeout(() => {
+          if (Math.abs(window.scrollY - wanted) > 24) window.scrollTo({ top: wanted });
+        }, 450),
+      );
+    };
+    timers.push(window.setTimeout(() => attempt(0), 60));
+    return () => timers.forEach((t) => window.clearTimeout(t));
+  }, [index, nonce]);
+
+  return null;
 }
 
 /* ─── SiddurPagePreview ──────────────────────────────────── */
@@ -1702,6 +1717,14 @@ const ContinuousReader = ({ sections }: { sections: SiddurSection[] }) => {
 
   // Reset when sections array changes (e.g. tab switch)
   useEffect(() => { setVisibleCount(8); }, [sections]);
+
+  // A jump (the strip, or search) to a section past what is drawn so far:
+  // draw up to it, or there is nothing to scroll to.
+  const { index: jumpTo, nonce: jumpNonce } = useContext(SiddurJumpContext);
+  useEffect(() => {
+    if (jumpTo === null) return;
+    setVisibleCount(v => Math.min(Math.max(v, jumpTo + 3), sections.length));
+  }, [jumpTo, jumpNonce, sections.length]);
 
   useEffect(() => {
     if (visibleCount >= sections.length) return;
@@ -3135,6 +3158,26 @@ export const Siddur = () => {
   // The same cached fetch the pane makes; asking twice costs nothing.
   const { sections: stripSections } = useSiddurSections(nusach, isSpecial ? "" : catId);
   useEffect(() => { setJumpIndex(null); }, [catId, nusach]);
+
+  // Search can land in another prayer. Switch to it, and jump once its
+  // sections are the ones on screen (checked by title, so a stale list from
+  // the prayer being left can't take the jump).
+  const [searchOpen, setSearchOpen] = useState(false);
+  const pendingJump = useRef<SiddurSearchHit | null>(null);
+  const openSearchHit = useCallback((hit: SiddurSearchHit) => {
+    if (hit.catId === catId) {
+      jump.jump(hit.index);
+      return;
+    }
+    pendingJump.current = hit;
+    setCatId(hit.catId);
+  }, [catId, jump]);
+  useEffect(() => {
+    const hit = pendingJump.current;
+    if (!hit || hit.catId !== catId || stripSections?.[hit.index]?.title !== hit.title) return;
+    pendingJump.current = null;
+    jump.jump(hit.index);
+  }, [catId, stripSections, jump]);
   const prayerChoices = useMemo(
     () => [...categories.map((c) => ({ id: c.id, name: c.name })), ...STATIC_TABS],
     [categories],
@@ -3343,6 +3386,19 @@ export const Siddur = () => {
                 <span className="hidden md:inline">חזרה</span>
               </Button>
               {pageTools}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchOpen(true)}
+                aria-label="חיפוש בסידור"
+                title="חיפוש בסידור"
+                data-testid="siddur-search-open"
+                className="absolute right-0 h-8 px-2 text-sm font-medium"
+                style={{ color: hText, background: "transparent" }}
+              >
+                <span className="hidden md:inline">חיפוש</span>
+                <Search className="h-4 w-4" />
+              </Button>
           </div>
           )}
 
@@ -3372,6 +3428,18 @@ export const Siddur = () => {
                 color={hAccent}
                 onClick={() => setPickPrayer(true)}
               />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchOpen(true)}
+                aria-label="חיפוש בסידור"
+                title="חיפוש בסידור"
+                data-testid="siddur-search-open"
+                className="h-auto w-9 flex-shrink-0 p-0"
+                style={{ color: hAccent, background: "transparent" }}
+              >
+                <Search className="h-4 w-4" />
+              </Button>
             </div>
           )}
 
@@ -3400,6 +3468,15 @@ export const Siddur = () => {
         </div>
       </header>
 
+      <SectionJumpScroller />
+      <SiddurSearchDialog
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        nusach={nusach}
+        categories={categories}
+        accent={activeTheme.accentColor}
+        onPick={openSearchHit}
+      />
       <ChoiceDialog
         open={pickNusach}
         onOpenChange={setPickNusach}

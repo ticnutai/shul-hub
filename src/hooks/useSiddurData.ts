@@ -8,8 +8,8 @@
  *      First valid result wins.
  *   2. Per-category files are ~50-200 KB instead of the old monolithic 3 MB
  *      nusach JSON, so the local path is now much faster on first load.
- *   3. Full nusach JSON (siddur_{nusach}.json) kept as a fallback in case a
- *      split file doesn't exist yet.
+ *   3. Every nusach has a file per category. The whole-nusach files that
+ *      used to back them up were exact copies, and are gone.
  *   4. All results are cached in memory so category switches are instant.
  */
 import { useState, useEffect, useRef } from "react";
@@ -24,20 +24,10 @@ const SIDDUR_CAT_FILES = import.meta.glob<{ default: SiddurCategory }>(
   "../data/siddur/siddur_*_*.json"
 );
 
-// Glob for legacy full-nusach files  (siddur_{nusach}.json) — fallback only
-// NOTE: import.meta.glob accepts a SINGLE pattern string — multiple args are invalid.
-// Using siddur_*.json matches both nusach files and split files, but loadLocalNusach
-// does exact key lookup so there is no collision.
-const SIDDUR_NUSACH_FILES = import.meta.glob<{ default: SiddurData }>(
-  "../data/siddur/siddur_*.json"
-);
-
 // Global caches
 const sectionsCache:   Record<string, SiddurSection[]> = {};
 const catNameCache:    Record<string, string>           = {};
 const catPending:      Record<string, Promise<SiddurCategory | null>> = {};
-const nusachCache:     Record<string, SiddurData>       = {};
-const nusachPending:   Record<string, Promise<SiddurData | null>>     = {};
 
 /**
  * Load (or cache) a single category's split JSON.
@@ -62,31 +52,6 @@ async function loadLocalCategory(nusach: string, catId: string): Promise<SiddurC
   })();
 
   return catPending[key];
-}
-
-/**
- * Fallback: load (or return cached) the full nusach JSON.
- * Only used when no split file exists for a category.
- */
-async function loadLocalNusach(nusach: string): Promise<SiddurData | null> {
-  if (nusachCache[nusach]) return nusachCache[nusach];
-  if (!nusachPending[nusach]) {
-    nusachPending[nusach] = (async () => {
-      try {
-        const fileKey = `../data/siddur/siddur_${nusach}.json`;
-        const importer = SIDDUR_NUSACH_FILES[fileKey];
-        if (!importer) return null;
-        const mod = await importer();
-        nusachCache[nusach] = mod.default;
-        return mod.default;
-      } catch {
-        return null;
-      } finally {
-        delete nusachPending[nusach];
-      }
-    })();
-  }
-  return nusachPending[nusach];
 }
 
 /**
@@ -166,14 +131,6 @@ export function useSiddurSections(nusach: string, catId: string) {
       const cat = await loadLocalCategory(nusach, catId);
       if (cat) {
         commit(cat.sections, cat.name, "local");
-        return;
-      }
-      // Fallback: load the full nusach JSON (legacy, larger)
-      const nusachData = await loadLocalNusach(nusach);
-      if (!nusachData) return;
-      const catFallback = nusachData[catId];
-      if (catFallback) {
-        commit(catFallback.sections, catFallback.name, "local");
       } else {
         // Category doesn't exist in this nusach
         if (!done && !abortRef.current) {
@@ -248,6 +205,22 @@ function backgroundPreloadCategories(nusach: string, availableCatIds: string[]) 
   });
 }
 
+/**
+ * One category's sections, for search. Goes through the same cache the pane
+ * reads, so a result's section index is the index the pane will show.
+ */
+export async function loadSiddurCategory(nusach: string, catId: string): Promise<SiddurCategory | null> {
+  const key = `${nusach}:${catId}`;
+  if (sectionsCache[key]) return { name: catNameCache[key] ?? "", sections: sectionsCache[key] };
+  const cat = await loadLocalCategory(nusach, catId);
+  if (!cat) return null;
+  if (!sectionsCache[key]) {
+    sectionsCache[key] = cat.sections;
+    catNameCache[key] = cat.name;
+  }
+  return { name: catNameCache[key] ?? cat.name, sections: sectionsCache[key] };
+}
+
 const catListCache: Record<string, { id: string; name: string }[]> = {};
 
 export function useSiddurCategories(nusach: string) {
@@ -312,16 +285,7 @@ export function useSiddurCategories(nusach: string) {
       );
       if (splitCats.length > 0) {
         commit(CATEGORIES_ORDER.filter(k => splitCats.find(c => c.id === k)).map(k => splitCats.find(c => c.id === k)!));
-        return;
       }
-      // Fallback: full nusach JSON
-      const nusachData = await loadLocalNusach(nusach);
-      if (!nusachData) return;
-      commit(
-        CATEGORIES_ORDER
-          .filter(k => nusachData[k] && nusachData[k].sections.length > 0)
-          .map(k => ({ id: k, name: nusachData[k].name })),
-      );
     };
 
     // Race: both run simultaneously
