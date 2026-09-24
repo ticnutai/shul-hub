@@ -220,6 +220,40 @@ export function parseImport(text: string) {
 - **גופנים, רדיוס, צללים:** להוסיף כמפתחות אחים ל-`roles` (למשל `"typography"`), ולא בתוכו. תוכנה ישנה פשוט תתעלם מהם.
 - **תפקיד חדש:** אפשר להוסיף בגרסה 1 עצמה — תפקיד שלא מוכר פשוט לא ממופה. רק **שינוי משמעות** של תפקיד קיים מחייב `version: 2`.
 - **אוסף (pack) של כמה ערכות:** כבר נתמך — `themes` הוא מערך.
+- **מבנה הלוח (`board`):** כבר נתמך, ראו סעיף 8.1.
+
+### 8.1 מבנה הלוח: `board` ו-`layout`
+
+עורך לוחות הברית (digital-prayer-canvas) כותב ליד `roles` של הערכה הראשונה גם את
+**צורת הלוח**: `layout`, `header`, `appearance` ו-`content`. הייצוא כאן ב"הכל + מבנה הלוח"
+כותב את אותו תיאור במפתח עליון `board`. הייבוא קורא את שני המקומות: קודם `board`,
+ואחר כך את מה שליד הערכה הראשונה.
+
+```json
+"board": {
+  "layout": { "tabletsGap": 6, "topOffset": 14, "tabletWidth": 40, "archRadius": 50, "archHeight": 34 },
+  "header": { "shulName": "בית הכנסת אוהל יצחק" },
+  "appearance": { "wallTexture": "jerusalem-stone", "rowSize": 1.9, "titleSize": 2.1 }
+}
+```
+
+האחוזים הם של לוח ביחס 16:9. יחידת `--u` כאן היא אחוז מגובה הלוח, ולכן אחוז
+אחד מהרוחב שווה 16/9 של `--u`. טבלת התרגום נמצאת ב-`src/tv/boardLayout.ts`:
+
+| בקובץ | בלוח |
+|---|---|
+| `archRadius` ≥ 35 (לוחות מקושתים) | סגנון `tablets` (או `arch` על שיש) |
+| `archRadius` נמוך יותר | מסגרת `round`, רדיוס ב-`--u` |
+| `wallTexture` | סגנון: אבן → `stone`, שיש → `crown`, קטיפה → `velvet`, עץ → `wood` |
+| `tabletsGap` | `spacing.gap` |
+| `tabletWidth` | `spacing.sides` |
+| `topOffset` | `spacing.top` (פחות 10% של השעון) |
+| `rowSize` | `textScale` (1.9 = 1) |
+| `header.shulName` | `texts["header.title"]` |
+
+**מה לא עובר:** השעון, עיטור הדפנה, עובי פס הזהב, המרווח בין שורות וצבעי הלוחות
+עצמם. **זמני התפילות לא עוברים אף פעם**, כי הם נתונים שמגיעים מטבלת המניינים ולא עיצוב.
+כל ערך נחתך לטווח המותר ועובר דרך `normalizeTvConfig`, כמו כל שמירה אחרת.
 
 ---
 
@@ -229,4 +263,5 @@ export function parseImport(text: string) {
 - קובץ ממערכת אחרת (שלושה תפקידים בלבד) — יובא והושלם לערכה מלאה.
 - קובץ בגרסה 99 — נדחה בהודעה ברורה.
 - קובץ בפורמט הישן — עדיין נקרא.
+- קובץ אמיתי מעורך לוחות הברית (`design-tokens-kit/example-tablets-board.json`) — צבעים ומבנה, ומחזור מלא של המבנה (`src/tv/boardLayout.test.ts`).
 - שבעה ניסיונות הזרקה (`url(`, `var(`, `;`, `}`, `image-set`, ערך ארוך מדי, `javascript:`) — כולם נדחו.

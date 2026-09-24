@@ -1,3 +1,4 @@
+import { applyBoardLayout, boardFromTablets, tabletsFromBoard, type BoardLayoutPatch, type TabletsLayout } from "./boardLayout";
 import { normalizeGradients, normalizeTvConfig, type TvConfig } from "./config";
 import { THEME_VARS, TV_GRADIENTS, TV_THEMES, type ThemeVar, type TvGradient, type TvTheme } from "./themes";
 
@@ -75,6 +76,12 @@ export interface TransferFile {
   exportedAt: string;
   themes: PortableTheme[];
   gradients: PortableGradient[];
+  /**
+   * Optional: the board's shape (spacing, arches, wall, text size, name) in
+   * the terms of the tablets editor - see boardLayout.ts. An importer that
+   * does not know it ignores it and takes the colours, as the format says.
+   */
+  board?: TabletsLayout;
 }
 
 export interface ImportResult {
@@ -82,6 +89,8 @@ export interface ImportResult {
   gradients: TvGradient[];
   /** How many entries were dropped as invalid, so the admin is told. */
   skipped: number;
+  /** The board's shape, when the file carries one (see boardLayout.ts). */
+  board: BoardLayoutPatch | null;
 }
 
 /* ------------------------------------------------------------ export -- */
@@ -92,7 +101,10 @@ export function toPortableTheme(theme: TvTheme): PortableTheme {
   return { name: theme.name, description: theme.description || undefined, mode: theme.light ? "light" : "dark", roles };
 }
 
-export function buildExport(config: TvConfig, pick: { themes?: boolean; gradients?: boolean } = {}): TransferFile {
+export function buildExport(
+  config: TvConfig,
+  pick: { themes?: boolean; gradients?: boolean; board?: boolean } = {},
+): TransferFile {
   return {
     format: TRANSFER_FORMAT,
     version: TRANSFER_VERSION,
@@ -100,6 +112,7 @@ export function buildExport(config: TvConfig, pick: { themes?: boolean; gradient
     exportedAt: new Date().toISOString(),
     themes: (pick.themes ?? true) ? config.customThemes.map(toPortableTheme) : [],
     gradients: (pick.gradients ?? true) ? config.gradients.map((g) => ({ name: g.name, value: g.value })) : [],
+    ...(pick.board ? { board: tabletsFromBoard(config) } : {}),
   };
 }
 
@@ -160,8 +173,17 @@ export function parseImport(text: string, newThemeId: () => string, newGradientI
   const themes = normalizeTvConfig({ customThemes: staged }).customThemes;
   const gradients = normalizeGradients(rawGradients.map((g) => (isObj(g) ? { ...g, id: newGradientId() } : g)));
 
-  if (!themes.length && !gradients.length) throw new Error("לא נמצאו ערכות נושא או גרדיאנטים תקינים בקובץ");
-  return { themes, gradients, skipped: rawThemes.length - themes.length + (rawGradients.length - gradients.length) };
+  // The shape rides at the top of the file, or beside the first theme's roles
+  // (where the tablets editor writes it).
+  const board = boardFromTablets(raw.board) ?? boardFromTablets(rawThemes[0]);
+
+  if (!themes.length && !gradients.length && !board) throw new Error("לא נמצאו ערכות נושא או גרדיאנטים תקינים בקובץ");
+  return {
+    themes,
+    gradients,
+    skipped: rawThemes.length - themes.length + (rawGradients.length - gradients.length),
+    board,
+  };
 }
 
 /** Adds imported items to a config, renaming anything whose name is taken. */
@@ -179,4 +201,10 @@ export function mergeImport(config: TvConfig, incoming: ImportResult): TvConfig 
     customThemes: [...config.customThemes, ...incoming.themes.map((t) => ({ ...t, name: unique(t.name, themeNames) }))].slice(0, 24),
     gradients: [...config.gradients, ...incoming.gradients.map((g) => ({ ...g, name: unique(g.name, gradientNames) }))].slice(0, 40),
   };
+}
+
+/** Everything an import brings: the new themes and gradients, and the board's shape if the file has one. */
+export function applyImport(config: TvConfig, incoming: ImportResult): TvConfig {
+  const merged = mergeImport(config, incoming);
+  return incoming.board ? applyBoardLayout(merged, incoming.board) : merged;
 }

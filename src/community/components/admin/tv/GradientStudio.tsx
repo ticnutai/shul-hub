@@ -387,7 +387,7 @@ export function TransferPanel({
         <div className="flex flex-wrap gap-2">
           {(
             [
-              ["all", "הכל"],
+              ["all", "הכל + מבנה הלוח"],
               ["themes", "ערכות נושא"],
               ["gradients", "גרדיאנטים"],
             ] as const
@@ -415,6 +415,10 @@ export function TransferPanel({
 
       <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">ייבוא</div>
+        <p className="text-xs text-muted-foreground">
+          קובץ מעורך לוחות הברית מביא גם את מבנה הלוח: סגנון, פינות, מרווחים, גודל טקסט ושם בית
+          הכנסת. הכל נכנס לטיוטה עד "שמור ושדר".
+        </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" variant="outline" asChild>
             <label className="cursor-pointer">
