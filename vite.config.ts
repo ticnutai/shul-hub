@@ -152,6 +152,8 @@ export default defineConfig(({ mode }) => ({
           if (id.includes('/src/data/vayikra.json')) return 'data-vayikra';
           if (id.includes('/src/data/bamidbar.json')) return 'data-bamidbar';
           if (id.includes('/src/data/devarim.json')) return 'data-devarim';
+          // Same "data-" prefix: left out of the install, cached on first open.
+          if (id.includes('/src/data/haftarot.json')) return 'data-haftarot';
         }
       }
     }

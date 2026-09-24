@@ -23,6 +23,19 @@ import { toast } from "sonner";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toHebrewNumber } from "@/utils/hebrewNumbers";
 import { getCurrentWeeklyParsha, getCalendarPreference } from "@/utils/parshaUtils";
+import {
+  ALIYAH_DIVISION_KEY,
+  aliyahStartMarkers,
+  getParshaAliyot,
+  getParshaHaftarah,
+  getUpcomingShabbatReading,
+  inSpan,
+  readStored,
+  writeStored,
+  type AliyahDivision,
+} from "@/utils/aliyot";
+import { AliyotBar, type AliyahSelection } from "@/components/aliyot/AliyotBar";
+import { AliyahMarkersContext } from "@/components/aliyot/AliyahMarker";
 import { SeferSkeleton } from "@/components/SeferSkeleton";
 import { SelectionProvider } from "@/contexts/SelectionContext";
 import { MultiShareBar } from "@/components/MultiShareBar";
@@ -43,6 +56,7 @@ import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
 // Lazy load heavy components - split by usage priority
 // Critical components (loaded when mode is active)
 const PaginatedPasukList = lazy(() => import("@/components/PaginatedPasukList").then(m => ({ default: m.PaginatedPasukList })));
+const HaftarahView = lazy(() => import("@/components/aliyot/HaftarahView").then(m => ({ default: m.HaftarahView })));
 const ChumashView = lazy(() => import("@/components/ChumashView").then(m => ({ default: m.ChumashView })));
 const SideContentPanel = lazy(() => import("@/components/SideContentPanel").then(m => ({ default: m.SideContentPanel })));
 
@@ -117,6 +131,17 @@ const Index = () => {
   const [selectedPasuk, setSelectedPasuk] = useState<number | null>(null);
   const [currentPasukIndex, setCurrentPasukIndex] = useState(0);
   const [singlePasukMode, setSinglePasukMode] = useState(false);
+  // Aliyah division: how the parsha is split (the choice is remembered), and
+  // which aliyah is open (reset whenever the parsha or perek changes).
+  const [aliyahDivision, setAliyahDivisionState] = useState<AliyahDivision>(() =>
+    readStored(ALIYAH_DIVISION_KEY, ["none", "shabbat", "weekday"] as const, "none"),
+  );
+  const [selectedAliyah, setSelectedAliyah] = useState<AliyahSelection>(null);
+  const setAliyahDivision = useCallback((d: AliyahDivision) => {
+    setAliyahDivisionState(d);
+    setSelectedAliyah(null);
+    writeStored(ALIYAH_DIVISION_KEY, d);
+  }, []);
   // Expansion is stored independently for the two main layouts and is synced
   // by DisplayModeContext, so changing one layout never changes the other.
   const globalExpandAll = displayMode === "luxury"
@@ -209,7 +234,7 @@ const Index = () => {
       return;
     }
     
-    const hasUrlParams = searchParams.get('sefer') || searchParams.get('perek') || searchParams.get('pasuk');
+    const hasUrlParams = searchParams.get('sefer') || searchParams.get('perek') || searchParams.get('pasuk') || searchParams.get('parsha');
     if (hasUrlParams) {
       setInitialLoadDone(true);
       return;
@@ -322,6 +347,24 @@ const Index = () => {
         setCorpusMode(nextMode);
         localStorage.setItem("corpusMode", nextMode);
         setSelectedSefer(sefer);
+      }
+    }
+
+    // ?parsha=<1-54>&aliyot=shabbat|weekday&aliyah=1..7|M|reading|haftarah
+    const parshaParam = Number(searchParams.get('parsha'));
+    if (parshaParam >= 1 && parshaParam <= 54) {
+      // Loading a sefer clears the selection unless this ref names it — the
+      // same guard that keeps the weekly parsha.
+      const targetSefer = Number(seferParam) || selectedSefer;
+      if (seferData?.sefer_id !== targetSefer) weeklyParshaLoadedRef.current = targetSefer;
+      setSelectedParsha(parshaParam);
+      setSelectedPerek(null);
+      setSelectedPasuk(null);
+      setSinglePasukMode(false);
+      const div = searchParams.get('aliyot');
+      if (div === 'shabbat' || div === 'weekday') {
+        setAliyahDivisionState(div);
+        setSelectedAliyah(searchParams.get('aliyah') || null);
       }
     }
 
@@ -558,6 +601,7 @@ const Index = () => {
     
     const newParsha = seferData.parshiot[newIndex];
     setSelectedParsha(newParsha.parsha_id);
+    setSelectedAliyah(null);
     setSelectedPerek(null);
     setSelectedPasuk(null);
     setSinglePasukMode(false);
@@ -597,6 +641,46 @@ const Index = () => {
     return pesukim;
   }, [flattenedPesukim, selectedParsha]);
 
+  // Aliyot exist only for a parsha of the Torah (our parsha ids 1-54).
+  const aliyotParsha = selectedParsha !== null && selectedSefer >= 1 && selectedSefer <= 5 ? selectedParsha : null;
+  const aliyahSpans = useMemo(
+    () => (aliyotParsha !== null && aliyahDivision !== "none" ? getParshaAliyot(aliyotParsha, aliyahDivision) : []),
+    [aliyotParsha, aliyahDivision],
+  );
+  const aliyahMarkers = useMemo(
+    () => (aliyahSpans.length ? aliyahStartMarkers(aliyahSpans) : null),
+    [aliyahSpans],
+  );
+  // The verses the chosen aliyah covers; "reading" is the whole Mon/Thu reading.
+  const activeAliyahRange = useMemo(() => {
+    if (!aliyahSpans.length || selectedAliyah === null || selectedAliyah === "haftarah") return null;
+    if (selectedAliyah === "reading") {
+      return { begin: aliyahSpans[0].begin, end: aliyahSpans[aliyahSpans.length - 1].end };
+    }
+    return aliyahSpans.find(s => s.key === selectedAliyah) ?? null;
+  }, [aliyahSpans, selectedAliyah]);
+  const upcomingShabbat = useMemo(() => getUpcomingShabbatReading(getCalendarPreference()), []);
+  const readThisShabbat = aliyotParsha !== null && !!upcomingShabbat?.parshaNums.includes(aliyotParsha);
+  const aliyotNotes = useMemo(() => {
+    if (!readThisShabbat || !upcomingShabbat || aliyahDivision !== "shabbat") return [];
+    const notes: string[] = [];
+    if (upcomingShabbat.parshaNums.length > 1) {
+      notes.push("השבת הקרובה קוראים שתי פרשיות מחוברות, והחלוקה לעליות שונה. כאן מוצגת החלוקה כשהפרשה נקראת לבדה.");
+    }
+    const m = upcomingShabbat.specialMaftir;
+    if (m) {
+      notes.push(
+        `השבת הקרובה, ${m.label}: המפטיר קורא ב${m.bookHe} ${toHebrewNumber(m.begin.perek)} ${toHebrewNumber(m.begin.pasuk)} – ` +
+        `${toHebrewNumber(m.end.perek)} ${toHebrewNumber(m.end.pasuk)}, ולא את סוף הפרשה.`,
+      );
+    }
+    return notes;
+  }, [readThisShabbat, upcomingShabbat, aliyahDivision]);
+  const hasHaftarah = useMemo(
+    () => aliyotParsha !== null && getParshaHaftarah(aliyotParsha, "ashkenazi").length > 0,
+    [aliyotParsha],
+  );
+
   const filteredPesukim = useMemo(() => {
     let pesukim = flattenedPesukim;
 
@@ -608,6 +692,9 @@ const Index = () => {
     // Filter by perek
     if (selectedPerek !== null) {
       pesukim = pesukim.filter(p => p.perek === selectedPerek);
+    } else if (activeAliyahRange) {
+      // An aliyah: the parsha holds whole chapters, so its range is all inside.
+      pesukim = pesukim.filter(p => inSpan({ perek: p.perek, pasuk: p.pasuk_num }, activeAliyahRange));
     } else if (selectedParsha !== null) {
       // No specific perek chosen → show the whole parasha but START from its
       // actual Torah opening pasuk (some parshiot begin mid-chapter).
@@ -631,7 +718,7 @@ const Index = () => {
     }
 
     return pesukim;
-  }, [flattenedPesukim, selectedParsha, selectedPerek, selectedPasuk, singlePasukMode, displayMode]);
+  }, [flattenedPesukim, selectedParsha, selectedPerek, selectedPasuk, singlePasukMode, displayMode, activeAliyahRange]);
 
   const displayedPesukim = useMemo(() => {
     if (singlePasukMode && filteredPesukim.length > 0) {
@@ -696,6 +783,7 @@ const Index = () => {
     }
     setSelectedSefer(seferId);
     setSelectedParsha(null);
+    setSelectedAliyah(null);
     setSelectedPerek(null);
     setSelectedPasuk(null);
     setSinglePasukMode(false);
@@ -705,6 +793,7 @@ const Index = () => {
   const handleParshaSelect = useCallback((p: number | null) => {
     logInteraction("Index", "handleParshaSelect", { parsha: p });
     setSelectedParsha(p);
+    setSelectedAliyah(null);
     setSelectedPerek(null);
     setSelectedPasuk(null);
     handleQuickSelectorChange();
@@ -713,6 +802,7 @@ const Index = () => {
   const handlePerekSelect = useCallback((p: number | null) => {
     logInteraction("Index", "handlePerekSelect", { perek: p });
     setSelectedPerek(p);
+    setSelectedAliyah(null);
     setSelectedPasuk(null);
     handleQuickSelectorChange();
   }, [handleQuickSelectorChange]);
@@ -1254,6 +1344,7 @@ const Index = () => {
                     onPasukSelect={handlePasukSelect}
                     onResetToSefer={() => {
                       setSelectedParsha(null);
+                      setSelectedAliyah(null);
                       setSelectedPerek(null);
                       setSelectedPasuk(null);
                       setSinglePasukMode(false);
@@ -1266,7 +1357,32 @@ const Index = () => {
 
               {/* Main Content - Verse cards */}
               <div className="w-full min-w-0 overflow-hidden order-first lg:order-none" style={{ maxWidth: "100%" }}>
-                {filteredPesukim.length === 0 ? (
+                {aliyotParsha !== null && corpusMode === "torah" && textLanguage === "he" && (
+                  <AliyotBar
+                    division={aliyahDivision}
+                    onDivisionChange={setAliyahDivision}
+                    spans={aliyahSpans}
+                    selected={selectedAliyah}
+                    onSelect={(s) => {
+                      setSelectedAliyah(s);
+                      setSelectedPerek(null);
+                      setSelectedPasuk(null);
+                      setSinglePasukMode(false);
+                      setCurrentPasukIndex(0);
+                    }}
+                    hasHaftarah={hasHaftarah}
+                    notes={aliyotNotes}
+                  />
+                )}
+                <AliyahMarkersContext.Provider value={aliyahMarkers}>
+                {selectedAliyah === "haftarah" && aliyotParsha !== null ? (
+                  <Suspense fallback={<ComponentLoader />}>
+                    <HaftarahView
+                      regular={(m) => getParshaHaftarah(aliyotParsha, m)}
+                      special={readThisShabbat ? upcomingShabbat?.specialHaftarah : undefined}
+                    />
+                  </Suspense>
+                ) : filteredPesukim.length === 0 ? (
                   <Card data-layout="verse-cards" data-layout-label="כרטיסי פסוקים" className="p-12 text-center animate-fade-in">
                     <p className="text-lg text-muted-foreground mb-2">
                       {selectedPasuk !== null && selectedPerek !== null
@@ -1286,7 +1402,7 @@ const Index = () => {
                 ) : (
                   <Suspense fallback={<ComponentLoader />}>
                     <div data-layout="verse-cards" data-layout-label="כרטיסי פסוקים"
-                      key={`${selectedPerek}-${selectedParsha}`}
+                      key={`${selectedPerek}-${selectedParsha}-${selectedAliyah ?? ""}`}
                     >
                       {displayMode === "luxury" ? (
                         <FontAndColorSettingsProvider scopeKey="luxury">
@@ -1341,6 +1457,7 @@ const Index = () => {
                     </div>
                   </Suspense>
                 )}
+                </AliyahMarkersContext.Provider>
               </div>
 
               {/* Side Content Panel - overlaid on left, aligned to grid top */}

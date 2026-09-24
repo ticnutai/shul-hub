@@ -1,5 +1,5 @@
-import { HebrewCalendar, HDate, ParshaEvent, Event } from '@hebcal/core';
-import { getLeyningForParshaHaShavua } from '@hebcal/leyning';
+import { HebrewCalendar, HDate, ParshaEvent, Event, parshiot } from '@hebcal/core';
+import { getWeekdayReading } from '@hebcal/leyning';
 
 // Mapping between Hebrew parsha names and our internal parsha IDs
 const PARSHA_NAME_TO_ID: Record<string, { sefer: number; parshaId: number }> = {
@@ -240,6 +240,8 @@ export interface WeekdayLeyning {
   parshaEn: string;
   /** The 3 aliyot read on Mon/Thu */
   aliyot: AliyahRef[];
+  /** Our parsha id (1-54), for opening the reading in the chumash */
+  parshaNum: number;
   /** Sefer id (1-5) for navigation */
   seferId: number;
   /** Opening perek (for linking into the app) */
@@ -279,11 +281,15 @@ export function getWeekdayLeyning(il?: boolean): WeekdayLeyning | null {
     const parshaEvent = events.find((ev: Event) => ev instanceof ParshaEvent) as ParshaEvent | undefined;
     if (!parshaEvent) return null;
 
-    const leyning = getLeyningForParshaHaShavua(parshaEvent, useIl);
-    if (!leyning?.fullkriyah) return null;
+    // The weekday division is its own table. It used to take aliyot 1-3 of
+    // Shabbat here, which for Bereshit is 77 verses instead of 13. A doubled
+    // Shabbat is read on the weekdays before it from its first parsha.
+    const parshaName = parshaEvent.parsha[0];
+    const weekday = getWeekdayReading(parshaName);
+    if (!weekday) return null;
 
     const aliyot: AliyahRef[] = (['1', '2', '3'] as const).map(k => {
-      const a = leyning.fullkriyah[k];
+      const a = weekday[k];
       if (!a) return null;
       return {
         book:   a.k,
@@ -303,6 +309,7 @@ export function getWeekdayLeyning(il?: boolean): WeekdayLeyning | null {
       parshaHe: parshaEvent.render('he').replace(/^פָּרָשַׁת\s*/, 'פרשת '),
       parshaEn: parshaEvent.render('en').replace(/^Parashat\s+/, ''),
       aliyot,
+      parshaNum: parshiot.indexOf(parshaName) + 1,
       seferId: EN_BOOK_TO_SEFER[firstAliyah.book] ?? 1,
       openPerek: perek,
     };

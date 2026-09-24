@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { AliyahMarker } from "@/components/aliyot/AliyahMarker";
+import { Fragment, useState, useEffect } from "react";
 import { FlatPasuk } from "@/types/torah";
 import { PasukDisplay } from "@/components/PasukDisplay";
 import { useDisplayMode } from "@/contexts/DisplayModeContext";
@@ -116,7 +117,10 @@ export const PaginatedPasukList = ({ pesukim, seferId, expandAll = false }: Pagi
       {/* Pesukim Display */}
       <div className="space-y-4">
         {displayedPesukim.map((pasuk) => (
-          <PasukDisplay key={pasuk.id} pasuk={pasuk} seferId={seferId} forceMinimized={!expandAll} />
+          <Fragment key={pasuk.id}>
+            <AliyahMarker perek={pasuk.perek} pasuk={pasuk.pasuk_num} />
+            <PasukDisplay pasuk={pasuk} seferId={seferId} forceMinimized={!expandAll} />
+          </Fragment>
         ))}
       </div>
 

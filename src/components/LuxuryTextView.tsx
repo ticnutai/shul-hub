@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { Fragment, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { AliyahMarker } from "@/components/aliyot/AliyahMarker";
 import { FlatPasuk } from "@/types/torah";
 import { toHebrewNumber } from "@/utils/hebrewNumbers";
 import { formatTorahText } from "@/utils/textUtils";
@@ -963,8 +964,9 @@ export const LuxuryTextView = ({
           {visiblePesukim.map((pasuk) => {
             const pasukId = `${pasuk.sefer}-${pasuk.perek}-${pasuk.pasuk_num}`;
             return (
+              <Fragment key={pasuk.id}>
+              <AliyahMarker perek={pasuk.perek} pasuk={pasuk.pasuk_num} />
               <PasukRow
-                key={pasuk.id}
                 pasuk={pasuk}
                 numColor={template.pasukNumColor}
                 fontSize={effectiveSize}
@@ -985,6 +987,7 @@ export const LuxuryTextView = ({
                 commentaryLabelPosition={commentaryLabelPosition}
                 minimizedMode
               />
+              </Fragment>
             );
           })}
         </div>
@@ -1017,8 +1020,9 @@ export const LuxuryTextView = ({
                   {group.pesukim.map((pasuk) => {
                     const pasukId = `${pasuk.sefer}-${pasuk.perek}-${pasuk.pasuk_num}`;
                     return (
+                      <Fragment key={pasuk.id}>
+                      <AliyahMarker perek={pasuk.perek} pasuk={pasuk.pasuk_num} />
                       <PasukRow
-                        key={pasuk.id}
                         pasuk={pasuk}
                         numColor={template.pasukNumColor}
                         fontSize={effectiveSize}
@@ -1038,6 +1042,7 @@ export const LuxuryTextView = ({
                         isMobile={isMobile}
                         commentaryLabelPosition={commentaryLabelPosition}
                       />
+                      </Fragment>
                     );
                   })}
                 </div>
@@ -1067,8 +1072,9 @@ export const LuxuryTextView = ({
                   {group.pesukim.map((pasuk) => {
                     const pasukId = `${pasuk.sefer}-${pasuk.perek}-${pasuk.pasuk_num}`;
                     return (
+                      <Fragment key={pasuk.id}>
+                      <AliyahMarker perek={pasuk.perek} pasuk={pasuk.pasuk_num} />
                       <PasukRow
-                        key={pasuk.id}
                         pasuk={pasuk}
                         numColor={template.pasukNumColor}
                         fontSize={effectiveSize}
@@ -1088,6 +1094,7 @@ export const LuxuryTextView = ({
                         isMobile={isMobile}
                         commentaryLabelPosition={commentaryLabelPosition}
                       />
+                      </Fragment>
                     );
                   })}
                 </div>

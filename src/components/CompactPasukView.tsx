@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
+import { Fragment, useState, useRef, useEffect, useCallback, useMemo, memo } from "react";
+import { AliyahMarker } from "@/components/aliyot/AliyahMarker";
 import { FlatPasuk } from "@/types/torah";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -126,8 +127,9 @@ export const CompactPasukView = memo(({ pesukim, seferId, expandAll = false }: C
         const onPointerUp = () => { if (lpTimer) clearTimeout(lpTimer); };
         
         return (
-          <Card 
-            key={pasuk.id}
+          <Fragment key={pasuk.id}>
+          <AliyahMarker perek={pasuk.perek} pasuk={pasuk.pasuk_num} />
+          <Card
             className={cn(
               "overflow-hidden w-full transition-all duration-300 cursor-pointer border-0",
               selected
@@ -260,6 +262,7 @@ export const CompactPasukView = memo(({ pesukim, seferId, expandAll = false }: C
               </div>
             )}
           </Card>
+          </Fragment>
         );
       })}
 

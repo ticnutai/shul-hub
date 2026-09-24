@@ -2708,14 +2708,14 @@ const TehillimPane = () => {
 };
 
 /* ─── KriaPane ───────────────────────────────────────────── */
-const ALIYAH_NUM_HE: Record<number, string> = { 1: 'ראשון', 2: 'שני', 3: 'שלישי' };
+const ALIYAH_NUM_HE: Record<number, string> = { 1: 'כהן', 2: 'לוי', 3: 'ישראל' };
 
 function pasukRef(ref: string): string {
   const [p, v] = ref.split(':').map(Number);
   return `פרק\u00a0${p} פסוק\u00a0${v}`;
 }
 
-const WeekdayReadingCard = ({ onNavigate }: { onNavigate: (seferId: number, perek: number) => void }) => {
+const WeekdayReadingCard = ({ onOpenReading }: { onOpenReading: (seferId: number, parshaNum: number) => void }) => {
   const [leyning, setLeyning] = useState<WeekdayLeyning | null>(null);
   const [loadingL, setLoadingL] = useState(true);
   const { theme } = useSiddurTheme();
@@ -2762,12 +2762,12 @@ const WeekdayReadingCard = ({ onNavigate }: { onNavigate: (seferId: number, pere
       >
         <Button
           size="sm"
-          onClick={() => onNavigate(leyning.seferId, leyning.openPerek)}
+          onClick={() => onOpenReading(leyning.seferId, leyning.parshaNum)}
           className="flex items-center gap-1.5 text-xs font-medium shrink-0"
           style={{ background: theme.accentColor, color: '#1a1a1a' }}
         >
           <ExternalLink className="h-3 w-3" />
-          פתח בסידור
+          פתח בחומש
         </Button>
         <div className="text-right">
           <p className="font-bold" style={{ color: theme.accentColor, fontFamily: "'Noto Serif Hebrew', serif", fontSize: '1rem' }}>
@@ -2855,13 +2855,18 @@ const KRIA_SCHEDULE = [
 
 const KriaPane = ({ onNavigate }: { onNavigate: (seferId?: number, perek?: number) => void }) => {
   const { theme } = useSiddurTheme();
+  const navigate = useNavigate();
   return (
   <div className="pb-8" dir="rtl">
     <OrnamentTitle text="קריאה בתורה" />
     <Divider />
 
     {/* Live Mon/Thu reading for this week */}
-    <WeekdayReadingCard onNavigate={(sid, perek) => onNavigate(sid, perek)} />
+    <WeekdayReadingCard
+      onOpenReading={(sid, parshaNum) =>
+        navigate(`/chumash?sefer=${sid}&parsha=${parshaNum}&aliyot=weekday&aliyah=reading`)
+      }
+    />
 
     {/* Reading schedule table */}
     <div
