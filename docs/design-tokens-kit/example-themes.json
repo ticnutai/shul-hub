@@ -1,0 +1,56 @@
+{
+  "format": "design-tokens",
+  "version": 1,
+  "app": "example",
+  "exportedAt": "2026-09-24T12:00:00.000Z",
+  "themes": [
+    {
+      "name": "לילה כחול (דוגמה)",
+      "description": "ערכה מלאה: כל עשרת התפקידים",
+      "mode": "dark",
+      "roles": {
+        "background": "#0b1628",
+        "backgroundGlowTop": "#1b3054",
+        "backgroundGlowBottom": "#16304f",
+        "surface": "rgba(255, 255, 255, 0.045)",
+        "text": "#f4f7fb",
+        "textMuted": "#9fb2cc",
+        "accent": "#f0c35c",
+        "accentAlt": "#b99236",
+        "onAccent": "#0b1628",
+        "highlight": "#ef8f4c"
+      }
+    },
+    {
+      "name": "חגים (מינימלית)",
+      "description": "רק שלושה תפקידים; השאר נלקחים מברירת המחדל",
+      "mode": "dark",
+      "roles": {
+        "background": "#101828",
+        "text": "#ffffff",
+        "accent": "#ffcc00"
+      }
+    },
+    {
+      "name": "קלף בהיר",
+      "description": "ערכה בהירה - מתאימה למסכי LCD ולשבת",
+      "mode": "light",
+      "roles": {
+        "background": "#f7f1e3",
+        "backgroundGlowTop": "#fffaf0",
+        "backgroundGlowBottom": "#efe4cc",
+        "surface": "rgba(23, 44, 87, 0.06)",
+        "text": "#172c57",
+        "textMuted": "#5b6b85",
+        "accent": "#b8860b",
+        "accentAlt": "#8a6a1f",
+        "onAccent": "#ffffff",
+        "highlight": "#c2410c"
+      }
+    }
+  ],
+  "gradients": [
+    { "name": "ערב", "value": "linear-gradient(160deg, #0b1628, #1b3054)" },
+    { "name": "זריחה", "value": "radial-gradient(circle at 50% 0%, #f0c35c, #0b1628 70%)" }
+  ]
+}
