@@ -116,6 +116,19 @@ const LAYOUT_CHOICES: Array<{
       </>
     ),
   },
+  {
+    id: "illustrated",
+    name: "תבנית מאוירת",
+    hint: "לוח מצויר (פרוכת, לוחות אבן, עץ מגולף) עם הזמנים של היום בתוך המסגרות",
+    sketch: (
+      <>
+        <i className="col-span-3 h-2 rounded-full bg-current opacity-60" />
+        <i className="row-span-3 rounded-t-full bg-current opacity-45" />
+        <i className="row-span-3 rounded-sm bg-current opacity-20" />
+        <i className="row-span-3 rounded-t-full bg-current opacity-45" />
+      </>
+    ),
+  },
 ];
 
 /**
@@ -144,6 +157,8 @@ import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
+import { ILLUSTRATION_DEFS } from "@/tv/illustrated";
+import { ILLUSTRATION_PICTURES } from "@/tv/illustrationPictures";
 import { applyImport, buildExport, exportFileName, parseImport } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -1443,7 +1458,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. מסך השבת תמיד מוצג על כל המסך.">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {LAYOUT_CHOICES.map((l) => (
                 <button
                   key={l.id}
@@ -1469,9 +1484,47 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </button>
               ))}
             </div>
-            <StylePicker config={view} onEdit={edit} />
+            {draft.screenLayout === "illustrated" && (
+              <div className="mt-3">
+                <div className="mb-1.5 text-xs font-medium text-muted-foreground">
+                  איזה לוח מצויר · הזמנים, התאריך והפרשה נכתבים בתוך המסגרות
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {ILLUSTRATION_DEFS.map((d) => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      aria-pressed={draft.illustration === d.id}
+                      onClick={() => edit("illustration", (c) => ({ ...c, illustration: d.id }))}
+                      className={`overflow-hidden rounded-lg border text-right transition ${
+                        draft.illustration === d.id
+                          ? "ring-2 ring-primary ring-offset-2"
+                          : "hover:border-primary/50"
+                      }`}
+                    >
+                      <img
+                        src={ILLUSTRATION_PICTURES[d.id]}
+                        alt=""
+                        className="aspect-video w-full object-cover"
+                        loading="lazy"
+                      />
+                      <span className="block px-2 pt-1 text-sm font-medium">{d.name}</span>
+                      <span className="block px-2 pb-1.5 text-[11px] leading-tight text-muted-foreground">
+                        {d.hint}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* A painted board brings its own frames; the style and corners apply to the others. */}
+            {draft.screenLayout !== "illustrated" && (
+              <>
+                <StylePicker config={view} onEdit={edit} />
 
-            <FrameAndSpacing config={view} onEdit={edit} />
+                <FrameAndSpacing config={view} onEdit={edit} />
+              </>
+            )}
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
               שעון:

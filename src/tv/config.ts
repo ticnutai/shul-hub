@@ -108,9 +108,16 @@ export interface ElementStyle {
  *   split      a fixed side column (next minyan + zmanim) beside the slides
  *   dashboard  everything at once, no rotation - prayer times, a large clock,
  *              zmanim, an announcement and lessons, with a strip at the bottom
+ *   illustrated  a whole painted board (curtain, stone tablets, carved wood...)
+ *              with the day's times written into its frames - see
+ *              illustrated.ts and `illustration` below
  */
-export type ScreenLayout = "rotate" | "split" | "dashboard";
-export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard"];
+export type ScreenLayout = "rotate" | "split" | "dashboard" | "illustrated";
+export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard", "illustrated"];
+
+/** The painted boards the "illustrated" layout can draw (pictures in TvIllustrated.tsx). */
+export const ILLUSTRATIONS = ["curtain", "stone", "wood", "modern"] as const;
+export type IllustrationId = (typeof ILLUSTRATIONS)[number];
 export type ClockStyle = "digital" | "analog" | "both";
 
 /**
@@ -238,6 +245,8 @@ export interface DeviceOverlay {
 
 export interface TvConfig {
   screenLayout: ScreenLayout;
+  /** Which painted board the "illustrated" layout shows. Ignored by the others. */
+  illustration: IllustrationId;
   clockStyle: ClockStyle;
   skin: BoardSkin;
   /**
@@ -390,6 +399,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   backgroundGradient: null,
   styles: {},
   screenLayout: "rotate",
+  illustration: "curtain",
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
@@ -613,6 +623,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
+    illustration: (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ? (raw.illustration as IllustrationId) : d.illustration,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
     skin: BOARD_SKINS.includes(raw.skin as BoardSkin) ? (raw.skin as BoardSkin) : d.skin,
     frame: normalizeFrame(raw.frame, d.frame),
