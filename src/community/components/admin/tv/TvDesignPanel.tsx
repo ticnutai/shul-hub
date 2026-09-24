@@ -57,6 +57,7 @@ import {
   getTheme,
   isLightColor,
   isSafeCssValue,
+  newCustomThemeId,
   newGradientId,
   THEME_VAR_LABELS,
   THEME_VARS,
@@ -884,13 +885,16 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       const parts = [
         incoming.themes.length ? `${incoming.themes.length} ערכות נושא` : "",
         incoming.gradients.length ? `${incoming.gradients.length} גרדיאנטים` : "",
-        // Shape from the tablets editor: style, corners, spacing, text size, name
-        incoming.board ? "מבנה הלוח (סגנון, פינות, מרווחים וגודל טקסט)" : "",
       ].filter(Boolean);
       toast.success(
-        `יובאו ${parts.join(" ו-")}${
-          incoming.skipped ? ` · ${incoming.skipped} פריטים לא תקינים דולגו` : ""
-        }. לחצו "שמור ושדר" כדי להחיל.`,
+        [
+          parts.length ? `יובאו ${parts.join(" ו-")}` : "",
+          // Shape from the tablets editor: style, corners, spacing, text size, name
+          incoming.board ? "הוחל מבנה הלוח (סגנון, פינות, מרווחים, גודל טקסט ושם)" : "",
+          incoming.skipped ? `${incoming.skipped} פריטים לא תקינים דולגו` : "",
+        ]
+          .filter(Boolean)
+          .join(" · ") + '. לחצו "שמור ושדר" כדי להחיל.',
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "הייבוא נכשל");
