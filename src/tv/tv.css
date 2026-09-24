@@ -4523,3 +4523,152 @@
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
+
+/* ============================================== the illustrated layout === */
+
+/*
+ * A painted board (TvIllustrated.tsx): the picture fills the whole screen and
+ * draws its own frames, so the board's own header, background and footer
+ * step aside. Type is sized in cqw of the picture, the way the
+ * template gallery sizes it, so the words stay inside the painted frames at
+ * any resolution.
+ */
+.tv-root.is-layout-illustrated .tv-bg,
+.tv-root.is-layout-illustrated .tv-footer {
+  display: none;
+}
+
+.tv-root.is-layout-illustrated .tv-stage {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+}
+
+.tv-ill {
+  position: absolute;
+  inset: 0;
+  container-type: inline-size;
+  background-size: 100% 100%;
+  font-family: "Frank Ruhl Libre", "Heebo", serif;
+}
+
+.tv-ill-box {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.tv-ill-list {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 4% 6%;
+  font-size: var(--ill-size, 1.95cqw);
+}
+
+.tv-ill-title {
+  margin-bottom: 4%;
+  font-size: 1.12em;
+  font-weight: 700;
+}
+
+.tv-ill-list ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.28em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tv-ill-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6em;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.tv-ill-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tv-ill-name small {
+  font-size: 0.7em;
+  font-weight: 600;
+}
+
+.tv-ill-time {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The next minyan: underlined in the frame's own ink, no badge to crowd it. */
+.tv-ill-list li.is-next .tv-ill-name {
+  text-decoration: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.2em;
+}
+
+.tv-ill-list li.is-cancelled .tv-ill-time {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.tv-ill-empty {
+  font-size: 0.8em;
+  opacity: 0.8;
+}
+
+.tv-ill-clock {
+  font-size: 3.4cqw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-ill-plaque {
+  font-size: 2.6cqw;
+  font-weight: 700;
+}
+
+.tv-ill-bar {
+  font-size: 1.5cqw;
+  font-weight: 700;
+}
+
+.tv-ill-name-big {
+  font-size: 2.6cqw;
+  font-weight: 700;
+}
+
+.tv-ill-day {
+  font-size: 1.8cqw;
+  font-weight: 700;
+}
+
+.tv-ill-sub {
+  font-size: 1.4cqw;
+}
+
+.tv-ill-shabbat-title {
+  font-size: 2.1cqw;
+  font-weight: 700;
+}
+
+.tv-ill-shabbat-line {
+  margin-top: 2%;
+  font-size: 1.7cqw;
+}
+
+.tv-ill-shabbat-bless {
+  margin-top: 6%;
+  font-size: 2.5cqw;
+  font-weight: 700;
+}

@@ -1,3 +1,4 @@
+import { IllustratedStage } from "./TvIllustrated";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HDate } from "@hebcal/core";
 import { DAYS_HE } from "@community/lib/data";
@@ -117,6 +118,8 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   // The Shabbat screen always takes the whole stage, whatever the layout.
   const layout = shabbat ? "rotate" : config.screenLayout;
   const dashboard = layout === "dashboard";
+  // A painted board draws its own header, clock and bottom line.
+  const illustrated = layout === "illustrated";
   const alert = shabbat ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
@@ -135,7 +138,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       >
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
         <TvShapes />
-        <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />
+        {!illustrated && <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />}
 
         <main className="tv-stage">
           {!data.anyLoaded ? (
@@ -149,6 +152,15 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
                   : "מתחבר לשרת בית הכנסת."}
               </p>
             </div>
+          ) : illustrated ? (
+            <IllustratedStage
+              illustration={config.illustration}
+              slides={slides}
+              now={minuteNow}
+              zmanim={zmanim}
+              settings={data.settings}
+              shabbatEndMinutes={config.shabbat.endMinutesAfterSunset}
+            />
           ) : dashboard ? (
             <ClockContext.Provider value={now}>
               <MemoDashboard slides={slides} now={minuteNow} zmanim={zmanim} index={index} clockStyle={config.clockStyle} countdown={config.countdown.enabled} />
@@ -169,7 +181,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 
         {dashboard && <DashboardStrip now={minuteNow} extra={config.ticker.enabled ? config.ticker.text : ""} />}
 
-        {!dashboard && config.ticker.enabled && config.ticker.text.trim() && (
+        {!dashboard && !illustrated && config.ticker.enabled && config.ticker.text.trim() && (
           <div className="tv-ticker" {...edit.attr("ticker")}>
             <span
               className="tv-ticker-text"
@@ -181,7 +193,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         <footer className="tv-footer">
-          {edit.hidden("footer.dots") || shabbat || dashboard ? (
+          {edit.hidden("footer.dots") || shabbat || dashboard || illustrated ? (
             <span />
           ) : (
             <div className="tv-footer-slides" {...edit.attr("footer.dots")}>
