@@ -1,0 +1,104 @@
+{
+  "format": "design-tokens",
+  "version": 1,
+  "app": "digital-prayer-canvas",
+  "exportedAt": "2026-09-24T12:00:00.000Z",
+  "themes": [
+    {
+      "name": "אבן ירושלים",
+      "description": "ערכה בהירה על קלף חם — למסכי יום ולשבת",
+      "mode": "light",
+      "roles": {
+        "background": "#f6efe0",
+        "backgroundGlowTop": "#fffaef",
+        "backgroundGlowBottom": "#e8dcc4",
+        "surface": "rgba(60, 45, 20, 0.07)",
+        "text": "#2b2010",
+        "textMuted": "#6b5a3e",
+        "accent": "#9a6b18",
+        "accentAlt": "#7a5312",
+        "onAccent": "#fffaef",
+        "highlight": "#b4442a"
+      },
+      "layout": {
+        "tabletsGap": 6,
+        "topOffset": 14,
+        "tabletWidth": 40,
+        "tabletHeight": 74,
+        "archRadius": 50,
+        "archHeight": 34,
+        "innerBorderWidth": 3,
+        "innerPadding": 7,
+        "rowGap": 5
+      },
+      "header": {
+        "clockTop": 1.5,
+        "clockSize": 13,
+        "showWreath": true,
+        "showCornice": true,
+        "shulName": "בית הכנסת אוהל יצחק",
+        "hebrewDate": "יום חמישי · י״ד אדר תשפ״ז"
+      },
+      "appearance": {
+        "wallTexture": "jerusalem-stone",
+        "tabletFill": "#e9dcc0",
+        "goldBorderColor": "#b08d30",
+        "textColor": "#4a3617",
+        "timeColor": "#8a6a1f",
+        "titleSize": 2.1,
+        "rowSize": 1.9,
+        "clockSize": 3.2
+      },
+      "content": {
+        "rightTitle": "תפילות חול",
+        "leftTitle": "תפילות שבת",
+        "rightRows": [
+          {
+            "name": "שחרית",
+            "time": "06:00"
+          },
+          {
+            "name": "מנחה",
+            "time": "17:15"
+          },
+          {
+            "name": "ערבית",
+            "time": "17:50"
+          },
+          {
+            "name": "שיעור דף יומי",
+            "time": "20:30"
+          }
+        ],
+        "leftRows": [
+          {
+            "name": "מנחה ערב שבת",
+            "time": "17:20"
+          },
+          {
+            "name": "שחרית",
+            "time": "07:30"
+          },
+          {
+            "name": "שיעור",
+            "time": "15:45"
+          },
+          {
+            "name": "מנחה",
+            "time": "16:45"
+          },
+          {
+            "name": "ערבית מוצ״ש",
+            "time": "18:05"
+          }
+        ]
+      }
+    }
+  ],
+  "gradients": [
+    {
+      "name": "אבן ירושלים",
+      "value": "linear-gradient(160deg, #f6efe0, #e8dcc4)"
+    }
+  ]
+}

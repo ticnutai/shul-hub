@@ -143,7 +143,7 @@ import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
-import { buildExport, exportFileName, mergeImport, parseImport } from "@/tv/transfer";
+import { applyImport, buildExport, exportFileName, parseImport } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
 import { commitRecordEdits } from "./tvRecords";
@@ -854,14 +854,16 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     const payload = buildExport(draft, {
       themes: what !== "gradients",
       gradients: what !== "themes",
+      // "הכל" also carries the board's shape, for the tablets editor
+      board: what === "all",
     });
     const count = payload.themes.length + payload.gradients.length;
-    if (!count) return toast.error("אין עדיין ערכות נושא או גרדיאנטים משלכם לייצוא");
+    if (!count && !payload.board) return toast.error("אין עדיין ערכות נושא או גרדיאנטים משלכם לייצוא");
     const text = JSON.stringify(payload, null, 2);
     if (how === "clipboard") {
       void navigator.clipboard
         .writeText(text)
-        .then(() => toast.success(`${count} פריטים הועתקו ללוח`))
+        .then(() => toast.success(`${count} פריטים${payload.board ? " ומבנה הלוח" : ""} הועתקו ללוח`))
         .catch(() => toast.error("ההעתקה נכשלה"));
       return;
     }
@@ -872,16 +874,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     a.download = exportFileName(what);
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`${count} פריטים יוצאו לקובץ`);
+    toast.success(`${count} פריטים${payload.board ? " ומבנה הלוח" : ""} יוצאו לקובץ`);
   };
 
   const doImport = (text: string) => {
     try {
       const incoming = parseImport(text, newCustomThemeId, newGradientId);
-      edit("import", (c) => mergeImport(c, incoming));
+      edit("import", (c) => applyImport(c, incoming));
       const parts = [
         incoming.themes.length ? `${incoming.themes.length} ערכות נושא` : "",
         incoming.gradients.length ? `${incoming.gradients.length} גרדיאנטים` : "",
+        // Shape from the tablets editor: style, corners, spacing, text size, name
+        incoming.board ? "מבנה הלוח (סגנון, פינות, מרווחים וגודל טקסט)" : "",
       ].filter(Boolean);
       toast.success(
         `יובאו ${parts.join(" ו-")}${
