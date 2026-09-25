@@ -14,6 +14,7 @@ import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
 import { scheduleNightlyRefresh, setWatchdogReport, watchMainThread } from "./watchdog";
+import { reloadBoard } from "./remoteBoard";
 import { WebControls } from "./TvWebControls";
 
 /**
@@ -115,10 +116,10 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     setWatchdogReport((level, kind, message, details) =>
       link.current?.log(level, kind, message, details),
     );
-    const stop = watchMainThread();
+    const stop = watchMainThread({ reload: reloadBoard });
     // Only on the screen itself: an admin previewing in a browser at 03:30
     // should not have the page reload under them.
-    const stopNightly = web ? () => {} : scheduleNightlyRefresh();
+    const stopNightly = web ? () => {} : scheduleNightlyRefresh({ reload: reloadBoard });
     return () => {
       setWatchdogReport(null);
       stop();
@@ -352,7 +353,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         break;
       case "reload":
         l.log("info", "command", "טעינה מחדש לפי בקשת המנהל");
-        window.setTimeout(() => window.location.reload(), 500);
+        window.setTimeout(reloadBoard, 500);
         return;
     }
     l.log("info", "command", `פקודה מהמנהל: ${COMMAND_LABELS[cmd.command] ?? cmd.command}`, { command: cmd.command, payload: p });

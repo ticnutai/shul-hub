@@ -13,6 +13,12 @@ const config: CapacitorConfig = {
   appId: 'com.ticnutai.bsr3synagogue.tv',
   appName: 'לוח בית כנסת בסר 3',
   webDir: 'dist-tv',
+  server: {
+    // The board loads itself from the website when it can (src/tv/remoteBoard.ts),
+    // so a publish reaches the wall without a new APK. Without this entry
+    // Capacitor would open that page in the system browser instead.
+    allowNavigation: ['shul-hub.lovable.app'],
+  },
   android: {
     path: 'android-tv',
     allowMixedContent: false,
