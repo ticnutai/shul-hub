@@ -276,10 +276,11 @@ export interface TvConfig {
   /** A look per kind of day, switched automatically (dayLooks.ts). */
   dayLooks: Partial<Record<DayKind, DayLook>>;
   /**
-   * The picture of each special day (key from specialDays.ts → image URL in
-   * storage). A day without one gets its built-in design (EventSplash.tsx).
+   * The pictures of each special day (key from specialDays.ts → image URLs
+   * in storage), shown in turn. A day without any gets the built-in designs
+   * (EventSplash.tsx).
    */
-  eventImages: Record<string, string>;
+  eventImages: Record<string, string[]>;
   /** Show the special day's picture and times on the board now and then, on the day. */
   eventSplash: boolean;
   clockStyle: ClockStyle;
@@ -571,14 +572,21 @@ export interface IllustratedStyle {
   clockInk: string | null;
 }
 
-/** Special-day pictures from storage: simple keys, https links only. */
-function normalizeEventImages(raw: unknown): Record<string, string> {
-  const out: Record<string, string> = {};
+/**
+ * Special-day pictures from storage: simple keys, https links only, up to 8
+ * each. A single link (how the first version stored it) becomes a list of one.
+ */
+function normalizeEventImages(raw: unknown): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (!/^[a-z_]{2,40}$/.test(k) || typeof v !== "string") continue;
-    const url = v.trim();
-    if (/^https:\/\//i.test(url) && isSafeUrl(url)) out[k] = url;
+    if (!/^[a-z_]{2,40}$/.test(k)) continue;
+    const list = (Array.isArray(v) ? v : [v])
+      .filter((u): u is string => typeof u === "string")
+      .map((u) => u.trim())
+      .filter((u) => /^https:\/\//i.test(u) && isSafeUrl(u));
+    const unique = [...new Set(list)].slice(0, 8);
+    if (unique.length) out[k] = unique;
   }
   return out;
 }

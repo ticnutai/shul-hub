@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, Copy, ImagePlus, Plus, RotateCcw } from "lucide-react";
+import { CalendarDays, ChevronLeft, Copy, ImagePlus, Plus, RotateCcw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -8,6 +8,7 @@ import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { uploadTvImage, useTvConfig } from "@community/components/admin/tv/tvAdminData";
 import { DefaultArt, EventSplash } from "@/tv/EventSplash";
+import { BUILTIN_VARIANTS, MAX_EVENT_IMAGES } from "@/tv/eventSlides";
 import { zmanimFor } from "@community/lib/minyan-time";
 import { useSettings } from "@community/lib/data";
 import "@/tv/tv.css";
@@ -65,6 +66,12 @@ export function SpecialDaysAdmin({
   const tv = useTvConfig();
   const { data: settings } = useSettings();
   const [preview, setPreview] = useState<SpecialDayDef | null>(null);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (!preview) return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [preview]);
   const tvConfig = tv.data?.config;
 
   // The picture lives in the board's config. Read it fresh before writing, so
@@ -84,22 +91,41 @@ export function SpecialDaysAdmin({
     }
   };
 
-  const setImage = async (def: SpecialDayDef, file: File | null) => {
+  /** Adds pictures (several at once), up to 8 a day; they take turns on the board. */
+  const addImages = async (def: SpecialDayDef, files: File[]) => {
+    const room = MAX_EVENT_IMAGES - (tvConfig?.eventImages[def.key]?.length ?? 0);
+    if (room <= 0) {
+      toast.error(`אפשר עד ${MAX_EVENT_IMAGES} תמונות למועד`);
+      return;
+    }
     setBusy(`img:${def.key}`);
     try {
-      const url = file ? (await uploadTvImage(file)).url : null;
-      const ok = await saveBoard((c) => {
-        const eventImages = { ...c.eventImages };
-        if (url) eventImages[def.key] = url;
-        else delete eventImages[def.key];
-        return { ...c, eventImages };
-      });
-      if (ok) toast.success(url ? `התמונה של ${def.name} נשמרה ותוצג בלוח` : `${def.name}: חזרה לעיצוב המובנה`);
+      const urls: string[] = [];
+      for (const f of files.slice(0, room)) urls.push((await uploadTvImage(f)).url);
+      const ok = await saveBoard((c) => ({
+        ...c,
+        eventImages: { ...c.eventImages, [def.key]: [...(c.eventImages[def.key] ?? []), ...urls].slice(0, MAX_EVENT_IMAGES) },
+      }));
+      if (ok) toast.success(`${urls.length === 1 ? "התמונה נוספה" : `נוספו ${urls.length} תמונות`} ל${def.name}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "העלאת התמונה נכשלה");
     } finally {
       setBusy(null);
     }
+  };
+
+  /** Removes one picture, or all of them (back to the built-in designs). */
+  const removeImage = async (def: SpecialDayDef, url: string | null) => {
+    setBusy(`img:${def.key}`);
+    const ok = await saveBoard((c) => {
+      const eventImages = { ...c.eventImages };
+      const left = url ? (eventImages[def.key] ?? []).filter((u) => u !== url) : [];
+      if (left.length) eventImages[def.key] = left;
+      else delete eventImages[def.key];
+      return { ...c, eventImages };
+    });
+    setBusy(null);
+    if (ok && !url) toast.success(`${def.name}: חזרה לעיצובים המובנים`);
   };
   const now = useMemo(() => new Date(), []);
   const next = useMemo(() => nextDatesAll(now), [now]);
@@ -198,39 +224,56 @@ export function SpecialDaysAdmin({
           )}
         </div>
         {!def.national && (
-          <div className="mt-2 flex items-center gap-2">
-            <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded border bg-muted" aria-label={`תמונת ${def.name}`}>
-              {tvConfig?.eventImages[def.key] ? (
-                <img src={tvConfig.eventImages[def.key]} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="absolute inset-0 origin-top-right scale-[0.08]" style={{ width: "1250%", height: "1250%" }}>
-                  <DefaultArt def={def} />
-                </div>
+          <div className="mt-2 space-y-1.5">
+            <div className="flex flex-wrap gap-1.5" data-testid={`images-${def.key}`}>
+              {(tvConfig?.eventImages[def.key]?.length ?? 0) > 0
+                ? tvConfig!.eventImages[def.key]!.map((url, i) => (
+                    <div key={url} className="relative h-12 w-20 overflow-hidden rounded border">
+                      <img src={url} alt={`תמונה ${i + 1} של ${def.name}`} className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        aria-label={`הסרת תמונה ${i + 1}`}
+                        disabled={busy === `img:${def.key}`}
+                        onClick={() => void removeImage(def, url)}
+                        className="absolute left-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </div>
+                  ))
+                : Array.from({ length: BUILTIN_VARIANTS }, (_, v) => (
+                    <div key={v} className="h-12 w-20 overflow-hidden rounded border" title="עיצוב מובנה">
+                      <DefaultArt def={def} variant={v} />
+                    </div>
+                  ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-primary underline">
+                <ImagePlus className="size-3.5" />
+                {busy === `img:${def.key}` ? "מעלה…" : "הוספת תמונות"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="sr-only"
+                  data-testid={`add-images-${def.key}`}
+                  disabled={busy === `img:${def.key}`}
+                  onChange={(e) => {
+                    const files = [...(e.target.files ?? [])];
+                    if (files.length) void addImages(def, files);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+              <button type="button" className="text-xs underline" onClick={() => setPreview(def)} data-testid={`preview-${def.key}`}>
+                תצוגה בלוח
+              </button>
+              {(tvConfig?.eventImages[def.key]?.length ?? 0) > 0 && (
+                <button type="button" className="inline-flex items-center gap-1 text-xs underline" onClick={() => void removeImage(def, null)}>
+                  <RotateCcw className="size-3.5" /> עיצובים מובנים
+                </button>
               )}
             </div>
-            <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-primary underline">
-              <ImagePlus className="size-3.5" />
-              {tvConfig?.eventImages[def.key] ? "החלפת תמונה" : "תמונה משלכם"}
-              <input
-                type="file"
-                accept="image/*"
-                className="sr-only"
-                disabled={busy === `img:${def.key}`}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void setImage(def, f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <button type="button" className="text-xs underline" onClick={() => setPreview(def)} data-testid={`preview-${def.key}`}>
-              תצוגה בלוח
-            </button>
-            {tvConfig?.eventImages[def.key] && (
-              <button type="button" className="inline-flex items-center gap-1 text-xs underline" onClick={() => void setImage(def, null)}>
-                <RotateCcw className="size-3.5" /> עיצוב מובנה
-              </button>
-            )}
           </div>
         )}
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -270,7 +313,8 @@ export function SpecialDaysAdmin({
   };
 
   const previewDate = preview ? next[preview.key] : null;
-  const previewNow = previewDate ? new Date(`${previewDate}T09:00:00Z`) : now;
+  // The day's date, with a clock that runs - so the pictures take turns in the preview too.
+  const previewNow = previewDate ? new Date(Date.parse(`${previewDate}T09:00:00Z`) + tick * 1000) : now;
 
   return (
     <div className="space-y-5" dir="rtl">
