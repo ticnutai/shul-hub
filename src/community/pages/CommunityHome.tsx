@@ -27,7 +27,8 @@ import {
   prayerLabel,
   useMinyanOverrides,
 } from "@community/lib/data";
-import { dayTypeFor, overridesFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { overridesFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { specialDayTitle, specialZmanim, todaysCategories } from "@community/lib/specialDays";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
 import { QuickAddButton } from "@community/components/QuickAddButton";
@@ -159,27 +160,17 @@ export function CommunityHome() {
   // those days nothing below behaves any differently.
   const { data: overrideRows } = useMinyanOverrides();
   const todayOverrides = useMemo(() => overridesFor(overrideRows, today), [overrideRows, today]);
-  const todayKey = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jerusalem",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(today);
-  const visibleCategories = useMemo(
-    () =>
-      minyanCategories.filter(
-        (category) =>
-          category.active &&
-          (!category.visible_from || category.visible_from <= todayKey) &&
-          (!category.visible_until || category.visible_until >= todayKey),
-      ),
-    [minyanCategories, todayKey],
-  );
-  const preferredSystemKey = dayTypeFor(today);
+  // On a special day with its own timetable (יום כיפור, צום גדליה) that tab
+  // replaces the ordinary ones; any other day the ordinary tabs, never an
+  // event's (specialDays.ts - the wall uses the same rule).
+  const todays = useMemo(() => todaysCategories(minyanCategories, today), [minyanCategories, today]);
+  const visibleCategories = todays.categories;
   const selectedCategory =
     visibleCategories.find((category) => category.id === categoryId) ??
-    visibleCategories.find((category) => category.system_key === preferredSystemKey) ??
+    todays.preferred ??
     visibleCategories[0];
+  const specialTitle = useMemo(() => specialDayTitle(today), [today]);
+  const special = useMemo(() => specialZmanim(today, zmanim), [today, zmanim]);
   const categoryRows = useMemo(
     () =>
       minyanim
@@ -487,6 +478,19 @@ export function CommunityHome() {
             return (
               <section key={key} className={sectionClass} data-home-widget={key} data-widget-width={sectionWidths.get(key) ?? "full"}>
                 <h2 className="text-2xl font-semibold">זמני היום</h2>
+                {special.length > 0 && (
+                  <div className="mt-4">
+                    {specialTitle && <p className="mb-2 text-sm font-semibold text-gold">{specialTitle}</p>}
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                      {special.map((r) => (
+                        <div key={r.key} className="card-elev border-2 border-gold/50 px-4 py-3">
+                          <p className="text-xs font-semibold text-muted-foreground">{r.label}</p>
+                          <p className="font-display text-xl font-bold tabular-nums">{formatTime(r.time)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {shownZmanim.map((z) => (
                     <div key={z} className="card-elev px-4 py-3">
