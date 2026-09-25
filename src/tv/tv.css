@@ -4721,6 +4721,7 @@
   opacity: 1;
 }
 .tv-event-photo,
+.tv-event-photo-fill,
 .tv-event-art {
   position: absolute;
   inset: 0;
@@ -4729,8 +4730,16 @@
   background-size: cover;
   background-position: center;
 }
+/* A photograph is shown whole (it was cropped by "cover", and its subject cut
+   off at the edges of the wall); its own blurred copy fills what is left, so
+   there are no black bars. No slow zoom either: it cropped the edges too. */
 .tv-event-photo {
-  animation: tv-event-kenburns 16s ease-out both;
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+.tv-event-photo-fill {
+  filter: blur(28px) brightness(0.55) saturate(1.1);
+  transform: scale(1.12);
 }
 @keyframes tv-event-kenburns {
   from { transform: scale(1.06); }
@@ -4764,6 +4773,32 @@
   font-size: 1.5vw;
   letter-spacing: 0.02em;
   opacity: 0.85;
+}
+.tv-event-torah {
+  display: grid;
+  gap: 0.35vw;
+  margin: 0 0 1.1vw;
+  padding: 0.6vw 0 0;
+  border-top: 1px solid rgba(246, 215, 122, 0.35);
+}
+.tv-event-torah div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.2vw;
+  align-items: baseline;
+}
+.tv-event-torah dt {
+  font-size: 1.35vw;
+  opacity: 0.8;
+  white-space: nowrap;
+}
+.tv-event-torah dd {
+  margin: 0;
+  font-family: "Frank Ruhl Libre", "David Libre", serif;
+  font-size: 1.7vw;
+  font-weight: 700;
+  color: #f8ecc9;
+  text-align: left;
 }
 .tv-event-verse {
   margin: 0 0 1.2vw;

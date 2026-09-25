@@ -13,6 +13,7 @@ import {
   type SpecialGroup,
 } from "@community/lib/specialDays";
 import type { TvConfig } from "./config";
+import { torahReadingOn } from "./torahReading";
 import { BUILTIN_VARIANTS, PHOTO_STYLES, eventSlides, stylesFor } from "./eventSlides";
 import { SceneArt, seeded } from "./eventScenes";
 
@@ -458,7 +459,19 @@ export function EventSplash({
       ? Math.floor(seconds / HOLD_SLIDE_SECONDS)
       : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
   const active = step % slides.length;
-  const rows = specialZmanim(date, dayZmanim);
+  // The day's own times, then the two a congregant looks for on a Shabbat or
+  // festival morning. While held from candle lighting, `date` is already the
+  // holy day itself, so these are tomorrow morning's, which is what is meant.
+  const rows = [
+    ...specialZmanim(date, dayZmanim),
+    ...(hold || def.group !== "fasts"
+      ? [
+          { key: "shma", label: "סוף זמן ק״ש", time: dayZmanim.sof_zman_shma },
+          { key: "tefila", label: "סוף זמן תפילה", time: dayZmanim.sof_zman_tefila },
+        ].filter((r) => r.time)
+      : []),
+  ];
+  const torah = torahReadingOn(date);
   const combined = combinedDay(def, date);
   const own = verseFor(def.key);
   // Shabbat and a festival together: a verse of each, side by side.
@@ -469,7 +482,11 @@ export function EventSplash({
       {slides.map((s, i) => (
         <div key={i} className={`tv-event-layer${i === active ? " is-active" : ""}`} data-slide={i}>
           {"image" in s ? (
-            <div className="tv-event-photo" style={{ backgroundImage: `url("${s.image}")` }} />
+            <>
+              {/* The whole picture, never cropped; the same picture, blurred, fills the edges. */}
+              <div className="tv-event-photo-fill" style={{ backgroundImage: `url("${s.image}")` }} />
+              <div className="tv-event-photo" style={{ backgroundImage: `url("${s.image}")` }} />
+            </>
           ) : (
             <DefaultArt def={def} variant={s.variant} withShabbat={combined.shabbat} />
           )}
@@ -507,6 +524,26 @@ export function EventSplash({
                 <dd>{formatTime(r.time)}</dd>
               </div>
             ))}
+          </dl>
+        )}
+        {torah && (
+          <dl className="tv-event-torah">
+            <div>
+              <dt>{torah.parasha ? `קריאת התורה · ${torah.parasha}` : "קריאת התורה"}</dt>
+              <dd>{torah.reading}</dd>
+            </div>
+            {torah.maftir && (
+              <div>
+                <dt>מפטיר</dt>
+                <dd>{torah.maftir}</dd>
+              </div>
+            )}
+            {torah.haftarah && (
+              <div>
+                <dt>הפטרה</dt>
+                <dd>{torah.haftarah}</dd>
+              </div>
+            )}
           </dl>
         )}
         {slides.length > 1 && (
