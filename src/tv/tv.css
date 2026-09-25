@@ -4559,6 +4559,20 @@
   font-family: "Frank Ruhl Libre", "Heebo", serif;
 }
 
+/* "התאמות תמונה" (illustratedAdjust.ts): the picture, the stones' colour, the frames. */
+.tv-ill-picture,
+.tv-ill-stone {
+  position: absolute;
+  inset: 0;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+.tv-ill-frame {
+  position: absolute;
+  box-sizing: border-box;
+  pointer-events: none;
+}
+
 .tv-ill-box {
   position: absolute;
   display: flex;

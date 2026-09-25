@@ -55,8 +55,10 @@ describe("which minyanim a painted frame shows", () => {
 describe("the painted board's editing options", () => {
   it("keeps sizes, rows and inks in range", () => {
     const c = normalizeTvConfig({ illustratedStyle: { scale: 9, rows: 2, ink: "#123456", accent: "red", clockInk: "url(x)" } });
-    expect(c.illustratedStyle).toEqual({ scale: 1.3, rows: 4, ink: "#123456", accent: null, clockInk: null });
-    expect(DEFAULT_TV_CONFIG.illustratedStyle).toEqual({ scale: 1, rows: 7, ink: null, accent: null, clockInk: null });
+    expect(c.illustratedStyle).toMatchObject({ scale: 1.3, rows: 4, ink: "#123456", accent: null, clockInk: null });
+    expect(DEFAULT_TV_CONFIG.illustratedStyle).toMatchObject({ scale: 1, rows: 7, ink: null, accent: null, clockInk: null });
+    // The picture adjustments start neutral (illustratedAdjust.test.ts covers them).
+    expect(DEFAULT_TV_CONFIG.illustratedStyle).toMatchObject({ brightness: 1, saturation: 1, hue: 0, stoneTint: null, frameDepth: 0 });
   });
 
   it("windows the minyanim by the chosen number of rows", () => {
