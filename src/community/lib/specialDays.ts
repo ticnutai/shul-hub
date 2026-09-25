@@ -251,3 +251,71 @@ export function boardSpecialDay(
   }
   return null;
 }
+
+/* ------------------------------------------------ verses and combined days -- */
+
+/**
+ * A verse for each special day, shown quietly under its name on the board.
+ * Written without vowels (the board's type has none), with the source.
+ */
+const VERSES: Record<string, { text: string; source: string }> = {
+  shabbat: { text: "וקראת לשבת ענג לקדוש ה' מכבד", source: "ישעיה נח, יג" },
+  rosh_hashana: { text: "תקעו בחדש שופר בכסה ליום חגנו", source: "תהילים פא, ד" },
+  erev_rosh_hashana: { text: "תקעו בחדש שופר בכסה ליום חגנו", source: "תהילים פא, ד" },
+  yom_kippur: { text: "כי ביום הזה יכפר עליכם לטהר אתכם", source: "ויקרא טז, ל" },
+  erev_yom_kippur: { text: "כי ביום הזה יכפר עליכם לטהר אתכם", source: "ויקרא טז, ל" },
+  shabbat_shuva: { text: "שובה ישראל עד ה' אלקיך", source: "הושע יד, ב" },
+  sukkot: { text: "בסכת תשבו שבעת ימים", source: "ויקרא כג, מב" },
+  erev_sukkot: { text: "בסכת תשבו שבעת ימים", source: "ויקרא כג, מב" },
+  chol_hamoed_sukkot: { text: "ושמחת בחגך והיית אך שמח", source: "דברים טז, יד-טו" },
+  hoshana_raba: { text: "אנא ה' הושיעה נא", source: "תהילים קיח, כה" },
+  shmini_atzeret: { text: "ביום השמיני עצרת תהיה לכם", source: "במדבר כט, לה" },
+  chanukah: { text: "כי אתה תאיר נרי ה' אלקי יגיה חשכי", source: "תהילים יח, כט" },
+  purim: { text: "ליהודים היתה אורה ושמחה וששן ויקר", source: "אסתר ח, טז" },
+  erev_purim: { text: "ליהודים היתה אורה ושמחה וששן ויקר", source: "אסתר ח, טז" },
+  shushan_purim: { text: "ליהודים היתה אורה ושמחה וששן ויקר", source: "אסתר ח, טז" },
+  pesach: { text: "והגדת לבנך ביום ההוא", source: "שמות יג, ח" },
+  erev_pesach: { text: "והגדת לבנך ביום ההוא", source: "שמות יג, ח" },
+  chol_hamoed_pesach: { text: "את חג המצות תשמר", source: "שמות כג, טו" },
+  shvii_shel_pesach: { text: "אז ישיר משה ובני ישראל את השירה הזאת", source: "שמות טו, א" },
+  shavuot: { text: "וחג שבעת תעשה לך", source: "שמות לד, כב" },
+  erev_shavuot: { text: "וחג שבעת תעשה לך", source: "שמות לד, כב" },
+  tzom_gedaliah: { text: "שובו אלי ואשובה אליכם", source: "מלאכי ג, ז" },
+  asara_btevet: { text: "שובו אלי ואשובה אליכם", source: "מלאכי ג, ז" },
+  taanit_esther: { text: "לכו כנוס את כל היהודים", source: "אסתר ד, טז" },
+  shiva_asar_btamuz: { text: "שובו אלי ואשובה אליכם", source: "מלאכי ג, ז" },
+  tisha_bav: { text: "השיבנו ה' אליך ונשובה חדש ימינו כקדם", source: "איכה ה, כא" },
+  erev_tisha_bav: { text: "השיבנו ה' אליך ונשובה חדש ימינו כקדם", source: "איכה ה, כא" },
+  shabbat_zachor: { text: "זכור את אשר עשה לך עמלק", source: "דברים כה, יז" },
+  shabbat_parah: { text: "וזרקתי עליכם מים טהורים וטהרתם", source: "יחזקאל לו, כה" },
+  shabbat_hachodesh: { text: "החדש הזה לכם ראש חדשים", source: "שמות יב, ב" },
+  shabbat_hagadol: { text: "הנה אנכי שלח לכם את אליה הנביא", source: "מלאכי ג, כג" },
+  shabbat_shekalim: { text: "זה יתנו כל העבר על הפקדים מחצית השקל", source: "שמות ל, יג" },
+  shabbat_chazon: { text: "ציון במשפט תפדה ושביה בצדקה", source: "ישעיה א, כז" },
+  shabbat_nachamu: { text: "נחמו נחמו עמי יאמר אלקיכם", source: "ישעיה מ, א" },
+  shabbat_shirah: { text: "אז ישיר משה ובני ישראל את השירה הזאת", source: "שמות טו, א" },
+  rosh_chodesh: { text: "החדש הזה לכם ראש חדשים", source: "שמות יב, ב" },
+  lag_baomer: { text: "וספרתם לכם ממחרת השבת", source: "ויקרא כג, טו" },
+  tu_bishvat: { text: "כי האדם עץ השדה", source: "דברים כ, יט" },
+};
+
+export function verseFor(key: string): { text: string; source: string } | null {
+  return VERSES[key] ?? null;
+}
+
+/**
+ * The day as the board names it when days meet: a festival on Shabbat reads
+ * "שבת חול המועד סוכות" or "שבת · סוכות (יום טוב)", and the other days of
+ * the date (ראש חודש on Chanukah) follow as a quiet second line. Weekly
+ * Shabbat is not a special day of its own; it joins by the calendar.
+ */
+export function combinedDay(def: SpecialDayDef, date: Date): { title: string; also: string[]; shabbat: boolean } {
+  const shabbat = jerusalemWeekday(date) === 6 && def.group !== "shabbatot";
+  const others = specialDaysOn(date)
+    .filter((d) => d.key !== def.key && !d.national)
+    .map((d) => d.name);
+  // The admin's list says "סוכות (יום טוב)"; the board says "סוכות".
+  let title = def.name.replace(/\s*\([^)]*\)\s*$/, "");
+  if (shabbat) title = def.key.startsWith("chol_hamoed") ? `שבת ${title}` : `שבת · ${title}`;
+  return { title, also: others, shabbat };
+}

@@ -4,7 +4,9 @@ import { HDate } from "@hebcal/core";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import {
   boardSpecialDay,
+  combinedDay,
   specialZmanim,
+  verseFor,
   type SpecialDayDef,
   type SpecialGroup,
 } from "@community/lib/specialDays";
@@ -127,8 +129,13 @@ const EMBLEMS: Record<string, EmblemFn> = {
         <path key={x} d={`M${x - 10} 72 L${x + 10} 58`} {...line(c, 4)} />
       ))}
       <path d="M84 184 V130 H116 V184" {...line(c, 4)} />
-      <circle cx="60" cy="118" r="7" fill={c} />
-      <circle cx="140" cy="118" r="7" fill={c} />
+      {/* Decorations hanging from the s'chach. */}
+      {[56, 144].map((x) => (
+        <g key={x}>
+          <path d={`M${x} 82 V100`} {...line(c, 2)} />
+          <path d={`M${x} 100 l7 10 l-7 10 l-7 -10 Z`} fill={c} />
+        </g>
+      ))}
     </g>
   ),
   lulav: (c) => (
@@ -283,17 +290,37 @@ function seeded(n: number, seed: number): number[] {
  * One built-in design, a full-screen SVG (1600×900). The right side is left
  * calm for the card with the name and times; the emblem sits on the left.
  */
-export function DefaultArt({ def, variant = 0 }: { def: SpecialDayDef; variant?: number }) {
+export function DefaultArt({
+  def,
+  variant = 0,
+  withShabbat = false,
+}: {
+  def: SpecialDayDef;
+  variant?: number;
+  /** The festival falls on Shabbat: the Shabbat candles stand beside its emblem. */
+  withShabbat?: boolean;
+}) {
   const p = paletteFor(def);
   const v = ((variant % BUILTIN_VARIANTS) + BUILTIN_VARIANTS) % BUILTIN_VARIANTS;
   const emblem = EMBLEMS[emblemsFor(def)[v] ?? "star"]!;
   const id = `ev-${def.key}-${v}`;
 
-  const emblemAt = (x: number, y: number, size: number, glow: boolean) => (
+  const one = (fn: EmblemFn, x: number, y: number, size: number, glow: boolean) => (
     <g transform={`translate(${x - size / 2} ${y - size / 2}) scale(${size / 200})`} filter={glow ? `url(#${id}-glow)` : undefined}>
-      {emblem(p.gold)}
+      {fn(p.gold)}
     </g>
   );
+  // On Shabbat: the festival's emblem, a fine gold rule, and the Shabbat candles.
+  const emblemAt = (x: number, y: number, size: number, glow: boolean) =>
+    withShabbat ? (
+      <g>
+        {one(emblem, x + 70, y, size * 0.82, glow)}
+        <path d={`M${x - 110} ${y - size * 0.32} V${y + size * 0.32}`} stroke={p.gold} strokeOpacity="0.55" strokeWidth="2" />
+        {one(EMBLEMS.candles2!, x - 200, y + size * 0.06, size * 0.46, glow)}
+      </g>
+    ) : (
+      one(emblem, x, y, size, glow)
+    );
 
   return (
     <svg className="tv-event-art" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" aria-hidden>
@@ -404,16 +431,29 @@ export function EventSplash({
     : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
   const active = step % slides.length;
   const rows = specialZmanim(now, zmanim);
+  const combined = combinedDay(def, now);
+  const verse = verseFor(def.key) ?? (combined.shabbat ? verseFor("shabbat") : null);
   return (
     <div className="tv-event-splash" role="region" aria-label={def.name}>
       {slides.map((s, i) => (
         <div key={i} className={`tv-event-layer${i === active ? " is-active" : ""}`} data-slide={i}>
-          {"image" in s ? <div className="tv-event-photo" style={{ backgroundImage: `url("${s.image}")` }} /> : <DefaultArt def={def} variant={s.variant} />}
+          {"image" in s ? (
+            <div className="tv-event-photo" style={{ backgroundImage: `url("${s.image}")` }} />
+          ) : (
+            <DefaultArt def={def} variant={s.variant} withShabbat={combined.shabbat} />
+          )}
         </div>
       ))}
       <div className="tv-event-card">
         <div className="tv-event-date">{new HDate(now).renderGematriya(true)}</div>
-        <div className="tv-event-title">{def.name}</div>
+        <div className="tv-event-title">{combined.title}</div>
+        {combined.also.length > 0 && <div className="tv-event-also">{combined.also.join(" · ")}</div>}
+        {verse && (
+          <figure className="tv-event-verse">
+            <blockquote>{verse.text}</blockquote>
+            <figcaption>{verse.source}</figcaption>
+          </figure>
+        )}
         {rows.length > 0 && (
           <dl className="tv-event-times">
             {rows.map((r) => (
