@@ -8,7 +8,7 @@ import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { uploadTvImage, useTvConfig } from "@community/components/admin/tv/tvAdminData";
 import { DefaultArt, EventSplash } from "@/tv/EventSplash";
-import { BUILTIN_VARIANTS, MAX_EVENT_IMAGES } from "@/tv/eventSlides";
+import { MAX_EVENT_IMAGES, STYLE_NAMES, eventSlides, stylesFor } from "@/tv/eventSlides";
 import { zmanimFor } from "@community/lib/minyan-time";
 import { useSettings } from "@community/lib/data";
 import "@/tv/tv.css";
@@ -127,6 +127,26 @@ export function SpecialDaysAdmin({
     setBusy(null);
     if (ok && !url) toast.success(`${def.name}: חזרה לעיצובים המובנים`);
   };
+
+  /** The built-in styles that take turns on the day now. */
+  const shownStyles = (def: SpecialDayDef) =>
+    eventSlides(tvConfig?.eventImages[def.key], stylesFor(def), tvConfig?.eventStyles[def.key]).flatMap((s) =>
+      "variant" in s ? [s.variant] : [],
+    );
+
+  /** Puts a built-in style in the day's rotation, or takes it out. */
+  const toggleStyle = async (def: SpecialDayDef, v: number) => {
+    const current = shownStyles(def);
+    const hasImages = (tvConfig?.eventImages[def.key]?.length ?? 0) > 0;
+    const next = stylesFor(def).filter((s) => (s === v ? !current.includes(v) : current.includes(s)));
+    if (!next.length && !hasImages) {
+      toast.error("צריך לפחות סגנון אחד או תמונה");
+      return;
+    }
+    setBusy(`style:${def.key}`);
+    await saveBoard((c) => ({ ...c, eventStyles: { ...c.eventStyles, [def.key]: next } }));
+    setBusy(null);
+  };
   const now = useMemo(() => new Date(), []);
   const next = useMemo(() => nextDatesAll(now), [now]);
   const upcoming = useMemo(
@@ -225,27 +245,45 @@ export function SpecialDaysAdmin({
         </div>
         {!def.national && (
           <div className="mt-2 space-y-1.5">
-            <div className="flex flex-wrap gap-1.5" data-testid={`images-${def.key}`}>
-              {(tvConfig?.eventImages[def.key]?.length ?? 0) > 0
-                ? tvConfig!.eventImages[def.key]!.map((url, i) => (
-                    <div key={url} className="relative h-12 w-20 overflow-hidden rounded border">
-                      <img src={url} alt={`תמונה ${i + 1} של ${def.name}`} className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        aria-label={`הסרת תמונה ${i + 1}`}
-                        disabled={busy === `img:${def.key}`}
-                        onClick={() => void removeImage(def, url)}
-                        className="absolute left-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </div>
-                  ))
-                : Array.from({ length: BUILTIN_VARIANTS }, (_, v) => (
-                    <div key={v} className="h-12 w-20 overflow-hidden rounded border" title="עיצוב מובנה">
-                      <DefaultArt def={def} variant={v} />
-                    </div>
-                  ))}
+            {(tvConfig?.eventImages[def.key]?.length ?? 0) > 0 && (
+              <div className="flex flex-wrap gap-1.5" data-testid={`images-${def.key}`}>
+                {tvConfig!.eventImages[def.key]!.map((url, i) => (
+                  <div key={url} className="relative h-12 w-20 overflow-hidden rounded border">
+                    <img src={url} alt={`תמונה ${i + 1} של ${def.name}`} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      aria-label={`הסרת תמונה ${i + 1}`}
+                      disabled={busy === `img:${def.key}`}
+                      onClick={() => void removeImage(def, url)}
+                      className="absolute left-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* The built-in styles: one tap puts a style in the rotation or takes it out. */}
+            <div className="flex flex-wrap gap-1.5" data-testid={`styles-${def.key}`}>
+              {stylesFor(def).map((v) => {
+                const on = shownStyles(def).includes(v);
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    aria-pressed={on}
+                    title={on ? `${STYLE_NAMES[v]} - מוצג (לחיצה להסרה)` : `${STYLE_NAMES[v]} - לחיצה להוספה`}
+                    disabled={busy === `style:${def.key}`}
+                    onClick={() => void toggleStyle(def, v)}
+                    className={`relative h-12 w-20 overflow-hidden rounded border-2 transition ${on ? "border-primary" : "border-transparent opacity-40 grayscale"}`}
+                  >
+                    <DefaultArt def={def} variant={v} />
+                    <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-0.5 text-[9px] leading-tight text-white">
+                      {STYLE_NAMES[v]}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-primary underline">
@@ -270,7 +308,7 @@ export function SpecialDaysAdmin({
               </button>
               {(tvConfig?.eventImages[def.key]?.length ?? 0) > 0 && (
                 <button type="button" className="inline-flex items-center gap-1 text-xs underline" onClick={() => void removeImage(def, null)}>
-                  <RotateCcw className="size-3.5" /> עיצובים מובנים
+                  <RotateCcw className="size-3.5" /> הסרת כל התמונות
                 </button>
               )}
             </div>

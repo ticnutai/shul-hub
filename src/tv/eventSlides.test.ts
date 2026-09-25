@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizeTvConfig } from "./config";
-import { BUILTIN_VARIANTS, eventSlides } from "./eventSlides";
+import { BUILTIN_VARIANTS, eventSlides, stylesFor } from "./eventSlides";
 
 describe("special-day pictures", () => {
   it("takes turns between the uploaded pictures, or the built-in designs", () => {
@@ -30,5 +30,24 @@ describe("special-day pictures", () => {
     expect(c.eventImages.sukkot).toBeUndefined();
     expect(c.eventSplash).toBe(true);
     expect(normalizeTvConfig({ eventSplash: false }).eventSplash).toBe(false);
+  });
+
+  it("gives Sukkot its scenes, and plays the styles the gabbai picked after his pictures", () => {
+    expect(stylesFor({ key: "sukkot", group: "sukkot" })).toEqual([3, 4, 5, 0, 1, 2]);
+    expect(stylesFor({ key: "shmini_atzeret", group: "sukkot" })).toEqual([0, 1, 2]);
+    expect(stylesFor({ key: "chanukah", group: "chanukah_purim" })).toEqual([0, 1, 2]);
+    const all = stylesFor({ key: "sukkot", group: "sukkot" });
+    expect(eventSlides(undefined, all, [4, 3])).toEqual([{ variant: 4 }, { variant: 3 }]);
+    expect(eventSlides(["https://x.test/a.jpg"], all, [3])).toEqual([{ image: "https://x.test/a.jpg" }, { variant: 3 }]);
+    expect(eventSlides(["https://x.test/a.jpg"], all, [])).toEqual([{ image: "https://x.test/a.jpg" }]);
+    // Nothing picked and nothing uploaded: never an empty board.
+    expect(eventSlides(undefined, all, [])).toHaveLength(6);
+    // A Sukkot scene is not offered on other days.
+    expect(eventSlides(undefined, [0, 1, 2], [4])).toHaveLength(3);
+  });
+
+  it("reads the picked styles from storage", () => {
+    const c = normalizeTvConfig({ eventStyles: { sukkot: [3, 3, 4, -1, 1.5, "x"], "Bad Key": [1], purim: [] } });
+    expect(c.eventStyles).toEqual({ sukkot: [3, 4], purim: [] });
   });
 });

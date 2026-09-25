@@ -281,6 +281,11 @@ export interface TvConfig {
    * (EventSplash.tsx).
    */
   eventImages: Record<string, string[]>;
+  /**
+   * The built-in styles picked for each special day (ids from eventSlides.ts),
+   * shown after its pictures. A day not listed gets the defaults.
+   */
+  eventStyles: Record<string, number[]>;
   /** Show the special day's picture and times on the board now and then, on the day. */
   eventSplash: boolean;
   clockStyle: ClockStyle;
@@ -460,6 +465,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   illustratedStyle: DEFAULT_ILLUSTRATED_STYLE,
   dayLooks: {},
   eventImages: {},
+  eventStyles: {},
   eventSplash: true,
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
@@ -629,6 +635,17 @@ function normalizeEventImages(raw: unknown): Record<string, string[]> {
   return out;
 }
 
+function normalizeEventStyles(raw: unknown): Record<string, number[]> {
+  const out: Record<string, number[]> = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z_]{2,40}$/.test(k) || !Array.isArray(v)) continue;
+    // An empty list is kept: "no built-in styles, only my pictures".
+    out[k] = [...new Set(v.filter((n): n is number => Number.isInteger(n) && n >= 0 && n < 20))].slice(0, 12);
+  }
+  return out;
+}
+
 /** Day looks from storage: only known kinds, and only layouts, boards and themes that exist. */
 function normalizeDayLooks(raw: unknown, themes: string[], illustrations: string[]): TvConfig["dayLooks"] {
   const out: TvConfig["dayLooks"] = {};
@@ -783,6 +800,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
       ...customIllustrations.map((i) => i.id),
     ]),
     eventImages: normalizeEventImages(raw.eventImages),
+    eventStyles: normalizeEventStyles(raw.eventStyles),
     eventSplash: raw.eventSplash !== false,
     illustration:
       (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
