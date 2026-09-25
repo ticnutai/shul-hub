@@ -1,11 +1,16 @@
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, ChevronLeft, Copy, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, Copy, ImagePlus, Plus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
+import { uploadTvImage, useTvConfig } from "@community/components/admin/tv/tvAdminData";
+import { DefaultArt, EventSplash } from "@/tv/EventSplash";
+import { zmanimFor } from "@community/lib/minyan-time";
+import { useSettings } from "@community/lib/data";
+import "@/tv/tv.css";
 import type { Minyan, MinyanCategory } from "@community/lib/data";
 import {
   GROUP_LABELS,
@@ -57,6 +62,45 @@ export function SpecialDaysAdmin({
 }) {
   const qc = useQueryClient();
   const [busy, setBusy] = useState<string | null>(null);
+  const tv = useTvConfig();
+  const { data: settings } = useSettings();
+  const [preview, setPreview] = useState<SpecialDayDef | null>(null);
+  const tvConfig = tv.data?.config;
+
+  // The picture lives in the board's config. Read it fresh before writing, so
+  // a change made elsewhere in the meantime is not written over.
+  const saveBoard = async (patch: (c: NonNullable<typeof tvConfig>) => NonNullable<typeof tvConfig>) => {
+    const fresh = (await tv.refetch()).data?.config;
+    if (!fresh) {
+      toast.error("הגדרות הלוח לא נטענו");
+      return false;
+    }
+    try {
+      await tv.save.mutateAsync(patch(fresh));
+      return true;
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "השמירה נכשלה");
+      return false;
+    }
+  };
+
+  const setImage = async (def: SpecialDayDef, file: File | null) => {
+    setBusy(`img:${def.key}`);
+    try {
+      const url = file ? (await uploadTvImage(file)).url : null;
+      const ok = await saveBoard((c) => {
+        const eventImages = { ...c.eventImages };
+        if (url) eventImages[def.key] = url;
+        else delete eventImages[def.key];
+        return { ...c, eventImages };
+      });
+      if (ok) toast.success(url ? `התמונה של ${def.name} נשמרה ותוצג בלוח` : `${def.name}: חזרה לעיצוב המובנה`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "העלאת התמונה נכשלה");
+    } finally {
+      setBusy(null);
+    }
+  };
   const now = useMemo(() => new Date(), []);
   const next = useMemo(() => nextDatesAll(now), [now]);
   const upcoming = useMemo(
@@ -153,6 +197,42 @@ export function SpecialDaysAdmin({
             />
           )}
         </div>
+        {!def.national && (
+          <div className="mt-2 flex items-center gap-2">
+            <div className="relative h-12 w-20 shrink-0 overflow-hidden rounded border bg-muted" aria-label={`תמונת ${def.name}`}>
+              {tvConfig?.eventImages[def.key] ? (
+                <img src={tvConfig.eventImages[def.key]} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="absolute inset-0 origin-top-right scale-[0.08]" style={{ width: "1250%", height: "1250%" }}>
+                  <DefaultArt def={def} />
+                </div>
+              )}
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-1 text-xs text-primary underline">
+              <ImagePlus className="size-3.5" />
+              {tvConfig?.eventImages[def.key] ? "החלפת תמונה" : "תמונה משלכם"}
+              <input
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                disabled={busy === `img:${def.key}`}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void setImage(def, f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <button type="button" className="text-xs underline" onClick={() => setPreview(def)} data-testid={`preview-${def.key}`}>
+              תצוגה בלוח
+            </button>
+            {tvConfig?.eventImages[def.key] && (
+              <button type="button" className="inline-flex items-center gap-1 text-xs underline" onClick={() => void setImage(def, null)}>
+                <RotateCcw className="size-3.5" /> עיצוב מובנה
+              </button>
+            )}
+          </div>
+        )}
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {cat ? (
             <>
@@ -189,8 +269,32 @@ export function SpecialDaysAdmin({
     );
   };
 
+  const previewDate = preview ? next[preview.key] : null;
+  const previewNow = previewDate ? new Date(`${previewDate}T09:00:00Z`) : now;
+
   return (
     <div className="space-y-5" dir="rtl">
+      {preview && tvConfig && (
+        <div
+          className="fixed inset-0 z-[80] cursor-pointer bg-black"
+          role="dialog"
+          aria-label={`תצוגה בלוח: ${preview.name}`}
+          onClick={() => setPreview(null)}
+          data-testid="splash-preview"
+        >
+          <div className="tv-root absolute inset-0" dir="rtl">
+            <EventSplash
+              categories={categories}
+              config={tvConfig}
+              now={previewNow}
+              zmanim={zmanimFor(previewNow, settings)}
+              force
+              day={preview}
+            />
+          </div>
+          <div className="absolute left-3 top-3 rounded bg-white/90 px-3 py-1 text-sm text-black">לחיצה לסגירה</div>
+        </div>
+      )}
       <div className="card-elev space-y-2 p-4">
         <div className="flex items-center gap-2">
           <CalendarDays className="size-5 text-primary" />
@@ -201,6 +305,16 @@ export function SpecialDaysAdmin({
           המועד (תחילת הצום וסופו, הדלקת נרות, צאת החג) מוצגים לצד זמני היום. התאריכים מחושבים לבד מהלוח העברי, כך
           שמה שמגדירים השנה חוזר בשנה הבאה.
         </p>
+        {tvConfig && (
+          <label className="flex items-center gap-2 text-sm">
+            <Switch
+              checked={tvConfig.eventSplash}
+              onCheckedChange={(v) => void saveBoard((c) => ({ ...c, eventSplash: v }))}
+              aria-label="הצגת תמונת המועד בלוח"
+            />
+            ביום המועד הלוח מציג כל דקה וחצי, ל-15 שניות, את תמונת המועד וזמניו
+          </label>
+        )}
         {upcoming.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             <span className="text-xs font-medium">בקרוב:</span>

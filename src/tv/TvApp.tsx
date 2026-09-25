@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
+import { EventSplash } from "./EventSplash";
 import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
@@ -471,6 +472,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       paused={paused}
       overlay={
         <>
+          <EventSplash categories={data.categories} config={config} now={now} zmanim={zmanim} />
           {toast && <div className="tv-toast">{toast}</div>}
 
           {device && !device.approved && device.pairingCode && (
