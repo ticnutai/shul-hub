@@ -151,8 +151,10 @@ export function EventSplash({
   day?: SpecialDayDef;
 }) {
   const dayKey = now.toDateString();
+  // Once a day is enough: `now` ticks every second, the special day does not.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const found = useMemo(() => boardSpecialDay(categories, config, now), [categories, config, dayKey]);
-  const def = day ?? found; // eslint-disable-line react-hooks/exhaustive-deps
+  const def = day ?? found;
   const phase = Math.floor(now.getTime() / 1000) % CYCLE_SECONDS;
   if (!def || (!config.eventSplash && !force)) return null;
   if (!force && phase >= SHOW_SECONDS) return null;
