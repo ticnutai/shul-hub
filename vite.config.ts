@@ -125,6 +125,11 @@ export default defineConfig(({ mode }) => ({
           '**/assets/tvAdminData-*.js',
         ],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
+        // Files that are not the app: an installer, the wall board and its
+        // fonts. Without this the service worker answered them with the app
+        // shell - tapping the phone's download link opened the app instead of
+        // downloading anything.
+        navigateFallbackDenylist: [/\.apk$/, /^\/index-tv\.html/, /^\/fonts\//],
         // NOTE: Google Fonts (fonts.googleapis.com / fonts.gstatic.com) are intentionally
         // NOT routed through Workbox. The browser HTTP cache + Google CDN already serve
         // them optimally; intercepting through the SW caused a visible network race on

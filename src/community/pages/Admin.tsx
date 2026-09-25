@@ -15,6 +15,7 @@ import { UsersAdmin } from "@community/components/admin/UsersAdmin";
 import { ChavrutaRequestsAdmin } from "@community/components/admin/ChavrutaRequestsAdmin";
 import { DataExportImportAdmin } from "@community/components/admin/DataExportImportAdmin";
 import { QrCodesAdmin } from "@community/components/admin/QrCodesAdmin";
+import { AppDownloadsAdmin } from "@community/components/admin/AppDownloadsAdmin";
 import { QuickAddButton } from "@community/components/QuickAddButton";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
@@ -36,7 +37,7 @@ export function AdminPage() {
   const requestedTab = searchParams.get("tab");
   const activeTab = [
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
-    "messages", "widgets", "settings", "users", "data", "qr", "tv", "communities",
+    "messages", "widgets", "settings", "users", "data", "qr", "apps", "tv", "communities",
   ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
@@ -125,6 +126,7 @@ export function AdminPage() {
               <TabsTrigger value="users">משתמשים</TabsTrigger>
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
               <TabsTrigger value="qr">קודי QR</TabsTrigger>
+              <TabsTrigger value="apps">הורדת אפליקציות</TabsTrigger>
               <TabsTrigger value="tv">
                 <Tv className="size-4" /> תצוגות
               </TabsTrigger>
@@ -174,6 +176,9 @@ export function AdminPage() {
             </TabsContent>
             <TabsContent value="qr" className="mt-6">
               <QrCodesAdmin />
+            </TabsContent>
+            <TabsContent value="apps" className="mt-6">
+              <AppDownloadsAdmin />
             </TabsContent>
             <TabsContent value="tv" className="mt-6">
               <Suspense fallback={<p className="p-6 text-center text-muted-foreground">טוען את מרכז הבקרה…</p>}>
