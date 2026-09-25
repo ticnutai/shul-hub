@@ -241,13 +241,13 @@ export function nextDatesAll(from: Date): Record<string, string | null> {
 /** The day to show today, if any: the first non-national special day the gabbai set up. */
 export function boardSpecialDay(
   categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined,
-  config: { eventImages: Record<string, string> },
+  config: { eventImages: Record<string, string[]> },
   now: Date,
 ): SpecialDayDef | null {
   for (const def of specialDaysOn(now)) {
     if (def.national) continue;
     const configured = (categories ?? []).some((c) => c.active && c.system_key === eventSystemKey(def.key));
-    if (configured || config.eventImages[def.key]) return def;
+    if (configured || config.eventImages[def.key]?.length) return def;
   }
   return null;
 }
