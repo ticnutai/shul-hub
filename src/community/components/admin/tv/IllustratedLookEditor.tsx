@@ -1,4 +1,5 @@
 import { DEFAULT_ILLUSTRATED_STYLE, type IllustratedStyle, type TvConfig } from "@/tv/config";
+import { ILLUSTRATED_PRESETS } from "@/tv/illustratedPresets";
 import { illustrationDef } from "@/tv/illustrated";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
@@ -194,6 +195,25 @@ function PictureAdjustments({
   return (
     <details className="rounded-md border p-2" open>
       <summary className="cursor-pointer text-sm font-medium">התאמות תמונה</summary>
+      <div className="mt-2">
+        <div className="mb-1 text-xs font-medium">עיצובים מוכנים</div>
+        <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4" data-testid="illustrated-presets">
+          {ILLUSTRATED_PRESETS.map((pr) => (
+            <button
+              key={pr.id}
+              type="button"
+              onClick={() => set(pr.style)}
+              className="flex items-center gap-1.5 rounded-md border p-1.5 text-right text-[11px] hover:bg-muted"
+              title={`עיצוב ${pr.name}`}
+            >
+              <span className="relative inline-block h-6 w-8 shrink-0 overflow-hidden rounded" style={{ background: pr.swatch[0] }}>
+                <span className="absolute inset-x-1.5 bottom-0 top-1.5 rounded-t" style={{ background: pr.swatch[1] }} />
+              </span>
+              {pr.name}
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
         הציור הוא תמונה אחת, אז השינויים הם שכבות מעליו: צבע כללי, גוון לאבנים (מחוץ למסגרות), ורקע, קו ובליטה
         למסגרות. הטקסט לא מושפע.
