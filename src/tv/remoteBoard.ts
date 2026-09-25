@@ -21,7 +21,15 @@
  * and reloads itself onto it.
  *
  * Build the APK with VITE_TV_REMOTE=0 to keep the old, fully local behaviour.
+ *
+ * The probe from the APK's copy goes through Android, not the WebView. That
+ * copy runs at https://localhost, and the website sends no CORS header, so a
+ * WebView fetch of the board page fails every time ("Failed to fetch") and
+ * the switch never happened on a real box - found on the אהבת התורה screen,
+ * 25/09. A native request is not subject to CORS.
  */
+
+import { Capacitor, CapacitorHttp } from "@capacitor/core";
 
 export const REMOTE_BOARD_URL = "https://shul-hub.lovable.app/index-tv.html";
 const REMOTE_ORIGIN = new URL(REMOTE_BOARD_URL).origin;
@@ -86,12 +94,35 @@ export function boardScript(html: string): string | null {
   return /<script[^>]+src="([^"]*index-tv[^"]*\.js)"/.exec(html)?.[1] ?? null;
 }
 
+/** GET through Android's own networking: no CORS, no WebView involved. */
+async function nativeGetText(url: string, timeoutMs: number): Promise<string | null> {
+  try {
+    const res = await CapacitorHttp.get({
+      url,
+      headers: { "Cache-Control": "no-cache" },
+      responseType: "text",
+      connectTimeout: timeoutMs,
+      readTimeout: timeoutMs,
+    });
+    return res.status >= 200 && res.status < 300 && typeof res.data === "string" ? res.data : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The website's board page, or null when it is out of reach or not the board. */
-export async function fetchRemoteBoard(fetchImpl: typeof fetch = fetch, timeoutMs = PROBE_TIMEOUT_MS): Promise<string | null> {
+export async function fetchRemoteBoard(fetchImpl?: typeof fetch, timeoutMs = PROBE_TIMEOUT_MS): Promise<string | null> {
+  const url = `${REMOTE_BOARD_URL}?probe=${Date.now()}`;
+  // On the box, from the APK's copy (a different origin from the website).
+  if (!fetchImpl && Capacitor.isNativePlatform() && !isRemoteBoard()) {
+    const html = await nativeGetText(url, timeoutMs);
+    return html && html.includes(BOARD_MARKER) ? html : null;
+  }
+  const doFetch = fetchImpl ?? fetch;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await fetchImpl(`${REMOTE_BOARD_URL}?probe=${Date.now()}`, { cache: "no-store", signal: controller.signal });
+    const res = await doFetch(url, { cache: "no-store", signal: controller.signal });
     if (!res.ok) return null;
     const html = await res.text();
     return html.includes(BOARD_MARKER) ? html : null;

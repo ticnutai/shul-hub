@@ -14,6 +14,16 @@ body,
   overflow: hidden;
 }
 
+/*
+ * Lovable puts an "Edit with Lovable" badge on every published page. Since
+ * the boxes load the board from the website (remoteBoard.ts) it sat in the
+ * corner of the wall, over the prayer times, where nobody has a mouse to
+ * close it. The website itself keeps it; only the board hides it.
+ */
+#lovable-badge {
+  display: none !important;
+}
+
 body {
   background: #0b1628;
   direction: rtl;
