@@ -117,3 +117,31 @@ describe("next dates of all special days", () => {
     expect(all.tisha_bav).toBe(nextDatesOf("tisha_bav", il("2026-09-25"))[0]);
   });
 });
+
+describe("days that meet, and their verses", () => {
+  it("names a festival on Shabbat as one day", async () => {
+    const { combinedDay, specialDayByKey } = await import("./specialDays");
+    expect(combinedDay(specialDayByKey("sukkot")!, il("2026-09-26"))).toMatchObject({ title: "שבת · סוכות", shabbat: true });
+    expect(combinedDay(specialDayByKey("chol_hamoed_pesach")!, il("2027-04-24")).title).toBe("שבת חול המועד פסח");
+    // A special Shabbat is Shabbat already.
+    expect(combinedDay(specialDayByKey("shabbat_shuva")!, il("2026-09-19"))).toMatchObject({ title: "שבת שובה", shabbat: false });
+    // On a weekday nothing is added.
+    expect(combinedDay(specialDayByKey("tzom_gedaliah")!, il("2026-09-14"))).toMatchObject({ title: "צום גדליה", also: [] });
+  });
+
+  it("lists the other days of the date on a second line", async () => {
+    const { combinedDay, specialDayByKey } = await import("./specialDays");
+    expect(combinedDay(specialDayByKey("chanukah")!, il("2026-12-10")).also).toContain("ראש חודש");
+  });
+
+  it("has a verse with its source for the festivals and fasts", async () => {
+    const { verseFor, SPECIAL_DAYS } = await import("./specialDays");
+    for (const d of SPECIAL_DAYS.filter((d) => ["noraim", "sukkot", "pesach_shavuot", "fasts"].includes(d.group))) {
+      if (d.key === "taanit_bechorot") continue;
+      const v = verseFor(d.key);
+      expect(v?.text.length, d.key).toBeGreaterThan(5);
+      expect(v?.source, d.key).toMatch(/^[א-ת]+ [א-ת]+(, [א-ת״׳"-]+)?/);
+    }
+    expect(verseFor("shabbat")?.source).toBe("ישעיה נח, יג");
+  });
+});
