@@ -16,6 +16,7 @@ import { ChavrutaRequestsAdmin } from "@community/components/admin/ChavrutaReque
 import { DataExportImportAdmin } from "@community/components/admin/DataExportImportAdmin";
 import { QrCodesAdmin } from "@community/components/admin/QrCodesAdmin";
 import { AppDownloadsAdmin } from "@community/components/admin/AppDownloadsAdmin";
+import { AiIntakeAdmin } from "@community/components/admin/AiIntakeAdmin";
 import { QuickAddButton } from "@community/components/QuickAddButton";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
@@ -37,7 +38,7 @@ export function AdminPage() {
   const requestedTab = searchParams.get("tab");
   const activeTab = [
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
-    "messages", "widgets", "settings", "users", "data", "qr", "apps", "tv", "communities",
+    "messages", "widgets", "settings", "users", "data", "qr", "apps", "ai", "tv", "communities",
   ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
@@ -113,6 +114,7 @@ export function AdminPage() {
               aria-label="מדורי ניהול"
               className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
             >
+              <TabsTrigger value="ai">✨ עוזר חכם</TabsTrigger>
               <TabsTrigger value="minyanim">מניינים</TabsTrigger>
               <TabsTrigger value="announcements">מודעות</TabsTrigger>
               <TabsTrigger value="shiurim">שיעורים</TabsTrigger>
@@ -176,6 +178,9 @@ export function AdminPage() {
             </TabsContent>
             <TabsContent value="qr" className="mt-6">
               <QrCodesAdmin />
+            </TabsContent>
+            <TabsContent value="ai" className="mt-6">
+              <AiIntakeAdmin />
             </TabsContent>
             <TabsContent value="apps" className="mt-6">
               <AppDownloadsAdmin />
