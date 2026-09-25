@@ -25,6 +25,7 @@ export const PHOTO_STYLES: Record<number, { name: string; src: string; position?
   // `extra`: offered, but shown only when the gabbai picks it.
   11: { name: "סוכה מוארת בלילה", src: "/event-art/sukkot-night-lanterns.jpg", position: "20% center", extra: true },
   12: { name: "סוכה בשקיעה", src: "/event-art/sukkot-sunset-table.jpg", position: "30% center", extra: true },
+  13: { name: "חלות ונרות שבת", src: "/event-art/shabbat-challah-candles.jpg", position: "25% center", extra: true },
 };
 for (const [id, p] of Object.entries(PHOTO_STYLES)) STYLE_NAMES[Number(id)] = p.name;
 
