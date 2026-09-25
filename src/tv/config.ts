@@ -8,6 +8,7 @@ import {
   isSafeGradient,
   type TvGradient,
   isSafeCssValue,
+  isSafeUrl,
   THEME_VARS,
   TV_FONTS,
   TV_THEMES,
@@ -274,6 +275,13 @@ export interface TvConfig {
   illustratedStyle: IllustratedStyle;
   /** A look per kind of day, switched automatically (dayLooks.ts). */
   dayLooks: Partial<Record<DayKind, DayLook>>;
+  /**
+   * The picture of each special day (key from specialDays.ts → image URL in
+   * storage). A day without one gets its built-in design (EventSplash.tsx).
+   */
+  eventImages: Record<string, string>;
+  /** Show the special day's picture and times on the board now and then, on the day. */
+  eventSplash: boolean;
   clockStyle: ClockStyle;
   skin: BoardSkin;
   /**
@@ -430,6 +438,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   customIllustrations: [],
   illustratedStyle: { scale: 1, rows: 7, ink: null, accent: null, clockInk: null },
   dayLooks: {},
+  eventImages: {},
+  eventSplash: true,
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
@@ -559,6 +569,18 @@ export interface IllustratedStyle {
   ink: string | null;
   accent: string | null;
   clockInk: string | null;
+}
+
+/** Special-day pictures from storage: simple keys, https links only. */
+function normalizeEventImages(raw: unknown): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z_]{2,40}$/.test(k) || typeof v !== "string") continue;
+    const url = v.trim();
+    if (/^https:\/\//i.test(url) && isSafeUrl(url)) out[k] = url;
+  }
+  return out;
 }
 
 /** Day looks from storage: only known kinds, and only layouts, boards and themes that exist. */
@@ -700,6 +722,8 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
       ...ILLUSTRATIONS,
       ...customIllustrations.map((i) => i.id),
     ]),
+    eventImages: normalizeEventImages(raw.eventImages),
+    eventSplash: raw.eventSplash !== false,
     illustration:
       (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
       customIllustrations.some((i) => i.id === raw.illustration)
