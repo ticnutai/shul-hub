@@ -238,6 +238,28 @@ export function nextDatesAll(from: Date): Record<string, string | null> {
   return out;
 }
 
+/** Shabbat, or a festival on which work is forbidden (יום טוב, יום כיפור). */
+export function isHolyDay(date: Date): boolean {
+  if (jerusalemWeekday(date) === 6) return true;
+  return hebcalEventsOn(date).some((e) => e.getFlags() & flags.CHAG && !(e.getFlags() & flags.MODERN_HOLIDAY));
+}
+
+/**
+ * From candle lighting on the eve until nightfall at the end of Shabbat or a
+ * festival: the holy day that is on now, with its date and times, or null.
+ * `zmanimOn` gives the times of another day (the eve looks at tomorrow's).
+ */
+export function holyWindow<Z extends { candle: Date | null; tzeit: Date | null }>(
+  now: Date,
+  today: Z,
+  zmanimOn: (date: Date) => Z,
+): { date: Date; zmanim: Z } | null {
+  if (isHolyDay(now) && today.tzeit && now < today.tzeit) return { date: now, zmanim: today };
+  const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
+  if (today.candle && now >= today.candle && isHolyDay(tomorrow)) return { date: tomorrow, zmanim: zmanimOn(tomorrow) };
+  return null;
+}
+
 /** The day to show today, if any: the first non-national special day the gabbai set up. */
 export function boardSpecialDay(
   categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined,

@@ -20,8 +20,11 @@ export const STYLE_NAMES: Record<number, string> = {
  * public/event-art. Generated with an image model, so they are realistic
  * and free to use; `position` keeps the subject clear of the card.
  */
-export const PHOTO_STYLES: Record<number, { name: string; src: string; position?: string }> = {
+export const PHOTO_STYLES: Record<number, { name: string; src: string; position?: string; extra?: boolean }> = {
   10: { name: "שולחן שבת בסוכה", src: "/event-art/sukkot-shabbat-table.jpg", position: "30% center" },
+  // `extra`: offered, but shown only when the gabbai picks it.
+  11: { name: "סוכה מוארת בלילה", src: "/event-art/sukkot-night-lanterns.jpg", position: "20% center", extra: true },
+  12: { name: "סוכה בשקיעה", src: "/event-art/sukkot-sunset-table.jpg", position: "30% center", extra: true },
 };
 for (const [id, p] of Object.entries(PHOTO_STYLES)) STYLE_NAMES[Number(id)] = p.name;
 
@@ -37,8 +40,8 @@ export function stylesFor(def: Pick<SpecialDayDef, "key" | "group">): number[] {
 /**
  * What takes turns on the day: the uploaded pictures, then the built-in
  * styles the gabbai picked. When he has not picked any, a day with pictures
- * shows only them and a day without shows all its styles; a day never ends
- * up with nothing.
+ * shows only them and a day without shows its built-in photographs, or its
+ * designs when it has none; a day never ends up with nothing.
  */
 export function eventSlides(
   images: string[] | undefined,
@@ -47,6 +50,9 @@ export function eventSlides(
 ): Array<{ image: string } | { variant: number }> {
   const pictures = (images ?? []).map((image) => ({ image }));
   const picked = chosen?.filter((v) => available.includes(v));
-  const styles = picked && (picked.length || pictures.length) ? picked : pictures.length ? [] : available;
+  // Left alone, a day with built-in photographs shows those; the drawn designs are a tap away.
+  const photos = available.filter((v) => v in PHOTO_STYLES && !PHOTO_STYLES[v]!.extra);
+  const defaults = photos.length ? photos : available;
+  const styles = picked && (picked.length || pictures.length) ? picked : pictures.length ? [] : defaults;
   return [...pictures, ...styles.map((variant) => ({ variant }))];
 }

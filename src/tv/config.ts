@@ -286,6 +286,8 @@ export interface TvConfig {
    * shown after its pictures. A day not listed gets the defaults.
    */
   eventStyles: Record<string, number[]>;
+  /** Keep a special Shabbat or festival on the wall from candle lighting until it ends. */
+  eventHold: boolean;
   /** Show the special day's picture and times on the board now and then, on the day. */
   eventSplash: boolean;
   clockStyle: ClockStyle;
@@ -466,6 +468,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   dayLooks: {},
   eventImages: {},
   eventStyles: {},
+  eventHold: true,
   eventSplash: true,
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
@@ -802,6 +805,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     eventImages: normalizeEventImages(raw.eventImages),
     eventStyles: normalizeEventStyles(raw.eventStyles),
     eventSplash: raw.eventSplash !== false,
+    eventHold: raw.eventHold !== false,
     illustration:
       (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
       customIllustrations.some((i) => i.id === raw.illustration)

@@ -47,7 +47,11 @@ describe("special-day pictures", () => {
     expect(eventSlides(["https://x.test/a.jpg"], all, [3])).toEqual([{ image: "https://x.test/a.jpg" }, { variant: 3 }]);
     expect(eventSlides(["https://x.test/a.jpg"], all, [])).toEqual([{ image: "https://x.test/a.jpg" }]);
     // Nothing picked and nothing uploaded: never an empty board.
-    expect(eventSlides(undefined, all, [])).toHaveLength(all.length);
+    const featured = photos.filter((v) => !PHOTO_STYLES[v]!.extra);
+    expect(featured).toEqual([10]);
+    expect(eventSlides(undefined, all, [])).toEqual([{ variant: 10 }]);
+    expect(eventSlides(undefined, all)).toEqual([{ variant: 10 }]);
+    expect(eventSlides(undefined, all, [11, 12])).toEqual([{ variant: 11 }, { variant: 12 }]);
     // A Sukkot scene is not offered on other days.
     expect(eventSlides(undefined, [0, 1, 2], [4])).toHaveLength(3);
   });
