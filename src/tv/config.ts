@@ -400,6 +400,26 @@ export type RecordEdit =
   | { table: RecordTable; id: string; field: string; value: string | number }
   | { table: "announcements"; id: string; delete: true };
 
+/** The painted board as drawn: no size change, 7 rows, the picture's own inks, no adjustments. */
+export const DEFAULT_ILLUSTRATED_STYLE: IllustratedStyle = {
+  scale: 1,
+  rows: 7,
+  ink: null,
+  accent: null,
+  clockInk: null,
+  brightness: 1,
+  saturation: 1,
+  hue: 0,
+  stoneTint: null,
+  stoneTintStrength: 0.35,
+  frameFill: null,
+  frameFillOpacity: 0.5,
+  frameDepth: 0,
+  frameLine: null,
+  frameLineWidth: 2,
+  frameShape: "rect",
+};
+
 export const DEFAULT_TV_CONFIG: TvConfig = {
   perDevice: {},
   theme: "navy",
@@ -437,7 +457,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   screenLayout: "rotate",
   illustration: "curtain",
   customIllustrations: [],
-  illustratedStyle: { scale: 1, rows: 7, ink: null, accent: null, clockInk: null },
+  illustratedStyle: DEFAULT_ILLUSTRATED_STYLE,
   dayLooks: {},
   eventImages: {},
   eventSplash: true,
@@ -570,7 +590,25 @@ export interface IllustratedStyle {
   ink: string | null;
   accent: string | null;
   clockInk: string | null;
+  /** Picture adjustments ("התאמות תמונה", illustratedAdjust.ts). 1 / 0 / null = as painted. */
+  brightness: number;
+  saturation: number;
+  hue: number;
+  /** A colour over the stones (outside the frames), and how strong. */
+  stoneTint: string | null;
+  stoneTintStrength: number;
+  /** The frames' own background colour, and how opaque. */
+  frameFill: string | null;
+  frameFillOpacity: number;
+  /** How much the frames stand out, 0 (as painted) - 1. */
+  frameDepth: number;
+  /** A line around the frames, and how thick (0-6). */
+  frameLine: string | null;
+  frameLineWidth: number;
+  /** The panels' shape for all of the above: rectangles, or arched like tablets. */
+  frameShape: "rect" | "arch";
 }
+
 
 /**
  * Special-day pictures from storage: simple keys, https links only, up to 8
@@ -612,12 +650,26 @@ function normalizeIllustratedStyle(raw: unknown): IllustratedStyle {
   const colour = (v: unknown) => (typeof v === "string" && isSafeCssValue(v) ? v.trim() : null);
   const n = (v: unknown, d: number, lo: number, hi: number) =>
     typeof v === "number" && Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d;
+  const hex = (v: unknown) => (typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v.trim()) ? v.trim() : null);
+  const two = (v: number) => Math.round(v * 100) / 100;
+  const d = DEFAULT_ILLUSTRATED_STYLE;
   return {
-    scale: Math.round(n(r.scale, 1, 0.8, 1.3) * 100) / 100,
+    scale: two(n(r.scale, 1, 0.8, 1.3)),
     rows: Math.round(n(r.rows, 7, 4, 10)),
     ink: colour(r.ink),
     accent: colour(r.accent),
     clockInk: colour(r.clockInk),
+    brightness: two(n(r.brightness, d.brightness, 0.6, 1.4)),
+    saturation: two(n(r.saturation, d.saturation, 0, 2)),
+    hue: Math.round(n(r.hue, d.hue, -180, 180)),
+    stoneTint: hex(r.stoneTint),
+    stoneTintStrength: two(n(r.stoneTintStrength, d.stoneTintStrength, 0, 1)),
+    frameFill: hex(r.frameFill),
+    frameFillOpacity: two(n(r.frameFillOpacity, d.frameFillOpacity, 0, 1)),
+    frameDepth: two(n(r.frameDepth, d.frameDepth, 0, 1)),
+    frameLine: hex(r.frameLine),
+    frameLineWidth: two(n(r.frameLineWidth, d.frameLineWidth, 0, 6)),
+    frameShape: r.frameShape === "arch" ? "arch" : "rect",
   };
 }
 

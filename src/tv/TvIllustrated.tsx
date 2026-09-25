@@ -5,6 +5,7 @@ import { jerusalemWeekday, zmanimFor, type ResolvedMinyan } from "@community/lib
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit } from "./boardEdit";
 import { specialZmanim } from "@community/lib/specialDays";
+import { illustratedLayers } from "./illustratedAdjust";
 import type { IllustratedStyle } from "./config";
 import { illustrationDef, rowWindow, todaysRows, type Box, type CustomIllustration, type Illustration } from "./illustrated";
 import { weeklyParasha } from "./learning";
@@ -168,6 +169,7 @@ export function IllustratedStage({
   };
   const picture = "image" in def ? def.image : ILLUSTRATION_PICTURES[def.id as keyof typeof ILLUSTRATION_PICTURES];
   const b = d.boxes;
+  const layers = useMemo(() => illustratedLayers(b, look), [b, look]);
   const dayKey = now.toDateString();
   const day = useMemo(() => {
     const date = new Date(dayKey);
@@ -189,9 +191,15 @@ export function IllustratedStage({
   return (
     <section
       className={`tv-slide tv-ill is-${d.id}`}
-      style={{ backgroundImage: `url("${picture}")`, color: d.ink, "--ill-k": look.scale } as CSSProperties}
+      style={{ color: d.ink, "--ill-k": look.scale } as CSSProperties}
       aria-label={title}
     >
+      {/* The picture on a layer of its own, so its adjustments never touch the text. */}
+      <div className="tv-ill-picture" style={{ backgroundImage: `url("${picture}")`, ...layers.picture }} />
+      {layers.stone && <div className="tv-ill-stone" style={layers.stone} />}
+      {layers.frames.map((f) => (
+        <div key={f.key} className="tv-ill-frame" style={f.style} />
+      ))}
       <At b={b.clock}>
         <span className="tv-ill-clock" style={{ color: d.clockInk }}>
           {formatTime(now)}

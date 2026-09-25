@@ -1,4 +1,4 @@
-import type { TvConfig } from "@/tv/config";
+import { DEFAULT_ILLUSTRATED_STYLE, type IllustratedStyle, type TvConfig } from "@/tv/config";
 import { illustrationDef } from "@/tv/illustrated";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
@@ -107,18 +107,151 @@ export function IllustratedLookEditor({ config, onEdit }: { config: TvConfig; on
         ))}
       </div>
 
+      <PictureAdjustments look={look} set={set} />
+
       <button
         type="button"
         className="text-xs underline"
         onClick={() =>
           onEdit("illustrated-style", (c) => ({
             ...c,
-            illustratedStyle: { scale: 1, rows: 7, ink: null, accent: null, clockInk: null },
+            illustratedStyle: DEFAULT_ILLUSTRATED_STYLE,
           }))
         }
       >
         איפוס לעיצוב המקורי
       </button>
     </div>
+  );
+}
+
+/**
+ * "התאמות תמונה": the picture is one image, so these are layers over it -
+ * its brightness and colour, a colour over the stones, and the frames' own
+ * background, line and depth (illustratedAdjust.ts). All neutral by default.
+ */
+function PictureAdjustments({
+  look,
+  set,
+}: {
+  look: IllustratedStyle;
+  set: (patch: Partial<IllustratedStyle>) => void;
+}) {
+  const slider = (
+    label: string,
+    key: "brightness" | "saturation" | "hue" | "stoneTintStrength" | "frameFillOpacity" | "frameDepth" | "frameLineWidth",
+    min: number,
+    max: number,
+    step: number,
+    show: (v: number) => string,
+  ) => (
+    <label className="block text-xs">
+      <span className="flex justify-between">
+        <span>{label}</span>
+        <span className="tabular-nums text-muted-foreground">{show(look[key])}</span>
+      </span>
+      <input
+        type="range"
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={look[key]}
+        onChange={(e) => set({ [key]: Number(e.target.value) })}
+        className="w-full"
+      />
+    </label>
+  );
+  // Nothing chosen yet: one tap applies a suggested colour (a colour box
+  // already showing it could never fire a change for that same colour).
+  const colour = (label: string, key: "stoneTint" | "frameFill" | "frameLine", fallback: string) =>
+    look[key] ? (
+      <span className="flex items-center gap-1 text-xs">
+        <input
+          type="color"
+          aria-label={label}
+          value={look[key]!}
+          onChange={(e) => set({ [key]: e.target.value })}
+          className="h-7 w-9 cursor-pointer rounded border"
+        />
+        <button type="button" className="underline" onClick={() => set({ [key]: null })}>
+          ללא
+        </button>
+      </span>
+    ) : (
+      <button
+        type="button"
+        aria-label={`הוספת ${label}`}
+        className="inline-flex items-center gap-1 text-xs text-primary underline"
+        onClick={() => set({ [key]: fallback })}
+      >
+        <span className="inline-block size-3.5 rounded-sm border" style={{ background: fallback }} />
+        הוספה
+      </button>
+    );
+  const pct = (v: number) => `${Math.round(v * 100)}%`;
+
+  return (
+    <details className="rounded-md border p-2" open>
+      <summary className="cursor-pointer text-sm font-medium">התאמות תמונה</summary>
+      <p className="mt-1 text-[11px] leading-tight text-muted-foreground">
+        הציור הוא תמונה אחת, אז השינויים הם שכבות מעליו: צבע כללי, גוון לאבנים (מחוץ למסגרות), ורקע, קו ובליטה
+        למסגרות. הטקסט לא מושפע.
+      </p>
+
+      <div className="mt-2 space-y-2">
+        <div className="text-xs font-medium">התמונה כולה</div>
+        {slider("בהירות", "brightness", 0.6, 1.4, 0.05, pct)}
+        {slider("רוויית צבע", "saturation", 0, 2, 0.05, pct)}
+        {slider("גוון", "hue", -180, 180, 5, (v) => `${v}°`)}
+
+        <div className="pt-1 text-xs font-medium">צבע האבנים (הרקע שמחוץ למסגרות)</div>
+        {colour("צבע האבנים", "stoneTint", "#c08a4a")}
+        {look.stoneTint && slider("עוצמת הצבע", "stoneTintStrength", 0.05, 1, 0.05, pct)}
+
+        <div className="pt-1 text-xs font-medium">המסגרות</div>
+        <label className="flex items-center justify-between text-xs">
+          <span>צורת המסגרות</span>
+          <select
+            aria-label="צורת המסגרות"
+            value={look.frameShape}
+            onChange={(e) => set({ frameShape: e.target.value as IllustratedStyle["frameShape"] })}
+            className="h-7 rounded-md border bg-background px-1 text-xs"
+          >
+            <option value="rect">מלבן</option>
+            <option value="arch">קשת (כמו לוחות)</option>
+          </select>
+        </label>
+        <div className="flex items-center justify-between text-xs">
+          <span>רקע המסגרת</span>
+          {colour("רקע המסגרת", "frameFill", "#f5ecd7")}
+        </div>
+        {look.frameFill && slider("אטימות הרקע", "frameFillOpacity", 0.05, 1, 0.05, pct)}
+        <div className="flex items-center justify-between text-xs">
+          <span>קו מסביב</span>
+          {colour("צבע הקו", "frameLine", "#b8912f")}
+        </div>
+        {look.frameLine && slider("עובי הקו", "frameLineWidth", 0.5, 6, 0.5, (v) => String(v))}
+        {slider("כמה המסגרת בולטת", "frameDepth", 0, 1, 0.05, (v) => (v === 0 ? "כמו בציור" : pct(v)))}
+      </div>
+
+      <button
+        type="button"
+        className="mt-2 text-xs underline"
+        onClick={() =>
+          set({
+            brightness: 1,
+            saturation: 1,
+            hue: 0,
+            stoneTint: null,
+            frameFill: null,
+            frameLine: null,
+            frameDepth: 0,
+          })
+        }
+      >
+        איפוס התאמות התמונה
+      </button>
+    </details>
   );
 }
