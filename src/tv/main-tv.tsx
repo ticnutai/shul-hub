@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { TvApp } from "./TvApp";
+import { applyHandoff, isRemoteBoard, remoteEnabled, startRemoteSwitch, watchForNewVersion } from "./remoteBoard";
 import "./tv-global.css";
 
 /**
@@ -31,6 +32,23 @@ const queryClient = new QueryClient({
 
 if (Capacitor.isNativePlatform()) {
   SplashScreen.hide().catch(() => {});
+}
+
+// The board lives on the website and the APK carries a fallback copy
+// (remoteBoard.ts). On the website's copy, take the screen's identity from
+// the APK before anything reads it; on the APK's copy, move over to the
+// website once it answers.
+if (isRemoteBoard()) {
+  try {
+    if (applyHandoff(window.location.hash, localStorage)) {
+      history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
+  } catch {
+    /* no storage: the board still runs, as a new unpaired screen */
+  }
+  watchForNewVersion();
+} else if (Capacitor.isNativePlatform() && remoteEnabled()) {
+  startRemoteSwitch();
 }
 
 // A display left on for weeks should never dim or sleep mid-shacharit. The

@@ -1,10 +1,25 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
 import { VitePWA } from "vite-plugin-pwa";
 import { devChatPlugin } from "./src/plugins/devChatPlugin";
+import { cpSync } from "fs";
 import pkg from "./package.json" with { type: "json" };
+
+/**
+ * The board page (index-tv.html) links its bundled fonts as ./fonts/fonts.css.
+ * They live in public-tv/ for the APK; copy them next to the page here too.
+ */
+function tvBoardFonts(): Plugin {
+  return {
+    name: "tv-board-fonts",
+    apply: "build",
+    closeBundle() {
+      cpSync(path.resolve(__dirname, "public-tv/fonts"), path.resolve(__dirname, "dist/fonts"), { recursive: true });
+    },
+  };
+}
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -30,6 +45,7 @@ export default defineConfig(({ mode }) => ({
   json: { stringify: true },
   plugins: [
     react(),
+    tvBoardFonts(),
     mode === "development" && componentTagger(),
     mode === "development" && devChatPlugin(),
     VitePWA({
@@ -145,6 +161,13 @@ export default defineConfig(({ mode }) => ({
   build: {
     chunkSizeWarningLimit: 2000,
     rollupOptions: {
+      // The wall board is published with the site (index-tv.html), so the TV
+      // app can load it from here and pick up every change without a new APK
+      // (src/tv/remoteBoard.ts). Same bundle as the Capacitor build.
+      input: {
+        index: path.resolve(__dirname, "index.html"),
+        "index-tv": path.resolve(__dirname, "index-tv.html"),
+      },
       output: {
         manualChunks(id) {
           if (id.includes('/src/data/bereishit.json')) return 'data-bereishit';
