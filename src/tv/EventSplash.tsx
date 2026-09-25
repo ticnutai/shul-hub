@@ -11,7 +11,8 @@ import {
   type SpecialGroup,
 } from "@community/lib/specialDays";
 import type { TvConfig } from "./config";
-import { BUILTIN_VARIANTS, eventSlides } from "./eventSlides";
+import { BUILTIN_VARIANTS, eventSlides, stylesFor } from "./eventSlides";
+import { SceneArt, seeded } from "./eventScenes";
 
 /**
  * The special day on the wall: its pictures, its name and its own times
@@ -277,15 +278,6 @@ function emblemsFor(def: SpecialDayDef): string[] {
 
 /* ------------------------------------------------------------ designs -- */
 
-/** A small deterministic sequence (so the stars are the same on every screen). */
-function seeded(n: number, seed: number): number[] {
-  let x = seed;
-  return Array.from({ length: n }, () => {
-    x = (x * 9301 + 49297) % 233280;
-    return x / 233280;
-  });
-}
-
 /**
  * One built-in design, a full-screen SVG (1600×900). The right side is left
  * calm for the card with the name and times; the emblem sits on the left.
@@ -300,6 +292,9 @@ export function DefaultArt({
   /** The festival falls on Shabbat: the Shabbat candles stand beside its emblem. */
   withShabbat?: boolean;
 }) {
+  if (variant >= BUILTIN_VARIANTS && stylesFor(def).includes(variant)) {
+    return <SceneArt scene={variant} dayKey={def.key} withShabbat={withShabbat} />;
+  }
   const p = paletteFor(def);
   const v = ((variant % BUILTIN_VARIANTS) + BUILTIN_VARIANTS) % BUILTIN_VARIANTS;
   const emblem = EMBLEMS[emblemsFor(def)[v] ?? "star"]!;
@@ -407,7 +402,7 @@ export function EventSplash({
   day,
 }: {
   categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined;
-  config: Pick<TvConfig, "eventImages" | "eventSplash">;
+  config: Pick<TvConfig, "eventImages" | "eventSplash" | "eventStyles">;
   now: Date;
   zmanim: Zmanim;
   /** Always show (the admin's preview). */
@@ -424,7 +419,7 @@ export function EventSplash({
   const phase = seconds % CYCLE_SECONDS;
   if (!def || (!config.eventSplash && !force)) return null;
   if (!force && phase >= SHOW_SECONDS) return null;
-  const slides = eventSlides(config.eventImages[def.key]);
+  const slides = eventSlides(config.eventImages[def.key], stylesFor(def), config.eventStyles[def.key]);
   // Each appearance moves on through the pictures; within it, a new one every few seconds.
   const step = force
     ? Math.floor(seconds / SLIDE_SECONDS)
