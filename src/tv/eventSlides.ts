@@ -15,10 +15,22 @@ export const STYLE_NAMES: Record<number, string> = {
   5: "ארבעת המינים",
 };
 
+/**
+ * Built-in photographs (ids from 10), shipped with the site in
+ * public/event-art. Generated with an image model, so they are realistic
+ * and free to use; `position` keeps the subject clear of the card.
+ */
+export const PHOTO_STYLES: Record<number, { name: string; src: string; position?: string }> = {
+  10: { name: "שולחן שבת בסוכה", src: "/event-art/sukkot-shabbat-table.jpg", position: "30% center" },
+};
+for (const [id, p] of Object.entries(PHOTO_STYLES)) STYLE_NAMES[Number(id)] = p.name;
+
 /** The built-in styles a day can use, the richest first. */
 export function stylesFor(def: Pick<SpecialDayDef, "key" | "group">): number[] {
   const plain = [0, 1, 2];
-  if (def.group === "sukkot" && def.key !== "shmini_atzeret") return [3, 4, 5, ...plain];
+  if (def.group === "sukkot" && def.key !== "shmini_atzeret") {
+    return [...Object.keys(PHOTO_STYLES).map(Number), 3, 4, 5, ...plain];
+  }
   return plain;
 }
 

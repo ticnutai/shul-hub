@@ -4777,6 +4777,28 @@
   line-height: 1.35;
   color: #f8ecc9;
 }
+.tv-event-card:has(.tv-event-verses) {
+  min-width: 46vw;
+}
+.tv-event-verses {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.6vw;
+  margin: 0 0 1.2vw;
+}
+.tv-event-verses .tv-event-verse {
+  margin: 0;
+}
+.tv-event-verse-head {
+  font-size: 1.5vw;
+  font-weight: 800;
+  color: #f6d77a;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.3vw;
+}
+.tv-event-verses blockquote {
+  font-size: 1.7vw;
+}
 .tv-event-verse figcaption {
   margin-top: 0.2vw;
   font-size: 1.1vw;

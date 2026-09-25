@@ -11,7 +11,7 @@ import {
   type SpecialGroup,
 } from "@community/lib/specialDays";
 import type { TvConfig } from "./config";
-import { BUILTIN_VARIANTS, eventSlides, stylesFor } from "./eventSlides";
+import { BUILTIN_VARIANTS, PHOTO_STYLES, eventSlides, stylesFor } from "./eventSlides";
 import { SceneArt, seeded } from "./eventScenes";
 
 /**
@@ -29,6 +29,8 @@ import { SceneArt, seeded } from "./eventScenes";
  */
 
 const CYCLE_SECONDS = 90;
+/** The festival's heading beside "שבת קודש" when they meet. */
+const GROUP_TITLE: Partial<Record<SpecialGroup, string>> = { sukkot: "חג הסוכות" };
 const SHOW_SECONDS = 15;
 const SLIDE_SECONDS = 5;
 
@@ -292,6 +294,17 @@ export function DefaultArt({
   /** The festival falls on Shabbat: the Shabbat candles stand beside its emblem. */
   withShabbat?: boolean;
 }) {
+  const photo = PHOTO_STYLES[variant];
+  if (photo && stylesFor(def).includes(variant)) {
+    return (
+      <div
+        className="tv-event-photo"
+        role="img"
+        aria-label={photo.name}
+        style={{ backgroundImage: `url("${photo.src}")`, backgroundPosition: photo.position }}
+      />
+    );
+  }
   if (variant >= BUILTIN_VARIANTS && stylesFor(def).includes(variant)) {
     return <SceneArt scene={variant} dayKey={def.key} withShabbat={withShabbat} />;
   }
@@ -427,7 +440,10 @@ export function EventSplash({
   const active = step % slides.length;
   const rows = specialZmanim(now, zmanim);
   const combined = combinedDay(def, now);
-  const verse = verseFor(def.key) ?? (combined.shabbat ? verseFor("shabbat") : null);
+  const own = verseFor(def.key);
+  // Shabbat and a festival together: a verse of each, side by side.
+  const pair = combined.shabbat && own ? { shabbat: verseFor("shabbat")!, day: own } : null;
+  const verse = pair ? null : own ?? (combined.shabbat ? verseFor("shabbat") : null);
   return (
     <div className="tv-event-splash" role="region" aria-label={def.name}>
       {slides.map((s, i) => (
@@ -443,6 +459,20 @@ export function EventSplash({
         <div className="tv-event-date">{new HDate(now).renderGematriya(true)}</div>
         <div className="tv-event-title">{combined.title}</div>
         {combined.also.length > 0 && <div className="tv-event-also">{combined.also.join(" · ")}</div>}
+        {pair && (
+          <div className="tv-event-verses">
+            <figure className="tv-event-verse">
+              <div className="tv-event-verse-head">שבת קודש</div>
+              <blockquote>{pair.shabbat.text}</blockquote>
+              <figcaption>{pair.shabbat.source}</figcaption>
+            </figure>
+            <figure className="tv-event-verse">
+              <div className="tv-event-verse-head">{GROUP_TITLE[def.group] ?? combined.title.replace(/^שבת\s*·?\s*/, "")}</div>
+              <blockquote>{pair.day.text}</blockquote>
+              <figcaption>{pair.day.source}</figcaption>
+            </figure>
+          </div>
+        )}
         {verse && (
           <figure className="tv-event-verse">
             <blockquote>{verse.text}</blockquote>
