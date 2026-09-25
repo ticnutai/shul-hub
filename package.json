@@ -25,6 +25,7 @@
     "tv:open": "node scripts/tv-cap.mjs open android",
     "tv": "node scripts/tv-control.mjs",
     "android:sync": "vite build && npx cap sync android",
+    "android:live": "node scripts/android-live.mjs",
     "android:open": "npx cap open android",
     "android:run": "npx cap run android",
     "android:build": "powershell -ExecutionPolicy Bypass -File scripts/build-android.ps1",
