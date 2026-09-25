@@ -1,0 +1,40 @@
+# Publishes the Android installers as a GitHub release, so the admin page
+# ("הורדת אפליקציות") can link to releases/latest/download/<file>.
+#
+# The APKs are built outside CI (they are signed there) and committed to
+# public/. Committing a new one to main publishes a new release by itself;
+# "Run workflow" publishes the current ones again.
+name: Release apps
+
+on:
+  push:
+    branches: [main]
+    paths: ["public/app.apk", "public/tv.apk"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp public/app.apk out/shul-hub-phone.apk
+          cp public/tv.apk out/shul-hub-tv.apk
+          tag="apps-$(date -u +%Y%m%d-%H%M%S)"
+          gh release create "$tag" out/shul-hub-phone.apk out/shul-hub-tv.apk \
+            --title "אפליקציות $(date -u +%d.%m.%Y)" \
+            --latest \
+            --notes "קבצי התקנה לאנדרואיד.
+
+          - shul-hub-phone.apk: אפליקציה לטלפון (\"אושר של יהודי - גרסה חדשה\"), מותקנת לצד הגרסה מ-Play.
+          - shul-hub-tv.apk: לוח תצוגה לטלוויזיה, טוען את הלוח מהאתר.
+
+          מדריך התקנה: ניהול ← הורדת אפליקציות."
