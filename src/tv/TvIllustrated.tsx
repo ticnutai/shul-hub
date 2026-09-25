@@ -4,6 +4,7 @@ import type { Settings } from "@community/lib/data";
 import { jerusalemWeekday, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit } from "./boardEdit";
+import { specialZmanim } from "@community/lib/specialDays";
 import type { IllustratedStyle } from "./config";
 import { illustrationDef, rowWindow, todaysRows, type Box, type CustomIllustration, type Illustration } from "./illustrated";
 import { weeklyParasha } from "./learning";
@@ -91,15 +92,19 @@ function PrayerFrame({ d, rows, now, max }: { d: Illustration; rows: ResolvedMin
   );
 }
 
-function ZmanimFrame({ d, zmanim, box, max }: { d: Illustration; zmanim: Zmanim; box: Box; max: number }) {
+function ZmanimFrame({ d, zmanim, box, max, now }: { d: Illustration; zmanim: Zmanim; box: Box; max: number; now: Date }) {
   const edit = useBoardEdit();
   const mark = useMark();
+  // The day's own times (a fast's start and end, צאת החג) come first; the
+  // ordinary zmanim give up their places to them.
+  const special = specialZmanim(now, zmanim).slice(0, max);
+  const room = max - special.length;
   let shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
   for (const drop of ZMAN_DROP_ORDER) {
-    if (shown.length <= max) break;
+    if (shown.length <= room) break;
     shown = shown.filter((e) => e !== drop);
   }
-  shown = shown.slice(0, max);
+  shown = shown.slice(0, room);
   return (
     <At b={box}>
       <div className="tv-ill-list" style={{ "--ill-size": rowSize(box) } as CSSProperties}>
@@ -107,6 +112,14 @@ function ZmanimFrame({ d, zmanim, box, max }: { d: Illustration; zmanim: Zmanim;
           {edit.text("dash.zmanim", "זמני היום")}
         </div>
         <ul>
+          {special.map((r) => (
+            <li key={`special-${r.key}`} className="is-special" style={{ fontWeight: 700 }}>
+              <span className="tv-ill-name">{r.label}</span>
+              <span className="tv-ill-time" style={{ color: d.accent }}>
+                {formatTime(r.time)}
+              </span>
+            </li>
+          ))}
           {shown.map((e) => (
             <li key={e} {...mark(`zman.${e}`)}>
               <span className="tv-ill-name">{edit.text(`zman.${e}`, ZMAN_LABELS[e])}</span>
@@ -205,7 +218,7 @@ export function IllustratedStage({
               <div className="tv-ill-shabbat-bless" style={{ color: d.accent }}>שבת שלום ומבורך</div>
             </At>
           )}
-          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} />
+          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
           <PrayerFrame d={d} rows={rows} now={now} max={look.rows} />
         </>
       ) : (
@@ -217,7 +230,7 @@ export function IllustratedStage({
             <span className="tv-ill-plaque">{day.hebrew}</span>
           </At>
           <PrayerFrame d={d} rows={rows} now={now} max={look.rows} />
-          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} />
+          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
           {b.barR && (
             <At b={b.barR}>
               <span className="tv-ill-bar" {...mark("header.title")}>{title}</span>

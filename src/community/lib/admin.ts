@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@community/integrations/supabase/client";
+import { communityId } from "@/community/lib/community";
 
 type TableName =
   | "minyanim"
@@ -20,7 +21,10 @@ export function useSaveRow(table: TableName, queryKey: string) {
             .from(table)
             .update(row as never)
             .eq("id", row["id"] as string)
-        : await supabase.from(table).insert(row as never);
+        : // A new row belongs to the synagogue being edited. Without this
+          // the column's default (the only active synagogue) put rows made in
+          // another synagogue's admin into the main one.
+          await supabase.from(table).insert({ community_id: communityId(), ...row } as never);
       if (error) throw error;
     },
     onSuccess: async () => {

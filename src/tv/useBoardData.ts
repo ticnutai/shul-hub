@@ -17,6 +17,7 @@ import {
 import { useMemo } from "react";
 import { dayTypeFor, jerusalemWeekday, overridesFor, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
+import { todaysCategories } from "@community/lib/specialDays";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
 import type { TvConfig } from "./config";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
@@ -129,17 +130,17 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
     return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim, today), subcategories: [] as MinyanSubcategory[] }];
   }
 
-  const todayKey = jerusalemDateKey(now);
-  return data.categories
+  // Today's tabs: a special day's own timetable (יום כיפור, צום גדליה) in place
+  // of the ordinary one when the gabbai made one, else ימות החול / יום שישי /
+  // שבת; tabs he made himself either way (specialDays.ts).
+  const today_ = todaysCategories(data.categories, now);
+  return today_.categories
     .filter(
       (c) =>
         // Taken off the board by the admin - "סליחות" after Yom Kippur, say.
         // The website still lists it; only the wall stops showing it.
         !hidden.has(`cat:${c.id}`) &&
-        c.active &&
-        (!c.visible_from || c.visible_from <= todayKey) &&
-        (!c.visible_until || c.visible_until >= todayKey) &&
-        (c.system_key === dayType || !c.system_key),
+        (today_.event !== null || c.system_key === today_.ordinaryKey || !c.system_key),
     )
     .sort((a, b) => (a.system_key ? 0 : 1) - (b.system_key ? 0 : 1) || a.sort_order - b.sort_order)
     .map((c) => ({

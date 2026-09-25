@@ -3,6 +3,7 @@ import { prayerLabel, type Announcement, type Shiur } from "@community/lib/data"
 import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit, type BoardEditApi } from "./boardEdit";
+import { specialZmanim } from "@community/lib/specialDays";
 import type { FlipArea } from "./config";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
 import { ShabbatSlide } from "./ShabbatScene";
@@ -245,12 +246,20 @@ export function ZmanimPanel({ zmanim, now, titleKey = "panel.zmanim" }: { zmanim
   const nowMs = now.getTime();
   const shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
   const nextEvent = shown.find((e) => (zmanim[e]?.getTime() ?? 0) > nowMs);
+  // A fast's start and end, candle lighting before a festival, צאת החג.
+  const special = specialZmanim(now, zmanim);
   return (
     <div className="tv-panel" {...edit.attr("panel.zmanim")}>
       <h3 className="tv-panel-title" {...(titleKey !== "panel.zmanim" ? edit.attr(titleKey) : {})}>
         {edit.text(titleKey, "זמני היום")}
       </h3>
       <dl className="tv-zman-list">
+        {special.map((r) => (
+          <div className={`tv-zman-row is-special${r.time && r.time.getTime() <= nowMs ? " is-past" : ""}`} key={`special-${r.key}`}>
+            <dt>{r.label}</dt>
+            <dd>{formatTime(r.time)}</dd>
+          </div>
+        ))}
         {shown.map((event) => {
           const t = zmanim[event];
           const past = t ? t.getTime() <= nowMs : false;

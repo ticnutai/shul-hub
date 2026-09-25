@@ -45,6 +45,8 @@ import {
 } from "@community/components/PrayerLayoutPicker";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
+import { isEventCategory } from "@community/lib/specialDays";
+import { SpecialDaysAdmin } from "@community/components/admin/SpecialDaysAdmin";
 
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
@@ -79,6 +81,8 @@ export function MinyanimAdmin() {
   const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
   const removeCategory = useDeleteRow("minyan_categories", "minyan_categories");
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  // "מועדים ואירועים": the special days, each with a timetable of its own.
+  const [view, setView] = useState<"regular" | "events">("regular");
   const [prayer, setPrayer] = useState<string>("shacharit");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(null);
@@ -90,8 +94,36 @@ export function MinyanimAdmin() {
   const dragCleanupRef = useRef<(() => void) | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // The ordinary tabs. A special day's tab (system_key "event:…") is reached
+  // from "מועדים ואירועים", not from this row.
+  const regularCategories = useMemo(() => categories.filter((c) => !isEventCategory(c)), [categories]);
   const selectedCategory =
-    categories.find((category) => category.id === categoryId) ?? categories[0];
+    categories.find((category) => category.id === categoryId) ?? regularCategories[0];
+  const selectedIsEvent = Boolean(selectedCategory && isEventCategory(selectedCategory));
+  const hasShabbatTab = categories.some((c) => c.system_key === "shabbat");
+
+  async function createShabbatTab() {
+    const friday = categories.find((c) => c.system_key === "friday");
+    const { data, error } = await supabase
+      .from("minyan_categories")
+      .insert({
+        community_id: communityId(),
+        name: "שבת",
+        system_key: "shabbat",
+        active: true,
+        display_mode: "tabs",
+        sort_order: (friday?.sort_order ?? 20) + 1,
+      } as never)
+      .select("id")
+      .single();
+    if (error || !data) {
+      toast.error(error?.message ?? "יצירת הטאב נכשלה");
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["minyan_categories"] });
+    setCategoryId((data as { id: string }).id);
+    setView("regular");
+  }
   const selectedCategoryId = selectedCategory?.id ?? null;
   const zmanim = zmanimFor(new Date(), settings);
   const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
@@ -287,7 +319,7 @@ export function MinyanimAdmin() {
           className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1"
           aria-label="קטגוריות מניינים"
         >
-          {categories.map((category) => (
+          {regularCategories.map((category) => (
             <div
               key={category.id}
               data-reorder-id={category.id}
@@ -295,7 +327,7 @@ export function MinyanimAdmin() {
               data-testid={`minyan-category-${category.id}`}
               className={
                 "flex items-center rounded-md text-sm " +
-                (selectedCategoryId === category.id
+                (view === "regular" && selectedCategoryId === category.id
                   ? "bg-card font-medium shadow-soft"
                   : "text-muted-foreground") +
                 (draggedCategoryId === category.id ? " opacity-50" : "")
@@ -330,6 +362,7 @@ export function MinyanimAdmin() {
                 className="px-2 py-1.5"
                 onClick={() => {
                   setCategoryId(category.id);
+                  setView("regular");
                   const first = minyanSubcategories(category)[0];
                   if (first) setPrayer(first.id);
                 }}
@@ -364,8 +397,28 @@ export function MinyanimAdmin() {
           >
             <Plus className="ml-1 inline size-3.5" /> קטגוריה חדשה
           </button>
+          {!hasShabbatTab && (
+            <button
+              type="button"
+              onClick={() => void createShabbatTab()}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-card"
+            >
+              <Plus className="ml-1 inline size-3.5" /> טאב שבת
+            </button>
+          )}
+          <button
+            type="button"
+            data-testid="special-days-tab"
+            onClick={() => setView("events")}
+            className={
+              "rounded-md px-3 py-1.5 text-sm " +
+              (view === "events" || selectedIsEvent ? "bg-card font-semibold shadow-soft" : "font-medium text-foreground hover:bg-card")
+            }
+          >
+            📅 מועדים ואירועים
+          </button>
         </div>
-        <div className="flex gap-2">
+        <div className={view === "events" ? "hidden" : "flex gap-2"}>
           {selectedCategory && (
             <Button
               variant="outline"
@@ -388,6 +441,28 @@ export function MinyanimAdmin() {
           </Button>
         </div>
       </div>
+
+      {view === "events" ? (
+        <SpecialDaysAdmin
+          categories={categories}
+          minyanim={minyanim}
+          onOpen={(id) => {
+            setCategoryId(id);
+            setView("regular");
+          }}
+        />
+      ) : (
+      <>
+      {selectedIsEvent && selectedCategory && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
+          <span>
+            זמני התפילות של <b>{selectedCategory.name}</b> — ביום עצמו הם מחליפים באתר ובלוח את הזמנים הרגילים.
+          </span>
+          <Button size="sm" variant="ghost" onClick={() => setView("events")}>
+            ← חזרה למועדים
+          </Button>
+        </div>
+      )}
 
       {categoryDraft && (
         <form onSubmit={submitCategory} className="card-elev space-y-4 p-5">
@@ -884,6 +959,8 @@ export function MinyanimAdmin() {
             </Button>
           </div>
         </form>
+      )}
+      </>
       )}
     </div>
   );
