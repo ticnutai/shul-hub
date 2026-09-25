@@ -145,3 +145,38 @@ describe("days that meet, and their verses", () => {
     expect(verseFor("shabbat")?.source).toBe("ישעיה נח, יג");
   });
 });
+
+describe("holding a holy day from candle lighting to nightfall", () => {
+  const zAt = (day: string) => ({
+    candle: new Date(`${day}T15:00:00Z`), // 18:00 in Israel
+    tzeit: new Date(`${day}T16:10:00Z`), // 19:10
+  });
+  const on = (d: Date) => zAt(d.toISOString().slice(0, 10));
+
+  it("starts at candle lighting on Friday before Shabbat Sukkot, as the next day", async () => {
+    const { holyWindow, specialDaysOn } = await import("./specialDays");
+    expect(holyWindow(new Date("2026-09-25T14:30:00Z"), zAt("2026-09-25"), on)).toBeNull();
+    const w = holyWindow(new Date("2026-09-25T15:05:00Z"), zAt("2026-09-25"), on)!;
+    expect(w.date.toISOString().slice(0, 10)).toBe("2026-09-26");
+    expect(w.zmanim.tzeit?.toISOString()).toBe("2026-09-26T16:10:00.000Z");
+    expect(specialDaysOn(w.date).map((d) => d.key)).toContain("sukkot");
+  });
+
+  it("lasts all Shabbat and ends at nightfall", async () => {
+    const { holyWindow } = await import("./specialDays");
+    expect(holyWindow(new Date("2026-09-26T09:00:00Z"), zAt("2026-09-26"), on)?.date.toISOString().slice(0, 10)).toBe("2026-09-26");
+    expect(holyWindow(new Date("2026-09-26T16:20:00Z"), zAt("2026-09-26"), on)).toBeNull();
+  });
+
+  it("does not hold a weekday or chol hamoed", async () => {
+    const { holyWindow } = await import("./specialDays");
+    expect(holyWindow(new Date("2026-09-28T09:00:00Z"), zAt("2026-09-28"), on)).toBeNull();
+    // Candle lighting time passes on Monday too, but Tuesday is not holy.
+    expect(holyWindow(new Date("2026-09-28T15:30:00Z"), zAt("2026-09-28"), on)).toBeNull();
+  });
+
+  it("holds a festival that is not on Shabbat (Shmini Atzeret, from its eve)", async () => {
+    const { holyWindow } = await import("./specialDays");
+    expect(holyWindow(new Date("2026-10-02T15:30:00Z"), zAt("2026-10-02"), on)?.date.toISOString().slice(0, 10)).toBe("2026-10-03");
+  });
+});

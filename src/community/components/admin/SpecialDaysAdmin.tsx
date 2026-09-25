@@ -397,6 +397,17 @@ export function SpecialDaysAdmin({
             ביום המועד הלוח מציג כל דקה וחצי, ל-15 שניות, את תמונת המועד וזמניו
           </label>
         )}
+        {tvConfig && (
+          <label className="flex items-center gap-2 text-sm">
+            <Switch
+              checked={tvConfig.eventHold}
+              disabled={!tvConfig.eventSplash}
+              onCheckedChange={(v) => void saveBoard((c) => ({ ...c, eventHold: v }))}
+              aria-label="הצגה רצופה בשבת ובחג"
+            />
+            בשבת ובחג: התמונה מוצגת ברציפות מהדלקת נרות ועד צאת השבת או החג
+          </label>
+        )}
         {upcoming.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             <span className="text-xs font-medium">בקרוב:</span>

@@ -5,6 +5,8 @@ import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import {
   boardSpecialDay,
   combinedDay,
+  holyWindow,
+  specialDaysOn,
   specialZmanim,
   verseFor,
   type SpecialDayDef,
@@ -33,6 +35,8 @@ const CYCLE_SECONDS = 90;
 const GROUP_TITLE: Partial<Record<SpecialGroup, string>> = { sukkot: "חג הסוכות" };
 const SHOW_SECONDS = 15;
 const SLIDE_SECONDS = 5;
+/** Held for a whole Shabbat or festival, the pictures change more slowly. */
+const HOLD_SLIDE_SECONDS = 30;
 
 /* ----------------------------------------------------------- palettes -- */
 
@@ -411,35 +415,51 @@ export function EventSplash({
   config,
   now,
   zmanim,
+  zmanimOn,
   force = false,
   day,
 }: {
   categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined;
-  config: Pick<TvConfig, "eventImages" | "eventSplash" | "eventStyles">;
+  config: Pick<TvConfig, "eventImages" | "eventSplash" | "eventStyles" | "eventHold">;
   now: Date;
   zmanim: Zmanim;
+  /** The times of another day; lets the board hold the day from candle lighting on its eve. */
+  zmanimOn?: (date: Date) => Zmanim;
   /** Always show (the admin's preview). */
   force?: boolean;
   /** Show this day, whatever today is (the admin's preview). */
   day?: SpecialDayDef;
 }) {
-  const dayKey = now.toDateString();
+  // From candle lighting until nightfall at its end, a Shabbat or festival that
+  // is a special day stays on the wall the whole time.
+  const hold = !force && config.eventSplash && config.eventHold && zmanimOn ? holyWindow(now, zmanim, zmanimOn) : null;
+  const date = hold?.date ?? now;
+  const dayZmanim = hold?.zmanim ?? zmanim;
+  const dayKey = `${date.toDateString()}|${hold ? 1 : 0}`;
   // Once a day is enough: `now` ticks every second, the special day does not.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const found = useMemo(() => boardSpecialDay(categories, config, now), [categories, config, dayKey]);
+  const found = useMemo(
+    () =>
+      boardSpecialDay(categories, config, date) ??
+      // While held, the day shows even if the gabbai did not set it up.
+      (hold ? specialDaysOn(date).find((d) => !d.national) ?? null : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [categories, config, dayKey],
+  );
   const def = day ?? found;
   const seconds = Math.floor(now.getTime() / 1000);
   const phase = seconds % CYCLE_SECONDS;
   if (!def || (!config.eventSplash && !force)) return null;
-  if (!force && phase >= SHOW_SECONDS) return null;
+  if (!force && !hold && phase >= SHOW_SECONDS) return null;
   const slides = eventSlides(config.eventImages[def.key], stylesFor(def), config.eventStyles[def.key]);
   // Each appearance moves on through the pictures; within it, a new one every few seconds.
   const step = force
     ? Math.floor(seconds / SLIDE_SECONDS)
-    : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
+    : hold
+      ? Math.floor(seconds / HOLD_SLIDE_SECONDS)
+      : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
   const active = step % slides.length;
-  const rows = specialZmanim(now, zmanim);
-  const combined = combinedDay(def, now);
+  const rows = specialZmanim(date, dayZmanim);
+  const combined = combinedDay(def, date);
   const own = verseFor(def.key);
   // Shabbat and a festival together: a verse of each, side by side.
   const pair = combined.shabbat && own ? { shabbat: verseFor("shabbat")!, day: own } : null;
@@ -456,7 +476,7 @@ export function EventSplash({
         </div>
       ))}
       <div className="tv-event-card">
-        <div className="tv-event-date">{new HDate(now).renderGematriya(true)}</div>
+        <div className="tv-event-date">{new HDate(date).renderGematriya(true)}</div>
         <div className="tv-event-title">{combined.title}</div>
         {combined.also.length > 0 && <div className="tv-event-also">{combined.also.join(" · ")}</div>}
         {pair && (

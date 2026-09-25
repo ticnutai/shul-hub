@@ -7,7 +7,7 @@ import { EventSplash } from "./EventSplash";
 import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
-import { jerusalemWeekday } from "@community/lib/minyan-time";
+import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { allThemes, getTheme } from "./themes";
 import { TvBoard } from "./TvBoard";
@@ -100,6 +100,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const data = useMemo(() => applyRecordEdits(rawData, configOverride?._records), [rawData, configOverride?._records]);
   const now = useNow(1000);
   const zmanim = useDayZmanim(now, data.settings);
+  const zmanimOn = useCallback((d: Date) => zmanimFor(d, data.settings), [data.settings]);
 
   // Everything the heartbeat reports is read through this ref (filled below).
   const stateRef = useRef<Record<string, unknown>>({});
@@ -472,7 +473,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       paused={paused}
       overlay={
         <>
-          <EventSplash categories={data.categories} config={config} now={now} zmanim={zmanim} />
+          <EventSplash categories={data.categories} config={config} now={now} zmanim={zmanim} zmanimOn={zmanimOn} />
           {toast && <div className="tv-toast">{toast}</div>}
 
           {device && !device.approved && device.pairingCode && (
