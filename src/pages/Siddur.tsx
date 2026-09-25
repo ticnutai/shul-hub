@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, createContext, useContext, useCallback, type CSSProperties } from "react";
+import { useState, useEffect, useMemo, useRef, createContext, useContext, useCallback, type CSSProperties, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { TextDisplaySettings } from "@/components/TextDisplaySettings";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -699,6 +699,46 @@ function stickyChromeHeight(): number {
   return Math.max(0, Math.round(bottom));
 }
 
+/**
+ * Keeps its content on screen while the text scrolls, just under whatever is
+ * already pinned at the top (the app's header). The row of sections is how
+ * somebody moves through a long prayer - ברכות השחר, קרבנות, פסוקי דזמרה -
+ * and it used to scroll away with the first line of text, so moving on meant
+ * scrolling all the way back up first. Marked as pinned chrome itself, so a
+ * jump to a section lands below it instead of under it.
+ */
+function PinnedBelowChrome({ background, children }: { background: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [top, setTop] = useState(0);
+  useEffect(() => {
+    const measure = () => {
+      let bottom = 0;
+      for (const el of document.querySelectorAll<HTMLElement>("header, [data-sticky-chrome]")) {
+        if (el === ref.current || ref.current?.contains(el)) continue;
+        const pos = getComputedStyle(el).position;
+        if (pos !== "sticky" && pos !== "fixed") continue;
+        const rect = el.getBoundingClientRect();
+        // Only what sits at the top of the screen; a pinned bar at the bottom does not count.
+        if (rect.top <= 1) bottom = Math.max(bottom, rect.bottom);
+      }
+      setTop(Math.max(0, Math.round(bottom)));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const el of document.querySelectorAll<HTMLElement>("header")) observer.observe(el);
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
+  return (
+    <div ref={ref} data-sticky-chrome className="sticky z-30" style={{ top, background }}>
+      {children}
+    </div>
+  );
+}
+
 const SiddurJumpContext = createContext<{ index: number | null; nonce: number; jump: (i: number) => void }>({
   index: null,
   nonce: 0,
@@ -860,17 +900,22 @@ function SectionJumpScroller() {
       // board showing the קרובים logo has a header twice the height of one
       // showing a name. A fixed number landed somewhere in the middle of
       // the section, which is the one place a title is no use.
-      const wanted = Math.max(0, el.getBoundingClientRect().top + window.scrollY - stickyChromeHeight() - 8);
-      window.scrollTo({ top: wanted, behavior: "smooth" });
+      const target = () => Math.max(0, el.getBoundingClientRect().top + window.scrollY - stickyChromeHeight() - 8);
+      window.scrollTo({ top: target(), behavior: "smooth" });
       // Smooth scrolling is ignored outright in some places - reduced
       // motion, a background tab, a television WebView. A tap that quietly
       // does nothing is worse than one that arrives without an animation,
-      // so check afterwards and finish the job.
-      timers.push(
-        window.setTimeout(() => {
-          if (Math.abs(window.scrollY - wanted) > 24) window.scrollTo({ top: wanted });
-        }, 450),
-      );
+      // so check afterwards and finish the job. Measured again rather than
+      // reused: the text above can still be settling (a card closing, a
+      // section rendering) and move the title under the pinned rows.
+      for (const delay of [450, 1000]) {
+        timers.push(
+          window.setTimeout(() => {
+            const wanted = target();
+            if (Math.abs(window.scrollY - wanted) > 4) window.scrollTo({ top: wanted });
+          }, delay),
+        );
+      }
     };
     timers.push(window.setTimeout(() => attempt(0), 60));
     return () => timers.forEach((t) => window.clearTimeout(t));
@@ -3504,9 +3549,9 @@ export const Siddur = () => {
           above. Empty for תהילים and קריאה בתורה, which have no sections of
           this kind - and then the row is simply not there. */}
       {isMobile && !isSpecial && stripSections && stripSections.length > 1 && (
-        <div style={{ background: activeTheme.headerBg }}>
+        <PinnedBelowChrome background={activeTheme.headerBg}>
           <SectionStrip sections={stripSections} color={hText} accent={hAccent} />
-        </div>
+        </PinnedBelowChrome>
       )}
 
       {/* ── Category tabs ── */}
