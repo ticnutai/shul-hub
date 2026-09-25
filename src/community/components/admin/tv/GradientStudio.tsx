@@ -373,7 +373,7 @@ export function TransferPanel({
   onExport,
   onImport,
 }: {
-  onExport: (what: "themes" | "gradients" | "all", how: "file" | "clipboard") => void;
+  onExport: (what: "themes" | "gradients" | "looks" | "all", how: "file" | "clipboard") => void;
   onImport: (text: string) => void;
 }) {
   const [text, setText] = useState("");
@@ -388,6 +388,7 @@ export function TransferPanel({
           {(
             [
               ["all", "הכל"],
+              ["looks", "מראות"],
               ["themes", "ערכות נושא"],
               ["gradients", "גרדיאנטים"],
             ] as const
@@ -443,7 +444,7 @@ export function TransferPanel({
               onChange={(e) => setText(e.target.value)}
               rows={4}
               aria-label="תוכן הקובץ לייבוא"
-              placeholder='{"kind":"shul-hub-tv-design", …}'
+              placeholder='{"format":"design-tokens", …}'
               className="w-full rounded-md border bg-background p-2 font-mono text-xs"
             />
             <AlertDialog>
@@ -456,7 +457,7 @@ export function TransferPanel({
                 <AlertDialogHeader>
                   <AlertDialogTitle>לייבא את העיצובים מהקובץ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    הערכות והגרדיאנטים יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
+                    המראות, הערכות והגרדיאנטים יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
                     הכל נשאר טיוטה עד "שמור ושדר".
                   </AlertDialogDescription>
                 </AlertDialogHeader>

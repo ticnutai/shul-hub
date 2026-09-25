@@ -1,4 +1,13 @@
-import { normalizeGradients, normalizeTvConfig, type TvConfig } from "./config";
+import {
+  MAX_LOOKS,
+  newLookId as defaultLookId,
+  normalizeGradients,
+  normalizeLookBoard,
+  normalizeTvConfig,
+  type LookBoard,
+  type TvConfig,
+  type TvLook,
+} from "./config";
 import { THEME_VARS, TV_GRADIENTS, TV_THEMES, type ThemeVar, type TvGradient, type TvTheme } from "./themes";
 
 /**
@@ -67,6 +76,24 @@ export interface PortableGradient {
   value: string;
 }
 
+/**
+ * A whole look: colours plus the board's style, corners, spacing, font,
+ * background and clock (see TvLook in config.ts).
+ *
+ * `theme` is either the colours themselves, as roles, or the id of a theme
+ * every copy of this board has built in ("navy", "print"...). `board` uses
+ * this board's own vocabulary - skin ids, corner shapes - which is why it is
+ * a sibling of `themes` and not inside a theme: an app that only knows
+ * colours reads `themes`, ignores `looks`, and nothing breaks.
+ * See DESIGN_TOKENS_SPEC section 8.
+ */
+export interface PortableLook {
+  name: string;
+  description?: string;
+  theme: PortableTheme | string;
+  board: LookBoard;
+}
+
 export interface TransferFile {
   format: typeof TRANSFER_FORMAT;
   version: number;
@@ -75,11 +102,14 @@ export interface TransferFile {
   exportedAt: string;
   themes: PortableTheme[];
   gradients: PortableGradient[];
+  looks?: PortableLook[];
 }
 
 export interface ImportResult {
   themes: TvTheme[];
   gradients: TvGradient[];
+  /** Looks, each pointing at a built-in theme or one of `themes` above. */
+  looks: TvLook[];
   /** How many entries were dropped as invalid, so the admin is told. */
   skipped: number;
 }
@@ -92,7 +122,27 @@ export function toPortableTheme(theme: TvTheme): PortableTheme {
   return { name: theme.name, description: theme.description || undefined, mode: theme.light ? "light" : "dark", roles };
 }
 
-export function buildExport(config: TvConfig, pick: { themes?: boolean; gradients?: boolean } = {}): TransferFile {
+/**
+ * A look as it travels. An uploaded background picture stays behind: it
+ * belongs to this synagogue, and another board has no business loading it.
+ * The built-in backdrops ("backdrop:...") travel, since every board has them.
+ */
+export function toPortableLook(look: TvLook, customThemes: readonly TvTheme[]): PortableLook {
+  const custom = customThemes.find((t) => t.id === look.theme);
+  const board = { ...look.board };
+  if (typeof board.backgroundImage === "string" && !board.backgroundImage.startsWith("backdrop:")) delete board.backgroundImage;
+  return {
+    name: look.name,
+    description: look.description || undefined,
+    theme: custom ? toPortableTheme(custom) : look.theme,
+    board,
+  };
+}
+
+export function buildExport(
+  config: TvConfig,
+  pick: { themes?: boolean; gradients?: boolean; looks?: boolean } = {},
+): TransferFile {
   return {
     format: TRANSFER_FORMAT,
     version: TRANSFER_VERSION,
@@ -100,12 +150,16 @@ export function buildExport(config: TvConfig, pick: { themes?: boolean; gradient
     exportedAt: new Date().toISOString(),
     themes: (pick.themes ?? true) ? config.customThemes.map(toPortableTheme) : [],
     gradients: (pick.gradients ?? true) ? config.gradients.map((g) => ({ name: g.name, value: g.value })) : [],
+    looks: (pick.looks ?? true) ? config.customLooks.map((l) => toPortableLook(l, config.customThemes)) : [],
   };
 }
 
-export function exportFileName(what: "themes" | "gradients" | "all"): string {
+export type ExportWhat = "themes" | "gradients" | "looks" | "all";
+
+export function exportFileName(what: ExportWhat): string {
   const day = new Date().toISOString().slice(0, 10);
-  const label = what === "themes" ? "ערכות-נושא" : what === "gradients" ? "גרדיאנטים" : "עיצוב";
+  const label =
+    what === "themes" ? "ערכות-נושא" : what === "gradients" ? "גרדיאנטים" : what === "looks" ? "מראות" : "עיצוב";
   return `לוח-${label}-${day}.json`;
 }
 
@@ -133,7 +187,12 @@ export function fromRoles(roles: Record<string, unknown>): Record<ThemeVar, stri
  * Reads a pasted or uploaded file, in the portable format or in this
  * project's older one. Throws with a Hebrew reason the admin can act on.
  */
-export function parseImport(text: string, newThemeId: () => string, newGradientId: () => string): ImportResult {
+export function parseImport(
+  text: string,
+  newThemeId: () => string,
+  newGradientId: () => string,
+  newLookId: () => string = defaultLookId,
+): ImportResult {
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -149,6 +208,7 @@ export function parseImport(text: string, newThemeId: () => string, newGradientI
 
   const rawThemes = Array.isArray(raw.themes) ? raw.themes : [];
   const rawGradients = Array.isArray(raw.gradients) ? raw.gradients : [];
+  const rawLooks = Array.isArray(raw.looks) ? raw.looks : [];
 
   // Everything rides through the config normaliser, which is the single place
   // that decides what a valid colour, gradient or name is.
@@ -160,8 +220,64 @@ export function parseImport(text: string, newThemeId: () => string, newGradientI
   const themes = normalizeTvConfig({ customThemes: staged }).customThemes;
   const gradients = normalizeGradients(rawGradients.map((g) => (isObj(g) ? { ...g, id: newGradientId() } : g)));
 
-  if (!themes.length && !gradients.length) throw new Error("לא נמצאו ערכות נושא או גרדיאנטים תקינים בקובץ");
-  return { themes, gradients, skipped: rawThemes.length - themes.length + (rawGradients.length - gradients.length) };
+  // Looks. A look that brings its own colours brings them as a theme, which
+  // goes through exactly the same door as the themes above.
+  const builtIn = new Set(TV_THEMES.map((t) => t.id));
+  const looks: TvLook[] = [];
+  const lookThemes: TvTheme[] = [];
+  let badLooks = 0;
+  for (const l of rawLooks) {
+    const name = isObj(l) && typeof l.name === "string" ? l.name.trim().slice(0, 40) : "";
+    if (!isObj(l) || !name) {
+      badLooks++;
+      continue;
+    }
+    let themeId: string | null = null;
+    if (typeof l.theme === "string") {
+      themeId = builtIn.has(l.theme) ? l.theme : null;
+    } else if (isObj(l.theme)) {
+      const t = l.theme;
+      const [made] = normalizeTvConfig({
+        customThemes: [
+          {
+            ...t,
+            id: newThemeId(),
+            name: typeof t.name === "string" && t.name.trim() ? t.name : name,
+            vars: isObj(t.roles) ? fromRoles(t.roles) : t.vars,
+            light: t.mode === "light" || t.light === true,
+          },
+        ],
+      }).customThemes;
+      if (made) {
+        lookThemes.push(made);
+        themeId = made.id;
+      }
+    }
+    if (!themeId) {
+      badLooks++;
+      continue;
+    }
+    // A picture uploaded by another synagogue is not ours to load.
+    const board = isObj(l.board) ? { ...l.board } : {};
+    if (typeof board.backgroundImage === "string" && !board.backgroundImage.startsWith("backdrop:")) delete board.backgroundImage;
+    looks.push({
+      id: newLookId(),
+      name,
+      description: typeof l.description === "string" ? l.description.slice(0, 80) : "",
+      theme: themeId,
+      board: normalizeLookBoard(board),
+    });
+  }
+
+  if (!themes.length && !gradients.length && !looks.length) {
+    throw new Error("לא נמצאו ערכות נושא, גרדיאנטים או מראות תקינים בקובץ");
+  }
+  return {
+    themes: [...themes, ...lookThemes],
+    gradients,
+    looks,
+    skipped: rawThemes.length - themes.length + (rawGradients.length - gradients.length) + badLooks,
+  };
 }
 
 /** Adds imported items to a config, renaming anything whose name is taken. */
@@ -174,9 +290,21 @@ export function mergeImport(config: TvConfig, incoming: ImportResult): TvConfig 
     taken.add(candidate);
     return candidate;
   };
+  const lookNames = new Set(config.customLooks.map((l) => l.name));
+  const customThemes = [
+    ...config.customThemes,
+    ...incoming.themes.map((t) => ({ ...t, name: unique(t.name, themeNames) })),
+  ].slice(0, 24);
+  // A look whose theme did not fit under the 24-theme ceiling is left out,
+  // rather than kept pointing at colours that are not there.
+  const themeIds = new Set([...TV_THEMES, ...customThemes].map((t) => t.id));
   return {
     ...config,
-    customThemes: [...config.customThemes, ...incoming.themes.map((t) => ({ ...t, name: unique(t.name, themeNames) }))].slice(0, 24),
+    customThemes,
     gradients: [...config.gradients, ...incoming.gradients.map((g) => ({ ...g, name: unique(g.name, gradientNames) }))].slice(0, 40),
+    customLooks: [
+      ...config.customLooks,
+      ...(incoming.looks ?? []).filter((l) => themeIds.has(l.theme)).map((l) => ({ ...l, name: unique(l.name, lookNames) })),
+    ].slice(0, MAX_LOOKS),
   };
 }

@@ -228,6 +228,8 @@ export interface DeviceOverlay {
   backgroundDim?: number;
   font?: TvFontId;
   textScale?: number;
+  tracking?: number | null;
+  countdown?: TvConfig["countdown"];
   texts?: Record<string, string>;
   hidden?: string[];
   flipped?: FlipArea[];
@@ -257,6 +259,8 @@ export interface TvConfig {
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
   customThemes: TvTheme[];
+  /** Whole looks the admin saved or imported: a theme plus style, corners, spacing, font… (see TvLook). */
+  customLooks: TvLook[];
   /** Gradients the admin saved, offered anywhere a background is chosen. */
   gradients: TvGradient[];
   /** A gradient behind the whole board; null = the theme's own background. */
@@ -347,6 +351,108 @@ export interface TvConfig {
   _records?: RecordEdit[];
 }
 
+/* ---------------------------------------------------------------- looks -- */
+
+/**
+ * A look: everything that makes the board look the way it does, under one
+ * name. A theme is only the colours; a look is the colours *and* the style
+ * (marble, velvet, Jerusalem stone…), the shape of the corners, the air
+ * around the panels, the font, the background and the clock - what a
+ * designer actually means by "a design".
+ *
+ * A look is a choice among parts the board already has. That is what makes
+ * it safe to import from anyone: it can pick "stone", it cannot bring a new
+ * stone. New materials and shapes are code (docs/NEW_SKIN_SPEC.md).
+ *
+ * `board` holds only what the look sets. Applying it overwrites those keys
+ * and leaves the rest of the board as it is; a look saved from the board
+ * sets all of them, so it comes back exactly.
+ */
+export const LOOK_KEYS = [
+  "skin",
+  "frame",
+  "spacing",
+  "font",
+  "textScale",
+  "tracking",
+  "backgroundGradient",
+  "backgroundImage",
+  "backgroundDim",
+  "clockStyle",
+  "screenLayout",
+] as const;
+export type LookKey = (typeof LOOK_KEYS)[number];
+export type LookBoard = Partial<Pick<TvConfig, LookKey>>;
+
+export interface TvLook {
+  /** "l_<random>" */
+  id: string;
+  name: string;
+  description: string;
+  /** A built-in theme id, or one of `customThemes`. */
+  theme: string;
+  board: LookBoard;
+}
+
+export const CUSTOM_LOOK_ID_RE = /^l_[a-z0-9]{4,24}$/;
+export const MAX_LOOKS = 24;
+
+export function newLookId(): string {
+  return `l_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+/**
+ * The parts of a look, validated by the one normaliser every board goes
+ * through. Only keys the input actually has come back, so a partial look
+ * stays partial instead of quietly resetting the rest to defaults.
+ */
+export function normalizeLookBoard(raw: unknown): LookBoard {
+  if (!isObj(raw)) return {};
+  const present = LOOK_KEYS.filter((k) => raw[k] !== undefined);
+  const full = normalizeTvConfig(Object.fromEntries(present.map((k) => [k, raw[k]])));
+  return Object.fromEntries(present.map((k) => [k, full[k]])) as LookBoard;
+}
+
+function normalizeLooks(raw: unknown, themeIds: string[]): TvLook[] {
+  if (!Array.isArray(raw)) return [];
+  const out: TvLook[] = [];
+  const seen = new Set<string>();
+  for (const l of raw) {
+    if (!isObj(l) || typeof l.id !== "string" || !CUSTOM_LOOK_ID_RE.test(l.id) || seen.has(l.id)) continue;
+    const name = str(l.name, "", 40).trim();
+    if (!name) continue;
+    seen.add(l.id);
+    out.push({
+      id: l.id,
+      name,
+      description: str(l.description, "", 80),
+      // A look outlives the theme it was made with: if that theme is deleted
+      // the look falls back to the default colours rather than disappearing.
+      theme: typeof l.theme === "string" && themeIds.includes(l.theme) ? l.theme : "navy",
+      board: normalizeLookBoard(l.board),
+    });
+    if (out.length >= MAX_LOOKS) break;
+  }
+  return out;
+}
+
+/** The board as it looks now, as a look. */
+export function lookFromConfig(c: TvConfig, name: string, description = ""): TvLook {
+  const board = Object.fromEntries(LOOK_KEYS.map((k) => [k, structuredClone(c[k])])) as LookBoard;
+  return { id: newLookId(), name: name.trim().slice(0, 40) || "מראה", description: description.slice(0, 80), theme: c.theme, board };
+}
+
+/** Puts a look on the board. Colour tweaks on top of the old theme go with it. */
+export function applyLook(c: TvConfig, look: TvLook): TvConfig {
+  const themeExists = TV_THEMES.some((t) => t.id === look.theme) || c.customThemes.some((t) => t.id === look.theme);
+  return {
+    ...c,
+    ...structuredClone(look.board),
+    theme: themeExists ? look.theme : c.theme,
+    themeOverrides: {},
+  };
+}
+
 export const FLIP_AREAS = ["header", "prayer", "learning"] as const;
 export type FlipArea = (typeof FLIP_AREAS)[number];
 
@@ -386,6 +492,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   hidden: [],
   flipped: [],
   customThemes: [],
+  customLooks: [],
   gradients: [],
   backgroundGradient: null,
   styles: {},
@@ -609,6 +716,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
     customThemes,
+    customLooks: normalizeLooks(raw.customLooks, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     gradients: normalizeGradients(raw.gradients),
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
@@ -730,8 +838,8 @@ function overlayFrom(base: TvConfig, after: TvConfig): DeviceOverlay {
 
   for (const key of Object.keys(DEVICE_OVERLAY_KEYS) as (keyof DeviceOverlay)[]) {
     if (key === "texts" || key === "styles" || key === "themeOverrides") continue;
-    const a = (after as Record<string, unknown>)[key];
-    const b = (base as Record<string, unknown>)[key];
+    const a = (after as unknown as Record<string, unknown>)[key];
+    const b = (base as unknown as Record<string, unknown>)[key];
     if (JSON.stringify(a) !== JSON.stringify(b)) set(key, a as never);
   }
 

@@ -57,6 +57,7 @@ import {
   getTheme,
   isLightColor,
   isSafeCssValue,
+  newCustomThemeId,
   newGradientId,
   THEME_VAR_LABELS,
   THEME_VARS,
@@ -143,7 +144,8 @@ import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
-import { buildExport, exportFileName, mergeImport, parseImport } from "@/tv/transfer";
+import { buildExport, exportFileName, mergeImport, parseImport, type ExportWhat } from "@/tv/transfer";
+import { LooksPanel } from "./LooksPanel";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
 import { commitRecordEdits } from "./tvRecords";
@@ -850,13 +852,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     }));
   /* --------------------------------------------- import and export -- */
 
-  const doExport = (what: "themes" | "gradients" | "all", how: "file" | "clipboard") => {
+  const doExport = (what: ExportWhat, how: "file" | "clipboard") => {
     const payload = buildExport(draft, {
-      themes: what !== "gradients",
-      gradients: what !== "themes",
+      themes: what === "all" || what === "themes",
+      gradients: what === "all" || what === "gradients",
+      looks: what === "all" || what === "looks",
     });
-    const count = payload.themes.length + payload.gradients.length;
-    if (!count) return toast.error("אין עדיין ערכות נושא או גרדיאנטים משלכם לייצוא");
+    const count = payload.themes.length + payload.gradients.length + (payload.looks?.length ?? 0);
+    if (!count) {
+      return toast.error(
+        what === "looks" ? "אין עדיין מראות שמורים לייצוא" : "אין עדיין ערכות נושא, גרדיאנטים או מראות משלכם לייצוא",
+      );
+    }
     const text = JSON.stringify(payload, null, 2);
     if (how === "clipboard") {
       void navigator.clipboard
@@ -880,6 +887,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       const incoming = parseImport(text, newCustomThemeId, newGradientId);
       edit("import", (c) => mergeImport(c, incoming));
       const parts = [
+        incoming.looks.length ? `${incoming.looks.length} מראות` : "",
         incoming.themes.length ? `${incoming.themes.length} ערכות נושא` : "",
         incoming.gradients.length ? `${incoming.gradients.length} גרדיאנטים` : "",
       ].filter(Boolean);
@@ -1059,6 +1067,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
+          <Section
+            title="מראות שמורים"
+            hint="מראה הוא עיצוב שלם: ערכת צבעים יחד עם סגנון, פינות, מרווחים, גופן, רקע ושעון. שומרים את הלוח כפי שהוא עכשיו, מייצאים, ומי שמייבא מקבל את אותו לוח בלחיצה."
+          >
+            <LooksPanel config={view} onEdit={edit} />
+          </Section>
+
           <Section
             title="ערכת נושא"
             hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה."
@@ -1981,7 +1996,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         >
           <Section
             title="ייבוא וייצוא"
-            hint="גיבוי של ערכות הנושא והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
+            hint="גיבוי של המראות, ערכות הנושא והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
           >
             <TransferPanel onExport={doExport} onImport={doImport} />
           </Section>
