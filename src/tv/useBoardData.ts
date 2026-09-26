@@ -15,7 +15,7 @@ import {
   type Shiur,
 } from "@community/lib/data";
 import { useMemo } from "react";
-import { dayTypeFor, jerusalemWeekday, overridesFor, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
+import { dayTypeFor, jerusalemDateKey, jerusalemWeekday, overridesFor, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { todaysCategories } from "@community/lib/specialDays";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
@@ -101,15 +101,6 @@ export type BoardSlide =
   | (SlideBase & { kind: "shabbat"; times: ShabbatTimes; scenes: string[]; secondsPerScene: number });
 
 const ANNOUNCEMENTS_PER_PAGE = 4;
-
-function jerusalemDateKey(date: Date): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Jerusalem",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
 
 /**
  * The prayer schedules to show today, mirroring the website's category rules:
@@ -200,7 +191,10 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
       slides.push({ ...base, id: "learning", kind: "learning" });
     } else if (sc.kind === "announcements") {
       const items = (data.announcements ?? []).filter(
-        (a) => !hidden.has(`ann:${a.id}`) && (!a.expires_at || new Date(a.expires_at).getTime() > nowMs),
+        // "בתוקף עד" a date means through that whole day, in Israel. Read as a
+        // moment it was UTC midnight, and the notice left the wall at 03:00 of
+        // its last day.
+        (a) => !hidden.has(`ann:${a.id}`) && (!a.expires_at || a.expires_at.slice(0, 10) >= jerusalemDateKey(new Date(nowMs))),
       );
       if (sc.layout === "spotlight") {
         items.forEach((a, i) =>
