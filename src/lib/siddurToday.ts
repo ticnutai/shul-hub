@@ -84,7 +84,7 @@ export function siddurToday(p: DayProfile, nusach: Nusach): TodayItem[] {
         id: "vihinoam",
         label: "ויהי נועם",
         say: !festivalThisWeek,
-        note: festivalThisWeek ? "לא אומרים: חל יום טוב השבוע" : "במוצאי שבת",
+        note: festivalThisWeek ? "לא אומרים: חג או חול המועד השבוע" : "במוצאי שבת",
         match: /ויהי נועם/,
       });
     }

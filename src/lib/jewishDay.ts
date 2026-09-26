@@ -107,7 +107,7 @@ export interface DayProfile {
   shushanPurim: boolean;
   /** 14-15 Adar I in a leap year */
   purimKatan: boolean;
-  /** "צום גדליה", "תשעה באב"... or null (Yom Kippur is not listed here) */
+  /** A public fast: "צום גדליה", "תשעה באב"... or null (not Yom Kippur, not Ta'anit Bechorot) */
   fast: string | null;
   tishaBav: boolean;
   roshHashana: boolean;
@@ -203,7 +203,10 @@ function buildProfile(hd: HDate, il: boolean, evening: boolean): DayProfile {
   const candles = Number(/(\d+) Candles?/.exec(chanukah)?.[1] ?? 0);
   const chanukahDay = /8th Day/.test(chanukah) ? 8 : candles > 1 ? candles - 1 : 0;
 
-  const fastEvent = religious.find((e) => e.getFlags() & (flags.MINOR_FAST | flags.MAJOR_FAST) && !/Yom Kippur/.test(e.getDesc()));
+  // A public fast. Ta'anit Bechorot is the firstborns' alone (no Aneinu, Avinu Malkeinu or Selichot for the congregation).
+  const fastEvent = religious.find(
+    (e) => e.getFlags() & (flags.MINOR_FAST | flags.MAJOR_FAST) && !/Yom Kippur|Ta'anit Bechorot/.test(e.getDesc()),
+  );
 
   // The Omer: from 16 Nisan, 49 days.
   const omer = hd.abs() - new HDate(16, months.NISAN, hd.getFullYear()).abs() + 1;

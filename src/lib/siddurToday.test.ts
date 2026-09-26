@@ -218,3 +218,13 @@ describe("Motzaei Shabbat in Chol HaMoed", () => {
     expect(siddurToday(p, "ashkenaz").find((i) => i.id === "vihinoam")?.say).toBe(false);
   });
 });
+
+describe("Ta'anit Bechorot", () => {
+  it("is the firstborns' fast, not the congregation's", () => {
+    const { p, get } = at("2027-04-21"); // ערב פסח
+    expect(p.fast).toBeNull();
+    expect(get("aneinu")).toBeUndefined();
+    expect(get("avinu")).toBeUndefined();
+    expect(get("selichot")).toBeUndefined();
+  });
+});
