@@ -22,6 +22,8 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // The board updates itself from the website (ApkUpdater, src/tv/apkUpdate.ts).
+        registerPlugin(ApkUpdater.class);
         super.onCreate(savedInstanceState);
 
         // A fresh screen every night (see NightlyRestart).

@@ -4905,3 +4905,20 @@
 .tv-event-dots span.is-active {
   background: #f6d77a;
 }
+
+/* A newer board app is downloading / waiting for OK on the remote (apkUpdate.ts). */
+.tv-update-line {
+  position: absolute;
+  z-index: 31;
+  left: calc(var(--u) * 2);
+  bottom: calc(var(--u) * 2);
+  max-width: 60%;
+  padding: calc(var(--u) * 0.6) calc(var(--u) * 1.6);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tv-bg-a) 90%, transparent);
+  border: 1px solid var(--tv-accent);
+  color: var(--tv-text, #fff);
+  font-size: calc(var(--fs) * 1.6);
+  font-weight: 700;
+  box-shadow: var(--tv-shadow);
+}

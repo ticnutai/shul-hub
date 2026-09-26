@@ -4,6 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
 import { EventSplash } from "./EventSplash";
+import { updateText, useApkUpdate } from "./apkUpdate";
 import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
@@ -368,6 +369,12 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     l.reportNow();
   };
 
+  // ------------------------------------------------------ app updates --
+  // A newer board app on the website downloads by itself; OK on the remote installs it.
+  const update = useApkUpdate((msg) => link.current?.log("info", "update", msg));
+  const updateRef = useRef(update);
+  updateRef.current = update;
+
   // ---------------------------------------------------------------- keys --
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -377,6 +384,13 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       if ((e.key === "Enter" || e.key === " ") && e.target instanceof Element && e.target.closest("button, a, input, textarea, select"))
         return;
       const { slides: s, index: i, paused: p } = live.current;
+      // An update is waiting: OK installs it instead of pausing the board.
+      const u = updateRef.current;
+      if ((e.key === "Enter" || e.key === " ") && (u.state.phase === "ready" || u.state.phase === "permission")) {
+        e.preventDefault();
+        void u.install();
+        return;
+      }
       switch (e.key) {
         case "ArrowLeft":
           go(1);
@@ -481,6 +495,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         <>
           <EventSplash categories={data.categories} config={config} now={now} zmanim={zmanim} zmanimOn={zmanimOn} />
           {toast && <div className="tv-toast">{toast}</div>}
+          {updateText(update.state) && <div className="tv-update-line">{updateText(update.state)}</div>}
 
           {device && !device.approved && device.pairingCode && (
             <div className="tv-pairing">
