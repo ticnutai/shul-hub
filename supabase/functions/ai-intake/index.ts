@@ -11,7 +11,7 @@
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const MODEL = "claude-opus-5";
+const MODEL = "claude-opus-5-5";
 const MAX_IMAGES = 6;
 const MAX_IMAGE_CHARS = 7_000_000; // base64 of about 5 MB
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"] as const;
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
   if (cats.error || mins.error) return json({ error: "טעינת הנתונים הקיימים נכשלה" }, 500);
 
   const context = JSON.stringify({ categories: cats.data, minyanim: mins.data });
-  const content: Anthropic.Beta.BetaContentBlockParam[] = [
+  const content: Anthropic.ContentBlockParam[] = [
     ...images.map((i) => ({
       type: "image" as const,
       source: { type: "base64" as const, media_type: i.media_type, data: i.data },
@@ -182,15 +182,14 @@ Deno.serve(async (req) => {
 
   const client = new Anthropic({ apiKey });
   try {
-    const response = await client.beta.messages.create({
+    // Structured output: the answer is JSON in the schema above, nothing to parse around.
+    const response = await client.messages.create({
       model: MODEL,
       max_tokens: 16000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
       system: SYSTEM,
       output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content }],
-    } as unknown as Anthropic.Beta.MessageCreateParamsNonStreaming);
+    } as unknown as Anthropic.MessageCreateParamsNonStreaming);
 
     if (response.stop_reason === "refusal") return json({ error: "הבקשה נדחתה. נסו לנסח אחרת." }, 422);
     if (response.stop_reason === "max_tokens") return json({ error: "יותר מדי חומר בבת אחת. נסו לחלק." }, 422);
