@@ -27,7 +27,7 @@ import {
   prayerLabel,
   useMinyanOverrides,
 } from "@community/lib/data";
-import { overridesFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { heldOn, overridesFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { specialDayTitle, specialZmanim, holyEndMinutesFor, todaysCategories } from "@community/lib/specialDays";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
@@ -180,6 +180,7 @@ export function CommunityHome() {
         .filter(
           (minyan) =>
             minyan.active &&
+            heldOn(minyan, today) &&
             (minyan.category_id === selectedCategory?.id ||
               (!minyan.category_id && minyan.day_type === selectedCategory?.system_key)),
         )
@@ -188,7 +189,7 @@ export function CommunityHome() {
         .map((minyan) => resolveMinyan(minyan, zmanim, todayOverrides.get(minyan.id)))
         .filter((row): row is NonNullable<typeof row> => row !== null)
         .sort((a, b) => a.minutes - b.minutes),
-    [minyanim, selectedCategory, zmanim, todayOverrides],
+    [minyanim, selectedCategory, zmanim, todayOverrides, today],
   );
   const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
   const hasSubcategories = prayerTabs.length > 0;

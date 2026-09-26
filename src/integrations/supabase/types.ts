@@ -503,6 +503,8 @@ export type Database = {
       minyanim: {
         Row: {
           active: boolean
+          active_from: string | null
+          active_until: string | null
           category_id: string | null
           community_id: string
           created_at: string
@@ -523,6 +525,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          active_from?: string | null
+          active_until?: string | null
           category_id?: string | null
           community_id?: string
           created_at?: string
@@ -543,6 +547,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          active_from?: string | null
+          active_until?: string | null
           category_id?: string | null
           community_id?: string
           created_at?: string

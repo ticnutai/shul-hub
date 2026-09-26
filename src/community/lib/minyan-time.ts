@@ -84,6 +84,12 @@ export function jerusalemDateKey(date: Date): string {
   }).format(date);
 }
 
+/** Held on this day (Israel): inside the minyan's season, when it has one (בין הזמנים...). */
+export function heldOn(m: { active_from?: string | null; active_until?: string | null }, date: Date): boolean {
+  const key = jerusalemDateKey(date);
+  return (!m.active_from || m.active_from <= key) && (!m.active_until || m.active_until >= key);
+}
+
 function minutesFromHHMM(t: string): number {
   const [h, m] = t.split(":");
   return Number(h) * 60 + Number(m);
@@ -172,9 +178,10 @@ export function resolveDay(
   dayType: DayType,
   zmanim: Zmanim,
   overrides?: Map<string, MinyanOverride>,
+  date: Date = new Date(),
 ): ResolvedMinyan[] {
   return minyanim
-    .filter((m) => m.active && m.day_type === dayType)
+    .filter((m) => m.active && m.day_type === dayType && heldOn(m, date))
     .map((m) => resolveMinyan(m, zmanim, overrides?.get(m.id)))
     .filter((r): r is ResolvedMinyan => r !== null)
     .sort((a, b) => a.minutes - b.minutes);

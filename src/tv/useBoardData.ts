@@ -15,7 +15,7 @@ import {
   type Shiur,
 } from "@community/lib/data";
 import { useMemo } from "react";
-import { dayTypeFor, jerusalemDateKey, jerusalemWeekday, overridesFor, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
+import { dayTypeFor, heldOn, jerusalemDateKey, jerusalemWeekday, overridesFor, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { todaysCategories } from "@community/lib/specialDays";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
@@ -118,7 +118,7 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
   const today = overridesFor(data.overrides, now);
 
   if (!data.categories || data.categories.length === 0) {
-    return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim, today), subcategories: [] as MinyanSubcategory[] }];
+    return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim, today, now), subcategories: [] as MinyanSubcategory[] }];
   }
 
   // Today's tabs: a special day's own timetable (יום כיפור, צום גדליה) in place
@@ -139,7 +139,7 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
       title: c.name,
       subcategories: minyanSubcategories(c),
       rows: minyanim
-        .filter((m) => m.active && (m.category_id === c.id || (!m.category_id && m.day_type === c.system_key)))
+        .filter((m) => m.active && heldOn(m, now) && (m.category_id === c.id || (!m.category_id && m.day_type === c.system_key)))
         .map((m) => resolveMinyan(m, zmanim, today.get(m.id)))
         .filter((r): r is ResolvedMinyan => r !== null)
         .sort((a, b) => a.minutes - b.minutes),
