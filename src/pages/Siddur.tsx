@@ -14,7 +14,7 @@ import type { FlatPasuk } from "@/types/torah";
 import { TEHILLIM_COMMENTATORS } from "@/hooks/useCommentaries";
 import { ColorPicker } from "@/components/ColorPicker";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, ThemeAppearanceControls, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
-import { ArrowLeft, Search, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
+import { ArrowLeft, Search, CalendarDays, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -31,6 +31,9 @@ import { toast } from "sonner";
 import { normalizeHebrewText } from "@/utils/textUtils";
 import { useSiddurCategories, useSiddurSections, useTehillimData, preloadSiddurNusach } from "@/hooks/useSiddurData";
 import { SiddurSearchDialog, type SiddurSearchHit } from "@/components/siddur/SiddurSearchDialog";
+import { TodayBadge, TodayPanel, TodaySectionsContext, prayerNow } from "@/components/siddur/TodayPanel";
+import { dayProfile } from "@/lib/jewishDay";
+import { zmanimFor } from "@community/lib/minyan-time";
 import { getWeekdayLeyning, getCalendarPreference, type WeekdayLeyning } from "@/utils/parshaUtils";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
 
@@ -681,6 +684,7 @@ const OrnamentTitle = ({ text, fontSize, withTools = false }: { text: string; fo
  */
 /** Where a section sits in the page, whatever mode is drawing it. */
 const sectionAnchor = (i: number) => `siddur-sec-${i}`;
+const EMPTY_MARKS = new Map<string, boolean>();
 
 /**
  * How much of the top of the screen something else is already covering.
@@ -1721,6 +1725,7 @@ const SectionCard = ({
             }}
           >
             {section.title}
+            <TodayBadge title={section.title} />
           </span>
         </div>
         <span className="ml-2" style={{ color: theme.textColor, opacity: 0.5 }}>
@@ -1798,6 +1803,7 @@ const ContinuousReader = ({ sections }: { sections: SiddurSection[] }) => {
           >
             <span className="inline-block w-1.5 h-4 rounded-full flex-shrink-0" style={{ background: theme.accentColor, opacity: 0.7 }} />
             {sec.title}
+            <TodayBadge title={sec.title} />
           </h3>
           <Divider />
           <div
@@ -1930,6 +1936,7 @@ const CategorySectionsBlock = ({ nusach, cat, first = false }: { nusach: string;
             >
               <span className="inline-block w-1.5 h-4 rounded-full flex-shrink-0" style={{ background: theme.accentColor, opacity: 0.7 }} />
               {sec.title}
+              <TodayBadge title={sec.title} />
             </h3>
             <div
               data-siddur-card
@@ -3209,6 +3216,30 @@ export const Siddur = () => {
   // the prayer being left can't take the jump).
   const [searchOpen, setSearchOpen] = useState(false);
   const pendingJump = useRef<SiddurSearchHit | null>(null);
+
+  // "לפי לוח שנה": the siddur follows the Hebrew calendar - what is said today
+  // at the top, a mark on each section, and it opens on the prayer of the hour.
+  const [calendarMode, setCalendarMode] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("siddur-calendar-mode") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [todayMarks, setTodayMarks] = useState<Map<string, boolean>>(() => new Map());
+  const openedForToday = useRef(false);
+  const toggleCalendarMode = () => {
+    setCalendarMode((on) => {
+      try {
+        localStorage.setItem("siddur-calendar-mode", on ? "0" : "1");
+      } catch {
+        /* not remembered */
+      }
+      if (on) setTodayMarks(new Map());
+      openedForToday.current = false;
+      return !on;
+    });
+  };
   const openSearchHit = useCallback((hit: SiddurSearchHit) => {
     if (hit.catId === catId) {
       jump.jump(hit.index);
@@ -3237,6 +3268,14 @@ export const Siddur = () => {
     activeWidth === "wide"   ? "max-w-6xl" :
     activeWidth === "full"   ? "max-w-full" :
     "max-w-4xl";
+
+  useEffect(() => {
+    if (!calendarMode || openedForToday.current || !categories.length) return;
+    openedForToday.current = true;
+    const now = new Date();
+    const id = prayerNow(now, dayProfile(now, zmanimFor(now, null).tzeit), categories.map((c) => c.id));
+    if (id) setCatId(id);
+  }, [calendarMode, categories]);
 
   // If active category disappeared in new nusach, fall back to first
   useEffect(() => {
@@ -3321,6 +3360,19 @@ export const Siddur = () => {
                 </DropdownMenu>
               )}
 
+              {!isSpecial && (
+                <button
+                  onClick={toggleCalendarMode}
+                  className="flex h-8 items-center gap-1 rounded-lg px-2 text-xs font-medium transition-opacity hover:opacity-80"
+                  style={calendarMode ? { color: "hsl(var(--sidebar-background))", background: hAccent } : { color: hAccent }}
+                  aria-pressed={calendarMode}
+                  title={calendarMode ? "לפי לוח שנה: פעיל. לחיצה מכבה" : "לפי לוח שנה: הסידור מראה מה אומרים היום"}
+                  data-testid="siddur-calendar-mode"
+                >
+                  <CalendarDays className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span className="hidden sm:inline">לפי לוח</span>
+                </button>
+              )}
               {omerInSeason && (
                 <button
                   onClick={() => navigate('/omer')}
@@ -3378,6 +3430,7 @@ export const Siddur = () => {
     <SiddurDisplayStyleContext.Provider value={{ displayStyle, setDisplayStyle }}>
     <SiddurToolsContext.Provider value={titleTools}>
     <SiddurJumpContext.Provider value={jump}>
+    <TodaySectionsContext.Provider value={calendarMode ? todayMarks : EMPTY_MARKS}>
     <div
       data-siddur-theme={activeTheme.id}
       data-siddur-view-mode={viewMode}
@@ -3691,6 +3744,16 @@ export const Siddur = () => {
           />
         )}
 
+        {calendarMode && !isSpecial && categories.length > 0 && (
+          <TodayPanel
+            nusach={nusach}
+            categories={categories}
+            accent={activeTheme.accentColor}
+            onOpen={openSearchHit}
+            onMarks={setTodayMarks}
+          />
+        )}
+
         {/* Regular siddur prayer content */}
         {!isSpecial && (viewMode === "accordion" || viewMode === "continuous") && (
           <CategoryPane nusach={nusach} catId={catId} viewMode={viewMode} />
@@ -3706,6 +3769,7 @@ export const Siddur = () => {
         )}
       </main>
     </div>
+    </TodaySectionsContext.Provider>
     </SiddurJumpContext.Provider>
     </SiddurToolsContext.Provider>
     </SiddurDisplayStyleContext.Provider>
