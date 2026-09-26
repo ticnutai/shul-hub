@@ -81,7 +81,7 @@ describe("what the siddur says today", () => {
   it("Rosh Chodesh: half Hallel and its own Musaf", () => {
     const { get } = at("2026-10-12");
     expect(get("hallel")?.label).toBe("חצי הלל");
-    expect(get("musaf")?.match?.test("מוסף לראש חודש")).toBe(true);
+    expect([get("musaf")?.match].flat()[0]?.test("מוסף לראש חודש")).toBe(true);
   });
 
   it("an ordinary weekday: Tachanun is said, nothing festive", () => {

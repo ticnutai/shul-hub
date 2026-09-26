@@ -2,7 +2,8 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronDown, ChevronUp } from "lucide-react";
 import { loadSiddurCategory } from "@/hooks/useSiddurData";
 import { zmanimFor } from "@community/lib/minyan-time";
-import { dayProfile, type DayProfile } from "@/lib/jewishDay";
+import type { DayProfile } from "@/lib/jewishDay";
+import { useServiceSections } from "@/hooks/useServiceSections";
 import { siddurToday, type Nusach, type TodayItem } from "@/lib/siddurToday";
 import type { SiddurSearchHit } from "@/utils/siddurSearch";
 
@@ -62,7 +63,8 @@ export function TodayPanel({
   accent,
   onOpen,
   onMarks,
-  now = new Date(),
+  current,
+  profile,
 }: {
   nusach: string;
   categories: { id: string; name: string }[];
@@ -70,14 +72,14 @@ export function TodayPanel({
   onOpen: (hit: SiddurSearchHit) => void;
   /** Tells the page which sections to mark. */
   onMarks: (marks: Map<string, boolean>) => void;
-  now?: Date;
+  /** The open prayer as shown (composed for the day): found there first, so a tap stays in it. */
+  current?: { catId: string; sections: { title: string }[] };
+  /** The day (the page's, so the list and the prayer agree). */
+  profile: DayProfile;
 }) {
-  const dayKey = now.toDateString() + (now.getHours() >= 12 ? "pm" : "am");
-  const { profile, items } = useMemo(() => {
-    const p = dayProfile(now, zmanimFor(now, null).tzeit);
-    return { profile: p, items: siddurToday(p, nusach as Nusach) };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nusach, dayKey]);
+  const items = useMemo(() => siddurToday(profile, nusach as Nusach), [profile, nusach]);
+  // Shacharit as said today: what the day adds (הלל, הושענות, מוסף...) is found there, in its place.
+  const { sections: shacharit } = useServiceSections(nusach, "shacharit", profile);
 
   const [resolved, setResolved] = useState<Resolved[]>(() => items.map((item) => ({ item })));
   const [open, setOpen] = useState(() => {
@@ -91,17 +93,29 @@ export function TodayPanel({
   // Find each prayer in the open nusach: the first section whose title matches.
   useEffect(() => {
     let alive = true;
-    void Promise.all(categories.map(async (c) => ({ c, cat: await loadSiddurCategory(nusach, c.id) }))).then((all) => {
+    void Promise.all(categories.map(async (c) => ({ c, cat: await loadSiddurCategory(nusach, c.id) }))).then((loaded) => {
       if (!alive) return;
+      // The open prayer as it is shown comes first, then today's Shacharit, then the rest.
+      const shown = (id: string, sections: { title: string }[] | null | undefined) => {
+        const c = categories.find((x) => x.id === id);
+        return c && sections ? [{ c, cat: { name: c.name, sections } }] : [];
+      };
+      const first = [...(current ? shown(current.catId, current.sections) : []), ...shown("shacharit", shacharit)];
+      const seen = new Set<string>();
+      const all = [...first, ...loaded].filter((x) => !seen.has(x.c.id) && seen.add(x.c.id));
       const marks = new Map<string, boolean>();
       const out = items.map((item) => {
-        if (!item.match) return { item };
-        for (const { c, cat } of all) {
-          const index = cat?.sections.findIndex((s) => item.match!.test(s.title)) ?? -1;
-          if (cat && index >= 0) {
-            const title = cat.sections[index].title;
-            marks.set(title, item.say);
-            return { item, hit: { catId: c.id, catName: c.name, index, title } };
+        // What is not said today is not in today's prayer: nothing to open.
+        if (!item.match || !item.say) return { item };
+        // A list of patterns is in order of preference: the first that is found anywhere wins.
+        for (const re of [item.match].flat()) {
+          for (const { c, cat } of all) {
+            const index = cat?.sections.findIndex((s) => re.test(s.title.trim())) ?? -1;
+            if (cat && index >= 0) {
+              const title = cat.sections[index].title;
+              marks.set(title, item.say);
+              return { item, hit: { catId: c.id, catName: c.name, index, title } };
+            }
           }
         }
         return { item };
@@ -113,7 +127,7 @@ export function TodayPanel({
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, nusach, categories]);
+  }, [items, nusach, categories, current?.catId, current?.sections, shacharit]);
 
   const toggle = () => {
     setOpen((v) => {

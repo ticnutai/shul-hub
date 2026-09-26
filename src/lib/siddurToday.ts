@@ -34,8 +34,8 @@ export interface TodayItem {
   /** Said today (true), or left out today (false) - both worth telling. */
   say: boolean;
   note?: string;
-  /** A separate prayer in the siddur, found by its section title. */
-  match?: RegExp;
+  /** A separate prayer in the siddur, found by its section title (a list: in order of preference). */
+  match?: RegExp | RegExp[];
   /** An addition inside the Amidah (no section of its own). */
   amidah?: boolean;
   /** An addition in Birkat HaMazon or Me'ein Shalosh. */
@@ -207,11 +207,11 @@ export function siddurToday(p: DayProfile, nusach: Nusach): TodayItem[] {
 
   // ---- Musaf
   if (musafDay) {
-    const match = p.roshChodesh && !p.shabbat && !p.yomTov
-      ? /מוסף לראש חודש|^מוסף/
+    const match = p.roshChodesh && !p.shabbat && !p.yomTov && !p.cholHamoed
+      ? [/^מוסף לראש חודש/, /^מוסף/]
       : p.yomTov || p.cholHamoed
-        ? /מוסף לג' רגלים|^מוסף/
-        : /^מוסף/;
+        ? [/^מוסף לג' רגלים|^מוסף לשלוש רגלים/, /^מוסף/]
+        : [/^מוסף/];
     add({
       id: "musaf",
       label: "מוסף",
@@ -236,7 +236,7 @@ export function siddurToday(p: DayProfile, nusach: Nusach): TodayItem[] {
       if (ashkenaz) add({ id: "hoshanot", label: "הושענות", say: false, note: "בשבת לא אומרים" });
       else add({ id: "hoshanot", label: "הושענות לשבת", say: true, note: "בלי הקפה, לפי המנהג", match: /הושענות לשבת/ });
     } else {
-      add({ id: "hoshanot", label: "הושענות", say: true, match: /סדר הושענות|^הושענות$/ });
+      add({ id: "hoshanot", label: "הושענות", say: true, match: /^הושענות: |סדר הושענות|^הושענות$/ });
     }
   }
 
@@ -337,7 +337,7 @@ export function siddurToday(p: DayProfile, nusach: Nusach): TodayItem[] {
       note: [torah.reading, torah.maftir && `מפטיר: ${torah.maftir}`, torah.haftarah && `הפטרה: ${torah.haftarah}`]
         .filter(Boolean)
         .join(" · "),
-      match: /קריאת התורה/,
+      match: [/^קריאת התורה: /, /^קריאת התורה/],
     });
   }
   return out;

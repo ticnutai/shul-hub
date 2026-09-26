@@ -30,6 +30,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { normalizeHebrewText } from "@/utils/textUtils";
 import { useSiddurCategories, useSiddurSections, useTehillimData, preloadSiddurNusach } from "@/hooks/useSiddurData";
+import { useServiceSections } from "@/hooks/useServiceSections";
+import type { DayProfile } from "@/lib/jewishDay";
 import { SiddurSearchDialog, type SiddurSearchHit } from "@/components/siddur/SiddurSearchDialog";
 import { TodayBadge, TodayPanel, TodaySectionsContext, prayerNow } from "@/components/siddur/TodayPanel";
 import { dayProfile } from "@/lib/jewishDay";
@@ -1834,12 +1836,15 @@ const CategoryPane = ({
   nusach,
   catId,
   viewMode,
+  today,
 }: {
   nusach: string;
   catId: string;
   viewMode: "accordion" | "continuous";
+  /** "לפי לוח שנה": the prayer as said today. Null shows it as printed. */
+  today: DayProfile | null;
 }) => {
-  const { sections, catName, loading, error } = useSiddurSections(nusach, catId);
+  const { sections, catName, loading, error } = useServiceSections(nusach, catId, today);
   const { settings: siddurSettings } = useFontAndColorSettings();
   const { theme } = useSiddurTheme();
 
@@ -3207,8 +3212,6 @@ export const Siddur = () => {
     }),
     [jumpIndex, jumpNonce],
   );
-  // The same cached fetch the pane makes; asking twice costs nothing.
-  const { sections: stripSections } = useSiddurSections(nusach, isSpecial ? "" : catId);
   useEffect(() => { setJumpIndex(null); }, [catId, nusach]);
 
   // Search can land in another prayer. Switch to it, and jump once its
@@ -3240,6 +3243,23 @@ export const Siddur = () => {
       return !on;
     });
   };
+  // The day the prayer is said on: tomorrow's from nightfall. Looked at again
+  // every few minutes, so a siddur left open moves on at nightfall by itself.
+  const [dayTick, setDayTick] = useState(0);
+  useEffect(() => {
+    if (!calendarMode) return;
+    const t = window.setInterval(() => setDayTick((n) => n + 1), 5 * 60_000);
+    return () => window.clearInterval(t);
+  }, [calendarMode]);
+  const todayProfile = useMemo(() => {
+    if (!calendarMode) return null;
+    const now = new Date();
+    return dayProfile(now, zmanimFor(now, null).tzeit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendarMode, dayTick]);
+  // The same cached fetch the pane makes; asking twice costs nothing.
+  const { sections: stripSections } = useServiceSections(nusach, isSpecial ? "" : catId, todayProfile);
+
   const openSearchHit = useCallback((hit: SiddurSearchHit) => {
     if (hit.catId === catId) {
       jump.jump(hit.index);
@@ -3273,7 +3293,7 @@ export const Siddur = () => {
     if (!calendarMode || openedForToday.current || !categories.length) return;
     openedForToday.current = true;
     const now = new Date();
-    const id = prayerNow(now, dayProfile(now, zmanimFor(now, null).tzeit), categories.map((c) => c.id));
+    const id = prayerNow(now, todayProfile ?? dayProfile(now, zmanimFor(now, null).tzeit), categories.map((c) => c.id));
     if (id) setCatId(id);
   }, [calendarMode, categories]);
 
@@ -3744,19 +3764,21 @@ export const Siddur = () => {
           />
         )}
 
-        {calendarMode && !isSpecial && categories.length > 0 && (
+        {todayProfile && !isSpecial && categories.length > 0 && (
           <TodayPanel
             nusach={nusach}
             categories={categories}
             accent={activeTheme.accentColor}
             onOpen={openSearchHit}
             onMarks={setTodayMarks}
+            current={stripSections ? { catId, sections: stripSections } : undefined}
+            profile={todayProfile!}
           />
         )}
 
         {/* Regular siddur prayer content */}
         {!isSpecial && (viewMode === "accordion" || viewMode === "continuous") && (
-          <CategoryPane nusach={nusach} catId={catId} viewMode={viewMode} />
+          <CategoryPane nusach={nusach} catId={catId} viewMode={viewMode} today={todayProfile} />
         )}
         {!isSpecial && viewMode === "scroll" && (
           <FullContinuousPane nusach={nusach} />
