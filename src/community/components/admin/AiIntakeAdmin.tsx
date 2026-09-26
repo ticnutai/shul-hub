@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, Check, Loader2, Mic, MicOff, Sparkles, Trash2, X } from "lucide-react";
+import { Camera, Check, KeyRound, Loader2, Mic, MicOff, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@community/integrations/supabase/client";
@@ -10,13 +10,15 @@ import { ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { jerusalemDateKey } from "@community/lib/minyan-time";
 import { presetAnnouncementStyle } from "@community/lib/announcement-style";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
+import { analyzeDirect, getPersonalKey, looksLikeApiKey, maskKey, setPersonalKey } from "@community/lib/aiIntakeDirect";
 
 /**
  * "עוזר חכם": a photo, a dictated sentence or a pasted message becomes
  * proposed changes - minyanim, one-day changes, announcements, shiurim.
  *
- * The analysis runs in the ai-intake edge function (the API key never reaches
- * the browser). It only proposes: every item shows here, can be corrected or
+ * The analysis runs in the ai-intake edge function (the shul's key, kept on
+ * the server), or - when the admin entered a Claude API key of their own -
+ * straight from this browser with that key (aiIntakeDirect.ts). It only proposes: every item shows here, can be corrected or
  * unticked, and only "אישור והכנסה" writes - with this admin's own session.
  */
 
@@ -120,6 +122,9 @@ export function AiIntakeAdmin() {
   const [overrides, setOverrides] = useState<Picked<OverrideProposal>[]>([]);
   const [anns, setAnns] = useState<Picked<AnnouncementProposal>[]>([]);
   const [shiurim, setShiurim] = useState<Picked<ShiurProposal>[]>([]);
+  const [personalKey, setKeyState] = useState<string | null>(() => getPersonalKey());
+  const [keyDraft, setKeyDraft] = useState("");
+  const [keyOpen, setKeyOpen] = useState(false);
   const recRef = useRef<Recognition | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -180,21 +185,30 @@ export function AiIntakeAdmin() {
     setSummary(null);
     try {
       const now = new Date();
-      const { data, error } = await supabase.functions.invoke("ai-intake", {
-        body: {
-          communityId: communityId(),
-          text,
-          images: images.map(({ media_type, data }) => ({ media_type, data })),
-          today: jerusalemDateKey(now),
-          weekday: new Intl.DateTimeFormat("he-IL", { weekday: "long", timeZone: "Asia/Jerusalem" }).format(now),
-        },
-      });
-      if (error) {
-        const ctx = (error as { context?: Response }).context;
-        const detail = ctx ? await ctx.json().catch(() => null) : null;
-        throw new Error(detail?.error ?? "העוזר עוד לא הופעל בשרת, או שאינו זמין כרגע.");
+      const today = jerusalemDateKey(now);
+      const weekday = new Intl.DateTimeFormat("he-IL", { weekday: "long", timeZone: "Asia/Jerusalem" }).format(now);
+      const imgs = images.map(({ media_type, data }) => ({ media_type, data }));
+      let p: Proposal;
+      if (personalKey) {
+        // The same data the edge function reads for context, from what this page already loaded.
+        const context = {
+          categories: categories.map(({ id, name, system_key, subcategories, active }) => ({ id, name, system_key, subcategories, active })),
+          minyanim: minyanim.map(({ id, category_id, day_type, prayer, label, time_mode, fixed_time, relative_to, offset_minutes, active }) => ({
+            id, category_id, day_type, prayer, label, time_mode, fixed_time, relative_to, offset_minutes, active,
+          })),
+        };
+        p = (await analyzeDirect({ apiKey: personalKey, text, images: imgs, today, weekday, context })) as Proposal;
+      } else {
+        const { data, error } = await supabase.functions.invoke("ai-intake", {
+          body: { communityId: communityId(), text, images: imgs, today, weekday },
+        });
+        if (error) {
+          const ctx = (error as { context?: Response }).context;
+          const detail = ctx ? await ctx.json().catch(() => null) : null;
+          throw new Error(detail?.error ?? "העוזר עוד לא הופעל בשרת. אפשר להכניס מפתח Claude אישי בהגדרות העוזר.");
+        }
+        p = (data as { proposal: Proposal }).proposal;
       }
-      const p = (data as { proposal: Proposal }).proposal;
       setSummary({ summary: p.summary, questions: p.questions });
       setMins(on(p.minyanim));
       setOverrides(on(p.overrides));
@@ -339,6 +353,65 @@ export function AiIntakeAdmin() {
           מצלמים לוח זמנים או מודעה, אומרים בקול, או מדביקים הודעה. העוזר מציע מה להכניס ולאן - ושום דבר
           לא נשמר עד שמאשרים.
         </p>
+
+        <div className="rounded-md border bg-muted/30 p-3 text-sm" data-testid="ai-personal-key">
+          <button type="button" className="flex w-full items-center gap-2 text-right" onClick={() => setKeyOpen((o) => !o)} aria-expanded={keyOpen}>
+            <KeyRound className="size-4" />
+            <span className="font-medium">מפתח Claude אישי</span>
+            <span className="text-xs text-muted-foreground">{personalKey ? `פעיל · ${maskKey(personalKey)}` : "לא הוגדר"}</span>
+          </button>
+          {keyOpen && (
+            <div className="mt-2 space-y-2">
+              <p className="text-xs text-muted-foreground">
+                המפתח נשמר רק בדפדפן הזה, לא באתר ולא במסד הנתונים, ונשלח רק ל-Anthropic. השימוש מחויב בחשבון שלכם.
+                בלי מפתח אישי העוזר משתמש במפתח של בית הכנסת בשרת, אם הוגדר.
+              </p>
+              {personalKey ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setPersonalKey(null);
+                    setKeyState(null);
+                    toast.success("המפתח הוסר מהדפדפן");
+                  }}
+                >
+                  <Trash2 className="size-4" /> הסרת המפתח
+                </Button>
+              ) : (
+                <form
+                  className="flex gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!looksLikeApiKey(keyDraft)) {
+                      toast.error("זה לא נראה כמו מפתח Claude (מתחיל ב-sk-ant-)");
+                      return;
+                    }
+                    setPersonalKey(keyDraft);
+                    setKeyState(keyDraft.trim());
+                    setKeyDraft("");
+                    setKeyOpen(false);
+                    toast.success("המפתח נשמר בדפדפן הזה");
+                  }}
+                >
+                  <input
+                    type="password"
+                    autoComplete="off"
+                    spellCheck={false}
+                    dir="ltr"
+                    value={keyDraft}
+                    onChange={(e) => setKeyDraft(e.target.value)}
+                    placeholder="sk-ant-..."
+                    aria-label="מפתח Claude"
+                    className={`${input} flex-1`}
+                  />
+                  <Button type="submit" size="sm">שמירה</Button>
+                </form>
+              )}
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-2">
           <Button type="button" variant="outline" className="h-16 text-base" onClick={() => fileRef.current?.click()} disabled={busy || images.length >= 6}>
