@@ -3,10 +3,9 @@ import type { MinyanCategory } from "@community/lib/data";
 import { HDate } from "@hebcal/core";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import {
-  boardSpecialDay,
   combinedDay,
+  specialDayFor,
   holyWindow,
-  specialDaysOn,
   specialZmanim,
   verseFor,
   type SpecialDayDef,
@@ -421,7 +420,9 @@ export function EventSplash({
   day,
 }: {
   categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined;
-  config: Pick<TvConfig, "eventImages" | "eventSplash" | "eventStyles" | "eventHold">;
+  config: Pick<TvConfig, "eventImages" | "eventSplash" | "eventStyles" | "eventHold" | "eventAuto" | "eventNationalAuto"> & {
+    shabbat?: Pick<TvConfig["shabbat"], "endMinutesAfterSunset">;
+  };
   now: Date;
   zmanim: Zmanim;
   /** The times of another day; lets the board hold the day from candle lighting on its eve. */
@@ -433,20 +434,23 @@ export function EventSplash({
 }) {
   // From candle lighting until nightfall at its end, a Shabbat or festival that
   // is a special day stays on the wall the whole time.
-  const hold = !force && config.eventSplash && config.eventHold && zmanimOn ? holyWindow(now, zmanim, zmanimOn) : null;
+  // The board's "סיום שבת" minutes: Shabbat and festivals end by one rule on every screen.
+  const endMinutes = config.shabbat?.endMinutesAfterSunset;
+  const hold =
+    !force && config.eventSplash && config.eventHold && zmanimOn ? holyWindow(now, zmanim, zmanimOn, endMinutes) : null;
   const date = hold?.date ?? now;
   const dayZmanim = hold?.zmanim ?? zmanim;
   const dayKey = `${date.toDateString()}|${hold ? 1 : 0}`;
   // Once a day is enough: `now` ticks every second, the special day does not.
+  // A day the gabbai set up, or - with automatic days on - whatever the calendar says today is.
   const found = useMemo(
-    () =>
-      boardSpecialDay(categories, config, date) ??
-      // While held, the day shows even if the gabbai did not set it up.
-      (hold ? specialDaysOn(date).find((d) => !d.national) ?? null : null),
+    () => specialDayFor(categories, config, date),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [categories, config, dayKey],
   );
-  const def = day ?? found;
+  const def = day ?? found?.def ?? null;
+  // "Name and times only": an automatic day gets a card over the board, not a full-screen picture.
+  const infoOnly = !force && !day && !!found?.auto && config.eventAuto === "info";
   const seconds = Math.floor(now.getTime() / 1000);
   const phase = seconds % CYCLE_SECONDS;
   if (!def || (!config.eventSplash && !force)) return null;
@@ -463,7 +467,7 @@ export function EventSplash({
   // festival morning. While held from candle lighting, `date` is already the
   // holy day itself, so these are tomorrow morning's, which is what is meant.
   const rows = [
-    ...specialZmanim(date, dayZmanim),
+    ...specialZmanim(date, dayZmanim, endMinutes),
     ...(hold || def.group !== "fasts"
       ? [
           { key: "shma", label: "סוף זמן ק״ש", time: dayZmanim.sof_zman_shma },
@@ -478,8 +482,10 @@ export function EventSplash({
   const pair = combined.shabbat && own ? { shabbat: verseFor("shabbat")!, day: own } : null;
   const verse = pair ? null : own ?? (combined.shabbat ? verseFor("shabbat") : null);
   return (
-    <div className="tv-event-splash" role="region" aria-label={def.name}>
-      {slides.map((s, i) => (
+    <div className={`tv-event-splash${infoOnly ? " is-info" : ""}`} role="region" aria-label={def.name}>
+      {/* The clock stays on the wall while the day's picture covers the board. */}
+      {!infoOnly && <div className="tv-event-clock">{formatTime(now)}</div>}
+      {!infoOnly && slides.map((s, i) => (
         <div key={i} className={`tv-event-layer${i === active ? " is-active" : ""}`} data-slide={i}>
           {"image" in s ? (
             <>
@@ -546,7 +552,7 @@ export function EventSplash({
             )}
           </dl>
         )}
-        {slides.length > 1 && (
+        {!infoOnly && slides.length > 1 && (
           <div className="tv-event-dots" aria-hidden>
             {slides.map((_, i) => (
               <span key={i} className={i === active ? "is-active" : ""} />

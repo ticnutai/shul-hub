@@ -1,5 +1,6 @@
 import type { Settings } from "@community/lib/data";
 import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
+import { holyDayEnd } from "@community/lib/specialDays";
 
 /**
  * Shabbat on the wall: from candle lighting on Friday until the end of
@@ -50,9 +51,8 @@ export function shabbatNow(
 
   const friday = zmanimFor(dayAt(now, weekday === 5 ? 0 : -1), settings);
   const saturday = zmanimFor(dayAt(now, weekday === 5 ? 1 : 0), settings);
-  const end = saturday.sunset
-    ? new Date(saturday.sunset.getTime() + endMinutesAfterSunset * 60_000)
-    : null;
+  // The same end every screen uses (and the later one, when a festival ends with it).
+  const end = holyDayEnd(saturday, endMinutesAfterSunset);
   const times: ShabbatTimes = {
     candle: friday.candle,
     sunset: friday.sunset,

@@ -96,7 +96,7 @@ describe("the day's own times", () => {
   });
 
   it("gives a festival its end, and its eve candle lighting", () => {
-    expect(labels("2026-10-03")).toEqual([["צאת החג", 16]]);
+    expect(labels("2026-10-03")).toEqual([["צאת השבת והחג", 16]]); // שמיני עצרת בשבת
     expect(labels("2027-04-27")).toEqual([["הדלקת נרות", 14]]); // ערב שביעי של פסח, יום שלישי
     expect(labels("2026-10-02")).toEqual([]); // הושענא רבה ביום שישי: הדלקת נרות היא של שבת
   });
@@ -178,5 +178,44 @@ describe("holding a holy day from candle lighting to nightfall", () => {
   it("holds a festival that is not on Shabbat (Shmini Atzeret, from its eve)", async () => {
     const { holyWindow } = await import("./specialDays");
     expect(holyWindow(new Date("2026-10-02T15:30:00Z"), zAt("2026-10-02"), on)?.date.toISOString().slice(0, 10)).toBe("2026-10-03");
+  });
+});
+
+describe("when Shabbat and a festival end", () => {
+  it("is the later of nightfall and sunset plus the Shabbat-end minutes", async () => {
+    const { holyDayEnd } = await import("./specialDays");
+    const sunset = new Date("2026-09-26T15:32:00Z");
+    const tzeit = new Date("2026-09-26T15:52:00Z"); // sunset + 20
+    // The rule that was on the festival screen (nightfall, 18:52) loses to Shabbat's (sunset + 40, 19:12).
+    expect(holyDayEnd({ sunset, tzeit }, 40)).toEqual(new Date("2026-09-26T16:12:00Z"));
+    // And nightfall wins when it is the later one.
+    expect(holyDayEnd({ sunset, tzeit }, 10)).toEqual(tzeit);
+    expect(holyDayEnd({ tzeit })).toEqual(tzeit);
+  });
+});
+
+describe("automatic special days", () => {
+  it("shows a calendar day nobody set up, unless automatic days are off", async () => {
+    const { specialDayFor } = await import("./specialDays");
+    const sukkot = new Date("2026-09-26T09:00:00Z");
+    expect(specialDayFor([], { eventImages: {} }, sukkot)).toMatchObject({ def: { key: "sukkot" }, auto: true });
+    expect(specialDayFor([], { eventImages: {}, eventAuto: "info" }, sukkot)?.auto).toBe(true);
+    expect(specialDayFor([], { eventImages: {}, eventAuto: "off" }, sukkot)).toBeNull();
+  });
+
+  it("prefers a day the gabbai set up, and says so", async () => {
+    const { specialDayFor } = await import("./specialDays");
+    const sukkot = new Date("2026-09-26T09:00:00Z");
+    const r = specialDayFor([], { eventImages: { sukkot: ["https://x.example/a.jpg"] }, eventAuto: "off" }, sukkot);
+    expect(r).toMatchObject({ def: { key: "sukkot" }, auto: false });
+  });
+
+  it("leaves national days alone unless they are turned on", async () => {
+    const { specialDayFor, specialDaysOn } = await import("./specialDays");
+    const day = new Date("2027-05-12T09:00:00Z"); // יום העצמאות תשפ"ז
+    const national = specialDaysOn(day).find((d) => d.national);
+    expect(national).toBeTruthy();
+    expect(specialDayFor([], { eventImages: {} }, day)).toBeNull();
+    expect(specialDayFor([], { eventImages: {}, eventNationalAuto: true }, day)?.def.key).toBe(national!.key);
   });
 });

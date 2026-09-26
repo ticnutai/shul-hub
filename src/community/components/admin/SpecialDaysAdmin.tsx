@@ -408,6 +408,48 @@ export function SpecialDaysAdmin({
             בשבת ובחג: התמונה מוצגת ברציפות מהדלקת נרות ועד צאת השבת או החג
           </label>
         )}
+        {tvConfig && (
+          <div className="space-y-2 rounded-lg border p-3">
+            <div className="text-sm font-medium">מועדים שלא הוגדרו</div>
+            <p className="text-xs text-muted-foreground">
+              הלוח מזהה לבד מהלוח העברי שבת, חג, חול המועד, צום, ראש חודש ושבת מיוחדת. כאן בוחרים מה מוצג ביום שלא
+              הגדרתם לו כרטיסייה או תמונות. מועד שהגדרתם מוצג תמיד כפי שהגדרתם. זמני התפילות משתנים רק במועד שיש לו
+              כרטיסייה.
+            </p>
+            <div role="radiogroup" aria-label="מועדים שלא הוגדרו" className="flex flex-wrap gap-2">
+              {(
+                [
+                  ["full", "אוטומטי - עם תמונה", "התמונות והעיצובים המובנים של המועד, עם שמו וזמניו"],
+                  ["info", "אוטומטי - שם וזמנים בלבד", "כרטיס קטן בפינה, והלוח הרגיל נשאר גלוי"],
+                  ["off", "כבוי", "רק מועדים שהגדרתם"],
+                ] as const
+              ).map(([id, label, hint]) => (
+                <Button
+                  key={id}
+                  type="button"
+                  size="sm"
+                  role="radio"
+                  aria-checked={tvConfig.eventAuto === id}
+                  variant={tvConfig.eventAuto === id ? "default" : "outline"}
+                  title={hint}
+                  disabled={!tvConfig.eventSplash}
+                  onClick={() => void saveBoard((c) => ({ ...c, eventAuto: id }))}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <Switch
+                checked={tvConfig.eventNationalAuto}
+                disabled={!tvConfig.eventSplash || tvConfig.eventAuto === "off"}
+                onCheckedChange={(v) => void saveBoard((c) => ({ ...c, eventNationalAuto: v }))}
+                aria-label="ימים לאומיים אוטומטית"
+              />
+              גם ימים לאומיים (יום העצמאות, יום ירושלים...) אוטומטית. כבוי: רק כשהגדרתם אותם
+            </label>
+          </div>
+        )}
         {upcoming.length > 0 && (
           <div className="flex flex-wrap gap-2 pt-1">
             <span className="text-xs font-medium">בקרוב:</span>

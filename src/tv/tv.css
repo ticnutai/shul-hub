@@ -4745,6 +4745,38 @@
   from { transform: scale(1.06); }
   to { transform: scale(1); }
 }
+/* The time, over the picture: a day held from candle lighting covers the
+   board's own clock for a whole Shabbat. */
+.tv-event-clock {
+  position: absolute;
+  top: 2.4vw;
+  left: 3vw;
+  z-index: 2;
+  padding: 0.5vw 1.4vw;
+  border-radius: 1vw;
+  background: rgba(8, 12, 24, 0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  font-size: 4vw;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+/* "Name and times only": no picture, a small card in the corner, the board
+   (and its clock) visible around it. */
+.tv-event-splash.is-info {
+  pointer-events: none;
+}
+.tv-event-splash.is-info .tv-event-card {
+  min-width: 26vw;
+  max-width: 34vw;
+  padding: 1.2vw 1.6vw;
+  margin: 2vw;
+  background: rgba(8, 12, 24, 0.8);
+}
+.tv-event-splash.is-info .tv-event-title {
+  font-size: 2.8vw;
+}
 .tv-event-card {
   position: relative;
   margin: 3.5vw;

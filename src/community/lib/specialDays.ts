@@ -178,7 +178,28 @@ export interface SpecialZman {
  * and ends, candle lighting before a festival, when the festival ends.
  * Everything comes from the same zmanim as the rest of the board.
  */
-export function specialZmanim(date: Date, z: Zmanim): SpecialZman[] {
+/**
+ * Minutes after sunset that Shabbat and Yom Tov end, when the board's own
+ * "סיום שבת" setting is not at hand (the website, a painted board's frame).
+ * The same number as the board's default, so the two agree.
+ */
+export const HOLY_END_MINUTES = 40;
+
+/**
+ * When a Shabbat or festival day ends: the later of nightfall and sunset plus
+ * the Shabbat-end minutes. One rule for every screen. Before this the Shabbat
+ * screen said 19:12 (sunset + 40) and the festival screen said 18:52
+ * (nightfall), on the same evening, and the festival screen came down twenty
+ * minutes before Shabbat was out.
+ */
+export function holyDayEnd(z: { sunset?: Date | null; tzeit: Date | null }, minutes = HOLY_END_MINUTES): Date | null {
+  const bySunset = z.sunset ? new Date(z.sunset.getTime() + minutes * 60_000) : null;
+  if (!bySunset) return z.tzeit;
+  if (!z.tzeit) return bySunset;
+  return bySunset > z.tzeit ? bySunset : z.tzeit;
+}
+
+export function specialZmanim(date: Date, z: Zmanim, holyEndMinutes = HOLY_END_MINUTES): SpecialZman[] {
   const events = hebcalEventsOn(date).filter((e) => !(e.getFlags() & flags.MODERN_HOLIDAY));
   const out: SpecialZman[] = [];
   const add = (key: string, label: string, time: Date | null) => {
@@ -204,7 +225,9 @@ export function specialZmanim(date: Date, z: Zmanim): SpecialZman[] {
     }
     if (f & flags.LIGHT_CANDLES && !friday) add("candle", "הדלקת נרות", z.candle);
     if (f & flags.LIGHT_CANDLES_TZEIS) add("candle2", "הדלקת נרות (מאש קיים)", z.tzeit);
-    if (f & flags.CHAG && f & flags.YOM_TOV_ENDS) add("chag_end", "צאת החג", z.tzeit);
+    if (f & flags.CHAG && f & flags.YOM_TOV_ENDS) {
+      add("chag_end", jerusalemWeekday(date) === 6 ? "צאת השבת והחג" : "צאת החג", holyDayEnd(z, holyEndMinutes));
+    }
     if (f & flags.CHANUKAH_CANDLES) add("chanukah", "הדלקת נרות חנוכה", friday ? z.candle : z.tzeit);
   }
   return out;
@@ -249,25 +272,57 @@ export function isHolyDay(date: Date): boolean {
  * festival: the holy day that is on now, with its date and times, or null.
  * `zmanimOn` gives the times of another day (the eve looks at tomorrow's).
  */
-export function holyWindow<Z extends { candle: Date | null; tzeit: Date | null }>(
+export function holyWindow<Z extends { candle: Date | null; tzeit: Date | null; sunset?: Date | null }>(
   now: Date,
   today: Z,
   zmanimOn: (date: Date) => Z,
+  holyEndMinutes = HOLY_END_MINUTES,
 ): { date: Date; zmanim: Z } | null {
-  if (isHolyDay(now) && today.tzeit && now < today.tzeit) return { date: now, zmanim: today };
+  const end = holyDayEnd(today, holyEndMinutes);
+  if (isHolyDay(now) && end && now < end) return { date: now, zmanim: today };
   const tomorrow = new Date(now.getTime() + 24 * 3600 * 1000);
   if (today.candle && now >= today.candle && isHolyDay(tomorrow)) return { date: tomorrow, zmanim: zmanimOn(tomorrow) };
   return null;
 }
 
-/** The day to show today, if any: the first non-national special day the gabbai set up. */
+/** What the board does with a special day nobody set up. */
+export type EventAutoMode = "full" | "info" | "off";
+
+export interface AutoDayOptions {
+  /** "full": its built-in pictures; "info": a card with its name and times; "off": nothing. */
+  eventAuto?: EventAutoMode;
+  /** National days (יום העצמאות...) too. Off unless the gabbai turns it on. */
+  eventNationalAuto?: boolean;
+}
+
+/**
+ * The day to show today and whether it is shown only because it is on the
+ * calendar. A day the gabbai set up (its own tab, or his pictures) always
+ * wins; otherwise, with automatic days on, the calendar's own day - a
+ * national day only when that is turned on too.
+ */
+export function specialDayFor(
+  categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined,
+  config: { eventImages: Record<string, string[]> } & AutoDayOptions,
+  now: Date,
+): { def: SpecialDayDef; auto: boolean } | null {
+  const set = boardSpecialDay(categories, config, now, true);
+  if (set) return { def: set, auto: false };
+  if ((config.eventAuto ?? "full") === "off") return null;
+  const def = specialDaysOn(now).find((d) => !d.national || config.eventNationalAuto);
+  return def ? { def, auto: true } : null;
+}
+
+/** The day to show today, if any: the first special day the gabbai set up. */
 export function boardSpecialDay(
   categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined,
   config: { eventImages: Record<string, string[]> },
   now: Date,
+  /** A national day he set up himself counts too (its images, its tab). */
+  includeNational = false,
 ): SpecialDayDef | null {
   for (const def of specialDaysOn(now)) {
-    if (def.national) continue;
+    if (def.national && !includeNational) continue;
     const configured = (categories ?? []).some((c) => c.active && c.system_key === eventSystemKey(def.key));
     if (configured || config.eventImages[def.key]?.length) return def;
   }

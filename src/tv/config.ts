@@ -1,5 +1,6 @@
 import { normalizeCustomIllustrations, type CustomIllustration } from "./illustrated";
 import type { SolarEvent } from "@community/lib/zmanim";
+import type { EventAutoMode } from "@community/lib/specialDays";
 import { DEVICE_CLASSES, type DeviceClass } from "./devices";
 import {
   CUSTOM_GRADIENT_ID_RE,
@@ -290,6 +291,14 @@ export interface TvConfig {
   eventHold: boolean;
   /** Show the special day's picture and times on the board now and then, on the day. */
   eventSplash: boolean;
+  /**
+   * A special day nobody set up (see specialDays.specialDayFor): "full" shows
+   * its built-in pictures, "info" a card with its name and times over the
+   * board, "off" nothing - only days the gabbai set up are shown.
+   */
+  eventAuto: EventAutoMode;
+  /** National days follow `eventAuto` too; otherwise only when set up. */
+  eventNationalAuto: boolean;
   clockStyle: ClockStyle;
   skin: BoardSkin;
   /**
@@ -470,6 +479,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   eventStyles: {},
   eventHold: true,
   eventSplash: true,
+  eventAuto: "full",
+  eventNationalAuto: false,
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
@@ -805,6 +816,8 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     eventImages: normalizeEventImages(raw.eventImages),
     eventStyles: normalizeEventStyles(raw.eventStyles),
     eventSplash: raw.eventSplash !== false,
+    eventAuto: raw.eventAuto === "info" || raw.eventAuto === "off" ? raw.eventAuto : "full",
+    eventNationalAuto: raw.eventNationalAuto === true,
     eventHold: raw.eventHold !== false,
     illustration:
       (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
