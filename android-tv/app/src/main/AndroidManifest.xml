@@ -80,6 +80,10 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- The board installs its own updates (ApkUpdater): Android still shows its
+         installer and waits for OK on the remote. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- Read so the display can tell "the server is down" from "this TV lost
          Wi-Fi", and reconnect promptly when the link returns. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
