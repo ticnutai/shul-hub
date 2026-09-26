@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { Capacitor } from "@capacitor/core";
+import { SpeechRecognition as NativeSpeech } from "@capacitor-community/speech-recognition";
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Check, KeyRound, Loader2, Mic, MicOff, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -128,7 +130,10 @@ export function AiIntakeAdmin() {
   const recRef = useRef<Recognition | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => () => recRef.current?.stop(), []);
+  useEffect(() => () => {
+    recRef.current?.stop();
+    void nativeStop.current?.();
+  }, []);
 
   const catName = (id: string | null, fallback: string | null) =>
     categories.find((c) => c.id === id)?.name ?? (fallback ? `${fallback} (חדש)` : "ללא קטגוריה");
@@ -137,7 +142,63 @@ export function AiIntakeAdmin() {
     return m ? `${m.label || PRAYERS.find((p) => p.id === m.prayer)?.label || m.prayer} · ${catName(m.category_id, null)}` : "מניין לא ידוע";
   };
 
+  /** In the Android app the WebView has no Web Speech API; the phone's own recognizer does the dictation. */
+  const nativeSpeech = Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("SpeechRecognition");
+  const nativeStop = useRef<(() => Promise<void>) | null>(null);
+
+  const toggleNativeMic = async () => {
+    if (listening) {
+      await nativeStop.current?.();
+      return;
+    }
+    try {
+      const perm = await NativeSpeech.requestPermissions();
+      if (perm.speechRecognition !== "granted") {
+        toast.error("צריך לאשר גישה למיקרופון");
+        return;
+      }
+      if (!(await NativeSpeech.available()).available) {
+        toast.error("זיהוי דיבור לא זמין במכשיר. הקלידו במקום.");
+        return;
+      }
+      let heard = "";
+      const commit = () => {
+        const said = heard.trim();
+        heard = "";
+        if (said) setText((t) => (t ? `${t} ${said}` : said));
+        setInterim("");
+        setListening(false);
+      };
+      const partial = await NativeSpeech.addListener("partialResults", (d) => {
+        heard = d.matches?.[0] ?? heard;
+        setInterim(heard);
+      });
+      const state = await NativeSpeech.addListener("listeningState", (d) => {
+        if (d.status === "stopped") {
+          commit();
+          void partial.remove();
+          void state.remove();
+        }
+      });
+      nativeStop.current = async () => {
+        await NativeSpeech.stop().catch(() => undefined);
+        commit();
+        await partial.remove();
+        await state.remove();
+      };
+      setListening(true);
+      await NativeSpeech.start({ language: "he-IL", partialResults: true, popup: false, maxResults: 1 });
+    } catch {
+      setListening(false);
+      toast.error("ההקלטה נכשלה. נסו שוב או הקלידו.");
+    }
+  };
+
   const toggleMic = () => {
+    if (nativeSpeech) {
+      void toggleNativeMic();
+      return;
+    }
     if (listening) {
       recRef.current?.stop();
       return;
@@ -181,6 +242,7 @@ export function AiIntakeAdmin() {
 
   const analyze = async () => {
     recRef.current?.stop();
+    await nativeStop.current?.();
     setBusy(true);
     setSummary(null);
     try {

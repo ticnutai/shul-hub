@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
 import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 import { useAuth } from "@/contexts/AuthContext";
+import { AdminAiShortcut } from "./AdminAiShortcut";
 
 function boundedDimension(value: number | null | undefined, fallback: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? Number(value) : fallback));
@@ -224,6 +225,7 @@ export function CommunityFooter() {
           </button>
         </div>
       </div>
+      <AdminAiShortcut />
     </footer>
   );
 }
