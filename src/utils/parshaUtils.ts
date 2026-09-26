@@ -1,4 +1,5 @@
-import { HebrewCalendar, HDate, ParshaEvent, Event, parshiot } from '@hebcal/core';
+import { HDate, parshiot } from '@hebcal/core';
+import { parshaOfWeek } from '@/lib/jewishDay';
 import { getWeekdayReading } from '@hebcal/leyning';
 
 // Mapping between Hebrew parsha names and our internal parsha IDs
@@ -101,18 +102,7 @@ export function getCurrentWeeklyParsha(il: boolean = true): WeeklyParsha | null 
     const dayOfWeek = hdate.getDay();
     const saturday = dayOfWeek === 6 ? hdate : hdate.onOrAfter(6);
     
-    // Get events for that Shabbat
-    const events = HebrewCalendar.calendar({
-      start: saturday.greg(),
-      end: saturday.greg(),
-      sedrot: true,
-      il,
-    });
-    
-    // Find the parsha event
-    const parshaEvent = events.find((ev: Event) => 
-      ev instanceof ParshaEvent
-    ) as ParshaEvent | undefined;
+    const parshaEvent = parshaOfWeek(saturday, il).event;
     
     if (!parshaEvent) {
       console.warn('No parsha found for current week');
@@ -271,14 +261,7 @@ export function getWeekdayLeyning(il?: boolean): WeekdayLeyning | null {
     const dayOfWeek = hdate.getDay();
     const shabbat = dayOfWeek === 6 ? hdate : hdate.onOrAfter(6);
 
-    const events = HebrewCalendar.calendar({
-      start: shabbat.greg(),
-      end: shabbat.greg(),
-      sedrot: true,
-      il: useIl,
-    });
-
-    const parshaEvent = events.find((ev: Event) => ev instanceof ParshaEvent) as ParshaEvent | undefined;
+    const parshaEvent = parshaOfWeek(shabbat, useIl).event;
     if (!parshaEvent) return null;
 
     // The weekday division is its own table. It used to take aliyot 1-3 of

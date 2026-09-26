@@ -113,7 +113,7 @@ describe("next dates of all special days", () => {
     const all = nextDatesAll(il("2026-09-25"));
     expect(all.yom_kippur).toBe("2027-10-11");
     expect(all.chol_hamoed_sukkot).toBe("2026-09-27");
-    expect(all.chanukah).toBe("2026-12-04");
+    expect(all.chanukah).toBe("2026-12-05"); // 25 Kislev; the 24th is only the eve
     expect(all.tisha_bav).toBe(nextDatesOf("tisha_bav", il("2026-09-25"))[0]);
   });
 });
@@ -226,5 +226,28 @@ describe("the synagogue's Shabbat-end minutes", () => {
     expect(holyEndMinutesFor({ shabbat_end_minutes: 72 })).toBe(72);
     expect(holyEndMinutesFor({ shabbat_end_minutes: null })).toBe(40);
     expect(holyEndMinutesFor(null)).toBe(40);
+  });
+});
+
+describe("the day's own times, on the one engine", () => {
+  const find = (day: string, key: string) => specialZmanim(il(day), z(), 40).find((r) => r.key === key)?.time;
+
+  it("Erev Pesach: the end of eating and of burning chametz (4th and 5th hours)", () => {
+    expect(find("2027-04-21", "chametz_eat")?.getUTCHours()).toBe(7);
+    expect(find("2027-04-21", "chametz_burn")?.getUTCHours()).toBe(8);
+  });
+
+  it("Yom Kippur ends when Shabbat would, not at the weekday nightfall", () => {
+    // Sunset 15:00 + 40 is before tzeit 16:00 here, so tzeit; with 90 minutes, 16:30.
+    expect(find("2026-09-21", "fast_end")?.getUTCHours()).toBe(16);
+    const later = specialZmanim(il("2026-09-21"), z(), 90).find((r) => r.key === "fast_end")?.time;
+    expect(later?.getUTCMinutes()).toBe(30); // 15:00 + 90
+  });
+
+  it("Chanukah is not on the eve, and Purim Katan is a day of its own", () => {
+    expect(keys("2026-12-04")).not.toContain("chanukah");
+    expect(keys("2026-12-05")).toContain("chanukah");
+    expect(specialZmanim(il("2026-12-04"), z()).some((r) => r.key === "chanukah")).toBe(true); // the first candle, tonight
+    expect(nextDatesOf("purim_katan", il("2026-10-01"))[0]).toMatch(/^2027-02/);
   });
 });

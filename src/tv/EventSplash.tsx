@@ -53,7 +53,7 @@ const PALETTE: Record<SpecialGroup, Palette> = {
   national: { deep: "#0b2a66", mid: "#2a64c6", gold: "#ffffff", ink: "#ffffff" },
 };
 
-const PURIM = new Set(["purim", "erev_purim", "shushan_purim"]);
+const PURIM = new Set(["purim", "erev_purim", "shushan_purim", "purim_katan"]);
 function paletteFor(def: SpecialDayDef): Palette {
   if (PURIM.has(def.key)) return { deep: "#2a0f3d", mid: "#7a2f8f", gold: "#ffd35c", ink: "#fff3fb" };
   if (def.key === "tisha_bav" || def.key === "erev_tisha_bav") return { deep: "#0d0d10", mid: "#2b2b31", gold: "#c9ccd3", ink: "#e8e9ec" };

@@ -1,6 +1,6 @@
-import { HDate, HebrewCalendar, flags } from "@hebcal/core";
 import type { Settings } from "@community/lib/data";
-import { jerusalemDateKey, jerusalemWeekday } from "@community/lib/minyan-time";
+import { jerusalemWeekday } from "@community/lib/minyan-time";
+import { civilDayProfile } from "@/lib/jewishDay";
 import type { DayKind, TvConfig } from "./config";
 import { shabbatNow } from "./shabbat";
 
@@ -29,27 +29,12 @@ export const DAY_KIND_LABELS: Record<DayKind, string> = {
   friday: "יום שישי (עד הדלקת נרות)",
 };
 
-const PURIM = /^(Shushan )?Purim$/;
-
-function isFestival(date: Date): boolean {
-  const [y, m, d] = jerusalemDateKey(date).split("-").map(Number);
-  const events = HebrewCalendar.getHolidaysOnDate(new HDate(new Date(y, m - 1, d, 12)), true) ?? [];
-  return events.some(
-    (e) => (e.getFlags() & (flags.CHAG | flags.CHOL_HAMOED | flags.CHANUKAH_CANDLES)) !== 0 || PURIM.test(e.getDesc()),
-  );
-}
-
-function isRoshChodesh(date: Date): boolean {
-  const [y, m, d] = jerusalemDateKey(date).split("-").map(Number);
-  const events = HebrewCalendar.getHolidaysOnDate(new HDate(new Date(y, m - 1, d, 12)), true) ?? [];
-  return events.some((e) => (e.getFlags() & flags.ROSH_CHODESH) !== 0);
-}
-
 /** What kind of day it is on the board, or null for an ordinary weekday. */
 export function dayKindAt(now: Date, settings: Settings | null | undefined, shabbatEndMinutes: number): DayKind | null {
   if (shabbatNow(now, settings, shabbatEndMinutes)) return "shabbat";
-  if (isFestival(now)) return "festival";
-  if (isRoshChodesh(now)) return "roshChodesh";
+  const day = civilDayProfile(now);
+  if (day.festival) return "festival";
+  if (day.roshChodesh) return "roshChodesh";
   if (jerusalemWeekday(now) === 5) return "friday";
   return null;
 }

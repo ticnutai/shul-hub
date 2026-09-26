@@ -1,4 +1,5 @@
-import { HDate, HebrewCalendar, ParshaEvent, parshiot } from "@hebcal/core";
+import { HDate, parshiot } from "@hebcal/core";
+import { parshaOfWeek } from "@/lib/jewishDay";
 import {
   getLeyningForParsha,
   getLeyningForParshaHaShavua,
@@ -203,8 +204,7 @@ export function getUpcomingShabbatReading(il: boolean, from: Date = new Date()):
   try {
     const today = new HDate(from);
     const shabbat = today.getDay() === 6 ? today : today.onOrAfter(6);
-    const ev = HebrewCalendar.calendar({ start: shabbat.greg(), end: shabbat.greg(), sedrot: true, il })
-      .find((e) => e instanceof ParshaEvent) as ParshaEvent | undefined;
+    const ev = parshaOfWeek(shabbat, il).event;
     if (!ev) return null;
 
     const parshaNums = ev.parsha.map((p) => parshiot.indexOf(p) + 1).filter((n) => n > 0);

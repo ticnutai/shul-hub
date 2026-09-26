@@ -1,4 +1,5 @@
-import { HDate, HebrewCalendar, flags, type Event } from "@hebcal/core";
+import { HebrewCalendar, flags } from "@hebcal/core";
+import { eventsOnCivil, isHolyCivilDay } from "@/lib/jewishDay";
 import type { MinyanCategory } from "./data";
 import { dayTypeFor, jerusalemDateKey, jerusalemWeekday } from "./minyan-time";
 import type { Zmanim } from "./zmanim";
@@ -69,7 +70,9 @@ export const SPECIAL_DAYS: SpecialDayDef[] = [
   { key: "purim", name: "פורים", group: "chanukah_purim", match: /^Purim$/ },
   { key: "erev_purim", name: "ליל פורים (ערב פורים)", group: "chanukah_purim", match: /^Erev Purim$/ },
   { key: "shushan_purim", name: "שושן פורים", group: "chanukah_purim", match: /^Shushan Purim$/ },
-  { key: "chanukah", name: "חנוכה", group: "chanukah_purim", match: /^Chanukah: / },
+  // "Chanukah: 1 Candle" is 24 Kislev, the eve: the day itself is not Chanukah yet.
+  { key: "chanukah", name: "חנוכה", group: "chanukah_purim", match: /^Chanukah: (\d+ Candles|8th Day)$/ },
+  { key: "purim_katan", name: "פורים קטן", group: "chanukah_purim", match: /^(Shushan )?Purim Katan$/ },
   { key: "shabbat_hagadol", name: "שבת הגדול", group: "shabbatot", match: /^Shabbat HaGadol$/ },
   { key: "shabbat_zachor", name: "שבת זכור", group: "shabbatot", match: /^Shabbat Zachor$/ },
   { key: "shabbat_parah", name: "שבת פרה", group: "shabbatot", match: /^Shabbat Parah$/ },
@@ -95,15 +98,9 @@ export const isEventCategory = (c: Pick<MinyanCategory, "system_key">) =>
   Boolean(c.system_key?.startsWith(EVENT_KEY_PREFIX));
 export const specialDayByKey = (key: string) => SPECIAL_DAYS.find((d) => d.key === key);
 
-/** hebcal's events on Jerusalem's calendar day of `date` (Israel schedule). */
-function hebcalEventsOn(date: Date): Event[] {
-  const [y, m, d] = jerusalemDateKey(date).split("-").map(Number);
-  return HebrewCalendar.getHolidaysOnDate(new HDate(new Date(y!, m! - 1, d!, 12)), true) ?? [];
-}
-
 /** The special days that fall on `date`, in order of precedence. */
 export function specialDaysOn(date: Date): SpecialDayDef[] {
-  const descs = hebcalEventsOn(date).map((e) => e.getDesc());
+  const descs = eventsOnCivil(date).map((e) => e.getDesc());
   return SPECIAL_DAYS.filter((def) => descs.some((d) => def.match.test(d)));
 }
 
@@ -206,12 +203,13 @@ export function holyDayEnd(z: { sunset?: Date | null; tzeit: Date | null }, minu
 }
 
 export function specialZmanim(date: Date, z: Zmanim, holyEndMinutes = HOLY_END_MINUTES): SpecialZman[] {
-  const events = hebcalEventsOn(date).filter((e) => !(e.getFlags() & flags.MODERN_HOLIDAY));
+  const events = eventsOnCivil(date).filter((e) => !(e.getFlags() & flags.MODERN_HOLIDAY));
   const out: SpecialZman[] = [];
   const add = (key: string, label: string, time: Date | null) => {
     if (!out.some((r) => r.key === key)) out.push({ key, label, time });
   };
   const friday = jerusalemWeekday(date) === 5;
+  const saturday = jerusalemWeekday(date) === 6;
   for (const e of events) {
     const f = e.getFlags();
     const desc = e.getDesc();
@@ -220,8 +218,14 @@ export function specialZmanim(date: Date, z: Zmanim, holyEndMinutes = HOLY_END_M
       continue;
     }
     if (desc === "Yom Kippur") {
-      add("fast_end", "צאת החג וסוף הצום", z.tzeit);
+      add("fast_end", "צאת החג וסוף הצום", holyDayEnd(z, holyEndMinutes));
       continue;
+    }
+    if (desc === "Erev Pesach" && z.sof_zman_shma && z.sof_zman_tefila) {
+      // The fourth and fifth proportional hours (GRA), from the same zmanim.
+      const hour = z.sof_zman_tefila.getTime() - z.sof_zman_shma.getTime();
+      add("chametz_eat", "סוף זמן אכילת חמץ", z.sof_zman_tefila);
+      add("chametz_burn", "סוף זמן ביעור חמץ", new Date(z.sof_zman_tefila.getTime() + hour));
     }
     if (desc === "Erev Tish'a B'Av") add("fast_start", "תחילת הצום", z.sunset);
     else if (desc === "Tish'a B'Av") add("fast_end", "סוף הצום", z.tzeit);
@@ -230,11 +234,14 @@ export function specialZmanim(date: Date, z: Zmanim, holyEndMinutes = HOLY_END_M
       add("fast_end", "סוף הצום", z.tzeit);
     }
     if (f & flags.LIGHT_CANDLES && !friday) add("candle", "הדלקת נרות", z.candle);
-    if (f & flags.LIGHT_CANDLES_TZEIS) add("candle2", "הדלקת נרות (מאש קיים)", z.tzeit);
+    // After a holy day (the second night of Rosh Hashana, Yom Tov after Shabbat): not before it is out.
+    if (f & flags.LIGHT_CANDLES_TZEIS) add("candle2", "הדלקת נרות (מאש קיים)", saturday || f & flags.CHAG ? holyDayEnd(z, holyEndMinutes) : z.tzeit);
     if (f & flags.CHAG && f & flags.YOM_TOV_ENDS) {
-      add("chag_end", jerusalemWeekday(date) === 6 ? "צאת השבת והחג" : "צאת החג", holyDayEnd(z, holyEndMinutes));
+      add("chag_end", saturday ? "צאת השבת והחג" : "צאת החג", holyDayEnd(z, holyEndMinutes));
     }
-    if (f & flags.CHANUKAH_CANDLES) add("chanukah", "הדלקת נרות חנוכה", friday ? z.candle : z.tzeit);
+    if (f & flags.CHANUKAH_CANDLES) {
+      add("chanukah", "הדלקת נרות חנוכה", friday ? z.candle : saturday ? holyDayEnd(z, holyEndMinutes) : z.tzeit);
+    }
   }
   return out;
 }
@@ -269,8 +276,7 @@ export function nextDatesAll(from: Date): Record<string, string | null> {
 
 /** Shabbat, or a festival on which work is forbidden (יום טוב, יום כיפור). */
 export function isHolyDay(date: Date): boolean {
-  if (jerusalemWeekday(date) === 6) return true;
-  return hebcalEventsOn(date).some((e) => e.getFlags() & flags.CHAG && !(e.getFlags() & flags.MODERN_HOLIDAY));
+  return isHolyCivilDay(date);
 }
 
 /**

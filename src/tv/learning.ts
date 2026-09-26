@@ -1,4 +1,5 @@
-import { flags, gematriya, HDate, HebrewCalendar, ParshaEvent } from "@hebcal/core";
+import { flags, gematriya, HDate, HebrewCalendar } from "@hebcal/core";
+import { civilDayProfile, eventsOn, parshaOfWeek, seasonalLine } from "@/lib/jewishDay";
 
 /**
  * Daily-learning facts for the board: Daf Yomi, the weekly parasha and the
@@ -105,25 +106,16 @@ export function hebrewName(text: string): string {
  */
 export function weeklyParasha(date: Date, il = true): string | null {
   const today = new HDate(date);
-  const shabbat = today.getDay() === 6 ? today : today.onOrAfter(6);
-  const events = HebrewCalendar.calendar({
-    start: shabbat.greg(),
-    end: shabbat.greg(),
-    sedrot: true,
-    il,
-    locale: "he",
-  });
-  const parsha = events.find((ev) => ev instanceof ParshaEvent);
-  if (parsha) return hebrewName(parsha.render("he"));
+  const { event, shabbat } = parshaOfWeek(today, il);
+  if (event) return hebrewName(event.render("he"));
 
   // A festival Shabbat has no weekly parasha (Sukkot I, for instance, has the
   // festival reading). On the day itself, name the festival - that is what is
   // being read. On a weekday, naming next Shabbat's festival would answer a
   // question nobody asked: "which parasha are we in?" is answered by the last
   // one read, so the board keeps showing it until the cycle moves on.
-  const onTheDay = today.getDay() === 6;
-  if (onTheDay) {
-    const holiday = events.find((ev) => ev.getFlags() & flags.CHAG);
+  if (today.getDay() === 6) {
+    const holiday = eventsOn(shabbat, il).find((ev) => ev.getFlags() & flags.CHAG);
     if (holiday) return hebrewName(holiday.render("he"));
   }
   return lastParashaRead(shabbat, il);
@@ -132,10 +124,8 @@ export function weeklyParasha(date: Date, il = true): string | null {
 /** The most recent weekly parasha actually read, looking back up to five weeks. */
 function lastParashaRead(from: HDate, il: boolean): string | null {
   for (let week = 1; week <= 5; week++) {
-    const shabbat = from.subtract(week * 7, "d");
-    const events = HebrewCalendar.calendar({ start: shabbat.greg(), end: shabbat.greg(), sedrot: true, il, locale: "he" });
-    const parsha = events.find((ev) => ev instanceof ParshaEvent);
-    if (parsha) return hebrewName(parsha.render("he"));
+    const { event } = parshaOfWeek(from.subtract(week * 7, "d"), il);
+    if (event) return hebrewName(event.render("he"));
   }
   return null;
 }
@@ -259,25 +249,6 @@ export function seasonalPrayers(date: Date): {
   leDavid: boolean;
   text: string;
 } {
-  const h = new HDate(date);
-  const m = h.getMonth();
-  const d = h.getDate();
-  // Hebcal months: NISAN = 1 ... ELUL = 6, TISHREI = 7, CHESHVAN = 8 ... ADAR II = 13.
-  const beforePesach = m === 1 && d < 15;
-  const geshem = (m === 7 && d >= 22) || m >= 8 || beforePesach;
-  const talUmatar = (m === 8 && d >= 7) || m >= 9 || beforePesach;
-  // All of Elul, and Tishrei up to and including Shemini Atzeret.
-  const leDavid = m === 6 || (m === 7 && d <= 22);
-  return {
-    geshem,
-    talUmatar,
-    leDavid,
-    text: [
-      leDavid && "לדוד ה' אורי וישעי",
-      geshem ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
-      talUmatar ? "ותן טל ומטר לברכה" : "ותן ברכה",
-    ]
-      .filter(Boolean)
-      .join(" · "),
-  };
+  const p = civilDayProfile(date);
+  return { geshem: p.rainSeason, talUmatar: p.talUmatar, leDavid: p.ledavidSeason, text: seasonalLine(p) };
 }

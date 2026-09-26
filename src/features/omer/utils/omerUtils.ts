@@ -1,4 +1,5 @@
 import { HebrewCalendar, HDate, flags } from "@hebcal/core";
+import { zmanimFor } from "@community/lib/minyan-time";
 
 declare global {
   interface Window {
@@ -70,10 +71,14 @@ function getOmerNow(now?: Date): Date {
 export function getOmerBoardData(at?: Date): OmerBoardData {
   const now = getOmerNow(at);
 
-  // After nightfall (≥18:00 local time) the Jewish day has already advanced —
-  // show the next Omer count so users know what to say tonight.
+  // After nightfall the Jewish day has already advanced — show the next Omer
+  // count so users know what to say tonight. Nightfall is the real one (the
+  // same zmanim as the siddur and the board), not a fixed hour: in the Omer
+  // weeks it moves from about 19:35 to 20:10, and 18:00 showed tomorrow's
+  // count while it was still day.
   const effective = new Date(now);
-  if (now.getHours() >= 18) {
+  const nightfall = zmanimFor(now, null).tzeit;
+  if (nightfall && now >= nightfall) {
     effective.setDate(effective.getDate() + 1);
   }
 

@@ -49,7 +49,12 @@ const asList = (h: Aliyah | Aliyah[] | undefined) => (Array.isArray(h) ? h : h ?
  * The reading of the day's main service, or null on a day with none.
  * `il`: Israel's calendar (one day of Yom Tov, and the parashot that follow it).
  */
-export function torahReadingOn(date: Date, il = true): TorahReading | null {
+export function torahReadingOn(
+  date: Date,
+  il = true,
+  /** Whose haftarah: the Ashkenazi one by default; Sephardim and Chabad differ on some weeks. */
+  minhag: "ashkenazi" | "sephardi" | "chabad" = "ashkenazi",
+): TorahReading | null {
   let found;
   try {
     found = getLeyningOnDate(new HDate(date), il);
@@ -75,7 +80,9 @@ export function torahReadingOn(date: Date, il = true): TorahReading | null {
   }
   const reading = books.map((run) => rangeHe(run[0].k, run[0].b, run.at(-1)!.e)).join(" · ");
   const maftir = leyning.fullkriyah.M as Aliyah | undefined;
-  const haft = asList("haft" in leyning ? (leyning.haft as Aliyah | Aliyah[]) : undefined)[0];
+  const own = minhag === "sephardi" ? "seph" : minhag === "chabad" ? "chabad" : null;
+  const haftField = own && own in leyning ? own : "haft";
+  const haft = asList(haftField in leyning ? ((leyning as Record<string, unknown>)[haftField] as Aliyah | Aliyah[]) : undefined)[0];
 
   const parasha =
     "parsha" in leyning && Array.isArray(leyning.parsha) && leyning.name?.he

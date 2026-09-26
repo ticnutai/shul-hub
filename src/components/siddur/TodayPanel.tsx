@@ -126,9 +126,10 @@ export function TodayPanel({
     });
   };
 
-  const said = resolved.filter((r) => r.item.say && !r.item.amidah);
+  const said = resolved.filter((r) => r.item.say && !r.item.amidah && !r.item.meal);
   const amidah = resolved.filter((r) => r.item.amidah);
-  const skipped = resolved.filter((r) => !r.item.say);
+  const meal = resolved.filter((r) => r.item.meal);
+  const skipped = resolved.filter((r) => !r.item.say && !r.item.amidah);
 
   const Chip = ({ r }: { r: Resolved }) => (
     <button
@@ -176,6 +177,12 @@ export function TodayPanel({
             <div>
               <div className="mb-1 text-xs font-semibold text-muted-foreground">בתפילת העמידה</div>
               <div className="flex flex-wrap gap-1.5">{amidah.map((r) => <Chip key={r.item.id} r={r} />)}</div>
+            </div>
+          )}
+          {meal.length > 0 && (
+            <div>
+              <div className="mb-1 text-xs font-semibold text-muted-foreground">בברכת המזון ובברכה מעין שלוש</div>
+              <div className="flex flex-wrap gap-1.5">{meal.map((r) => <Chip key={r.item.id} r={r} />)}</div>
             </div>
           )}
           {skipped.length > 0 && (
