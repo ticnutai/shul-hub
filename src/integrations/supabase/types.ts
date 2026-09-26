@@ -790,6 +790,7 @@ export type Database = {
           phone: string
           subtitle: string
           theme: string
+          shabbat_end_minutes: number
           tzeit_offset_minutes: number
           updated_at: string
         }
@@ -816,6 +817,7 @@ export type Database = {
           phone?: string
           subtitle?: string
           theme?: string
+          shabbat_end_minutes?: number
           tzeit_offset_minutes?: number
           updated_at?: string
         }
@@ -842,6 +844,7 @@ export type Database = {
           phone?: string
           subtitle?: string
           theme?: string
+          shabbat_end_minutes?: number
           tzeit_offset_minutes?: number
           updated_at?: string
         }

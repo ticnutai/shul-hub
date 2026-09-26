@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useHolyEndMinutes } from "./holyEnd";
 import { prayerLabel, type Announcement, type Shiur } from "@community/lib/data";
 import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
@@ -247,7 +248,7 @@ export function ZmanimPanel({ zmanim, now, titleKey = "panel.zmanim" }: { zmanim
   const shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
   const nextEvent = shown.find((e) => (zmanim[e]?.getTime() ?? 0) > nowMs);
   // A fast's start and end, candle lighting before a festival, צאת החג.
-  const special = specialZmanim(now, zmanim);
+  const special = specialZmanim(now, zmanim, useHolyEndMinutes());
   return (
     <div className="tv-panel" {...edit.attr("panel.zmanim")}>
       <h3 className="tv-panel-title" {...(titleKey !== "panel.zmanim" ? edit.attr(titleKey) : {})}>

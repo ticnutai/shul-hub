@@ -1,3 +1,4 @@
+import { HolyEndMinutesContext } from "./holyEnd";
 import { IllustratedStage } from "./TvIllustrated";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HDate } from "@hebcal/core";
@@ -58,6 +59,8 @@ const DRIFT = [
 
 export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className, editing = false }: TvBoardProps) {
   const edit = useMemo(() => makeBoardEdit(config, editing), [config, editing]);
+  // The synagogue's setting, shared with the website; the board's own copy only as a fallback.
+  const holyEndMinutes = data.settings?.shabbat_end_minutes ?? config.shabbat.endMinutesAfterSunset;
   const pauseChip = usePauseChip(paused);
   const slide = slides[Math.min(index, slides.length - 1)];
   // Slide bodies only need minute precision; handing them the per-second
@@ -123,6 +126,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const alert = shabbat ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
+    <HolyEndMinutesContext.Provider value={holyEndMinutes}>
     <BoardEditContext.Provider value={edit}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
       <div
@@ -161,7 +165,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               now={minuteNow}
               zmanim={zmanim}
               settings={data.settings}
-              shabbatEndMinutes={config.shabbat.endMinutesAfterSunset}
+              shabbatEndMinutes={holyEndMinutes}
             />
           ) : dashboard ? (
             <ClockContext.Provider value={now}>
@@ -238,6 +242,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       </div>
     </div>
     </BoardEditContext.Provider>
+    </HolyEndMinutesContext.Provider>
   );
 }
 

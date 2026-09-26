@@ -276,6 +276,7 @@ export function SettingsAdmin() {
                 {field("longitude", "קו אורך", "number")}
                 {field("candle_offset_minutes", "הדלקת נרות — דקות לפני השקיעה", "number")}
                 {field("tzeit_offset_minutes", "צאת הכוכבים — דקות אחרי השקיעה", "number")}
+                {field("shabbat_end_minutes", "צאת שבת וחג — דקות אחרי השקיעה (40 מקובל, 72 ר״ת)", "number")}
               </div>
             </details>
             <fieldset className="space-y-3 rounded-2xl border border-border p-4">

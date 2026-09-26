@@ -192,6 +192,12 @@ export const HOLY_END_MINUTES = 40;
  * (nightfall), on the same evening, and the festival screen came down twenty
  * minutes before Shabbat was out.
  */
+/** A synagogue's Shabbat-end minutes (settings.shabbat_end_minutes), or the default. */
+export function holyEndMinutesFor(settings: { shabbat_end_minutes?: number | null } | null | undefined): number {
+  const m = settings?.shabbat_end_minutes;
+  return typeof m === "number" && Number.isFinite(m) ? m : HOLY_END_MINUTES;
+}
+
 export function holyDayEnd(z: { sunset?: Date | null; tzeit: Date | null }, minutes = HOLY_END_MINUTES): Date | null {
   const bySunset = z.sunset ? new Date(z.sunset.getTime() + minutes * 60_000) : null;
   if (!bySunset) return z.tzeit;

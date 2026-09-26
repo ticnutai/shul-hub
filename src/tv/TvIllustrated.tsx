@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties, type ReactNode } from "react";
+import { useHolyEndMinutes } from "./holyEnd";
 import { HDate } from "@hebcal/core";
 import type { Settings } from "@community/lib/data";
 import { jerusalemWeekday, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
@@ -98,7 +99,7 @@ function ZmanimFrame({ d, zmanim, box, max, now }: { d: Illustration; zmanim: Zm
   const mark = useMark();
   // The day's own times (a fast's start and end, צאת החג) come first; the
   // ordinary zmanim give up their places to them.
-  const special = specialZmanim(now, zmanim).slice(0, max);
+  const special = specialZmanim(now, zmanim, useHolyEndMinutes()).slice(0, max);
   const room = max - special.length;
   let shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
   for (const drop of ZMAN_DROP_ORDER) {

@@ -49,6 +49,14 @@ describe("the special day on the board", () => {
     expect(row.textContent).toContain(hhmm);
   });
 
+  it("follows a synagogue that ends Shabbat by רבנו תם", () => {
+    show({ shabbat: { ...DEFAULT_TV_CONFIG.shabbat, endMinutesAfterSunset: 72 } });
+    const z = zmanimOn(new Date("2026-09-26T09:00:00Z"));
+    const rt = new Date(z.sunset!.getTime() + 72 * 60_000);
+    const hhmm = rt.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jerusalem" });
+    expect(screen.getByText("צאת השבת והחג").closest("div")!.textContent).toContain(hhmm);
+  });
+
   it("'name and times only' puts a card over the board and no picture", () => {
     const { container } = show({ eventAuto: "info" });
     expect(container.querySelector(".tv-event-splash.is-info")).not.toBeNull();

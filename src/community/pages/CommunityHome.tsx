@@ -28,7 +28,7 @@ import {
   useMinyanOverrides,
 } from "@community/lib/data";
 import { overridesFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
-import { specialDayTitle, specialZmanim, todaysCategories } from "@community/lib/specialDays";
+import { specialDayTitle, specialZmanim, holyEndMinutesFor, todaysCategories } from "@community/lib/specialDays";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
 import { QuickAddButton } from "@community/components/QuickAddButton";
@@ -170,7 +170,10 @@ export function CommunityHome() {
     todays.preferred ??
     visibleCategories[0];
   const specialTitle = useMemo(() => specialDayTitle(today), [today]);
-  const special = useMemo(() => specialZmanim(today, zmanim), [today, zmanim]);
+  const special = useMemo(
+    () => specialZmanim(today, zmanim, holyEndMinutesFor(settings)),
+    [today, zmanim, settings],
+  );
   const categoryRows = useMemo(
     () =>
       minyanim

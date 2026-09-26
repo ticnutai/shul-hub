@@ -162,7 +162,13 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         ? { ...baseConfig, theme: themeOverride, themeOverrides: {} }
         : baseConfig;
     // Shabbat, a festival, Rosh Chodesh or Friday may have a look of its own.
-    return applyDayLook(configForDevice(chosen, deviceClass), minuteNow, data.settings);
+    // When Shabbat and Yom Tov end is the synagogue's setting now, shared
+    // with the website; the board's own old number is only a fallback.
+    const withEnd =
+      typeof data.settings?.shabbat_end_minutes === "number"
+        ? { ...chosen, shabbat: { ...chosen.shabbat, endMinutesAfterSunset: data.settings.shabbat_end_minutes } }
+        : chosen;
+    return applyDayLook(configForDevice(withEnd, deviceClass), minuteNow, data.settings);
   }, [baseConfig, themeOverride, themes, deviceClass, minuteNow, data.settings]);
   const slides = useMemo(() => buildSlides(data, config, minuteNow, zmanim), [data, config, minuteNow, zmanim]);
 

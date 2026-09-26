@@ -1770,41 +1770,17 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               />
               מסך שבת פעיל
             </label>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              צאת השבת:
-              <Stepper
-                label="דקות אחרי השקיעה"
-                value={draft.shabbat.endMinutesAfterSunset}
-                min={18}
-                max={90}
-                step={1}
-                format={(v) => `${v} דק׳`}
-                onChange={(v) =>
-                  edit("sb-end", (c) => ({
-                    ...c,
-                    shabbat: { ...c.shabbat, endMinutesAfterSunset: v },
-                  }))
-                }
-              />
-              <span className="text-xs text-muted-foreground">אחרי השקיעה</span>
-              {[40, 72].map((m) => (
-                <Button
-                  key={m}
-                  type="button"
-                  size="sm"
-                  variant={draft.shabbat.endMinutesAfterSunset === m ? "default" : "outline"}
-                  className="h-7 px-2 text-xs"
-                  onClick={() =>
-                    edit("sb-end", (c) => ({
-                      ...c,
-                      shabbat: { ...c.shabbat, endMinutesAfterSunset: m },
-                    }))
-                  }
-                >
-                  {m === 72 ? "72 (ר״ת)" : `${m} (מקובל)`}
-                </Button>
-              ))}
-            </div>
+            {/* One number for the whole synagogue, kept with the other zmanim settings
+                and shared with the website - not a second copy here that could disagree. */}
+            <p className="text-sm">
+              צאת השבת והחג:{" "}
+              <strong>
+                {board.data.settings?.shabbat_end_minutes ?? draft.shabbat.endMinutesAfterSunset} דק׳ אחרי השקיעה
+              </strong>{" "}
+              <span className="text-xs text-muted-foreground">
+                (או צאת הכוכבים, המאוחר מביניהם). משנים בהגדרות בית הכנסת ← כוונון ידני, וזה חל על הלוח ועל האתר יחד.
+              </span>
+            </p>
             <div className="space-y-2 rounded-lg border p-3">
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                 <span className="text-sm font-medium">תמונת השבת</span>

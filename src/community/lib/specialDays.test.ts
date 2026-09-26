@@ -219,3 +219,12 @@ describe("automatic special days", () => {
     expect(specialDayFor([], { eventImages: {}, eventNationalAuto: true }, day)?.def.key).toBe(national!.key);
   });
 });
+
+describe("the synagogue's Shabbat-end minutes", () => {
+  it("come from its settings, and fall back to 40", async () => {
+    const { holyEndMinutesFor } = await import("./specialDays");
+    expect(holyEndMinutesFor({ shabbat_end_minutes: 72 })).toBe(72);
+    expect(holyEndMinutesFor({ shabbat_end_minutes: null })).toBe(40);
+    expect(holyEndMinutesFor(null)).toBe(40);
+  });
+});
