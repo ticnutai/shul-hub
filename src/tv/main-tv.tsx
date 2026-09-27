@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Capacitor } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { TvApp } from "./TvApp";
+import { BoardCrashGuard } from "./BoardCrashGuard";
 import { applyHandoff, isRemoteBoard, remoteEnabled, startRemoteSwitch, watchForNewVersion } from "./remoteBoard";
 import "./tv-global.css";
 
@@ -69,7 +70,11 @@ if ("wakeLock" in navigator) {
 }
 
 createRoot(document.getElementById("root")!).render(
-  <QueryClientProvider client={queryClient}>
-    <TvApp />
-  </QueryClientProvider>,
+  // Outside everything, including the provider: a board that throws while it
+  // is still coming up is exactly the case that used to leave the wall blank.
+  <BoardCrashGuard recover>
+    <QueryClientProvider client={queryClient}>
+      <TvApp />
+    </QueryClientProvider>
+  </BoardCrashGuard>,
 );

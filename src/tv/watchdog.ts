@@ -250,3 +250,71 @@ export function scheduleNightlyRefresh({
   }, everyMs);
   return () => window.clearInterval(timer);
 }
+
+/* --------------------------------------------------------- a crash -- */
+
+/**
+ * What to do when the board throws while drawing itself.
+ *
+ * The other guards here cover the cases that were easy to imagine: the
+ * network going away (the copy on the device), a main thread that stops
+ * answering (the watch above), slow rot (the nightly refresh). None of them
+ * covers the one that actually took a board down - a component threw, React
+ * removed the whole tree, and the wall went white until somebody walked over
+ * and pulled the plug.
+ *
+ * Reloading is the recovery. The board comes back from the copy on the
+ * device inside a second, which is what "carry on without the server" means
+ * on a wall.
+ *
+ * With a limit, and the count kept in sessionStorage - because every reload
+ * is a fresh page, and a number held in memory would start again at zero
+ * each time. A board that throws on the way up would then reload for ever,
+ * which from the hall looks the same as a board nobody is fixing. After a
+ * few tries it stops and leaves the message up: that is the one state a
+ * gabbai can photograph and send.
+ */
+export const CRASH_RECOVERY = { delayMs: 4000, limit: 3, windowMs: 10 * 60_000 };
+
+const CRASH_KEY = "shul-tv-crashes";
+
+interface CrashStore {
+  getItem(k: string): string | null;
+  setItem(k: string, v: string): void;
+}
+
+/** Records this crash and says whether the board may reload itself. */
+export function noteCrashAndDecide(
+  now = Date.now(),
+  cfg = CRASH_RECOVERY,
+  store: CrashStore | null = safeSession(),
+): { reload: boolean; crashes: number } {
+  let times: number[] = [];
+  if (store) {
+    try {
+      const raw = JSON.parse(store.getItem(CRASH_KEY) ?? "[]");
+      if (Array.isArray(raw)) times = raw.filter((t): t is number => typeof t === "number");
+    } catch {
+      /* unreadable: treat as the first crash */
+    }
+  }
+  times = times.filter((t) => t > now - cfg.windowMs);
+  times.push(now);
+  if (store) {
+    try {
+      store.setItem(CRASH_KEY, JSON.stringify(times.slice(-10)));
+    } catch {
+      /* private mode: the limit degrades to "always allow", which is still
+         better than never coming back */
+    }
+  }
+  return { reload: times.length <= cfg.limit, crashes: times.length };
+}
+
+function safeSession(): CrashStore | null {
+  try {
+    return typeof sessionStorage === "undefined" ? null : sessionStorage;
+  } catch {
+    return null;
+  }
+}

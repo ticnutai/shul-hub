@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { ShieldAlert } from "lucide-react";
 import { useAuth } from "@community/lib/use-auth";
 import { TvApp } from "@/tv/TvApp";
+import { BoardCrashGuard } from "@/tv/BoardCrashGuard";
 import { TvDesignPanel } from "@community/components/admin/tv/TvDesignPanel";
 import { useTvFonts } from "@community/components/admin/tv/tvFonts";
 
@@ -54,7 +55,12 @@ export default function TvBoardPage() {
     }
     return (
       <div className="fixed inset-0 z-[60] bg-black" dir="rtl">
-        <TvApp mode="web" exitHref="/community/admin?tab=tv&tvTab=design" />
+        {/* The same guard, without the reload: here there is somebody
+            reading the screen, and a page that reloads under them loses
+            whatever they were about to tell us. */}
+        <BoardCrashGuard recover={false}>
+          <TvApp mode="web" exitHref="/community/admin?tab=tv&tvTab=design" />
+        </BoardCrashGuard>
       </div>
     );
   }

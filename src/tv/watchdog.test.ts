@@ -8,6 +8,8 @@ import {
   scheduleNightlyRefresh,
   setWatchdogReport,
   watchMainThread,
+  CRASH_RECOVERY,
+  noteCrashAndDecide,
 } from "./watchdog";
 
 /**
@@ -240,5 +242,57 @@ describe("the nightly refresh", () => {
     expect(report).toHaveBeenCalledWith("info", "watchdog", expect.stringContaining("רענון לילי"), expect.anything());
     setWatchdogReport(null);
     vi.useRealTimers();
+  });
+});
+
+describe("coming back from a crash", () => {
+  /** sessionStorage, but one we can wind forward. */
+  const store = () => {
+    const map = new Map<string, string>();
+    return {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => void map.set(k, v),
+      map,
+    };
+  };
+
+  it("reloads the first time", () => {
+    expect(noteCrashAndDecide(1000, CRASH_RECOVERY, store()).reload).toBe(true);
+  });
+
+  it("keeps the count across reloads, because every reload is a new page", () => {
+    // The whole point: a number held in memory would start at zero each time
+    // and the board would reload for ever.
+    const s = store();
+    expect(noteCrashAndDecide(1000, CRASH_RECOVERY, s).crashes).toBe(1);
+    expect(noteCrashAndDecide(2000, CRASH_RECOVERY, s).crashes).toBe(2);
+    expect(noteCrashAndDecide(3000, CRASH_RECOVERY, s).crashes).toBe(3);
+  });
+
+  it("gives up once the attempts are spent, and leaves the message up", () => {
+    const s = store();
+    for (let i = 1; i <= CRASH_RECOVERY.limit; i++) {
+      expect(noteCrashAndDecide(i * 1000, CRASH_RECOVERY, s).reload).toBe(true);
+    }
+    expect(noteCrashAndDecide(9000, CRASH_RECOVERY, s).reload).toBe(false);
+  });
+
+  it("forgives a crash that was long ago - one a month is not a loop", () => {
+    const s = store();
+    for (let i = 1; i <= CRASH_RECOVERY.limit; i++) noteCrashAndDecide(i * 1000, CRASH_RECOVERY, s);
+    const later = 1000 + CRASH_RECOVERY.windowMs + 1;
+    expect(noteCrashAndDecide(later, CRASH_RECOVERY, s).reload).toBe(true);
+  });
+
+  it("still comes back when there is no storage to count in", () => {
+    // Private mode, or a WebView with storage switched off. Reloading for
+    // ever would be bad; never coming back is worse.
+    expect(noteCrashAndDecide(1000, CRASH_RECOVERY, null).reload).toBe(true);
+  });
+
+  it("survives rubbish left in the key", () => {
+    const s = store();
+    s.map.set("shul-tv-crashes", "not json");
+    expect(noteCrashAndDecide(1000, CRASH_RECOVERY, s).crashes).toBe(1);
   });
 });
