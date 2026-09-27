@@ -56,6 +56,7 @@ const CommunityAnnouncements = lazy(() => import("@community/pages/Announcements
 const CommunityShiurim = lazy(() => import("@community/pages/Shiurim").then(m => ({ default: m.ShiurimPage })));
 const CommunityChavrutot = lazy(() => import("@community/pages/Chavrutot").then(m => ({ default: m.ChavrutotPage })));
 const CommunityContact = lazy(() => import("@community/pages/Contact").then(m => ({ default: m.ContactPage })));
+const CommunityMy = lazy(() => import("@community/pages/MySubmissions").then(m => ({ default: m.MySubmissionsPage })));
 const CommunityAdmin = lazy(() => import("@community/pages/Admin").then(m => ({ default: m.AdminPage })));
 const YamimNoraimEvent = lazy(() => import("./pages/YamimNoraimEvent"));
 // Admin-only alerts about the TV screens; renders nothing for other users.
@@ -218,6 +219,7 @@ const App = () => {
                                 <Route path="/community/shiurim" element={<CommunityShiurim />} />
                                 <Route path="/community/chavrutot" element={<CommunityChavrutot />} />
                                 <Route path="/community/contact" element={<CommunityContact />} />
+                                <Route path="/community/my" element={<CommunityMy />} />
                                 <Route path="/community/admin" element={<CommunityAdmin />} />
                               </Route>
                               <Route path="*" element={<NotFound />} />

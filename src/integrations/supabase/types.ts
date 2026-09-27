@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       admin_messages: {
         Row: {
+          sender_id: string | null
           body: string
           community_id: string
           created_at: string
@@ -26,6 +27,7 @@ export type Database = {
           subject: string
         }
         Insert: {
+          sender_id?: string | null
           body: string
           community_id?: string
           created_at?: string
@@ -36,6 +38,7 @@ export type Database = {
           subject?: string
         }
         Update: {
+          sender_id?: string | null
           body?: string
           community_id?: string
           created_at?: string
@@ -136,6 +139,7 @@ export type Database = {
       }
       chavruta_requests: {
         Row: {
+          sender_id: string | null
           availability: string
           community_id: string
           created_at: string
@@ -153,6 +157,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          sender_id?: string | null
           availability?: string
           community_id?: string
           created_at?: string
@@ -170,6 +175,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          sender_id?: string | null
           availability?: string
           community_id?: string
           created_at?: string

@@ -171,7 +171,7 @@ export function CommunityFooter() {
         </div>
         <Link to="/community" className="mt-4 inline-flex items-center gap-1 text-amber-400"><House className="size-4" />חזרה לדף הקהילה</Link>
         {/* One door: the gabbai goes straight to the admin with everything in
-            it, a member to their own area, a visitor to sign in. The message
+            it, a member to their own area ("הפניות שלי"), a visitor to sign in. The message
             to the gabbai and the themes live in the member's area now. */}
         <div
           data-testid="footer-utility-actions"
@@ -182,7 +182,7 @@ export function CommunityFooter() {
           }}
         >
           <Link
-            to={!signedIn ? "/auth" : isAdmin ? "/community/admin" : "/profile"}
+            to={!signedIn ? "/auth" : isAdmin ? "/community/admin" : "/community/my"}
             aria-label={!signedIn ? "כניסה או הרשמה למערכת" : isAdmin ? "ניהול בית הכנסת" : "כניסה לאזור האישי"}
             title={!signedIn ? "כניסה או הרשמה" : isAdmin ? "ניהול בית הכנסת" : "האזור האישי"}
             data-testid="account-entry"
