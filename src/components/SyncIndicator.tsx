@@ -2,6 +2,7 @@ import { Sparkles, CloudOff, RefreshCw, AlertCircle } from "lucide-react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useBriefly } from "@/hooks/useBriefly";
 
 interface SyncIndicatorProps {
   status: 'synced' | 'syncing' | 'offline' | 'error';
@@ -10,6 +11,9 @@ interface SyncIndicatorProps {
 }
 
 export const SyncIndicator = ({ status, lastSynced, onSync }: SyncIndicatorProps) => {
+  // The words for a minute after the status changes; after that the icon
+  // alone (it is also the manual-sync button, and the tooltip still tells).
+  const fresh = useBriefly(status);
   const getIcon = () => {
     switch (status) {
       case 'synced':
@@ -52,7 +56,7 @@ export const SyncIndicator = ({ status, lastSynced, onSync }: SyncIndicatorProps
               status === 'offline' && "text-white/50"
             )}
           >
-            <span className="text-xs hidden md:inline">{getMessage()}</span>
+            {fresh && <span className="text-xs hidden md:inline">{getMessage()}</span>}
             {getIcon()}
           </Button>
         </TooltipTrigger>

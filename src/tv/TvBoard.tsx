@@ -1,4 +1,5 @@
 import { HolyEndMinutesContext } from "./holyEnd";
+import { useBriefly } from "@/hooks/useBriefly";
 import { IllustratedStage } from "./TvIllustrated";
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HDate } from "@hebcal/core";
@@ -369,12 +370,17 @@ function TvHeader({ settings, now, config, clock = true }: { settings: Settings 
 function SyncStatus({ data, now }: { data: BoardData; now: Date }) {
   const { status, lastSyncedAt } = data.sync;
   const live = status === "live" && !data.stale;
+  // A minute after each change, then off the wall: the congregation reads the
+  // times, not the connection. The control centre still sees the real state.
+  const fresh = useBriefly(live ? "live" : status);
+  const edit = useBoardEdit();
+  if (!fresh) return null;
   let label: string;
   if (live) label = "מעודכן";
   else if (status === "connecting") label = "מתחבר…";
   else label = lastSyncedAt ? `מציג מידע מ־${describeAge(now.getTime() - lastSyncedAt.getTime())}` : "אין חיבור";
   return (
-    <div className="tv-status" {...useBoardEdit().attr("footer.status")}>
+    <div className="tv-status" {...edit.attr("footer.status")}>
       <span className={`tv-status-dot${live ? "" : status === "connecting" ? " is-connecting" : " is-offline"}`} />
       <span>{label}</span>
     </div>

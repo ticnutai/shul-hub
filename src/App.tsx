@@ -16,6 +16,7 @@ import { ContentProvider } from "@/contexts/ContentContext";
 import { DeviceProvider } from "@/contexts/DeviceContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useBriefly } from "@/hooks/useBriefly";
 import { lazy, Suspense, useEffect, useState, Profiler, type ProfilerOnRenderCallback } from "react";
 import { Loader2, WifiOff } from "lucide-react";
 import { PWAReloadPrompt } from "@/components/PWAReloadPrompt";
@@ -84,7 +85,10 @@ function OfflineBanner() {
       window.removeEventListener("offline", setOffline);
     };
   }, []);
-  if (isOnline) return null;
+  // Said once, for a minute: the app keeps working offline, and a banner that
+  // stays for as long as the connection is down only covers the page.
+  const fresh = useBriefly(isOnline);
+  if (isOnline || !fresh) return null;
   return (
     <div className="fixed top-0 inset-x-0 z-50 flex items-center justify-center gap-2 bg-amber-500 text-white text-sm py-1.5 px-4">
       <WifiOff className="h-4 w-4 shrink-0" />

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { STATUS_MESSAGE_MS } from '@/hooks/useBriefly';
 import { useRegisterSW } from 'virtual:pwa-register/react';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, X } from 'lucide-react';
@@ -63,6 +64,14 @@ export function PWAReloadPrompt() {
     setOfflineReady(false);
     setNeedRefresh(false);
   };
+
+  // A status message: up for a minute, then gone by itself.
+  useEffect(() => {
+    if (!offlineReady && !needRefresh) return;
+    const t = window.setTimeout(close, STATUS_MESSAGE_MS);
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [offlineReady, needRefresh]);
 
   return (
     <>
