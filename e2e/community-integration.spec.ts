@@ -262,13 +262,14 @@ test("the full synagogue name stays visible while management moves to the footer
   ]);
   expect(contactOrder[0]).toBeLessThan(contactOrder[1]);
   expect(contactOrder[1]).toBeLessThan(contactOrder[2]);
+  // One door only: a guest is sent to sign in (a gabbai to the admin, a
+  // member to their area - the same link, decided by who is signed in).
   const utilityActions = footer.getByTestId("footer-utility-actions");
-  const managementLink = footer.getByRole("link", { name: "ניהול האתר" });
-  const themesButton = footer.getByRole("button", { name: "ערכות נושא" });
-  await managementLink.scrollIntoViewIfNeeded();
-  await expect(managementLink).toBeVisible();
-  await expect(themesButton).toBeVisible();
-  await expect(managementLink).toHaveAttribute("href", "/community/admin?tab=settings");
+  const accountLink = footer.getByTestId("account-entry");
+  await accountLink.scrollIntoViewIfNeeded();
+  await expect(accountLink).toBeVisible();
+  await expect(accountLink).toHaveAttribute("href", "/auth");
+  await expect(utilityActions.locator("a, button")).toHaveCount(1);
 
   const placement = await utilityActions.evaluate(element => {
     const controls = Array.from(element.children, child => child.getBoundingClientRect());
@@ -277,14 +278,12 @@ test("the full synagogue name stays visible while management moves to the footer
     return {
       widths: controls.map(control => control.width),
       heights: controls.map(control => control.height),
-      gap: Math.max(controls[0].left, controls[1].left) - Math.min(controls[0].right, controls[1].right),
       rightInset: footerRect.right - actions.right,
       bottomInset: footerRect.bottom - actions.bottom,
     };
   });
   expect(placement.widths.every(width => width <= 36)).toBeTruthy();
   expect(placement.heights.every(height => height <= 36)).toBeTruthy();
-  expect(placement.gap).toBeGreaterThanOrEqual(6);
   expect(placement.rightInset).toBeLessThanOrEqual(16);
   expect(placement.bottomInset).toBeGreaterThanOrEqual(0);
 
@@ -292,15 +291,16 @@ test("the full synagogue name stays visible while management moves to the footer
   expect(overflow).toBeLessThanOrEqual(1);
 });
 
-test("the footer theme shortcut opens the shared theme picker and new presets persist", async ({ page }) => {
+test("the theme picker (from the member's area) opens and new presets persist", async ({ page }) => {
   await page.goto("/community");
   await page.evaluate(() => localStorage.removeItem("torah-theme"));
   await page.reload();
 
-  const footer = page.locator("footer");
-  const themesButton = footer.getByRole("button", { name: "ערכות נושא" });
-  await themesButton.scrollIntoViewIfNeeded();
-  await themesButton.click();
+  // The member's area opens it with this event (UserProfile "ערכות נושא").
+  await page.evaluate(() => {
+    document.documentElement.dataset.openAppThemes = "true";
+    window.dispatchEvent(new CustomEvent("open-app-themes"));
+  });
 
   const themePanel = page.locator('[data-theme-panel="chumash"]:visible').first();
   await expect(themePanel).toBeVisible();

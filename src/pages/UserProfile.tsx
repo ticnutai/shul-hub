@@ -25,7 +25,7 @@ import {
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { Shield } from "lucide-react";
+import { MessageSquareText, Palette, Shield } from "lucide-react";
 import { useUserRoles } from "@/hooks/useUserRoles";
 
 export const UserProfile = () => {
@@ -87,6 +87,25 @@ export const UserProfile = () => {
           </Button>
           <h1 className="text-3xl sm:text-4xl font-bold mb-2 text-right">המערכת שלי</h1>
           <p className="text-muted-foreground text-right truncate overflow-hidden">{user.email}</p>
+          {/* What used to sit as separate icons at the foot of the site. */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate("/community/contact")} className="gap-2" data-testid="profile-contact">
+              <MessageSquareText className="h-4 w-4" />
+              <span>הודעה למנהל</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="gap-2"
+              data-testid="profile-themes"
+              onClick={() => {
+                document.documentElement.dataset.openAppThemes = "true";
+                window.dispatchEvent(new CustomEvent("open-app-themes"));
+              }}
+            >
+              <Palette className="h-4 w-4" />
+              <span>ערכות נושא</span>
+            </Button>
+          </div>
           {isAdmin && (
             <Button
               variant="outline"

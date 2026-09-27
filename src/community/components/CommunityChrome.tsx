@@ -1,11 +1,12 @@
 import { Link, NavLink } from "react-router-dom";
-import { BookOpen, House, LogIn, Megaphone, MessageCircle, MessageSquareText, Palette, Settings, UserRoundCheck, Users } from "lucide-react";
+import { BookOpen, House, LogIn, Megaphone, MessageCircle, UserRoundCheck, Users } from "lucide-react";
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
 import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminAiShortcut } from "./AdminAiShortcut";
+import { useAuth as useCommunityAuth } from "@community/lib/use-auth";
 
 function boundedDimension(value: number | null | undefined, fallback: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? Number(value) : fallback));
@@ -125,6 +126,8 @@ export function CommunityHeader() {
 export function CommunityFooter() {
   const { data: settings } = useSettings();
   const { user } = useAuth();
+  const { isAdmin } = useCommunityAuth();
+  const signedIn = Boolean(user && !user.is_anonymous);
   const contactPhone = settings?.phone ?? "054-647-3461";
   const contactPhoneDigits = contactPhone.replace(/\D/g, "");
   const whatsappPhone = contactPhoneDigits.startsWith("0")
@@ -167,11 +170,9 @@ export function CommunityFooter() {
           </div>
         </div>
         <Link to="/community" className="mt-4 inline-flex items-center gap-1 text-amber-400"><House className="size-4" />חזרה לדף הקהילה</Link>
-        {/* The page's utilities, all four in one corner: who you are, a word
-            to the gabbai, the admin, and the look of the site. Two of them
-            used to sit in the header above the name of the shul; a corner at
-            the foot of the page is where a reader looks for them when they
-            want them, and nowhere near where the eye lands when they do not. */}
+        {/* One door: the gabbai goes straight to the admin with everything in
+            it, a member to their own area, a visitor to sign in. The message
+            to the gabbai and the themes live in the member's area now. */}
         <div
           data-testid="footer-utility-actions"
           className="absolute flex items-center gap-2"
@@ -181,48 +182,17 @@ export function CommunityFooter() {
           }}
         >
           <Link
-            to={user && !user.is_anonymous ? "/profile" : "/auth"}
-            aria-label={user && !user.is_anonymous ? "כניסה לאזור האישי" : "כניסה או הרשמה למערכת"}
-            title={user && !user.is_anonymous ? "האזור האישי" : "כניסה או הרשמה"}
+            to={!signedIn ? "/auth" : isAdmin ? "/community/admin" : "/profile"}
+            aria-label={!signedIn ? "כניסה או הרשמה למערכת" : isAdmin ? "ניהול בית הכנסת" : "כניסה לאזור האישי"}
+            title={!signedIn ? "כניסה או הרשמה" : isAdmin ? "ניהול בית הכנסת" : "האזור האישי"}
             data-testid="account-entry"
             className="inline-flex size-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:bg-white/10 hover:text-amber-400"
           >
-            {user && !user.is_anonymous
+            {signedIn
               ? <UserRoundCheck className="size-4" aria-hidden="true" />
               : <LogIn className="size-4" aria-hidden="true" />}
             <span className="sr-only">כניסה למערכת</span>
           </Link>
-          <Link
-            to="/community/contact"
-            aria-label="הודעה למנהל"
-            title="הודעה למנהל"
-            className="inline-flex size-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:bg-white/10 hover:text-amber-400"
-          >
-            <MessageSquareText className="size-4" />
-          </Link>
-          <NavLink
-            to="/community/admin?tab=settings"
-            aria-label="ניהול האתר"
-            title="ניהול האתר"
-            className={({ isActive }) => cn(
-              "inline-flex size-8 items-center justify-center rounded-full border border-white/15 transition",
-              isActive ? "bg-white/12 text-amber-400" : "text-white/60 hover:bg-white/10 hover:text-amber-400",
-            )}
-          >
-            <Settings className="size-4" />
-          </NavLink>
-          <button
-            type="button"
-            aria-label="ערכות נושא"
-            title="ערכות נושא"
-            className="inline-flex size-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:bg-white/10 hover:text-amber-400"
-            onClick={() => {
-              document.documentElement.dataset.openAppThemes = "true";
-              window.dispatchEvent(new CustomEvent("open-app-themes"));
-            }}
-          >
-            <Palette className="size-4" />
-          </button>
         </div>
       </div>
       <AdminAiShortcut />
