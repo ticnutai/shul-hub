@@ -26,6 +26,7 @@
  *   node scripts/tv-control.mjs restart                force-stop and relaunch the app
  *   node scripts/tv-control.mjs install [apk]          install (default: release APK) + launch
  *   node scripts/tv-control.mjs autostart              allow the board to reopen after power-on
+ *   node scripts/tv-control.mjs setup                  autostart + signage, for a screen already out there
  *   node scripts/tv-control.mjs signage                stop Android's screensaver covering the board
  *
  * Device: the single device in `adb devices`, or TV_ADB=192.168.33.10:41289.
@@ -326,12 +327,39 @@ const commands = {
     console.log("screensaver off, screen stays on - the board keeps the wall");
   },
 
+  /**
+   * Installs, and then does the two things a board is useless without.
+   *
+   * Both are settings a TV cannot reach from its own remote and that an app is
+   * not allowed to make about itself, so they can only be done from here - and
+   * being separate commands, they were things to remember. One of them was
+   * missing on a box for months: without "display over other apps" Android
+   * refuses to let the board reopen itself after a power cut or after the
+   * system takes the app, and it refuses SILENTLY - nothing inside the app can
+   * see that it has been blocked.
+   *
+   * So the install does them. Both are safe to repeat.
+   */
   async install(apk = DEFAULT_APK) {
     if (!fs.existsSync(apk)) die(`APK not found: ${apk}  (build it: npm run tv:apk:release)`);
     const r = spawnSync(ADB, ["-s", device, "install", "-r", apk], { encoding: "utf8" });
     console.log((r.stdout + r.stderr).trim().split("\n").pop());
     if (r.status !== 0) process.exit(1);
+    await commands.autostart();
+    await commands.signage();
     await commands.restart();
+  },
+
+  /**
+   * The setup a screen needs, without reinstalling it.
+   *
+   * For the boxes already on walls: the same two steps the install now does,
+   * so an existing screen can be brought up to them in one command.
+   */
+  async setup() {
+    await commands.autostart();
+    await commands.signage();
+    console.log("this screen can now bring itself back on its own");
   },
 };
 
