@@ -60,6 +60,14 @@ function kindLabel(kind: string | undefined): string {
 }
 
 /** Hebrew names for the log, which the admin reads. */
+/**
+ * The board loads from the website, so new board code runs inside old apps.
+ * An app installed before the App plugin was added answered every call with
+ * '"App" plugin is not implemented on android' (seen on a box, 27.9). Ask
+ * first; without it the board simply has no Back handling or foreground report.
+ */
+const appPlugin = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App");
+
 const COMMAND_LABELS: Record<TvCommand["command"], string> = {
   pause: "עצירה",
   resume: "המשך",
@@ -432,10 +440,11 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   // Another app opened on the TV (YouTube, input switch...) or back to the
   // board: recorded so the disconnect report gives the real reason.
   useEffect(() => {
-    if (web || !Capacitor.isNativePlatform()) return;
+    if (web || !appPlugin()) return;
     const handle = CapApp.addListener("appStateChange", ({ isActive }) => link.current?.setForeground(isActive));
+    handle.catch(() => undefined);
     return () => {
-      void handle.then((h) => h.remove());
+      void handle.then((h) => h.remove()).catch(() => undefined);
     };
   }, [web, link]);
 
@@ -447,14 +456,14 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
    */
   const exitArmed = useRef(0);
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!appPlugin()) return;
     const handle = CapApp.addListener("backButton", () => {
       setHelp((open) => {
         if (open) {
           exitArmed.current = 0;
           return false;
         }
-        if (Date.now() < exitArmed.current) void CapApp.exitApp();
+        if (Date.now() < exitArmed.current) void CapApp.exitApp().catch(() => undefined);
         else {
           exitArmed.current = Date.now() + 3000;
           flash("לחצו שוב על ׳חזור׳ ליציאה · לעזרה: כפתור התפריט");
@@ -462,8 +471,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         return false;
       });
     });
+    handle.catch(() => undefined);
     return () => {
-      void handle.then((h) => h.remove());
+      void handle.then((h) => h.remove()).catch(() => undefined);
     };
   }, [flash]);
 
