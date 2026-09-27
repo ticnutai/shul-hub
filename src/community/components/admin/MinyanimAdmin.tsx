@@ -5,6 +5,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarRange,
@@ -46,7 +47,6 @@ import {
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { isEventCategory } from "@community/lib/specialDays";
-import { SpecialDaysAdmin } from "@community/components/admin/SpecialDaysAdmin";
 
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
@@ -87,9 +87,17 @@ export function MinyanimAdmin() {
   const remove = useDeleteRow("minyanim", "minyanim");
   const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
   const removeCategory = useDeleteRow("minyan_categories", "minyan_categories");
-  const [categoryId, setCategoryId] = useState<string | null>(null);
-  // "מועדים ואירועים": the special days, each with a timetable of its own.
-  const [view, setView] = useState<"regular" | "events">("regular");
+  const [categoryId, setCategoryId] = useState<string | null>(() => new URLSearchParams(window.location.search).get("cat"));
+  // A special day's own timetable is opened from "תצוגות → מועדים ואירועים"
+  // with ?cat=<its tab>; "back" returns there.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openSpecialDays = () => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", "tv");
+    next.set("tvTab", "events");
+    next.delete("cat");
+    setSearchParams(next);
+  };
   const [prayer, setPrayer] = useState<string>("shacharit");
   const [draft, setDraft] = useState<Draft | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(null);
@@ -129,7 +137,6 @@ export function MinyanimAdmin() {
     }
     await queryClient.invalidateQueries({ queryKey: ["minyan_categories"] });
     setCategoryId((data as { id: string }).id);
-    setView("regular");
   }
   const selectedCategoryId = selectedCategory?.id ?? null;
   const zmanim = zmanimFor(new Date(), settings);
@@ -340,7 +347,7 @@ export function MinyanimAdmin() {
               data-testid={`minyan-category-${category.id}`}
               className={
                 "flex items-center rounded-md text-sm " +
-                (view === "regular" && selectedCategoryId === category.id
+                (selectedCategoryId === category.id
                   ? "bg-card font-medium shadow-soft"
                   : "text-muted-foreground") +
                 (draggedCategoryId === category.id ? " opacity-50" : "")
@@ -375,8 +382,7 @@ export function MinyanimAdmin() {
                 className="px-2 py-1.5"
                 onClick={() => {
                   setCategoryId(category.id);
-                  setView("regular");
-                  const first = minyanSubcategories(category)[0];
+                                const first = minyanSubcategories(category)[0];
                   if (first) setPrayer(first.id);
                 }}
               >
@@ -419,19 +425,22 @@ export function MinyanimAdmin() {
               <Plus className="ml-1 inline size-3.5" /> טאב שבת
             </button>
           )}
+          {/* The special days moved to "תצוגות": what the board shows on them.
+              Their own timetables still open here, from there. */}
           <button
             type="button"
             data-testid="special-days-tab"
-            onClick={() => setView("events")}
+            onClick={() => openSpecialDays()}
             className={
               "rounded-md px-3 py-1.5 text-sm " +
-              (view === "events" || selectedIsEvent ? "bg-card font-semibold shadow-soft" : "font-medium text-foreground hover:bg-card")
+              (selectedIsEvent ? "bg-card font-semibold shadow-soft" : "font-medium text-foreground hover:bg-card")
             }
+            title="נמצא עכשיו בלשונית תצוגות"
           >
-            📅 מועדים ואירועים
+            📅 מועדים ואירועים ←
           </button>
         </div>
-        <div className={view === "events" ? "hidden" : "flex gap-2"}>
+        <div className="flex gap-2">
           {selectedCategory && (
             <Button
               variant="outline"
@@ -455,24 +464,13 @@ export function MinyanimAdmin() {
         </div>
       </div>
 
-      {view === "events" ? (
-        <SpecialDaysAdmin
-          categories={categories}
-          minyanim={minyanim}
-          onOpen={(id) => {
-            setCategoryId(id);
-            setView("regular");
-          }}
-        />
-      ) : (
-      <>
       {selectedIsEvent && selectedCategory && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
           <span>
             זמני התפילות של <b>{selectedCategory.name}</b> — ביום עצמו הם מחליפים באתר ובלוח את הזמנים הרגילים.
           </span>
-          <Button size="sm" variant="ghost" onClick={() => setView("events")}>
-            ← חזרה למועדים
+          <Button size="sm" variant="ghost" onClick={() => openSpecialDays()}>
+            ← חזרה למועדים ואירועים
           </Button>
         </div>
       )}
@@ -1006,8 +1004,6 @@ export function MinyanimAdmin() {
             </Button>
           </div>
         </form>
-      )}
-      </>
       )}
     </div>
   );

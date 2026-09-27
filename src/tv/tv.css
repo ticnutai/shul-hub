@@ -4922,3 +4922,82 @@
   font-weight: 700;
   box-shadow: var(--tv-shadow);
 }
+
+/* The special day's screen with everything of the day: a wider card, the
+   zmanim in one column and the day's minyanim in the other, the Torah
+   reading under them. Type a little smaller than the short card so it all
+   fits a 16:9 wall. */
+.tv-event-splash.is-full .tv-event-card {
+  min-width: 58vw;
+  max-width: 72vw;
+  padding: 1.6vw 2.2vw;
+}
+.tv-event-splash.is-full .tv-event-title {
+  font-size: 3.6vw;
+  margin-bottom: 0.6vw;
+}
+.tv-event-splash.is-full .tv-event-verse blockquote {
+  font-size: 1.6vw;
+}
+.tv-event-splash.is-full .tv-event-times {
+  gap: 0.25vw;
+}
+.tv-event-splash.is-full .tv-event-times > div {
+  font-size: 1.45vw;
+  padding-top: 0.25vw;
+}
+.tv-event-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 2vw;
+  align-items: start;
+  margin-bottom: 0.9vw;
+}
+.tv-event-prayers {
+  display: grid;
+  gap: 0.5vw;
+  margin: 0;
+}
+.tv-event-prayers > div {
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  padding-top: 0.35vw;
+}
+.tv-event-prayers dt {
+  font-size: 1.35vw;
+  font-weight: 800;
+  color: #f6d77a;
+}
+.tv-event-prayers dd {
+  margin: 0.15vw 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2vw 0.9vw;
+  font-size: 1.5vw;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  /* Read from the right, like the rest of the board: the earliest first. */
+  justify-content: flex-start;
+}
+.tv-event-prayers .is-cancelled {
+  text-decoration: line-through;
+  opacity: 0.5;
+}
+/* Separate screens for days that meet: which one is up, and what follows. */
+.tv-event-pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5vw;
+  margin-top: 0.8vw;
+}
+.tv-event-pages span {
+  font-size: 1.1vw;
+  padding: 0.15vw 0.7vw;
+  border-radius: 999px;
+  border: 1px solid rgba(246, 215, 122, 0.35);
+  opacity: 0.6;
+}
+.tv-event-pages span.is-active {
+  opacity: 1;
+  background: rgba(246, 215, 122, 0.2);
+  color: #f6d77a;
+}

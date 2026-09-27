@@ -2,8 +2,10 @@ import { useMemo, type ReactNode } from "react";
 import type { MinyanCategory } from "@community/lib/data";
 import { HDate } from "@hebcal/core";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
+import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import {
   combinedDay,
+  specialDaysOn,
   specialDayFor,
   holyWindow,
   specialZmanim,
@@ -37,6 +39,49 @@ const SHOW_SECONDS = 15;
 const SLIDE_SECONDS = 5;
 /** Held for a whole Shabbat or festival, the pictures change more slowly. */
 const HOLD_SLIDE_SECONDS = 30;
+/** Days shown on separate screens: how long each stays while held. */
+const HOLD_PAGE_SECONDS = 20;
+
+/** Shabbat as a page of its own, when the days of the date are shown one by one. */
+const SHABBAT_PAGE: SpecialDayDef = { key: "shabbat", name: "שבת קודש", group: "shabbatot", match: /(?!)/ };
+
+/** The zmanim of the day, in the order of the day, for the full screen. */
+const DAY_ZMANIM: { key: keyof Zmanim; label: string }[] = [
+  { key: "alot", label: "עלות השחר" },
+  { key: "sunrise", label: "הנץ החמה" },
+  { key: "sof_zman_shma", label: "סוף זמן ק״ש" },
+  { key: "sof_zman_tefila", label: "סוף זמן תפילה" },
+  { key: "chatzot", label: "חצות היום" },
+  { key: "mincha_gedola", label: "מנחה גדולה" },
+  { key: "plag", label: "פלג המנחה" },
+  { key: "sunset", label: "שקיעה" },
+  { key: "tzeit", label: "צאת הכוכבים" },
+];
+
+const PRAYER_LABELS: Record<string, string> = { shacharit: "שחרית", mincha: "מנחה", arvit: "ערבית" };
+
+export interface DaySchedule {
+  id: string;
+  title: string;
+  rows: ResolvedMinyan[];
+}
+
+/** The day's minyanim, one line per prayer: "שחרית 6:15 · 7:00 · 7:55". */
+function prayerLines(schedules: DaySchedule[]): { label: string; times: { time: string; cancelled?: boolean }[] }[] {
+  const lines = new Map<string, { time: string; cancelled?: boolean; minutes: number }[]>();
+  for (const s of schedules) {
+    for (const r of s.rows) {
+      const label = PRAYER_LABELS[r.minyan.prayer] ?? r.minyan.label;
+      const list = lines.get(label) ?? [];
+      if (!list.some((x) => x.time === r.time)) list.push({ time: r.time, cancelled: r.cancelled, minutes: r.minutes });
+      lines.set(label, list);
+    }
+  }
+  return [...lines.entries()].map(([label, times]) => ({
+    label,
+    times: times.sort((a, b) => a.minutes - b.minutes),
+  }));
+}
 
 /* ----------------------------------------------------------- palettes -- */
 
@@ -418,9 +463,13 @@ export function EventSplash({
   zmanimOn,
   force = false,
   day,
+  schedulesFor,
 }: {
   categories: Pick<MinyanCategory, "system_key" | "active">[] | undefined;
-  config: Pick<TvConfig, "eventImages" | "eventSplash" | "eventStyles" | "eventHold" | "eventAuto" | "eventNationalAuto"> & {
+  config: Pick<
+    TvConfig,
+    "eventImages" | "eventSplash" | "eventStyles" | "eventHold" | "eventAuto" | "eventNationalAuto" | "eventDetail" | "eventCombine"
+  > & {
     shabbat?: Pick<TvConfig["shabbat"], "endMinutesAfterSunset">;
   };
   now: Date;
@@ -431,6 +480,8 @@ export function EventSplash({
   force?: boolean;
   /** Show this day, whatever today is (the admin's preview). */
   day?: SpecialDayDef;
+  /** The day's minyanim, for the full screen (the board's own schedules for that date). */
+  schedulesFor?: (date: Date, zmanim: Zmanim) => DaySchedule[];
 }) {
   // From candle lighting until nightfall at its end, a Shabbat or festival that
   // is a special day stays on the wall the whole time.
@@ -453,9 +504,30 @@ export function EventSplash({
   const infoOnly = !force && !day && !!found?.auto && config.eventAuto === "info";
   const seconds = Math.floor(now.getTime() / 1000);
   const phase = seconds % CYCLE_SECONDS;
+  // The days of the date, each on its own screen, when the gabbai chose that:
+  // Shabbat, the festival, Rosh Chodesh... one after another. Otherwise one
+  // screen names them all.
+  const pages = useMemo<SpecialDayDef[]>(() => {
+    if (!def) return [];
+    if (config.eventCombine !== "separate") return [def];
+    const others = specialDaysOn(date).filter(
+      (d) => d.key !== def.key && (!d.national || config.eventNationalAuto),
+    );
+    const shabbat = new HDate(date).getDay() === 6 && def.group !== "shabbatot" && !others.some((d) => d.group === "shabbatot");
+    return [...(shabbat ? [SHABBAT_PAGE] : []), def, ...others];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [def, day, config.eventCombine, config.eventNationalAuto, dayKey]);
   if (!def || (!config.eventSplash && !force)) return null;
   if (!force && !hold && phase >= SHOW_SECONDS) return null;
-  const slides = eventSlides(config.eventImages[def.key], stylesFor(def), config.eventStyles[def.key]);
+  const pageIndex =
+    pages.length < 2
+      ? 0
+      : hold || force
+        ? Math.floor(seconds / HOLD_PAGE_SECONDS) % pages.length
+        : Math.min(pages.length - 1, Math.floor(phase / (SHOW_SECONDS / pages.length)));
+  const page = pages[pageIndex] ?? def;
+  const separate = pages.length > 1;
+  const slides = eventSlides(config.eventImages[page.key], stylesFor(page), config.eventStyles[page.key]);
   // Each appearance moves on through the pictures; within it, a new one every few seconds.
   const step = force
     ? Math.floor(seconds / SLIDE_SECONDS)
@@ -463,26 +535,49 @@ export function EventSplash({
       ? Math.floor(seconds / HOLD_SLIDE_SECONDS)
       : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
   const active = step % slides.length;
-  // The day's own times, then the two a congregant looks for on a Shabbat or
-  // festival morning. While held from candle lighting, `date` is already the
-  // holy day itself, so these are tomorrow morning's, which is what is meant.
-  const rows = [
-    ...specialZmanim(date, dayZmanim, endMinutes),
-    ...(hold || def.group !== "fasts"
-      ? [
-          { key: "shma", label: "סוף זמן ק״ש", time: dayZmanim.sof_zman_shma },
-          { key: "tefila", label: "סוף זמן תפילה", time: dayZmanim.sof_zman_tefila },
-        ].filter((r) => r.time)
-      : []),
-  ];
+  const full = config.eventDetail !== "short";
+  // The day's own times first (candle lighting, the end of the fast or of
+  // the festival). On the full screen, then every zman of the day; on the
+  // short one, the two a congregant looks for on a Shabbat or festival
+  // morning. While held from candle lighting, `date` is already the holy day
+  // itself, so these are tomorrow morning's, which is what is meant.
+  const own = specialZmanim(date, dayZmanim, endMinutes);
+  const rows = full
+    ? [
+        ...own,
+        ...DAY_ZMANIM.filter((z) => dayZmanim[z.key] && !own.some((o) => o.label === z.label)).map((z) => ({
+          key: z.key,
+          label: z.label,
+          time: dayZmanim[z.key],
+        })),
+      ]
+    : [
+        ...own,
+        ...(hold || def.group !== "fasts"
+          ? [
+              { key: "shma", label: "סוף זמן ק״ש", time: dayZmanim.sof_zman_shma },
+              { key: "tefila", label: "סוף זמן תפילה", time: dayZmanim.sof_zman_tefila },
+            ].filter((r) => r.time)
+          : []),
+      ];
+  const prayers = full && schedulesFor ? prayerLines(schedulesFor(date, dayZmanim)) : [];
   const torah = torahReadingOn(date);
-  const combined = combinedDay(def, date);
-  const own = verseFor(def.key);
+  // One screen for all the days: "שבת · סוכות", with the others under it.
+  // A screen of its own for each: just its name.
+  const combined = separate
+    ? { title: page.name.replace(/\s*\([^)]*\)\s*$/, ""), also: [] as string[], shabbat: page.key === "shabbat" }
+    : combinedDay(def, date);
+  const ownVerse = verseFor(page.key);
   // Shabbat and a festival together: a verse of each, side by side.
-  const pair = combined.shabbat && own ? { shabbat: verseFor("shabbat")!, day: own } : null;
-  const verse = pair ? null : own ?? (combined.shabbat ? verseFor("shabbat") : null);
+  const pair = !separate && combined.shabbat && ownVerse ? { shabbat: verseFor("shabbat")!, day: ownVerse } : null;
+  const verse = pair ? null : ownVerse ?? (combined.shabbat ? verseFor("shabbat") : null);
   return (
-    <div className={`tv-event-splash${infoOnly ? " is-info" : ""}`} role="region" aria-label={def.name}>
+    <div
+      className={`tv-event-splash${infoOnly ? " is-info" : ""}${full ? " is-full" : ""}`}
+      role="region"
+      aria-label={combined.title}
+      data-page={separate ? `${pageIndex + 1}/${pages.length}` : undefined}
+    >
       {/* The clock stays on the wall while the day's picture covers the board. */}
       {!infoOnly && <div className="tv-event-clock">{formatTime(now)}</div>}
       {!infoOnly && slides.map((s, i) => (
@@ -494,7 +589,7 @@ export function EventSplash({
               <div className="tv-event-photo" style={{ backgroundImage: `url("${s.image}")` }} />
             </>
           ) : (
-            <DefaultArt def={def} variant={s.variant} withShabbat={combined.shabbat} />
+            <DefaultArt def={page} variant={s.variant} withShabbat={combined.shabbat} />
           )}
         </div>
       ))}
@@ -510,7 +605,7 @@ export function EventSplash({
               <figcaption>{pair.shabbat.source}</figcaption>
             </figure>
             <figure className="tv-event-verse">
-              <div className="tv-event-verse-head">{GROUP_TITLE[def.group] ?? combined.title.replace(/^שבת\s*·?\s*/, "")}</div>
+              <div className="tv-event-verse-head">{GROUP_TITLE[page.group] ?? combined.title.replace(/^שבת\s*·?\s*/, "")}</div>
               <blockquote>{pair.day.text}</blockquote>
               <figcaption>{pair.day.source}</figcaption>
             </figure>
@@ -522,16 +617,34 @@ export function EventSplash({
             <figcaption>{verse.source}</figcaption>
           </figure>
         )}
-        {rows.length > 0 && (
-          <dl className="tv-event-times">
-            {rows.map((r) => (
-              <div key={r.key}>
-                <dt>{r.label}</dt>
-                <dd>{formatTime(r.time)}</dd>
-              </div>
-            ))}
-          </dl>
-        )}
+        <div className={prayers.length ? "tv-event-grid" : undefined}>
+          {rows.length > 0 && (
+            <dl className="tv-event-times">
+              {rows.map((r) => (
+                <div key={r.key}>
+                  <dt>{r.label}</dt>
+                  <dd>{formatTime(r.time)}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {prayers.length > 0 && (
+            <dl className="tv-event-prayers" data-testid="event-prayers">
+              {prayers.map((p) => (
+                <div key={p.label}>
+                  <dt>{p.label}</dt>
+                  <dd>
+                    {p.times.map((t, i) => (
+                      <span key={t.time + i} className={t.cancelled ? "is-cancelled" : undefined}>
+                        {t.time}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+        </div>
         {torah && (
           <dl className="tv-event-torah">
             <div>
@@ -551,6 +664,15 @@ export function EventSplash({
               </div>
             )}
           </dl>
+        )}
+        {separate && (
+          <div className="tv-event-pages" aria-hidden>
+            {pages.map((p, i) => (
+              <span key={p.key} className={i === pageIndex ? "is-active" : ""}>
+                {p.name.replace(/\s*\([^)]*\)\s*$/, "")}
+              </span>
+            ))}
+          </div>
         )}
         {!infoOnly && slides.length > 1 && (
           <div className="tv-event-dots" aria-hidden>

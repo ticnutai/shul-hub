@@ -68,3 +68,56 @@ describe("the special day on the board", () => {
     expect(container.querySelector(".tv-event-splash")).toBeNull();
   });
 });
+
+describe("everything of the day, and days that meet", () => {
+  const schedulesFor = () => [
+    {
+      id: "c",
+      title: "שבת",
+      rows: [
+        { minyan: { prayer: "shacharit", label: "שחרית א׳" }, time: "08:30", minutes: 510, source: "" },
+        { minyan: { prayer: "shacharit", label: "שחרית ב׳" }, time: "10:00", minutes: 600, source: "" },
+        { minyan: { prayer: "mincha", label: "מנחה" }, time: "17:45", minutes: 1065, source: "" },
+      ] as never,
+    },
+  ];
+
+  it("by default: every zman of the day and the day's minyanim, one line per prayer", () => {
+    const { container } = render(
+      <EventSplash categories={[]} config={DEFAULT_TV_CONFIG} now={now} zmanim={zmanimOn(now)} zmanimOn={zmanimOn} schedulesFor={schedulesFor} />,
+    );
+    expect(container.querySelector(".tv-event-splash")?.classList.contains("is-full")).toBe(true);
+    for (const z of ["עלות השחר", "הנץ החמה", "חצות היום", "שקיעה", "צאת הכוכבים", "צאת השבת והחג"]) expect(screen.getByText(z)).toBeTruthy();
+    const prayers = screen.getByTestId("event-prayers");
+    expect(prayers.textContent).toContain("שחרית");
+    expect(prayers.textContent).toContain("08:30");
+    expect(prayers.textContent).toContain("10:00");
+    expect(prayers.textContent).toContain("מנחה");
+  });
+
+  it("'short' keeps the old card: its own times, Shema and Tefila, no minyanim", () => {
+    render(
+      <EventSplash categories={[]} config={{ ...DEFAULT_TV_CONFIG, eventDetail: "short" }} now={now} zmanim={zmanimOn(now)} zmanimOn={zmanimOn} schedulesFor={schedulesFor} />,
+    );
+    expect(screen.queryByText("עלות השחר")).toBeNull();
+    expect(screen.queryByTestId("event-prayers")).toBeNull();
+    expect(screen.getByText("סוף זמן ק״ש")).toBeTruthy();
+  });
+
+  it("one screen for Shabbat and Sukkot together, or a screen for each in turn", () => {
+    const one = render(<EventSplash categories={[]} config={DEFAULT_TV_CONFIG} now={now} zmanim={zmanimOn(now)} zmanimOn={zmanimOn} />);
+    expect(one.container.querySelector(".tv-event-title")?.textContent).toBe("שבת · סוכות");
+    one.unmount();
+    const titles = new Set<string>();
+    for (const at of [0, 20, 40, 60]) {
+      const t = new Date(now.getTime() + at * 1000);
+      const r = render(
+        <EventSplash categories={[]} config={{ ...DEFAULT_TV_CONFIG, eventCombine: "separate" }} now={t} zmanim={zmanimOn(t)} zmanimOn={zmanimOn} />,
+      );
+      titles.add(r.container.querySelector(".tv-event-title")?.textContent ?? "");
+      expect(r.container.querySelectorAll(".tv-event-pages span").length).toBe(2);
+      r.unmount();
+    }
+    expect([...titles].sort()).toEqual(["סוכות", "שבת קודש"].sort());
+  });
+});

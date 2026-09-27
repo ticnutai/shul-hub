@@ -13,7 +13,7 @@ import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { allThemes, getTheme } from "./themes";
 import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
-import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
+import { buildSlides, prayerSchedules, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
 import { scheduleNightlyRefresh, setWatchdogReport, watchMainThread } from "./watchdog";
 import { reloadBoard } from "./remoteBoard";
@@ -503,7 +503,14 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       paused={paused}
       overlay={
         <>
-          <EventSplash categories={data.categories} config={config} now={now} zmanim={zmanim} zmanimOn={zmanimOn} />
+          <EventSplash
+            categories={data.categories}
+            config={config}
+            now={now}
+            zmanim={zmanim}
+            zmanimOn={zmanimOn}
+            schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
+          />
           {toast && <div className="tv-toast">{toast}</div>}
           {updateText(update.state) && <div className="tv-update-line">{updateText(update.state)}</div>}
 

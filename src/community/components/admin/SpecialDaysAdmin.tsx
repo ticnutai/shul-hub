@@ -1,3 +1,4 @@
+import { prayerSchedules, type BoardData } from "@/tv/useBoardData";
 import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, ChevronLeft, Copy, ImagePlus, Plus, RotateCcw, X } from "lucide-react";
@@ -372,6 +373,9 @@ export function SpecialDaysAdmin({
               zmanim={zmanimFor(previewNow, settings)}
               force
               day={preview}
+              schedulesFor={(date, z) =>
+                prayerSchedules({ minyanim, categories, overrides: [] } as unknown as BoardData, date, z, new Set(tvConfig.hidden))
+              }
             />
           </div>
           <div className="absolute left-3 top-3 rounded bg-white/90 px-3 py-1 text-sm text-black">לחיצה לסגירה</div>
@@ -407,6 +411,60 @@ export function SpecialDaysAdmin({
             />
             בשבת ובחג: התמונה מוצגת ברציפות מהדלקת נרות ועד צאת השבת או החג
           </label>
+        )}
+        {tvConfig && (
+          <div className="space-y-3 rounded-lg border p-3" data-testid="event-screen-options">
+            <div>
+              <div className="text-sm font-medium">מה מופיע במסך המועד</div>
+              <div role="radiogroup" aria-label="מה מופיע במסך המועד" className="mt-2 flex flex-wrap gap-2">
+                {(
+                  [
+                    ["full", "כל המידע של היום", "זמני היום, התפילות של היום, הזמנים המיוחדים וקריאת התורה"],
+                    ["short", "מקוצר", "שם המועד, פסוק והזמנים המיוחדים בלבד"],
+                  ] as const
+                ).map(([id, label, hint]) => (
+                  <Button
+                    key={id}
+                    type="button"
+                    size="sm"
+                    role="radio"
+                    aria-checked={tvConfig.eventDetail === id}
+                    variant={tvConfig.eventDetail === id ? "default" : "outline"}
+                    title={hint}
+                    disabled={!tvConfig.eventSplash}
+                    onClick={() => void saveBoard((c) => ({ ...c, eventDetail: id }))}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-medium">כשנפגשים כמה ימים (חג ושבת, חנוכה וראש חודש...)</div>
+              <div role="radiogroup" aria-label="כשנפגשים כמה ימים" className="mt-2 flex flex-wrap gap-2">
+                {(
+                  [
+                    ["one", "עמוד אחד לכולם", "כותרת אחת שמאחדת, למשל 'שבת · סוכות', והשאר מתחתיה"],
+                    ["separate", "עמוד לכל יום", "עמוד לשבת, עמוד לחג, עמוד לראש חודש - מתחלפים"],
+                  ] as const
+                ).map(([id, label, hint]) => (
+                  <Button
+                    key={id}
+                    type="button"
+                    size="sm"
+                    role="radio"
+                    aria-checked={tvConfig.eventCombine === id}
+                    variant={tvConfig.eventCombine === id ? "default" : "outline"}
+                    title={hint}
+                    disabled={!tvConfig.eventSplash}
+                    onClick={() => void saveBoard((c) => ({ ...c, eventCombine: id }))}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
         {tvConfig && (
           <div className="space-y-2 rounded-lg border p-3">

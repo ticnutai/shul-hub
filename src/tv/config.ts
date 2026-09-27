@@ -299,6 +299,17 @@ export interface TvConfig {
   eventAuto: EventAutoMode;
   /** National days follow `eventAuto` too; otherwise only when set up. */
   eventNationalAuto: boolean;
+  /**
+   * What the special day's screen says: "full" - everything of that day (the
+   * zmanim, the day's minyanim, its own times, the Torah reading); "short" -
+   * its name, verse and own times only.
+   */
+  eventDetail: "full" | "short";
+  /**
+   * Days that meet (a festival on Shabbat, Rosh Chodesh on Chanukah...):
+   * "one" - one screen naming them all; "separate" - a screen for each, in turn.
+   */
+  eventCombine: "one" | "separate";
   clockStyle: ClockStyle;
   skin: BoardSkin;
   /**
@@ -481,6 +492,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   eventSplash: true,
   eventAuto: "full",
   eventNationalAuto: false,
+  eventDetail: "full",
+  eventCombine: "one",
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
@@ -818,6 +831,8 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     eventSplash: raw.eventSplash !== false,
     eventAuto: raw.eventAuto === "info" || raw.eventAuto === "off" ? raw.eventAuto : "full",
     eventNationalAuto: raw.eventNationalAuto === true,
+    eventDetail: raw.eventDetail === "short" ? "short" : "full",
+    eventCombine: raw.eventCombine === "separate" ? "separate" : "one",
     eventHold: raw.eventHold !== false,
     illustration:
       (ILLUSTRATIONS as readonly string[]).includes(raw.illustration as string) ||
