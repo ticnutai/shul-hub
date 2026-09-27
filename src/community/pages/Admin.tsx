@@ -24,6 +24,7 @@ import { useAdminMessages } from "@community/lib/data";
 import { CommunitySwitcher, ShulNow } from "@/community/components/admin/CommunitySwitcher";
 import { listMyCommunities } from "@/community/lib/community";
 import { CommunitiesAdmin } from "@/community/components/admin/CommunitiesAdmin";
+import { SilentScreensAlert } from "@community/components/admin/tv/SilentScreensAlert";
 
 // Loaded only when the tab is opened: it brings the whole TV board with it.
 const TvAdmin = lazy(() => import("@community/components/admin/tv/TvAdmin"));
@@ -86,6 +87,10 @@ export function AdminPage() {
             </Button>
           </div>
         </div>
+
+        {/* A screen nobody has heard from, on every tab - the device panel
+            already knew, but only said so to somebody who opened it. */}
+        {!loading && isAdmin && <SilentScreensAlert />}
 
         {!loading && !isAdmin ? (
           <div className="card-elev mt-8 flex items-start gap-3 p-6">

@@ -70,12 +70,15 @@ public class NightlyRestart extends BroadcastReceiver {
 
         long created = boardCreatedAt;
         if (created == 0) {
-            // The board is not open (somebody closed it, or this woke a dead
-            // process). Opening it at night is the boot receiver's job, not this one's.
-            Log.i(TAG, "Nightly restart skipped: the board is not running");
-            return;
-        }
-        if (SystemClock.elapsedRealtime() - created < MIN_UPTIME_MS) {
+            // The board is not open. This used to return, on the reasoning
+            // that opening it was the boot receiver's job - but the boot
+            // receiver only runs on a boot, and a board that Android took at
+            // three in the afternoon never sees one. That is how a screen
+            // stayed dark from shabbat afternoon until somebody looked at it
+            // on Sunday evening. The alarm has already woken the process; the
+            // cheapest thing it can do with that is open the board.
+            Log.i(TAG, "The board was not running; opening it");
+        } else if (SystemClock.elapsedRealtime() - created < MIN_UPTIME_MS) {
             Log.i(TAG, "Nightly restart skipped: the board started less than an hour ago");
             return;
         }

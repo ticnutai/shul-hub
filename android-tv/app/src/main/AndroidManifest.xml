@@ -66,6 +66,14 @@
             android:name=".NightlyRestart"
             android:exported="false" />
 
+        <!-- Opens the board again when it is not on the screen. The alarm is
+             held by the system, so it fires - and starts the process - even
+             after Android has taken the app. This is the only thing here that
+             can bring back a board that died while nobody was looking. -->
+        <receiver
+            android:name=".Keepalive"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

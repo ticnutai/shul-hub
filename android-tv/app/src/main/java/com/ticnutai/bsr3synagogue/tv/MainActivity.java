@@ -30,6 +30,9 @@ public class MainActivity extends BridgeActivity {
         createdAt = SystemClock.elapsedRealtime();
         NightlyRestart.boardCreatedAt = createdAt;
         NightlyRestart.schedule(this);
+        // And the check that opens the board again if it ever stops being on
+        // the screen (Keepalive).
+        Keepalive.schedule(this);
 
         // The board is useless once the panel sleeps, and a TV with no input
         // events sleeps on its own schedule. The web layer also requests a

@@ -76,6 +76,35 @@ export function deviceHealth(device: TvDevice, now: number) {
   return { online, lastSeen: seen ? new Date(seen) : null, silentMs: seen ? now - seen : null };
 }
 
+/**
+ * Long enough that somebody should be told.
+ *
+ * A screen drops off for a minute or two all the time - a router reboots, the
+ * Wi-Fi hiccups, the board reloads itself. Half an hour is past all of that:
+ * by then it is off, or on a network that is down, or its app is gone, and
+ * none of those fix themselves quietly.
+ */
+export const SILENT_ALERT_MS = 30 * 60_000;
+
+/**
+ * The paired screens nobody has heard from.
+ *
+ * The device panel has always shown this, in the panel. The trouble is that
+ * somebody has to open the panel: a board went dark on shabbat afternoon and
+ * was found on Sunday evening, because there was nowhere else the silence
+ * showed. This is the list that lets the rest of the admin say so.
+ *
+ * Only paired screens. One that was never claimed is not a screen that went
+ * quiet, it is a box waiting to be set up.
+ */
+export function silentScreens(devices: TvDevice[], now: number) {
+  return devices
+    .filter((d) => d.approved)
+    .map((d) => ({ device: d, ...deviceHealth(d, now) }))
+    .filter((d) => d.silentMs !== null && d.silentMs >= SILENT_ALERT_MS)
+    .sort((a, b) => (b.silentMs ?? 0) - (a.silentMs ?? 0));
+}
+
 /* -------------------------------------------------------------- devices -- */
 
 export function useTvDevices() {
