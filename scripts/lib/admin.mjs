@@ -53,6 +53,22 @@ const local = readEnvFile(".env.migrations.local");
 const pick = (name) => local[name] || process.env[name] || undefined;
 
 /**
+ * The administrator's credentials, for a caller that must not be stopped.
+ *
+ * `signIn` is right for a tool whose whole job needs the admin: no
+ * credentials means no work, so it explains and stops. The backup is the
+ * opposite - without them it still has everything the public can read, and
+ * taking that is far better than taking nothing. It only needs the same
+ * precedence, which is the part that is easy to get wrong: it read
+ * `process.env` alone, so on the machine where this project's admin lives in
+ * .env.migrations.local it could never reach tv_devices, and said so in one
+ * line that looked like a note rather than a loss.
+ */
+export function credentials() {
+  return { email: pick("MIGRATION_ADMIN_EMAIL"), password: pick("MIGRATION_ADMIN_PASSWORD") };
+}
+
+/**
  * Says why, and stops - without process.exit().
  *
  * Node 24 on Windows aborts on process.exit() while a connection from fetch

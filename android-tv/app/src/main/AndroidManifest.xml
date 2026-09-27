@@ -17,8 +17,29 @@
         android:name="android.hardware.touchscreen"
         android:required="false" />
 
+    <!--
+        allowBackup is false, and this is not a detail.
+
+        It was true - the default - and a reinstall today showed what that
+        means here. Android had quietly kept a copy of this app's data from
+        when the box served the main synagogue, and restored it: the screen
+        came back up carrying a device identity from a community it no longer
+        belongs to, one whose row no longer exists on the server. It looked
+        like a working board. It was the wrong board.
+
+        The identity is a device id and a secret that the server keeps only as
+        a hash, so it lives in exactly one place: this box. That is what makes
+        a cloud copy of it dangerous rather than useful. The backup follows a
+        Google account, not a device, so a second box set up under the same
+        account would be handed this screen's secret and two screens would
+        claim one row, each overwriting the other's heartbeat.
+
+        There is nothing here worth restoring anyway: everything a board shows
+        it re-fetches, and pairing a screen takes a code and under a minute.
+        A clean install that asks to be paired is the honest outcome.
+    -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
         android:label="@string/app_name"
