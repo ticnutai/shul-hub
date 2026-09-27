@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { MinyanCategory } from "@community/lib/data";
 import { HDate } from "@hebcal/core";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
@@ -41,6 +41,8 @@ const SLIDE_SECONDS = 5;
 const HOLD_SLIDE_SECONDS = 30;
 /** Days shown on separate screens: how long each stays while held. */
 const HOLD_PAGE_SECONDS = 20;
+/** An arrow on the remote with one screen up: the ordinary board for this long, then the day again. */
+const AWAY_MS = 2 * 60_000;
 
 /** Shabbat as a page of its own, when the days of the date are shown one by one. */
 const SHABBAT_PAGE: SpecialDayDef = { key: "shabbat", name: "שבת קודש", group: "shabbatot", match: /(?!)/ };
@@ -517,21 +519,51 @@ export function EventSplash({
     return [...(shabbat ? [SHABBAT_PAGE] : []), def, ...others];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [def, day, config.eventCombine, config.eventNationalAuto, dayKey]);
-  if (!def || (!config.eventSplash && !force)) return null;
-  if (!force && !hold && phase >= SHOW_SECONDS) return null;
-  const pageIndex =
+  // With everything of the day on it, the day's screen is the board: it stays
+  // up all day, not 15 seconds in 90 (the short card still takes turns).
+  const allDay = !force && !infoOnly && config.eventDetail !== "short";
+  // The remote: with several screens, the arrows move between them; with one,
+  // an arrow steps back to the ordinary board (its slides, announcements) for
+  // two minutes, and the day comes back by itself.
+  const [offset, setOffset] = useState(0);
+  const [awayUntil, setAwayUntil] = useState(0);
+  const visible =
+    !!def &&
+    (config.eventSplash || force) &&
+    (force || hold || allDay || phase < SHOW_SECONDS) &&
+    (force || now.getTime() >= awayUntil);
+  const pageCount = pages.length;
+  useEffect(() => {
+    if (!visible || force || infoOnly) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (pageCount > 1) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setOffset((o) => o + (e.key === "ArrowLeft" ? 1 : -1));
+      } else {
+        // Let the board have the key too: it moves to the next slide underneath.
+        setAwayUntil(Date.now() + AWAY_MS);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [visible, force, infoOnly, pageCount]);
+  if (!def || !visible) return null;
+  const autoPage =
     pages.length < 2
       ? 0
-      : hold || force
-        ? Math.floor(seconds / HOLD_PAGE_SECONDS) % pages.length
+      : hold || force || allDay
+        ? Math.floor(seconds / HOLD_PAGE_SECONDS)
         : Math.min(pages.length - 1, Math.floor(phase / (SHOW_SECONDS / pages.length)));
+  const pageIndex = pages.length < 2 ? 0 : (((autoPage + offset) % pages.length) + pages.length) % pages.length;
   const page = pages[pageIndex] ?? def;
   const separate = pages.length > 1;
   const slides = eventSlides(config.eventImages[page.key], stylesFor(page), config.eventStyles[page.key]);
   // Each appearance moves on through the pictures; within it, a new one every few seconds.
   const step = force
     ? Math.floor(seconds / SLIDE_SECONDS)
-    : hold
+    : hold || allDay
       ? Math.floor(seconds / HOLD_SLIDE_SECONDS)
       : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
   const active = step % slides.length;

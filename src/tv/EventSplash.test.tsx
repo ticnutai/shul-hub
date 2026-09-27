@@ -121,3 +121,42 @@ describe("everything of the day, and days that meet", () => {
     expect([...titles].sort()).toEqual(["סוכות", "שבת קודש"].sort());
   });
 });
+
+describe("the day's screen all day, and the remote", () => {
+  // Sunday 27.9.2026 14:00 in Jerusalem, Chol HaMoed: not a holy day, so nothing holds it.
+  const chm = (sec: number) => new Date(Date.parse("2026-09-27T11:00:00Z") + sec * 1000);
+  const at = (sec: number, config: Partial<TvConfig> = {}) =>
+    render(<EventSplash categories={[]} config={{ ...DEFAULT_TV_CONFIG, ...config }} now={chm(sec)} zmanim={zmanimOn(chm(sec))} zmanimOn={zmanimOn} />);
+
+  it("with everything of the day it stays up the whole day; the short card takes turns", () => {
+    for (const sec of [0, 20, 45, 80]) {
+      const r = at(sec);
+      expect(r.container.querySelector(".tv-event-splash")).not.toBeNull();
+      r.unmount();
+    }
+    const phase = Math.floor(chm(0).getTime() / 1000) % 90;
+    const off = phase < 15 ? 30 : 0; // a moment outside the 15 seconds
+    const r = at(off, { eventDetail: "short" });
+    const shownShort = !!r.container.querySelector(".tv-event-splash");
+    expect(shownShort).toBe((Math.floor(chm(off).getTime() / 1000) % 90) < 15);
+  });
+
+  it("an arrow on the remote steps back to the ordinary board, then the day returns", async () => {
+    const { act } = await import("@testing-library/react");
+    const { vi } = await import("vitest");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(chm(0));
+    const r = at(0);
+    expect(r.container.querySelector(".tv-event-splash")).not.toBeNull();
+    act(() => void window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" })));
+    // Right after the key: the ordinary board.
+    const soon = chm(5);
+    r.rerender(<EventSplash categories={[]} config={DEFAULT_TV_CONFIG} now={soon} zmanim={zmanimOn(chm(0))} zmanimOn={zmanimOn} />);
+    expect(r.container.querySelector(".tv-event-splash")).toBeNull();
+    // Two minutes on, the day's screen is back (it is still Chol HaMoed).
+    const later = chm(180);
+    r.rerender(<EventSplash categories={[]} config={DEFAULT_TV_CONFIG} now={later} zmanim={zmanimOn(chm(0))} zmanimOn={zmanimOn} />);
+    expect(r.container.querySelector(".tv-event-splash")).not.toBeNull();
+    vi.useRealTimers();
+  });
+});
