@@ -239,6 +239,19 @@ export interface DeviceOverlay {
   screenLayout?: ScreenLayout;
   clockStyle?: ClockStyle;
   skin?: BoardSkin;
+  /**
+   * The painted board: which painting, and everything the panel beside it
+   * writes - type size, minyanim per frame, the three inks, the picture
+   * adjustments, the frame fills.
+   *
+   * A wall and a phone want different answers here more than almost
+   * anywhere else: seven lines in a frame is right across a hall and far too
+   * many in a hand. Left off this list, an edit aimed at one screen was run,
+   * found to contain nothing the overlay recognised, and dropped - the
+   * slider sprang back and the board did not move.
+   */
+  illustration?: string;
+  illustratedStyle?: IllustratedStyle;
   frame?: TvConfig["frame"];
   spacing?: TvConfig["spacing"];
   theme?: string;
@@ -864,7 +877,11 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
     for (const [k, v] of Object.entries(layer)) {
       if (v === undefined) continue;
       if (!(k in DEVICE_OVERLAY_KEYS)) continue;
-      (kept as Record<string, unknown>)[k] = v;
+      // The painted board's own settings carry colours that end up in CSS,
+      // so a screen's copy is checked exactly as the board's is. Everything
+      // else on this list is written by the editor and read straight back.
+      (kept as Record<string, unknown>)[k] =
+        k === "illustratedStyle" ? normalizeIllustratedStyle(v) : v;
     }
     if (Object.keys(kept).length > 0) out[device] = kept;
   }
@@ -877,6 +894,7 @@ const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,
+  illustration: true, illustratedStyle: true,
 };
 
 /**

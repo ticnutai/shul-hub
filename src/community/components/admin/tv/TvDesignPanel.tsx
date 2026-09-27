@@ -2184,7 +2184,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   return (
     <div
       className={`grid gap-5 ${
-        wide
+        wide || fullscreen
           ? ""
           : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]"
       }`}
@@ -2288,11 +2288,37 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               }}
             />
           </div>
+
+          {/* The same save as the bar at the top, kept under the preview.
+
+              The options run to several screens, so by the time somebody has
+              finished changing something the only button that matters has
+              scrolled out of sight, and they have to go back up to press it.
+              It shows only while there is something to save, so a board that
+              is up to date carries no extra furniture. */}
+          {dirty && (
+            <div
+              data-sticky-chrome
+              className="sticky bottom-0 z-20 -mx-1 mt-3 flex items-center gap-2 border-t bg-background/95 px-1 py-2 backdrop-blur"
+            >
+              <span className="text-xs text-muted-foreground">יש שינויים שלא נשמרו</span>
+              <Button type="button" size="sm" className="ms-auto" onClick={save} disabled={saving}>
+                <Save className="size-4" /> {saving ? "שומר…" : "שמור ושדר למסכים"}
+              </Button>
+            </div>
+          )}
+
+          {/* In full screen only this column is on the screen - the browser
+              puts *it* into fullscreen, not the page - so the controls come
+              with it. Otherwise "full screen for editing" is a screen you
+              cannot edit from. Rendered here or below, never in both: two
+              copies would be two of every control. */}
+          {fullscreen && <div className="mt-4">{controls}</div>}
         </div>
       </div>
 
       {/* ----------------------------------------------- controls column -- */}
-      <div className="order-2 space-y-4 lg:order-1">{controls}</div>
+      <div className="order-2 space-y-4 lg:order-1">{!fullscreen && controls}</div>
     </div>
   );
 }

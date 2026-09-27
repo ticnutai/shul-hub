@@ -205,3 +205,64 @@ describe("an edit aimed at one screen", () => {
     expect(configForDevice(back, "tv").textScale).toBe(base().textScale);
   });
 });
+
+/**
+ * The painted board's own settings.
+ *
+ * Everything the "עריכת הלוח המצויר" panel writes lands in one of two keys:
+ * `illustratedStyle` (type size, rows per frame, the inks, brightness, the
+ * frame fills) and `illustration` (which painting). Neither was on the list
+ * of things a screen may set for itself, so editForDevice ran the change,
+ * compared the result against the board, found nothing it recognised, and
+ * threw the whole edit away.
+ *
+ * What that looked like from the outside: the slider moved under the thumb
+ * and sprang back, and the board did not change. No error, nothing in the
+ * console - the worst kind, because there is nothing to search for.
+ */
+describe("the painted board, edited for one screen", () => {
+  it("keeps a change to the type size", () => {
+    const c = base();
+    const next = editForDevice(c, "tv", (x) => ({
+      ...x,
+      illustratedStyle: { ...x.illustratedStyle, scale: 1.25 },
+    }));
+    expect(configForDevice(next, "tv").illustratedStyle.scale).toBe(1.25);
+  });
+
+  it("keeps a change to the rows in a frame, and leaves the other screens alone", () => {
+    const c = base();
+    const next = editForDevice(c, "mobile", (x) => ({
+      ...x,
+      illustratedStyle: { ...x.illustratedStyle, rows: 4 },
+    }));
+    expect(configForDevice(next, "mobile").illustratedStyle.rows).toBe(4);
+    expect(configForDevice(next, "tv").illustratedStyle.rows).toBe(c.illustratedStyle.rows);
+    expect(next.illustratedStyle.rows).toBe(c.illustratedStyle.rows);
+  });
+
+  it("keeps the picture adjustments - brightness is inside the same object", () => {
+    const c = base();
+    const next = editForDevice(c, "tv", (x) => ({
+      ...x,
+      illustratedStyle: { ...x.illustratedStyle, brightness: 0.7 },
+    }));
+    expect(configForDevice(next, "tv").illustratedStyle.brightness).toBe(0.7);
+  });
+
+  it("keeps a different painting on one screen", () => {
+    const c = base();
+    const next = editForDevice(c, "desktop", (x) => ({ ...x, illustration: "stone" }));
+    expect(configForDevice(next, "desktop").illustration).toBe("stone");
+    expect(next.illustration).toBe(c.illustration);
+  });
+
+  it("still says the screen is untouched when nothing was changed", () => {
+    const c = base();
+    const next = editForDevice(c, "tv", (x) => ({
+      ...x,
+      illustratedStyle: { ...x.illustratedStyle },
+    }));
+    expect(deviceHasOverrides(next, "tv")).toBe(false);
+  });
+});
