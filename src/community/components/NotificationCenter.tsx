@@ -14,7 +14,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAnnouncements, useChavrutot, useMinyanim, useSettings, useShiurim } from "@community/lib/data";
-import { resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { heldOn, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 
 type Preferences = {
   enabled: boolean;
@@ -133,8 +133,10 @@ export function NotificationCenter() {
         schedule.minyanim
           .filter(
             (item) =>
-              preferences.selectedMinyanIds.length === 0 ||
-              preferences.selectedMinyanIds.includes(item.id),
+              // Not a reminder for a minyan out of its season (בין הזמנים that ended).
+              heldOn(item, now) &&
+              (preferences.selectedMinyanIds.length === 0 ||
+                preferences.selectedMinyanIds.includes(item.id)),
           )
           .forEach((item) => {
             const resolved = resolveMinyan(item, zmanim);

@@ -36,7 +36,7 @@ import {
   type MinyanSubcategory,
 } from "@community/lib/data";
 import { useDeleteRow, useSaveRow } from "@community/lib/admin";
-import { RELATIVE_LABELS, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { RELATIVE_LABELS, heldOn, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { RELATIVE_OPTIONS } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
 import {
@@ -53,6 +53,13 @@ type CategoryDraft = Pick<
   MinyanCategory,
   "name" | "active" | "sort_order" | "visible_from" | "visible_until" | "display_mode"
 > & { id?: string; subcategories: MinyanSubcategory[] };
+
+/** "עד 11.10" / "מ-12.10" / "12.10–11.4": a minyan's season, short. */
+const dm = (d: string) => `${Number(d.slice(8, 10))}.${Number(d.slice(5, 7))}`;
+function seasonLabel(from: string | null, until: string | null): string {
+  if (from && until) return `${dm(from)}–${dm(until)}`;
+  return from ? `מ-${dm(from)}` : `עד ${dm(until!)}`;
+}
 
 const emptyDraft = (category: MinyanCategory): Draft => ({
   day_type: category.system_key ?? "custom",
@@ -147,6 +154,12 @@ export function MinyanimAdmin() {
     const row: Record<string, unknown> = { ...draft };
     if (draft.time_mode === "fixed") row["relative_to"] = null;
     else row["fixed_time"] = null;
+    row["active_from"] = draft.active_from || null;
+    row["active_until"] = draft.active_until || null;
+    if (row["active_from"] && row["active_until"] && String(row["active_from"]) > String(row["active_until"])) {
+      toast.error("תאריך ההתחלה אחרי תאריך הסיום");
+      return;
+    }
     save.mutate(row, { onSuccess: () => setDraft(null) });
   }
 
@@ -697,6 +710,18 @@ export function MinyanimAdmin() {
                     display={<span className="truncate">{m.label}</span>}
                   />
                   {!m.active && <span className="mr-2 text-xs text-muted-foreground">(מוסתר)</span>}
+                  {(m.active_from || m.active_until) && (
+                    <span
+                      className={
+                        "mr-2 shrink-0 rounded-full px-2 py-0.5 text-[11px] " +
+                        (heldOn(m, new Date()) ? "bg-amber-500/15 text-amber-700" : "bg-muted text-muted-foreground")
+                      }
+                      data-testid={`minyan-season-${m.id}`}
+                    >
+                      {seasonLabel(m.active_from, m.active_until)}
+                      {!heldOn(m, new Date()) && " · לא היום"}
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1 text-xs text-muted-foreground">
                   <span>{resolved?.source}</span>
@@ -907,6 +932,28 @@ export function MinyanimAdmin() {
                 value={draft.note ?? ""}
                 onChange={(e) => setDraft({ ...draft, note: e.target.value })}
                 placeholder="לדוגמה: רק בימי שני וחמישי"
+              />
+            </div>
+            {/* A minyan for a season (בין הזמנים, שעון קיץ): it leaves the site
+                and the board by itself after its last day. */}
+            <div className="space-y-2">
+              <Label>מתקיים מתאריך</Label>
+              <Input
+                type="date"
+                dir="ltr"
+                value={draft.active_from ?? ""}
+                onChange={(e) => setDraft({ ...draft, active_from: e.target.value || null })}
+                data-testid="minyan-active-from"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>מתקיים עד תאריך (כולל)</Label>
+              <Input
+                type="date"
+                dir="ltr"
+                value={draft.active_until ?? ""}
+                onChange={(e) => setDraft({ ...draft, active_until: e.target.value || null })}
+                data-testid="minyan-active-until"
               />
             </div>
             <div className="space-y-2">
