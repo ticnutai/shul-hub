@@ -40,6 +40,20 @@ import android.util.Log;
  * refuse a background activity start and drop it silently. That is the
  * "display over other apps" permission, granted once over ADB:
  *   node scripts/tv-control.mjs autostart
+ *
+ * One case this cannot cover, measured rather than assumed: a force-stop.
+ * "Force stop" in Android's app settings, or `am force-stop`, cancels every
+ * alarm the app holds and marks it stopped, and a stopped app is not sent
+ * broadcasts - so the thing that would restart it has been taken away along
+ * with it. Checked on the box: after a force-stop `dumpsys alarm` has no
+ * KEEPALIVE entry at all and the package reads stopped=true. Nothing inside
+ * an app can defend against that, and it is not what takes a board down on
+ * its own - it takes a person in the settings screen. A reboot brings it
+ * back through the boot receiver; so does opening the app once.
+ *
+ * What it does cover is the case that did happen: the system reclaiming the
+ * process. That leaves the alarm registered and the app un-stopped, which is
+ * the state this was written for.
  */
 public class Keepalive extends BroadcastReceiver {
 
