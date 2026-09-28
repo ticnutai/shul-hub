@@ -1528,7 +1528,37 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             />
           </Section>
 
-          <Section title="פריסת מסך" hint="איך המסך כולו מסודר. מסך השבת תמיד מוצג על כל המסך.">
+          <Section
+            title="כמה נכנס במסך"
+            hint="יום עם הרבה מניינים לא נכנס במסך אחד. הלוח לוקח עוד מסך במקום להקטין את הטקסט — כאן קובעים איפה הקו."
+          >
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="w-32">
+                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="rows-per-screen">
+                  מניינים במסך
+                </label>
+                <Input
+                  id="rows-per-screen"
+                  type="number"
+                  min={4}
+                  max={60}
+                  value={draft.prayerRowsPerScreen}
+                  onChange={(e) =>
+                    edit("rowsPerScreen", (c) => ({
+                      ...c,
+                      prayerRowsPerScreen: Math.min(60, Math.max(4, Number(e.target.value) || 14)),
+                    }))
+                  }
+                />
+              </div>
+              <p className="flex-1 text-xs text-muted-foreground">
+                התשובה תלויה במסך: טלוויזיה מעל ארון הקודש מחזיקה יותר ממסך קטן על מדף. השבירה תמיד
+                במעבר בין תפילות — שחרית לא תיחתך באמצע.
+              </p>
+            </div>
+          </Section>
+
+          <Section title="פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים — המסכים שלו קובעים, גם בשבת.">
             <div className="grid grid-cols-2 gap-2">
               {LAYOUT_CHOICES.map((l) => (
                 <button

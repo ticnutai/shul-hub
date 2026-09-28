@@ -105,3 +105,36 @@ describe("drawing a composed screen", () => {
     expect(row.style.gridTemplateColumns).toBe("repeat(1, minmax(0, 1fr))");
   });
 });
+
+describe("a day that needed more than one screen", () => {
+  it("says which screen this is, so nobody thinks his minyan was left off", () => {
+    // The split itself is held down next door; what matters on the wall is
+    // that somebody standing in front of it can see there is another screen.
+    const many = {
+      ...structuredClone(DEFAULT_TV_CONFIG),
+      prayerRowsPerScreen: 2,
+      screens: [{ id: "a", name: "הלוח", seconds: 40, blocks: [{ block: "prayers" as const }] }],
+    };
+    const slides = buildSlides(
+      {
+        ...data,
+        minyanim: [
+          { id: "1", label: "שחרית א׳", prayer: "shacharit", active: true, day_type: "weekday", time_mode: "fixed", fixed_time: "06:00", category_id: null, sort_order: 1 },
+          { id: "2", label: "שחרית ב׳", prayer: "shacharit", active: true, day_type: "weekday", time_mode: "fixed", fixed_time: "07:00", category_id: null, sort_order: 2 },
+          { id: "3", label: "מנחה", prayer: "mincha", active: true, day_type: "weekday", time_mode: "fixed", fixed_time: "13:00", category_id: null, sort_order: 3 },
+        ] as unknown as BoardData["minyanim"],
+      },
+      many,
+      now,
+      z,
+    );
+    const first = slides[0];
+    if (first.kind !== "composed") throw new Error("expected a composed screen");
+    const prayer = first.parts.find((p) => p.block === "prayers")?.slide;
+    if (!prayer || prayer.kind !== "prayer") throw new Error("expected a prayer slide");
+    expect(prayer.pages).toBeGreaterThan(1);
+
+    render(<SlideView slide={prayer} now={now} zmanim={z} paused={false} />);
+    expect(screen.getByText(/מתוך/)).toBeTruthy();
+  });
+});

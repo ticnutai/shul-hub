@@ -45,15 +45,24 @@ test.describe("the composer on תורה ואהבתה", () => {
     // The name on the board is this synagogue's, not the main one's - the
     // header override that said "בית הכנסת אפי קפיטל" was removed today and
     // this is what holds that fix down.
-    await expect(page.locator(".tv-frame").first()).toContainText("תורה ואהבתה");
+    //
+    // The preview is beside the composer on a desktop and not drawn at all on
+    // a phone, so the board is asked only where there is one; the composer
+    // itself is the part that must be there on both.
+    const frame = page.locator(".tv-frame").first();
+    if (await frame.count()) await expect(frame).toContainText("תורה ואהבתה");
+    await expect(page.getByTestId("composer-sketch")).toBeVisible();
   });
 
-  test("reads the saved board as one screen, which is why an arrow had nowhere to go", async ({
+  test("reads the saved board as its content and the day, taking turns", async ({
     adminPage: page,
   }) => {
     await asTorahVeahavata(page);
     const composer = await openComposer(page);
-    await expect(composer.getByText(/מסך אחד/)).toBeVisible();
+    // It used to read as a single screen, which is why an arrow had nowhere
+    // to go. The day's screen is no longer an overlay that decides for
+    // itself when to take the board - it is a screen beside it.
+    await expect(composer.getByText(/2 מסכים/)).toBeVisible();
   });
 
   test("offers a switch for every block, and the day's screen is one of them", async ({
@@ -69,9 +78,11 @@ test.describe("the composer on תורה ואהבתה", () => {
     for (const id of ["prayers", "zmanim", "announcements", "shiurim", "learning", "festival"]) {
       await expect(composer.locator(`#block-${id}`), `no switch for ${id}`).toBeVisible();
     }
-    // This synagogue has the day's screen on, and until now no setting could
-    // put it on a single board beside the times. Here it is, switched on.
-    await expect(composer.locator("#block-festival")).toHaveAttribute("aria-checked", "true");
+    // This synagogue has the day's screen on, and it now has a screen of its
+    // own rather than covering the board - so it is not a block of the first
+    // screen, it is the second one.
+    await expect(composer.locator("#block-festival")).toHaveAttribute("aria-checked", "false");
+    await expect(composer.getByRole("button", { name: /מסך החג/ }).first()).toBeVisible();
   });
 
   test("turning a block off changes only the sketch, and saves nothing", async ({ adminPage: page }) => {
@@ -95,7 +106,8 @@ test.describe("the composer on תורה ואהבתה", () => {
     const composer = await openComposer(page);
 
     await composer.getByRole("button", { name: /^מסך$/ }).click();
-    await expect(composer.getByText(/2 מסכים/)).toBeVisible();
+    // It opened on two, so adding makes three.
+    await expect(composer.getByText(/3 מסכים/)).toBeVisible();
     // Which is the whole point: with two screens the arrow has somewhere to go.
     await expect(composer.getByText(/חץ בשלט מדלג/)).toBeVisible();
   });

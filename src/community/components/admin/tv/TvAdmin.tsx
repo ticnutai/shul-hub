@@ -51,7 +51,9 @@ export default function TvAdmin() {
           setParams(next, { replace: true });
         }}
       >
-        <TabsList>
+        <TabsList
+          className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
+        >
           <TabsTrigger value="design">התצוגות והעיצוב</TabsTrigger>
           <TabsTrigger value="events" data-testid="tv-events-tab">📅 מועדים ואירועים</TabsTrigger>
           <TabsTrigger value="screens">מסכים מחוברים</TabsTrigger>
