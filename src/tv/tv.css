@@ -5145,3 +5145,66 @@
   font-size: calc(var(--u) * 1.3);
   opacity: 0.6;
 }
+
+/* ------------------------------------------- dim text on a light panel -- */
+/*
+ * The quiet half of a line, where the panel is light.
+ *
+ * `--tv-text-dim` belongs to the theme, and every theme here is dark, so it
+ * is a pale colour meant to sit on a dark board. Twelve of the skins draw
+ * light panels over that theme and override the panel's own `color`, but
+ * never the variable - so anything inside them asking for the dim colour got
+ * pale text on cream. Photographed off the wall at אהל אברהם: the zmanim
+ * showed their times and not their names, because the time inherits the
+ * panel's colour and the label asks for the dim one. Measured at 1.75:1
+ * against a 4.5:1 threshold, which is not "hard to read" but "not there".
+ *
+ * Set on the panel and not on the board, because these skins are mixed: some
+ * light panels sit on a dark background, where the theme's pale dim is still
+ * right outside the panel.
+ *
+ * Each value is that skin's own panel colour lightened until it clears 4.5:1
+ * against EVERY panel that skin draws - several of them draw two or three at
+ * different weights, and a value picked against the lightest one fails on
+ * the others. The test next door is what found that, and wood and hall,
+ * whose light panels I had missed by looking only at their first rule.
+ *
+ * Written out rather than computed with color-mix(), which renders black in
+ * the board's own screenshots (html-to-image) - the same reason the clock
+ * face had to be split into two plain circles.
+ */
+.tv-root.is-skin-tablets .tv-panel,
+.tv-root.is-skin-tablets .tv-card { --tv-text-dim: #716249; }
+
+.tv-root.is-skin-parchment .tv-panel,
+.tv-root.is-skin-parchment .tv-card { --tv-text-dim: #72644c; }
+
+.tv-root.is-skin-curtain .tv-panel,
+.tv-root.is-skin-curtain .tv-card { --tv-text-dim: #6c4723; }
+
+.tv-root.is-skin-sky .tv-panel,
+.tv-root.is-skin-sky .tv-card { --tv-text-dim: #66532e; }
+
+.tv-root.is-skin-wood .tv-panel,
+.tv-root.is-skin-wood .tv-card { --tv-text-dim: #6c4723; }
+
+.tv-root.is-skin-arch .tv-panel,
+.tv-root.is-skin-arch .tv-card { --tv-text-dim: #745f36; }
+
+.tv-root.is-skin-hall .tv-panel,
+.tv-root.is-skin-hall .tv-card { --tv-text-dim: #7a5434; }
+
+.tv-root.is-skin-crown .tv-panel,
+.tv-root.is-skin-crown .tv-card { --tv-text-dim: #73654f; }
+
+.tv-root.is-skin-heichal .tv-panel,
+.tv-root.is-skin-heichal .tv-card { --tv-text-dim: #584727; }
+
+.tv-root.is-skin-dome .tv-panel,
+.tv-root.is-skin-dome .tv-card { --tv-text-dim: #685634; }
+
+.tv-root.is-skin-stone .tv-panel,
+.tv-root.is-skin-stone .tv-card { --tv-text-dim: #2e2618; }
+
+.tv-root.is-skin-medallion .tv-panel,
+.tv-root.is-skin-medallion .tv-card { --tv-text-dim: #413014; }
