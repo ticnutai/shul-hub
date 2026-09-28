@@ -66,12 +66,27 @@ function slideLabel(slide: { kind: string; screen?: { name: string } } | undefin
 
 /** Hebrew names for the log, which the admin reads. */
 /**
+ * Is the App plugin really there?
+ *
  * The board loads from the website, so new board code runs inside old apps.
  * An app installed before the App plugin was added answered every call with
- * '"App" plugin is not implemented on android' (seen on a box, 27.9). Ask
- * first; without it the board simply has no Back handling or foreground report.
+ * '"App" plugin is not implemented on android' (seen on a box, 27.9), so the
+ * question has to be asked rather than assumed.
+ *
+ * But `isPluginAvailable` was the wrong way to ask it. Measured on the box:
+ * it answers false while `Capacitor.Plugins.App` is right there in the list -
+ * the board is served from the website, not from the copy inside the APK,
+ * and the plugin registry it consults is not populated for that origin. So
+ * the Back button has been reaching a listener that was never registered,
+ * and the foreground report with it: pressing Back on the remote did
+ * nothing at all, on every screen, however new the app.
+ *
+ * Asking for the plugin itself is both truer and no less careful - an app
+ * that lacks it has no entry either.
  */
-const appPlugin = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("App");
+const appPlugin = () =>
+  Capacitor.isNativePlatform() &&
+  Boolean((Capacitor as unknown as { Plugins?: Record<string, unknown> }).Plugins?.App);
 
 const COMMAND_LABELS: Record<TvCommand["command"], string> = {
   pause: "עצירה",
