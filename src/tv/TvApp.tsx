@@ -194,6 +194,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const [help, setHelp] = useState(false);
   /** The remote's menu: which synagogue this screen shows, and the theme. */
   const [menuOpen, setMenuOpen] = useState(false);
+  /** For the native BACK listener, which is registered once and sees no state. */
+  const menuOpenRef = useRef(false);
+  menuOpenRef.current = menuOpen;
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const found = slides.findIndex((s) => s.id === currentId);
@@ -466,6 +469,15 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   useEffect(() => {
     if (!appPlugin()) return;
     const handle = CapApp.addListener("backButton", () => {
+      // The menu first. Android takes BACK natively and never lets it reach
+      // the page, so a menu that listens for a key can be opened from the
+      // remote and not closed by it - measured on the box, where BACK
+      // produced no keydown at all.
+      if (menuOpenRef.current) {
+        setMenuOpen(false);
+        exitArmed.current = 0;
+        return;
+      }
       setHelp((open) => {
         if (open) {
           exitArmed.current = 0;
