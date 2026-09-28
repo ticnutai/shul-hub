@@ -39,8 +39,6 @@ interface Props {
   themes: TvTheme[];
   currentTheme: string;
   onTheme: (id: string) => void;
-  /** Said out loud on the board and in the screen's log. */
-  onLog?: (level: "info" | "warn" | "error", message: string) => void;
   /** Overridden in tests; on the wall the board reloads onto the new synagogue. */
   reload?: () => void;
 }
@@ -58,7 +56,6 @@ export function ScreenMenu({
   themes,
   currentTheme,
   onTheme,
-  onLog,
   reload,
 }: Props) {
   const [communities, setCommunities] = useState<CommunityChoice[] | null>(null);
@@ -152,8 +149,12 @@ export function ScreenMenu({
           busyRef.current = true;
           setBusy(true);
           void setDeviceCommunity(row.community.id)
-            .then((c) => {
-              onLog?.("info", `המסך הועבר לבית הכנסת: ${c.name}`);
+            .then(() => {
+              // The move is written to the screen's log by the server, in the
+              // same transaction that makes it - so it is not written again
+              // from here. It was, and every move appeared twice in the log,
+              // one second apart, which read as a double press.
+              //
               // The board is built from this synagogue's data all the way
               // down - its minyanim, its design, its day's screen - so it
               // starts again rather than trying to swap them underneath.
@@ -178,7 +179,7 @@ export function ScreenMenu({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, rows.length, themes, currentTheme, currentCommunity, onTheme, onClose, onLog, reload]);
+  }, [open, rows.length, themes, currentTheme, currentCommunity, onTheme, onClose, reload]);
 
   if (!open) return null;
 

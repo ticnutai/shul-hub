@@ -593,7 +593,6 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
             themes={themes}
             currentTheme={config.theme}
             onTheme={applyTheme}
-            onLog={(level, message) => link.current?.log(level, "command", message)}
           />
           {toast && <div className="tv-toast">{toast}</div>}
           {updateText(update.state) && <div className="tv-update-line">{updateText(update.state)}</div>}
