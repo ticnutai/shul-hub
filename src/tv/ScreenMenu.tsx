@@ -66,6 +66,15 @@ export function ScreenMenu({
   const [busy, setBusy] = useState(false);
   const liveIndex = useRef(0);
   liveIndex.current = index;
+  /**
+   * The same flag the key handler can actually see.
+   *
+   * `busy` in state is captured by the listener's closure and stays false
+   * there however many times it is set, so a key that repeats - and the TV
+   * remote's OK does repeat - sent the move twice. It showed up as the same
+   * line twice in the screen's log, one second apart, on the real box.
+   */
+  const busyRef = useRef(false);
 
   // Asked for when the menu opens rather than kept fresh in the background:
   // the list changes when a synagogue is added, which is rare, and a board
@@ -83,7 +92,10 @@ export function ScreenMenu({
   }, [open]);
 
   useEffect(() => {
-    if (open) setIndex(0);
+    if (!open) return;
+    setIndex(0);
+    busyRef.current = false;
+    setBusy(false);
   }, [open]);
 
   const rows: Row[] = [
@@ -113,7 +125,7 @@ export function ScreenMenu({
         case " ": {
           stop();
           const row = rows[liveIndex.current];
-          if (!row || busy) break;
+          if (!row || busyRef.current) break;
           if (row.kind === "theme") {
             const at = themes.findIndex((t) => t.id === currentTheme);
             onTheme(themes[(at + 1) % Math.max(1, themes.length)]?.id ?? currentTheme);
@@ -123,6 +135,7 @@ export function ScreenMenu({
             onClose();
             break;
           }
+          busyRef.current = true;
           setBusy(true);
           void setDeviceCommunity(row.community.id)
             .then((c) => {
@@ -133,6 +146,7 @@ export function ScreenMenu({
               (reload ?? (() => window.location.reload()))();
             })
             .catch(() => {
+              busyRef.current = false;
               setBusy(false);
               setError("לא הצלחתי להעביר את המסך. נסו שוב בעוד רגע.");
             });
@@ -150,7 +164,7 @@ export function ScreenMenu({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, rows.length, busy, themes, currentTheme, currentCommunity, onTheme, onClose, onLog, reload]);
+  }, [open, rows.length, themes, currentTheme, currentCommunity, onTheme, onClose, onLog, reload]);
 
   if (!open) return null;
 

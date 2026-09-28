@@ -54,8 +54,14 @@ BEGIN
 
   -- Said out loud in the screen's own log, because a board that changes what
   -- it shows should never be a mystery to whoever reads the reports later.
-  INSERT INTO public.tv_events (device_id, level, kind, message, details)
-  VALUES (p_device_id, 'info', 'command',
+  --
+  -- occurred_at is spelled out: it is when the thing happened, normally sent
+  -- by the screen, and the column takes no default. Leaving it out made the
+  -- insert fail on NOT NULL and took the whole move down with it - which is
+  -- at least the right way round, since the transaction meant no screen was
+  -- left moved with nothing in its log to say so.
+  INSERT INTO public.tv_events (device_id, occurred_at, level, kind, message, details)
+  VALUES (p_device_id, now(), 'info', 'command',
           'המסך הועבר לבית הכנסת: ' || c.name,
           jsonb_build_object('community_id', c.id, 'slug', c.slug));
 

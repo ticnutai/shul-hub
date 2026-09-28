@@ -101,6 +101,18 @@ describe("the synagogue menu on the screen", () => {
     expect(props.onTheme).toHaveBeenCalledWith("parchment");
   });
 
+  it("moves the screen once, however many times the OK key repeats", async () => {
+    show();
+    await screen.findByText(MAIN.name);
+    // A TV remote's OK repeats while held, and the flag the handler could see
+    // never changed, so the move was sent twice - twice in the screen's log,
+    // as the real box showed.
+    press("Enter");
+    press("Enter");
+    press("Enter");
+    await waitFor(() => expect(setDeviceCommunity).toHaveBeenCalledTimes(1));
+  });
+
   it("says so rather than failing silently when the list will not load", async () => {
     listCommunities.mockRejectedValue(new Error("offline"));
     show();
