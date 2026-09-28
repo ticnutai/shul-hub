@@ -152,6 +152,7 @@ import type { DeviceMode } from "./devices";
 import { BackdropPicker } from "./BackdropPicker";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { FrameAndSpacing, StylePicker } from "./BoardLook";
+import { ScreenComposer } from "./ScreenComposer";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
@@ -585,6 +586,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   /* ----------------------------------------------------------- preview -- */
 
   const [simulatedNow, setSimulatedNow] = useState<Date | null>(null);
+  /** Which screen the composer has open. Not part of the board; the editor's own place. */
+  const [composerScreen, setComposerScreen] = useState(0);
   const board = useTvSlides(view, simulatedNow);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
@@ -1511,6 +1514,20 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           value="layout"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
+          <Section
+            title="מסכים ומה עליהם"
+            hint="כמה מסכים, ומה מופיע בכל אחד. מסך אחד — הלוח עומד; כמה — הוא מתחלף ביניהם."
+          >
+            <ScreenComposer
+              config={draft}
+              current={composerScreen}
+              onChange={(screens, next) => {
+                setComposerScreen(next);
+                edit("screens", (c) => ({ ...c, screens }));
+              }}
+            />
+          </Section>
+
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. מסך השבת תמיד מוצג על כל המסך.">
             <div className="grid grid-cols-2 gap-2">
               {LAYOUT_CHOICES.map((l) => (

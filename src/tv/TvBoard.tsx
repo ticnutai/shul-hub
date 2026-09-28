@@ -119,8 +119,22 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   const shabbat = slides[0]?.kind === "shabbat";
+  /**
+   * A board built in the composer draws what was composed, and the old layout
+   * choice steps aside.
+   *
+   * It has to be one or the other. `screenLayout` decides the arrangement by
+   * itself - the full board and the painted one merge every slide into a
+   * single picture and read the prayer rows straight out of the slide list -
+   * so a composed screen shown through them would hand them a list with no
+   * prayer slide in it and they would draw empty panels. Two arrangements
+   * quietly disagreeing is the fault this change exists to remove, so the
+   * composer wins where it was used, and boards that never opened it are
+   * untouched.
+   */
+  const composed = slides[0]?.kind === "composed";
   // The Shabbat screen always takes the whole stage, whatever the layout.
-  const layout = shabbat ? "rotate" : config.screenLayout;
+  const layout = shabbat || composed ? "rotate" : config.screenLayout;
   const dashboard = layout === "dashboard";
   // A painted board draws its own header, clock and bottom line.
   const illustrated = layout === "illustrated";

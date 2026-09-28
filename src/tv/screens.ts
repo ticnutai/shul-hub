@@ -24,22 +24,10 @@
  *   - the day's screen is a block like any other, which is what makes
  *     "the festival on my single screen" expressible at all.
  */
-import { BLOCKS, BLOCK_FOR_SLIDE, type BlockArea, type BlockId } from "./blocks";
-import type { TvConfig } from "./config";
+import { BLOCKS, BLOCK_FOR_SLIDE } from "./blocks";
+import type { BlockEntry, BlockId, Screen, TvConfig } from "./config";
 
-export interface BlockEntry {
-  block: BlockId;
-  /** Absent: the layout places it. Present: pinned there (see place()). */
-  area?: BlockArea;
-}
-
-export interface Screen {
-  id: string;
-  name: string;
-  /** How long it holds when there is more than one screen. */
-  seconds: number;
-  blocks: BlockEntry[];
-}
+export type { BlockEntry, Screen };
 
 /** Blocks that stand on every screen: the bars above and below. */
 const CHROME: BlockId[] = BLOCKS.filter((b) => b.chrome).map((b) => b.id);
@@ -49,6 +37,18 @@ const ROTATING = new Set(["rotate", "split"]);
 
 function screenName(block: BlockId): string {
   return BLOCKS.find((b) => b.id === block)?.name ?? block;
+}
+
+/**
+ * The screens this board is showing, however it was set up.
+ *
+ * The one entry point: the composer edits what this returns and the board
+ * draws it, so there is never a moment where the editor believes one thing
+ * and the wall another. A board saved in the composer has `screens` and that
+ * wins; every board that came before is read from its old fields.
+ */
+export function readScreens(config: Partial<TvConfig>): Screen[] {
+  return config.screens?.length ? config.screens : toScreens(config);
 }
 
 /**

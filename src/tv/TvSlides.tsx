@@ -8,7 +8,7 @@ import { specialZmanim } from "@community/lib/specialDays";
 import type { FlipArea } from "./config";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
 import { ShabbatSlide } from "./ShabbatScene";
-import { jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
+import { composedRows, jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
 import { useFitText } from "./useFitText";
 
 /**
@@ -90,7 +90,55 @@ export function SlideView({
       return <SlideshowSlide slide={slide} paused={paused} />;
     case "shabbat":
       return <ShabbatSlide times={slide.times} now={now} scenes={slide.scenes} secondsPerScene={slide.secondsPerScene} paused={paused} />;
+    case "composed":
+      return <ComposedSlide slide={slide} now={now} zmanim={zmanim} paused={paused} />;
   }
+}
+
+/* ---------------------------------------------------------------- composed */
+
+/**
+ * A screen the gabbai built: several blocks standing together.
+ *
+ * Each block is drawn by the view that already draws it, so a prayer panel
+ * here is the same prayer panel as on its own screen and gains no second
+ * implementation to drift from the first. The only thing this adds is the
+ * arrangement, which comes from `place()` - the one rule shared with the
+ * composer's sketch, so what the admin arranged is what the wall shows.
+ */
+function ComposedSlide({
+  slide,
+  now,
+  zmanim,
+  paused,
+}: {
+  slide: Extract<BoardSlide, { kind: "composed" }>;
+  now: Date;
+  zmanim: Zmanim;
+  paused: boolean;
+}) {
+  const rows = composedRows(slide.parts);
+  return (
+    <section className="tv-slide tv-composed" data-screen={slide.screen.id}>
+      {rows.map((row, i) => (
+        <div
+          key={i}
+          className="tv-composed-row"
+          style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}
+        >
+          {row.map((part, j) => (
+            <div key={`${part.block}-${j}`} className="tv-composed-cell">
+              {part.block === "zmanim" ? (
+                <ZmanimPanel zmanim={zmanim} now={now} />
+              ) : part.slide ? (
+                <SlideView slide={part.slide} now={now} zmanim={zmanim} paused={paused} />
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ))}
+    </section>
+  );
 }
 
 /* ------------------------------------------------------------------ prayer */
@@ -116,9 +164,14 @@ function PrayerSlide({
   const label = (r: ResolvedMinyan) => <span {...edit.attr(`minyan:${r.minyan.id}:label`)}>{r.minyan.label}</span>;
 
   if (slide.rows.length === 0) {
+    // `timeline` is the prayer panel without zmanim of its own, because
+    // something beside it is already showing them - the split board's side
+    // column, or a composed screen's zmanim block. This branch used to add
+    // them regardless, so a board with no minyanim today showed the day's
+    // times twice next to each other.
     const grid = panelGrid(edit, "prayer", [
       { key: "panel.minyanim-empty", width: 1.4, node: <div className="tv-panel tv-empty">לא הוגדרו מניינים להיום</div> },
-      zmanimPanel,
+      ...(slide.layout === "timeline" ? [] : [zmanimPanel]),
     ]);
     return (
       <section className="tv-slide">

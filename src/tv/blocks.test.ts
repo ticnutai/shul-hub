@@ -16,7 +16,7 @@ import { describe, expect, it } from "vitest";
 
 import { BLOCKS, BLOCK_BY_ID, BLOCK_FOR_SLIDE, UNOWNED_ELEMENTS, visibleElements } from "./blocks";
 import { EDITABLE } from "./boardEdit";
-import { DEFAULT_TV_CONFIG } from "./config";
+import { BLOCK_IDS, DEFAULT_TV_CONFIG } from "./config";
 
 describe("the blocks a board is made of", () => {
   it("names only elements the board actually has", () => {
@@ -42,6 +42,15 @@ describe("the blocks a board is made of", () => {
     expect(new Set(ids).size).toBe(ids.length);
     for (const b of BLOCKS) expect(b.name.trim().length).toBeGreaterThan(0);
     expect(Object.keys(BLOCK_BY_ID).length).toBe(BLOCKS.length);
+  });
+
+  it("keeps the ids the config validates and the registry in step", () => {
+    // Two lists in two files is the duplication this whole change is about,
+    // and adding `screens` to the config created one: BLOCK_IDS there decides
+    // what a saved board may contain, BLOCKS here decides what exists. They
+    // are apart only to keep the imports from going in a circle, so they have
+    // to be checked against each other rather than trusted.
+    expect([...BLOCK_IDS].sort()).toEqual(BLOCKS.map((b) => b.id).sort());
   });
 
   it("can read every rotating slide the board already has", () => {

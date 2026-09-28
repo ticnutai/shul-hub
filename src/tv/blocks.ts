@@ -32,7 +32,9 @@
  * from this array.
  */
 import { EDITABLE, SHOWN_ZMANIM } from "./boardEdit";
-import type { SlideKind, TvConfig } from "./config";
+import { BLOCK_IDS, type BlockId, type SlideKind, type TvConfig } from "./config";
+
+export type { BlockId };
 
 /**
  * The zmanim rows, taken from the same list the board draws them from.
@@ -44,24 +46,8 @@ import type { SlideKind, TvConfig } from "./config";
  */
 const ZMAN_ELEMENTS = SHOWN_ZMANIM.map((z) => `zman.${z}`);
 
-export type BlockId =
-  | "header"
-  | "clock"
-  | "prayers"
-  | "zmanim"
-  | "announcements"
-  | "shiurim"
-  | "learning"
-  | "slideshow"
-  | "festival"
-  | "ticker"
-  | "footer";
-
 /** Where a block sits: the bars above and below, or the body between them. */
 export type BlockZone = "top" | "main" | "bottom";
-
-/** A pinned block's place. Absent means the layout decides (see screens.ts). */
-export type BlockArea = "right" | "left" | "wide";
 
 export interface BlockSpec {
   id: BlockId;

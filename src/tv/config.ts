@@ -29,6 +29,48 @@ import {
 
 export type SlideKind = "prayer" | "learning" | "announcements" | "shiurim" | "slideshow";
 
+/**
+ * The composer's vocabulary, declared here and nowhere else.
+ *
+ * The registry that gives these ids names and sizes lives in blocks.ts, next
+ * to the elements it groups. Only the type names sit here, because the config
+ * has to be able to describe a screen and blocks.ts has to be able to read
+ * the config - putting the ids in blocks.ts would make that a circle.
+ */
+export type BlockId =
+  | "header"
+  | "clock"
+  | "prayers"
+  | "zmanim"
+  | "announcements"
+  | "shiurim"
+  | "learning"
+  | "slideshow"
+  | "festival"
+  | "ticker"
+  | "footer";
+
+export const BLOCK_IDS: readonly BlockId[] = [
+  "header", "clock", "prayers", "zmanim", "announcements",
+  "shiurim", "learning", "slideshow", "festival", "ticker", "footer",
+];
+
+/** A pinned block's place. Absent means the layout decides. */
+export type BlockArea = "right" | "left" | "wide";
+
+export interface BlockEntry {
+  block: BlockId;
+  area?: BlockArea;
+}
+
+export interface Screen {
+  id: string;
+  name: string;
+  /** How long it holds when there is more than one screen. */
+  seconds: number;
+  blocks: BlockEntry[];
+}
+
 export const SLIDE_KIND_LABELS: Record<SlideKind, string> = {
   prayer: "זמני תפילות",
   learning: "לימוד יומי ולוח שנה",
@@ -364,6 +406,16 @@ export interface TvConfig {
   backgroundImage: string | null;
   backgroundDim: number;
   slides: TvSlideConfig[];
+  /**
+   * The screens, once a gabbai has built them in the composer.
+   *
+   * Absent on every board that existed before the composer, which is the
+   * point: `screens.ts` reads those from `slides` and `screenLayout` instead,
+   * so nothing has to be converted and no wall depends on a migration having
+   * gone right. A board only gets this field when somebody saves in the new
+   * editor, and from then on it is what the board follows.
+   */
+  screens?: Screen[];
   /** Header extras. `logo`: the קרובים logo beside the synagogue name. */
   header: { parasha: boolean; dafYomi: boolean; logo: boolean };
   alerts: {
@@ -554,6 +606,48 @@ function normalizeCustomThemes(raw: unknown): TvTheme[] {
 
 /** Built-in Shabbat drawings (ids of ShabbatScene.SHABBAT_ART). */
 export const SHABBAT_ART_IDS = ["classic", "kiddush", "jerusalem", "candles"] as const;
+
+/**
+ * The composer's screens, or nothing at all.
+ *
+ * `undefined` is meaningful here and is not the same as an empty array: it
+ * means this board predates the composer and is still described by `slides`
+ * and `screenLayout`, so `screens.ts` reads it from those. An empty array
+ * would mean a gabbai saved a board with no screens on it, which the board
+ * must not confuse with the far more common "never opened the composer".
+ *
+ * Anything unrecognised is dropped rather than repaired: a block id from a
+ * future version, or a screen with nothing left on it after filtering, is
+ * better absent than half-drawn on a wall.
+ */
+function normalizeScreens(raw: unknown): Screen[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const areas: BlockArea[] = ["right", "left", "wide"];
+  const screens: Screen[] = [];
+
+  for (const s of raw.slice(0, 12)) {
+    if (!isObj(s)) continue;
+    const seen = new Set<BlockId>();
+    const blocks: BlockEntry[] = [];
+    for (const b of Array.isArray(s.blocks) ? s.blocks.slice(0, 20) : []) {
+      if (!isObj(b)) continue;
+      const id = b.block as BlockId;
+      // A block twice on one screen would draw twice and count twice.
+      if (!BLOCK_IDS.includes(id) || seen.has(id)) continue;
+      seen.add(id);
+      const area = areas.includes(b.area as BlockArea) ? (b.area as BlockArea) : undefined;
+      blocks.push(area ? { block: id, area } : { block: id });
+    }
+    if (!blocks.length) continue;
+    screens.push({
+      id: typeof s.id === "string" && KEY_RE.test(s.id) ? s.id.slice(0, 40) : `screen${screens.length + 1}`,
+      name: typeof s.name === "string" && s.name.trim() ? s.name.trim().slice(0, 60) : `מסך ${screens.length + 1}`,
+      seconds: num(s.seconds, 15, 0, 600),
+      blocks,
+    });
+  }
+  return screens.length ? screens : undefined;
+}
 
 function normalizeShabbatScenes(raw: unknown): string[] {
   const out: string[] = [];
@@ -833,6 +927,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
+    screens: normalizeScreens(raw.screens),
     customIllustrations,
     illustratedStyle: normalizeIllustratedStyle(raw.illustratedStyle),
     dayLooks: normalizeDayLooks(raw.dayLooks, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)], [

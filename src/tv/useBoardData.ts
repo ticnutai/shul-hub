@@ -19,7 +19,8 @@ import { dayTypeFor, heldOn, jerusalemDateKey, jerusalemWeekday, overridesFor, r
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { todaysCategories } from "@community/lib/specialDays";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
-import type { TvConfig } from "./config";
+import type { BlockArea, BlockId, Screen, TvConfig } from "./config";
+import { place, readScreens } from "./screens";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
 import { shabbatNow, type ShabbatTimes } from "./shabbat";
 import { checkClock } from "./clock";
@@ -98,7 +99,32 @@ export type BoardSlide =
   | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
   | (SlideBase & { kind: "shiurim"; items: Shiur[] })
   | (SlideBase & { kind: "slideshow"; images: TvConfig["slideshow"]["images"]; secondsPerImage: number })
-  | (SlideBase & { kind: "shabbat"; times: ShabbatTimes; scenes: string[]; secondsPerScene: number });
+  | (SlideBase & { kind: "shabbat"; times: ShabbatTimes; scenes: string[]; secondsPerScene: number })
+  /**
+   * A screen the gabbai built in the composer: several blocks at once.
+   *
+   * It is a slide like any other on purpose. The rotation, the arrows on the
+   * remote, the watchdog and what the admin sees all work on the list of
+   * slides, so making a screen one of them means none of that has to learn
+   * anything new - and it is also honest about the model, where a screen is
+   * simply the unit the board turns over.
+   */
+  | (SlideBase & { kind: "composed"; screen: Screen; parts: ComposedPart[] });
+
+/**
+ * One block on a composed screen.
+ *
+ * `slide` is the content built by buildSlides, reused rather than rebuilt:
+ * the rules for which minyanim show today, which notices have not expired
+ * and how announcements page are hard-won and live in one place. A block with
+ * no slide of its own (the zmanim, which are a panel in every layout and
+ * appear in nobody's slide list) is drawn by the composed view directly.
+ */
+export interface ComposedPart {
+  block: BlockId;
+  area?: BlockArea;
+  slide?: BoardSlide;
+}
 
 const ANNOUNCEMENTS_PER_PAGE = 4;
 
@@ -235,7 +261,100 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
     }
   }
 
-  return slides.length ? slides : [{ id: "learning", kind: "learning", seconds: 30, layout: "cards" }];
+  const built = slides.length ? slides : [{ id: "learning", kind: "learning", seconds: 30, layout: "cards" } as BoardSlide];
+  return config.screens?.length ? compose(built, config) : built;
+}
+
+/**
+ * The screens a gabbai built, filled with the content just worked out.
+ *
+ * Composing rather than building again is the whole reason this is safe to
+ * turn on: which minyanim belong to today, which notices have not expired,
+ * how announcements divide into pages - all of that stays in buildSlides,
+ * unchanged, still covered by the tests it already had. A screen only decides
+ * which of those pieces stand together and where.
+ *
+ * A screen whose blocks all turned out empty is dropped rather than shown:
+ * on a Monday with no announcements, a screen of nothing but announcements
+ * would otherwise take its turn on the wall as a blank rectangle. If that
+ * leaves nothing at all, the board falls back to what it would have shown
+ * before the composer existed.
+ */
+function compose(slides: BoardSlide[], config: TvConfig): BoardSlide[] {
+  const byBlock = new Map<BlockId, BoardSlide[]>();
+  for (const slide of slides) {
+    const block = SLIDE_KIND_BLOCK[slide.kind];
+    if (!block) continue;
+    const list = byBlock.get(block);
+    if (list) list.push(slide);
+    else byBlock.set(block, [slide]);
+  }
+
+  const out: BoardSlide[] = [];
+  for (const screen of readScreens(config)) {
+    // The prayer panel carries its own zmanim in most of its layouts, so a
+    // screen that also has the zmanim block would show them twice - which is
+    // the exact duplication this change exists to remove, appearing in the
+    // first thing it drew. `timeline` is the prayer layout without that
+    // panel; the split board already used it for the same reason.
+    const ownZmanim = screen.blocks.some((b) => b.block === "zmanim");
+    const parts: ComposedPart[] = [];
+    for (const entry of screen.blocks) {
+      // The zmanim have no slide anywhere - they are a panel - so they are
+      // carried as a part with no content and drawn by the composed view.
+      if (entry.block === "zmanim") {
+        parts.push({ block: entry.block, area: entry.area });
+        continue;
+      }
+      for (const slide of byBlock.get(entry.block) ?? [])
+        parts.push({
+          block: entry.block,
+          area: entry.area,
+          slide:
+            ownZmanim && slide.kind === "prayer" && slide.layout !== "timeline"
+              ? { ...slide, layout: "timeline" }
+              : slide,
+        });
+    }
+    // Bars are drawn by the board around the slide, not inside it.
+    const body = parts.filter((p) => p.slide || p.block === "zmanim");
+    if (!body.length) continue;
+    out.push({
+      id: `screen:${screen.id}`,
+      kind: "composed",
+      seconds: screen.seconds > 0 ? screen.seconds : 3600,
+      layout: "composed",
+      screen,
+      parts: body,
+    });
+  }
+  return out.length ? out : slides;
+}
+
+/** Which block each kind of built slide belongs to. */
+const SLIDE_KIND_BLOCK: Partial<Record<BoardSlide["kind"], BlockId>> = {
+  prayer: "prayers",
+  learning: "learning",
+  announcements: "announcements",
+  shiurim: "shiurim",
+  slideshow: "slideshow",
+};
+
+/** The rows a composed screen lays its parts out in. */
+export function composedRows(parts: ComposedPart[]): ComposedPart[][] {
+  const entries = parts.map((p) => ({ block: p.block, area: p.area }));
+  const rows = place(entries);
+  const taken = new Set<ComposedPart>();
+  return rows.map((row) =>
+    row.map((e) => {
+      // Several parts can share a block (two prayer schedules, paged
+      // announcements); each row slot takes the next one not yet placed.
+      const found = parts.find((p) => p.block === e.block && p.area === e.area && !taken.has(p));
+      const part = found ?? parts.find((p) => p.block === e.block)!;
+      taken.add(part);
+      return part;
+    }),
+  );
 }
 
 /** Zmanim for the calendar day of `now`, recomputed once a day, not every second. */

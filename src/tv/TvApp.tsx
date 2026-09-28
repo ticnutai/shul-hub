@@ -54,9 +54,13 @@ function writeOverride(v: string | null) {
 }
 
 /** Slide name for the remote's toast; the Shabbat screen is not a configurable slide. */
-function kindLabel(kind: string | undefined): string {
-  if (kind === "shabbat") return "שבת שלום";
-  return (SLIDE_KIND_LABELS as Record<string, string>)[kind ?? ""] ?? "";
+function slideLabel(slide: { kind: string; screen?: { name: string } } | undefined): string {
+  if (!slide) return "";
+  // A composed screen was named by the gabbai, so say his name for it rather
+  // than a kind: pressing the arrow should name the screen you land on.
+  if (slide.kind === "composed") return slide.screen?.name ?? "";
+  if (slide.kind === "shabbat") return "שבת שלום";
+  return (SLIDE_KIND_LABELS as Record<string, string>)[slide.kind] ?? "";
 }
 
 /** Hebrew names for the log, which the admin reads. */
@@ -402,11 +406,11 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       switch (e.key) {
         case "ArrowLeft":
           go(1);
-          flash(kindLabel(s[(i + 1) % s.length]?.kind));
+          flash(slideLabel(s[(i + 1) % s.length]));
           break;
         case "ArrowRight":
           go(-1);
-          flash(kindLabel(s[(i - 1 + s.length) % s.length]?.kind));
+          flash(slideLabel(s[(i - 1 + s.length) % s.length]));
           break;
         case "Enter":
         case " ":
