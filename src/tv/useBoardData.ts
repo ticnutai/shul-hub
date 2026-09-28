@@ -94,7 +94,7 @@ interface SlideBase {
 }
 
 export type BoardSlide =
-  | (SlideBase & { kind: "prayer"; title: string; rows: ResolvedMinyan[]; subcategories: MinyanSubcategory[] })
+  | (SlideBase & { kind: "prayer"; title: string; rows: ResolvedMinyan[]; subcategories: MinyanSubcategory[]; page?: number; pages?: number })
   | (SlideBase & { kind: "learning" })
   | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
   | (SlideBase & { kind: "shiurim"; items: Shiur[] })
@@ -127,6 +127,48 @@ export interface ComposedPart {
 }
 
 const ANNOUNCEMENTS_PER_PAGE = 4;
+
+/**
+ * A day's minyanim over as many screens as it takes.
+ *
+ * A shul with eleven ma'ariv minyanim, six shacharis and five mincha does not
+ * fit on one screen, and photographed off the wall at אהל אברהם it did not
+ * try to: the list simply ran off the bottom. Shrinking the type is the wrong
+ * answer for a board read from the back of a hall - it is the one thing that
+ * must not get smaller - so it takes another screen instead.
+ *
+ * The break is at a change of prayer, not at a row count, because that is
+ * where a person would put it: shacharis stays with shacharis. A single
+ * prayer with more minyanim than a screen holds is split anyway - there is
+ * nothing else to do with it - but that is the only time a group is broken.
+ */
+export function splitPrayerRows(rows: ResolvedMinyan[], perScreen: number): ResolvedMinyan[][] {
+  if (rows.length <= perScreen) return [rows];
+
+  // Runs of the same prayer, in the order the board shows them.
+  const groups: ResolvedMinyan[][] = [];
+  for (const row of rows) {
+    const last = groups[groups.length - 1];
+    if (last && last[0].minyan.prayer === row.minyan.prayer) last.push(row);
+    else groups.push([row]);
+  }
+
+  const pages: ResolvedMinyan[][] = [];
+  let page: ResolvedMinyan[] = [];
+  for (const group of groups) {
+    // A group too big for a screen on its own has to be cut; anything else
+    // moves to the next screen whole.
+    if (group.length > perScreen) {
+      if (page.length) { pages.push(page); page = []; }
+      for (let i = 0; i < group.length; i += perScreen) pages.push(group.slice(i, i + perScreen));
+      continue;
+    }
+    if (page.length + group.length > perScreen) { pages.push(page); page = []; }
+    page = page.concat(group);
+  }
+  if (page.length) pages.push(page);
+  return pages;
+}
 
 /**
  * The prayer schedules to show today, mirroring the website's category rules:
@@ -218,7 +260,18 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
       const withRows = schedules.filter((s) => s.rows.length > 0);
       // Always keep one prayer slide, even empty: it also carries the zmanim.
       for (const s of withRows.length ? withRows : schedules.slice(0, 1)) {
-        slides.push({ ...base, id: `prayer:${s.id}`, kind: "prayer", title: s.title, rows: s.rows, subcategories: s.subcategories });
+        const pages = splitPrayerRows(s.rows, config.prayerRowsPerScreen);
+        pages.forEach((rows, i) => {
+          slides.push({
+            ...base,
+            id: pages.length > 1 ? `prayer:${s.id}:${i}` : `prayer:${s.id}`,
+            kind: "prayer",
+            title: s.title,
+            rows,
+            subcategories: s.subcategories,
+            ...(pages.length > 1 ? { page: i + 1, pages: pages.length } : {}),
+          });
+        });
       }
     } else if (sc.kind === "learning") {
       slides.push({ ...base, id: "learning", kind: "learning" });

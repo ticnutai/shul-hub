@@ -158,6 +158,16 @@ function PrayerSlide({
   const heading = (
     <SlideHeading k="heading.prayer" fallback="זמני התפילות">
       {slide.title && <small>{slide.title}</small>}
+      {/*
+        Said out loud when the day needed more than one screen, so nobody
+        standing in front of the board wonders whether his minyan was left
+        off it - he can see there is another screen coming.
+      */}
+      {(slide.pages ?? 1) > 1 && (
+        <small>
+          {slide.page} מתוך {slide.pages}
+        </small>
+      )}
     </SlideHeading>
   );
   const zmanimPanel = { key: "panel.zmanim", width: 1, node: <ZmanimPanel zmanim={zmanim} now={now} /> };

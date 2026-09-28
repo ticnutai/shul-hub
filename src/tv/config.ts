@@ -374,6 +374,19 @@ export interface TvConfig {
    */
   eventEverySeconds: number;
   /**
+   * How many minyanim fit on one screen before the day takes another.
+   *
+   * A shul with twenty-two minyanim in a day does not fit on one screen, and
+   * on the wall it simply ran off the bottom. Making the type smaller is the
+   * wrong answer for a board read from the back of a hall, so the list takes
+   * another screen - and this is where that line falls.
+   *
+   * It is a setting because the right number depends on the screen: a 1080p
+   * television above the aron holds more than the old 1366x768 monitor on a
+   * shelf, and only the person standing in front of it knows which he has.
+   */
+  prayerRowsPerScreen: number;
+  /**
    * Days that meet (a festival on Shabbat, Rosh Chodesh on Chanukah...):
    * "one" - one screen naming them all; "separate" - a screen for each, in turn.
    */
@@ -572,6 +585,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   eventNationalAuto: false,
   eventDetail: "full",
   eventEverySeconds: 45,
+  prayerRowsPerScreen: 14,
   eventCombine: "one",
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
@@ -955,6 +969,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     eventNationalAuto: raw.eventNationalAuto === true,
     eventDetail: raw.eventDetail === "short" ? "short" : "full",
     eventEverySeconds: num(raw.eventEverySeconds, d.eventEverySeconds, 10, 600),
+    prayerRowsPerScreen: num(raw.prayerRowsPerScreen, d.prayerRowsPerScreen, 4, 60),
     eventCombine: raw.eventCombine === "separate" ? "separate" : "one",
     eventHold: raw.eventHold !== false,
     illustration:
