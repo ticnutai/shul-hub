@@ -5208,3 +5208,51 @@
 
 .tv-root.is-skin-medallion .tv-panel,
 .tv-root.is-skin-medallion .tv-card { --tv-text-dim: #413014; }
+
+/* --------------------------------------- the whole palette, on a light board -- */
+/*
+ * Four of the skins paint the board itself light, and the theme underneath
+ * is always dark. Setting the panel colours was not enough: anything drawn
+ * straight onto the board - the prayer timeline is the one that showed it -
+ * takes the theme's own text and accent, which are a near-white and a pale
+ * gold meant for navy.
+ *
+ * Photographed at אהל אברהם: a full timeline of minyanim with the names
+ * barely there, every dot empty, and one time visible - the next one, which
+ * gets the accent. Measured against that sky background: the text at 1.09:1
+ * and the accent at 1.35:1, where 4.5:1 is the floor. The times were not
+ * dim, they were the same colour as the paper.
+ *
+ * So these three restate the palette for the board they actually draw. The
+ * accent keeps its hue and is darkened only until it can be read, so a gold
+ * board stays gold. The other light skins are not here on purpose: their
+ * panels are light but their board is the theme's own dark one, where the
+ * theme's colours are still right.
+ */
+.tv-root.is-skin-sky {
+  --tv-text: #1c2b3a;
+  --tv-text-dim: #3d5a75;
+  --tv-accent: #7d6418;
+  --tv-accent-2: #5c4b12;
+}
+
+.tv-root.is-skin-crown {
+  --tv-text: #2a2213;
+  --tv-text-dim: #5c5140;
+  --tv-accent: #816819;
+  --tv-accent-2: #604e13;
+}
+
+.tv-root.is-skin-medallion {
+  --tv-text: #2a2213;
+  --tv-text-dim: #5a4f3c;
+  --tv-accent: #806318;
+  --tv-accent-2: #5b4611;
+}
+
+.tv-root.is-skin-pillars {
+  --tv-text: #2a2418;
+  --tv-text-dim: #6b5f48;
+  --tv-accent: #7d6418;
+  --tv-accent-2: #584711;
+}

@@ -118,3 +118,75 @@ describe("dim text on a light panel", () => {
     expect(failures).toEqual([]);
   });
 });
+
+/** The board's own background, where a skin paints one. */
+function boardBackground(skin: string): string | null {
+  // String.raw, because a backslash in an ordinary template literal is an
+  // escape and quietly disappears: `\s+` became `s+` and the pattern matched
+  // nothing, which read as "no skin paints a light board".
+  const rule = new RegExp(
+    String.raw`\.tv-root\.is-skin-SKIN\s+\.tv-bg[^{]*\{([^}]*)\}`.replace("SKIN", skin),
+  );
+  const body = rule.exec(CSS)?.[1];
+  if (!body) return null;
+  const stops = [...body.matchAll(/#[0-9a-f]{6}/gi)].map((m) => m[0]);
+  return stops.length ? average(stops) : null;
+}
+
+/** A palette value this skin restates on `.tv-root`, if it does. */
+function boardVar(skin: string, name: string): string | null {
+  const rule = new RegExp(
+    String.raw`\.tv-root\.is-skin-SKIN\s*\{[^}]*NAME:\s*(#[0-9a-f]{6})`
+      .replace("SKIN", skin)
+      .replace("NAME", name),
+    "i",
+  );
+  return rule.exec(CSS)?.[1] ?? null;
+}
+
+/** Every skin named anywhere in the stylesheet. */
+function allSkins(): string[] {
+  return [...new Set([...CSS.matchAll(/is-skin-([a-z]+)/g)].map((m) => m[1]))];
+}
+
+describe("the palette on a light board", () => {
+  /**
+   * A skin that paints the board light cannot leave the palette to the theme.
+   * Every theme here is dark, so its text is a near-white and its accent a
+   * pale gold - on a light board that is not dim text, it is no text. The
+   * prayer timeline draws straight onto the board and is where it showed.
+   */
+  const lightBoards = allSkins().filter((s) => {
+    const bg = boardBackground(s);
+    return bg !== null && luminance(bg) > 0.4;
+  });
+
+  it("finds the skins that paint a light board", () => {
+    expect(lightBoards.length).toBeGreaterThan(0);
+  });
+
+  it("each of them restates the palette rather than inheriting a dark theme's", () => {
+    const missing: string[] = [];
+    for (const skin of lightBoards)
+      for (const name of ["--tv-text", "--tv-text-dim", "--tv-accent"])
+        if (!boardVar(skin, name)) missing.push(`${skin} ${name}`);
+    expect(
+      missing,
+      "a light board with the theme's own colours shows near-white text on cream",
+    ).toEqual([]);
+  });
+
+  it("and every value can be read on that board", () => {
+    const failures: string[] = [];
+    for (const skin of lightBoards) {
+      const bg = boardBackground(skin)!;
+      for (const [name, floor] of [["--tv-text", 7], ["--tv-text-dim", 4.5], ["--tv-accent", 4.5]] as const) {
+        const value = boardVar(skin, name);
+        if (!value) continue;
+        const r = contrast(value, bg);
+        if (r < floor) failures.push(`${skin} ${name}: ${value} on ${bg} = ${r.toFixed(2)}:1 (needs ${floor})`);
+      }
+    }
+    expect(failures).toEqual([]);
+  });
+});
