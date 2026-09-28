@@ -536,9 +536,23 @@ export function EventSplash({
     return [...(shabbat ? [SHABBAT_PAGE] : []), def, ...others];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [def, day, config.eventCombine, config.eventNationalAuto, dayKey]);
-  // With everything of the day on it, the day's screen is the board: it stays
-  // up all day, not 15 seconds in 90 (the short card still takes turns).
-  const allDay = !force && !infoOnly && config.eventDetail !== "short";
+  /**
+   * The day's screen, taking turns with the board.
+   *
+   * It used to be all or nothing: the short card appeared fifteen seconds in
+   * ninety, and the full day's screen simply took the board and kept it. On
+   * chol hamoed that is a week in which nobody can see the minyanim without
+   * walking up to the wall and pressing an arrow - which is exactly what was
+   * reported from אהל אברהם.
+   *
+   * So it alternates: its turn, then the board's turn, each as long as the
+   * gabbai set. Shabbat and the festivals themselves are untouched - inside
+   * the holy window `hold` still keeps the day's screen on the board, which
+   * is the whole point of that window.
+   */
+  const turn = Math.max(10, config.eventEverySeconds ?? 45);
+  const takingTurns = !force && !infoOnly && config.eventDetail !== "short";
+  const myTurn = Math.floor(seconds / turn) % 2 === 0;
   // The remote: with several screens, the arrows move between them; with one,
   // an arrow steps back to the ordinary board (its slides, announcements) for
   // two minutes, and the day comes back by itself.
@@ -553,7 +567,7 @@ export function EventSplash({
   const visible =
     !!def &&
     (config.eventSplash || force) &&
-    (force || asked || hold || allDay || phase < SHOW_SECONDS) &&
+    (force || asked || hold || (takingTurns ? myTurn : phase < SHOW_SECONDS)) &&
     (force || asked || now.getTime() >= awayUntil);
   const pageCount = pages.length;
   // Listen whenever the day has a screen at all, not only while it is up:
@@ -590,7 +604,7 @@ export function EventSplash({
   const autoPage =
     pages.length < 2
       ? 0
-      : hold || force || allDay
+      : hold || force || takingTurns
         ? Math.floor(seconds / HOLD_PAGE_SECONDS)
         : Math.min(pages.length - 1, Math.floor(phase / (SHOW_SECONDS / pages.length)));
   const pageIndex = pages.length < 2 ? 0 : (((autoPage + offset) % pages.length) + pages.length) % pages.length;
@@ -600,7 +614,7 @@ export function EventSplash({
   // Each appearance moves on through the pictures; within it, a new one every few seconds.
   const step = force
     ? Math.floor(seconds / SLIDE_SECONDS)
-    : hold || allDay
+    : hold || takingTurns
       ? Math.floor(seconds / HOLD_SLIDE_SECONDS)
       : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
   const active = step % slides.length;

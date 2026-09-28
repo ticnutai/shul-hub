@@ -32,6 +32,15 @@ export type { BlockEntry, Screen };
 /** Blocks that stand on every screen: the bars above and below. */
 const CHROME: BlockId[] = BLOCKS.filter((b) => b.chrome).map((b) => b.id);
 
+/**
+ * How long a screen holds when nobody has said otherwise.
+ *
+ * Long enough to read a list of minyanim, short enough that somebody waiting
+ * for the other screen does not give up. The gabbai sets his own in the
+ * composer; this is only what an unconfigured board falls back to.
+ */
+const TURN_SECONDS = 40;
+
 /** The layouts that show one thing at a time, rather than all of them at once. */
 const ROTATING = new Set(["rotate", "split"]);
 
@@ -73,18 +82,27 @@ export function toScreens(config: Partial<TvConfig>): Screen[] {
   const festival = (): BlockEntry[] => (config.eventSplash ? [{ block: "festival" as BlockId }] : []);
 
   if (!ROTATING.has(layout)) {
-    // One screen with everything on it.
+    // One screen with everything on it - and the day's screen beside it as a
+    // second, rather than over it.
+    //
+    // The day's screen used to decide for itself when to take the board, and
+    // on chol hamoed it took it for the week. Read as two screens it simply
+    // takes its turn, which is what a gabbai standing in front of the wall
+    // expects: times, then the day, then times.
     const content = enabled
       .map((s) => BLOCK_FOR_SLIDE[s.kind])
       .filter((b): b is BlockId => Boolean(b))
       .map((block) => ({ block }));
+    const board: Screen = {
+      id: "board",
+      name: "הלוח",
+      seconds: config.eventSplash ? TURN_SECONDS : 0,
+      blocks: [...chrome(), ...extras, ...content],
+    };
+    if (!config.eventSplash) return [board];
     return [
-      {
-        id: "board",
-        name: "הלוח",
-        seconds: 0,
-        blocks: [...chrome(), ...extras, ...content, ...festival()],
-      },
+      board,
+      { id: "festival", name: screenName("festival"), seconds: TURN_SECONDS, blocks: [{ block: "festival" }] },
     ];
   }
 
@@ -103,7 +121,7 @@ export function toScreens(config: Partial<TvConfig>): Screen[] {
 
   // The day's screen takes its own turn here rather than sharing one.
   if (config.eventSplash)
-    screens.push({ id: "festival", name: screenName("festival"), seconds: 15, blocks: [...chrome(), { block: "festival" }] });
+    screens.push({ id: "festival", name: screenName("festival"), seconds: TURN_SECONDS, blocks: [{ block: "festival" }] });
 
   // A board with nothing enabled still has to show something.
   if (screens.length === 0)

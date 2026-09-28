@@ -33,9 +33,9 @@ function show(config: TvConfig = illustrated) {
 describe("the screen composer", () => {
   it("opens on the board as it is, not on an empty sheet", () => {
     show();
-    // Illustrated merges everything, so it reads as one screen - which is the
-    // fact that explains why an arrow on that board moved nothing.
-    expect(screen.getByText(/מסך אחד/)).toBeTruthy();
+    // Illustrated merges its content into one screen, and the day's screen
+    // is a second beside it - so this board reads as two, each taking a turn.
+    expect(screen.getByText(/2 מסכים/)).toBeTruthy();
     expect(screen.getByLabelText("תפילות היום")).toBeTruthy();
   });
 
@@ -46,11 +46,14 @@ describe("the screen composer", () => {
     }
   });
 
-  it("puts the day's screen on a single board, which the old settings could not say", () => {
-    show();
-    const festival = screen.getByLabelText("מסך החג") as HTMLButtonElement;
-    expect(festival.getAttribute("aria-checked")).toBe("true");
-    expect(within(screen.getByTestId("composer-sketch")).getByText(/מסך החג/)).toBeTruthy();
+  it("gives the day its own screen, which the old settings could not say", () => {
+    const { onChange } = show();
+    // The first screen is the content; the day has one of its own, so it is
+    // not switched on here.
+    expect((screen.getByLabelText("מסך החג") as HTMLButtonElement).getAttribute("aria-checked")).toBe("false");
+    // It is the second screen, and it can be opened and edited like any other.
+    expect(screen.getAllByRole("button", { name: /מסך החג/ }).length).toBeGreaterThan(0);
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it("turning a block off takes it off that screen", () => {
@@ -65,12 +68,14 @@ describe("the screen composer", () => {
 
   it("adding a screen turns a standing board into a rotating one", () => {
     const { onChange } = show();
-    fireEvent.click(screen.getByRole("button", { name: /מסך$/ }));
+    fireEvent.click(screen.getByRole("button", { name: "מסך" }));
     const [next, current] = onChange.mock.calls[0];
-    expect(next).toHaveLength(2);
-    expect(current).toBe(1);
+    // It opened on two (the board and the day's screen), so adding makes three.
+    expect(next).toHaveLength(3);
+    expect(current).toBe(2);
     // A new screen is never blank on a wall: it starts with the bars.
-    expect(next[1].blocks.map((b) => b.block)).toContain("header");
+    // The new screen is the third; the first two are the board and the day.
+    expect(next[2].blocks.map((b) => b.block)).toContain("header");
   });
 
   it("pinning a block is the same field, not a second mode", () => {

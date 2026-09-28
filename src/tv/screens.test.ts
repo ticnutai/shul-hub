@@ -49,19 +49,26 @@ const REAL: Record<string, Partial<TvConfig>> = {
 const ids = (list: BlockEntry[]) => list.map((e) => e.block);
 
 describe("reading an existing board as screens", () => {
-  it("an illustrated board is one screen, which is why an arrow had nowhere to go", () => {
+  it("an illustrated board is one screen of content, and the day's screen is a second", () => {
+    // It used to read as a single screen, which is why an arrow had nowhere
+    // to go. The day's screen is no longer an overlay that decides for
+    // itself when to take the board: it is a screen beside it, taking turns.
     const screens = toScreens(REAL.illustratedWithFestival);
-    expect(screens).toHaveLength(1);
+    expect(screens.map((s) => s.id)).toEqual(["board", "festival"]);
     expect(ids(screens[0].blocks)).toEqual(
       expect.arrayContaining(["prayers", "zmanim", "learning", "announcements", "shiurim"]),
     );
+    // Both hold for a turn, rather than one of them holding the week.
+    expect(screens.every((s) => s.seconds > 0)).toBe(true);
   });
 
-  it("puts the day's screen on that single board, which could not be said before", () => {
-    const [board] = toScreens(REAL.illustratedWithFestival);
-    expect(ids(board.blocks)).toContain("festival");
-    // And a board that never turned it on does not suddenly get one.
-    expect(ids(toScreens(REAL.illustratedPlain)[0].blocks)).not.toContain("festival");
+  it("gives the day its own screen, and none at all where it was never turned on", () => {
+    const withIt = toScreens(REAL.illustratedWithFestival);
+    expect(withIt.find((s) => s.id === "festival")).toBeTruthy();
+    // A board that never switched it on stays a single screen.
+    const without = toScreens(REAL.illustratedPlain);
+    expect(without).toHaveLength(1);
+    expect(without.flatMap((s) => ids(s.blocks))).not.toContain("festival");
   });
 
   it("a rotating board keeps one screen per slide, in the order they were in", () => {

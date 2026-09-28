@@ -128,12 +128,30 @@ describe("the day's screen all day, and the remote", () => {
   const at = (sec: number, config: Partial<TvConfig> = {}) =>
     render(<EventSplash categories={[]} config={{ ...DEFAULT_TV_CONFIG, ...config }} now={chm(sec)} zmanim={zmanimOn(chm(sec))} zmanimOn={zmanimOn} />);
 
-  it("with everything of the day it stays up the whole day; the short card takes turns", () => {
-    for (const sec of [0, 20, 45, 80]) {
+  it("takes turns with the board instead of keeping it all day", () => {
+    // It used to stay up for the whole of chol hamoed, which meant nobody
+    // could see the minyanim without walking to the wall - reported from
+    // אהל אברהם. Its turn, then the board's, each as long as it is set to.
+    const turn = 45;
+    const base = Math.floor(chm(0).getTime() / 1000);
+    const mine = (sec: number) => Math.floor((base + sec) / turn) % 2 === 0;
+    const shown = (sec: number) => {
       const r = at(sec);
-      expect(r.container.querySelector(".tv-event-splash")).not.toBeNull();
+      const up = !!r.container.querySelector(".tv-event-splash");
       r.unmount();
+      return up;
+    };
+    // Across a whole cycle it is up for one turn and down for the next.
+    const seen = new Set<boolean>();
+    for (let sec = 0; sec < turn * 2; sec += 9) {
+      expect(shown(sec), `at +${sec}s`).toBe(mine(sec));
+      seen.add(mine(sec));
     }
+    // And it really did both, rather than the rule agreeing with itself.
+    expect(seen).toEqual(new Set([true, false]));
+  });
+
+  it("the short card keeps its own, briefer turn", () => {
     const phase = Math.floor(chm(0).getTime() / 1000) % 90;
     const off = phase < 15 ? 30 : 0; // a moment outside the 15 seconds
     const r = at(off, { eventDetail: "short" });

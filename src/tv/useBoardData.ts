@@ -189,7 +189,14 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
   // come back believing it is a different day, and the board would then
   // hide every time in the building and look entirely deliberate about it.
   // A clock that cannot be trusted keeps the ordinary board (clock.ts).
-  if (config.shabbat.enabled && checkClock(now).trusted) {
+  // A board built in the composer decides for itself, including on Shabbat.
+  //
+  // This takeover is right for a board that was never composed: Shabbat
+  // arrives and the screen becomes the Shabbat screen, with nobody there to
+  // arrange it. But once a gabbai has said which screens he wants and how
+  // long each holds, nothing else may take the board - that was the whole
+  // complaint, that something was "held" and could not be configured.
+  if (!config.screens?.length && config.shabbat.enabled && checkClock(now).trusted) {
     const times = shabbatNow(now, data.settings, config.shabbat.endMinutesAfterSunset);
     if (times) {
       const { scenes, rotate, secondsPerScene } = config.shabbat;
@@ -302,7 +309,10 @@ function compose(slides: BoardSlide[], config: TvConfig): BoardSlide[] {
     for (const entry of screen.blocks) {
       // The zmanim have no slide anywhere - they are a panel - so they are
       // carried as a part with no content and drawn by the composed view.
-      if (entry.block === "zmanim") {
+      // The zmanim are a panel and the day's screen is drawn over the whole
+      // board, so neither has a slide in the list; both travel as a part
+      // with no content, so a screen made only of them is still a screen.
+      if (entry.block === "zmanim" || entry.block === "festival") {
         parts.push({ block: entry.block, area: entry.area });
         continue;
       }
@@ -317,7 +327,7 @@ function compose(slides: BoardSlide[], config: TvConfig): BoardSlide[] {
         });
     }
     // Bars are drawn by the board around the slide, not inside it.
-    const body = parts.filter((p) => p.slide || p.block === "zmanim");
+    const body = parts.filter((p) => p.slide || p.block === "zmanim" || p.block === "festival");
     if (!body.length) continue;
     out.push({
       id: `screen:${screen.id}`,

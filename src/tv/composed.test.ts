@@ -113,16 +113,25 @@ describe("a board built in the composer", () => {
     expect(slides.some((s) => s.kind === "composed")).toBe(false);
   });
 
-  it("still lets Shabbat take the whole wall", () => {
+  it("keeps the Shabbat takeover for a board nobody composed", () => {
+    const friday = new Date("2026-09-18T19:30:00+03:00");
+    const plain = buildSlides(data, structuredClone(DEFAULT_TV_CONFIG), friday, zmanimFor(friday, null));
+    // Shabbat arrives and the screen becomes the Shabbat screen, with nobody
+    // there to arrange it. That is right for a board that was never set up.
+    expect(plain[0].kind).toBe("shabbat");
+  });
+
+  it("but a composed board is not taken over, not even by Shabbat", () => {
     const friday = new Date("2026-09-18T19:30:00+03:00");
     const slides = buildSlides(
       data,
-      withScreens([{ id: "a", name: "הלוח", seconds: 0, blocks: [{ block: "prayers" }] }]),
+      withScreens([{ id: "a", name: "הלוח", seconds: 40, blocks: [{ block: "prayers" }] }]),
       friday,
       zmanimFor(friday, null),
     );
-    // The Shabbat screen is decided before anything is composed, and must
-    // stay that way: it is the one thing that takes the board whole.
-    expect(slides[0].kind).toBe("shabbat");
+    // Once a gabbai has said which screens he wants and how long each holds,
+    // nothing else may take the board. That was the whole complaint: that
+    // something was held and could not be configured.
+    expect(slides.map((s) => s.kind)).toEqual(["composed"]);
   });
 });

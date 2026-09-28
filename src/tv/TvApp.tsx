@@ -248,6 +248,12 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     setPaused(next);
   }, []);
 
+  /** A board built in the composer; nothing outside the list may take it. */
+  const usingComposer = Boolean(config.screens?.length);
+  /** The screen showing now carries the day's screen as one of its blocks. */
+  const festivalScreen =
+    slide?.kind === "composed" && slide.parts.some((p) => p.block === "festival");
+
   const slideId = slide?.id;
   const slideSeconds = slide?.seconds ?? 20;
   const rotating = slides.length > 1;
@@ -557,14 +563,28 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       paused={paused}
       overlay={
         <>
-          <EventSplash
-            categories={data.categories}
-            config={config}
-            now={now}
-            zmanim={zmanim}
-            zmanimOn={zmanimOn}
-            schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
-          />
+          {/*
+            The day's screen: a screen in the list when there is a list, and
+            an overlay of its own when there is not.
+
+            Its old behaviour was the complaint - it decided for itself when
+            to take the board and for how long, and a gabbai could only
+            choose between fifteen seconds in ninety and all day. On a board
+            built in the composer it is a block like any other: it appears on
+            the screens it was put on, for as long as those screens hold, and
+            nothing takes the board that was not asked to.
+          */}
+          {(!usingComposer || festivalScreen) && (
+            <EventSplash
+              categories={data.categories}
+              config={config}
+              now={now}
+              zmanim={zmanim}
+              zmanimOn={zmanimOn}
+              force={festivalScreen}
+              schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
+            />
+          )}
           <ScreenMenu
             open={menuOpen}
             onClose={() => setMenuOpen(false)}

@@ -361,6 +361,19 @@ export interface TvConfig {
    */
   eventDetail: "full" | "short";
   /**
+   * How long the day's screen holds before the board takes a turn, in
+   * seconds, and the same again for the board.
+   *
+   * The day's screen used to be all or nothing: fifteen seconds in ninety
+   * ("short"), or the whole board for the whole day. On chol hamoed that
+   * meant a week where nobody could see the minyanim without walking up and
+   * pressing an arrow. It takes turns now, and this is the length of a turn.
+   *
+   * Shabbat and festivals themselves are not affected: inside the holy
+   * window the day's screen still holds the board, which is the point of it.
+   */
+  eventEverySeconds: number;
+  /**
    * Days that meet (a festival on Shabbat, Rosh Chodesh on Chanukah...):
    * "one" - one screen naming them all; "separate" - a screen for each, in turn.
    */
@@ -558,6 +571,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   eventAuto: "full",
   eventNationalAuto: false,
   eventDetail: "full",
+  eventEverySeconds: 45,
   eventCombine: "one",
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
@@ -940,6 +954,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     eventAuto: raw.eventAuto === "info" || raw.eventAuto === "off" ? raw.eventAuto : "full",
     eventNationalAuto: raw.eventNationalAuto === true,
     eventDetail: raw.eventDetail === "short" ? "short" : "full",
+    eventEverySeconds: num(raw.eventEverySeconds, d.eventEverySeconds, 10, 600),
     eventCombine: raw.eventCombine === "separate" ? "separate" : "one",
     eventHold: raw.eventHold !== false,
     illustration:
