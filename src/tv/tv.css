@@ -4741,6 +4741,15 @@
   align-items: flex-end;
   justify-content: flex-start;
   animation: tv-event-in 0.8s ease-out;
+  /*
+   * The day's screen has nothing on it to press - no button, no handler, it
+   * is a picture and some times - but it covers the whole board at z-index 40
+   * and so it was swallowing every click meant for the control bar beneath it
+   * at 35. On a festival the board in a browser became unusable: pause, next
+   * and exit all did nothing, with no sign of why. It went unseen because the
+   * wall is driven by a remote, which sends keys and not clicks.
+   */
+  pointer-events: none;
 }
 @keyframes tv-event-in {
   from { opacity: 0; }

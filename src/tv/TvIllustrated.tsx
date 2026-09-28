@@ -185,6 +185,15 @@ export function IllustratedStage({
     };
   }, [dayKey, settings, shabbatEndMinutes]);
   const weekday = `יום ${WEEKDAYS[jerusalemWeekday(now)]}`;
+  /**
+   * The name, and whether it is on the board at all.
+   *
+   * The painted board drew it unconditionally, so "הסתרה מהלוח" in the editor
+   * put the key into `hidden`, the switch flipped, and the name stayed where
+   * it was. The other layouts have honoured it all along; this one simply
+   * never asked.
+   */
+  const titleShown = !edit.hidden("header.title");
   const title = edit.text("header.title", settings?.name ?? "בית הכנסת");
   const rows = todaysRows(slides);
   const candleLine = day.candle ? `הדלקת נרות ${formatTime(day.candle)}` : "";
@@ -210,9 +219,11 @@ export function IllustratedStage({
       {d.centrePanel ? (
         <>
           <At b={b.plaqueL}>
-            <div className="tv-ill-name-big" {...mark("header.title")}>
-              {title}
-            </div>
+            {titleShown && (
+              <div className="tv-ill-name-big" {...mark("header.title")}>
+                {title}
+              </div>
+            )}
             {day.parasha && <div className="tv-ill-sub" style={{ color: d.accent }}>{day.parasha}</div>}
           </At>
           <At b={b.plaqueR}>
@@ -242,15 +253,31 @@ export function IllustratedStage({
           <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
           {b.barR && (
             <At b={b.barR}>
-              <span className="tv-ill-bar" {...mark("header.title")}>{title}</span>
+              {titleShown && <span className="tv-ill-bar" {...mark("header.title")}>{title}</span>}
             </At>
           )}
           {b.barL && (
             <At b={b.barL}>
               <span className="tv-ill-bar">
-                {b.barR
-                  ? [day.parasha, candleLine].filter(Boolean).join(" · ")
-                  : [title, day.parasha, candleLine].filter(Boolean).join(" · ")}
+                {b.barR ? (
+                  [day.parasha, candleLine].filter(Boolean).join(" · ")
+                ) : (
+                  <>
+                    {/*
+                      The name is a separate span so it can be clicked and
+                      edited, which on this picture it could not be. A board
+                      with only one bar (the "modern" one, which two of the
+                      four synagogues are using) put the name into the same
+                      string as the parasha and the candle time, with no
+                      marker on it at all - so in the editor it looked like
+                      part of the board and answered nothing. Marking the
+                      whole bar would be worse: clicking the parasha would
+                      then open the name for editing.
+                    */}
+                    {titleShown && <span {...mark("header.title")}>{title}</span>}
+                    {[day.parasha, candleLine].filter(Boolean).map((t) => ` · ${t}`).join("")}
+                  </>
+                )}
               </span>
             </At>
           )}

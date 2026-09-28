@@ -15,6 +15,33 @@ import { expect, hasAdmin, test } from "./support/admin";
 
 const TV_BASE_URL = process.env.TV_BASE_URL ?? "http://127.0.0.1:4320";
 
+/**
+ * The synagogue's name on the board, wherever this layout puts it.
+ *
+ * These specs run against the design the gabbai has actually saved, and that
+ * design changes. It was the rotating board when they were written, then the
+ * full board - which is what broke the slide-dot assertion once already - and
+ * it is now the painted one, which draws the name in a plaque or along a bar
+ * and has no `.tv-title` anywhere. Three layouts, three pieces of markup for
+ * one piece of information.
+ */
+const BOARD_NAME = ":is(.tv-title, .tv-ill-name-big, .tv-ill-bar)";
+
+/**
+ * That a board really drew, rather than that one layout's markup exists.
+ *
+ * Every assertion here that named a class has failed the day the saved design
+ * moved on, and each time the fix was to chase the new class. The question
+ * these tests are actually asking is whether the board came up with something
+ * on it, so that is what they ask now - the frame is there and it has text -
+ * and the answer stays the same whichever layout the gabbai chooses next.
+ */
+async function expectBoardDrawn(frame: import("@playwright/test").Locator) {
+  await expect(frame).toBeVisible();
+  await expect(frame.locator(".tv-root")).toBeVisible();
+  expect((await frame.innerText()).trim().length).toBeGreaterThan(0);
+}
+
 function collectErrors(page: import("@playwright/test").Page) {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -45,7 +72,7 @@ test.describe("administrator", () => {
     const errors = collectErrors(page);
     await page.goto("/community/admin");
     await expect(page.getByRole("tab", { name: "מניינים" })).toBeVisible({ timeout: 20_000 });
-    for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "הודעות", "הגדרות", "משתמשים", "ייצוא/ייבוא", "קודי QR", "לוח תצוגה", "מניינים"]) {
+    for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "הודעות", "הגדרות", "משתמשים", "ייצוא/ייבוא", "קודי QR", "תצוגות", "מניינים"]) {
       const tab = page.getByRole("tab", { name: new RegExp(name) }).first();
       await tab.click();
       await expect(tab).toHaveAttribute("data-state", "active");
@@ -58,7 +85,7 @@ test.describe("administrator", () => {
   test("TV tab: screens, reports and the editor all render", async ({ adminPage: page }, testInfo) => {
     const errors = collectErrors(page);
     await page.goto("/community/admin?tab=tv&tvTab=screens");
-    await expect(page.getByRole("tab", { name: "מסכים ושליטה" })).toHaveAttribute("data-state", "active", { timeout: 20_000 });
+    await expect(page.getByRole("tab", { name: "מסכים מחוברים" })).toHaveAttribute("data-state", "active", { timeout: 20_000 });
     await expect(page.getByLabel("קוד צימוד")).toBeVisible();
     await testInfo.attach("screens", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
 
@@ -68,10 +95,10 @@ test.describe("administrator", () => {
     for (const period of ["24 שעות", "7 ימים", "30 ימים"]) await page.getByRole("button", { name: period }).click();
     await testInfo.attach("logs", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
 
-    await page.getByRole("tab", { name: /עיצוב ופריסה/ }).click();
-    await expect(page.getByRole("button", { name: /שמור ושדר/ })).toBeVisible();
+    await page.getByRole("tab", { name: /התצוגות והעיצוב/ }).click();
+    await expect(page.getByRole("button", { name: /שמור ושדר/ }).first()).toBeVisible();
     await expect(page.locator(".tv-frame").first()).toBeVisible();
-    await expect(page.getByText("הכל שמור")).toBeVisible();
+    await expect(page.getByText("הכל שמור").first()).toBeVisible();
     await noHorizontalOverflow(page);
     expect(errors).toEqual([]);
   });
@@ -92,7 +119,7 @@ test.describe("administrator", () => {
       await picker.getByRole("radio", { name: device }).click();
       await expect(picker.getByRole("radio", { name: device })).toHaveAttribute("aria-checked", "true");
       await expect(page.getByText(size, { exact: false }).first()).toBeVisible();
-      await expect(page.locator(".tv-frame .tv-title").first()).toBeVisible();
+      await expectBoardDrawn(page.locator(".tv-frame").first());
       await testInfo.attach(`device-${device}`, { body: await page.locator(".tv-frame").first().screenshot(), contentType: "image/png" });
     }
 
@@ -105,6 +132,11 @@ test.describe("administrator", () => {
     await page.getByRole("button", { name: "לאורך" }).click();
 
     await picker.getByRole("radio", { name: "כל המסכים" }).click();
+    // "All screens" shows one board by default - the change applies to every
+    // device - and only draws the five side by side once comparison is on.
+    // The button appeared after these specs were written, and without it the
+    // count is 1, which read as the studio having broken.
+    await page.getByRole("button", { name: /השוואה בין התצוגות/ }).click();
     await expect(page.locator(".tv-frame")).toHaveCount(5);
     await testInfo.attach("all-devices", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
     await picker.getByRole("radio", { name: "Android TV" }).click();
@@ -114,9 +146,14 @@ test.describe("administrator", () => {
   test("click-to-edit changes the draft on every screen and undoes cleanly", async ({ adminPage: page }) => {
     const errors = collectErrors(page);
     await page.goto("/community/admin?tab=tv&tvTab=design");
-    await expect(page.getByText("הכל שמור")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("הכל שמור").first()).toBeVisible({ timeout: 20_000 });
     const picker = page.getByRole("radiogroup", { name: "מכשיר לתצוגה" });
     await picker.getByRole("radio", { name: "כל המסכים" }).click();
+    // "All screens" shows one board by default - the change applies to every
+    // device - and only draws the five side by side once comparison is on.
+    // The button appeared after these specs were written, and without it the
+    // count is 1, which read as the studio having broken.
+    await page.getByRole("button", { name: /השוואה בין התצוגות/ }).click();
     await expect(page.locator(".tv-frame")).toHaveCount(5);
 
     await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
@@ -127,18 +164,24 @@ test.describe("administrator", () => {
     const field = page.getByLabel("שם בית הכנסת", { exact: true });
     const original = await field.inputValue();
     await field.fill("בדיקת E2E");
-    await expect(page.locator(".tv-title").filter({ hasText: "בדיקת E2E" })).toHaveCount(5);
-    await expect(page.getByText("יש שינויים שלא נשמרו")).toBeVisible();
+    await expect(page.locator(BOARD_NAME).filter({ hasText: "בדיקת E2E" })).toHaveCount(5);
+    await expect(page.getByText("יש שינויים שלא נשמרו").first()).toBeVisible();
 
-    // Move: clock and name swap sides.
-    await page.getByRole("button", { name: /החלפת צד: שם בית הכנסת/ }).click();
-    await expect(page.locator(".tv-header.is-flipped")).toHaveCount(5);
+    // Move: clock and name swap sides. Only the layouts with a header bar
+    // have sides to swap - the painted board draws the name into the picture -
+    // so this asks whether there is one rather than assuming the saved design
+    // is still the one these specs were written against.
+    const hasHeader = (await page.locator(".tv-header").count()) > 0;
+    if (hasHeader) {
+      await page.getByRole("button", { name: /החלפת צד: שם בית הכנסת/ }).click();
+      await expect(page.locator(".tv-header.is-flipped")).toHaveCount(5);
+    }
 
     // Hide and bring back from the hidden list.
     await page.getByRole("button", { name: "הסתרה מהלוח" }).click();
-    await expect(page.locator(".tv-title")).toHaveCount(0);
+    await expect(page.locator(BOARD_NAME).filter({ hasText: "בדיקת E2E" })).toHaveCount(0);
     await page.locator("button.border-dashed", { hasText: "שם בית הכנסת" }).click();
-    await expect(page.locator(".tv-title").filter({ hasText: "בדיקת E2E" })).toHaveCount(5);
+    await expect(page.locator(BOARD_NAME).filter({ hasText: "בדיקת E2E" })).toHaveCount(5);
 
     // A single zman.
     await page.locator('[data-edit="zman.alot"]').first().click();
@@ -148,9 +191,9 @@ test.describe("administrator", () => {
     // Undo everything: back to exactly what is saved.
     const undo = page.getByRole("button", { name: "ביטול (Ctrl+Z)" });
     for (let i = 0; i < 30 && (await undo.isEnabled()); i++) await undo.click();
-    await expect(page.getByText("הכל שמור")).toBeVisible();
-    await expect(page.locator(".tv-title").first()).toHaveText(original);
-    await expect(page.locator(".tv-header.is-flipped")).toHaveCount(0);
+    await expect(page.getByText("הכל שמור").first()).toBeVisible();
+    await expect(page.locator(BOARD_NAME).first()).toContainText(original);
+    if (hasHeader) await expect(page.locator(".tv-header.is-flipped")).toHaveCount(0);
 
     await page.getByRole("button", { name: "סיום עריכה בלוח" }).click();
     await expect(page.locator("[data-edit]")).toHaveCount(0);
@@ -160,7 +203,7 @@ test.describe("administrator", () => {
   test("editor controls: themes, fonts, slides, alert preview and undo", async ({ adminPage: page }) => {
     const errors = collectErrors(page);
     await page.goto("/community/admin?tab=tv&tvTab=design");
-    await expect(page.getByText("הכל שמור")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText("הכל שמור").first()).toBeVisible({ timeout: 20_000 });
     const root = page.locator(".tv-root").first();
     const accent = () => root.evaluate((el) => getComputedStyle(el).getPropertyValue("--tv-accent").trim());
     const before = await accent();
@@ -180,17 +223,25 @@ test.describe("administrator", () => {
 
     const undo = page.getByRole("button", { name: "ביטול (Ctrl+Z)" });
     for (let i = 0; i < 30 && (await undo.isEnabled()); i++) await undo.click();
-    await expect(page.getByText("הכל שמור")).toBeVisible();
+    await expect(page.getByText("הכל שמור").first()).toBeVisible();
     expect(errors).toEqual([]);
   });
 
   test("the board full screen in a browser: controls, swipe keys and the 3-second pause icon", async ({ adminPage: page }, testInfo) => {
     const errors = collectErrors(page);
     await page.goto("/admin/tv-board");
-    await expect(page.locator(".tv-frame .tv-title")).toBeVisible({ timeout: 20_000 });
+    await expectBoardDrawn(page.locator(".tv-frame").first());
     await expect(page.locator(".tv-pairing")).toHaveCount(0); // not registered as a screen
 
-    await page.mouse.move(200, 200);
+    // The control bar wakes on movement and fades again on its own, so every
+    // press has to wake it first. Without that the click lands on a toolbar
+    // already fading - Playwright waits for it to be "stable" and times out -
+    // and the failure reads as a broken control rather than a hidden one.
+    const wake = async () => {
+      await page.mouse.move(200, 200);
+      await page.mouse.move(210, 205);
+    };
+    await wake();
     const bar = page.getByRole("toolbar", { name: "שליטה בלוח" });
     await expect(bar).toBeVisible();
     await testInfo.attach("browser-board", { body: await page.screenshot(), contentType: "image/png" });
@@ -204,12 +255,14 @@ test.describe("administrator", () => {
         ? page.locator(".tv-dot.is-active").evaluate((d) => [...d.parentElement!.children].indexOf(d))
         : Promise.resolve(0);
     const start = await dot();
+    await wake();
     await bar.getByRole("button", { name: "השקופית הבאה" }).click();
     if (rotating) await expect.poll(dot).not.toBe(start);
     await page.keyboard.press("ArrowRight");
     await expect.poll(dot).toBe(start);
 
     // Enter on a focused button presses that button - it must not pause.
+    await wake();
     await bar.getByRole("button", { name: "השקופית הבאה" }).focus();
     const beforeEnter = await dot();
     await page.keyboard.press("Enter");
@@ -237,7 +290,7 @@ test.describe("administrator", () => {
   test("the browser board on a phone uses the portrait layout", async ({ adminPage: page, isMobile }, testInfo) => {
     test.skip(!isMobile, "phone project only");
     await page.goto("/admin/tv-board");
-    await expect(page.locator(".tv-frame .tv-title")).toBeVisible({ timeout: 20_000 });
+    await expectBoardDrawn(page.locator(".tv-frame").first());
     const layout = await page.locator(".tv-header").evaluate((el) => getComputedStyle(el).flexDirection);
     expect(layout).toBe("column");
     await noHorizontalOverflow(page);
@@ -262,7 +315,7 @@ test.describe("TV bundle", () => {
     const errors = collectErrors(page);
     const res = await page.goto(TV_BASE_URL).catch(() => null);
     test.skip(!res, `TV bundle not served at ${TV_BASE_URL} (npm run tv:preview)`);
-    await expect(page.locator(".tv-frame .tv-title")).toBeVisible({ timeout: 20_000 });
+    await expectBoardDrawn(page.locator(".tv-frame").first());
     await expect(page.locator("[data-edit]")).toHaveCount(0);
     await expect(page.locator(".tv-web-bar")).toHaveCount(0);
 
@@ -290,7 +343,7 @@ test.describe("TV bundle", () => {
   test("remote: OK pauses with a 3-second icon, arrows change slide, help opens", async ({ page }) => {
     const res = await page.goto(TV_BASE_URL).catch(() => null);
     test.skip(!res, `TV bundle not served at ${TV_BASE_URL}`);
-    await expect(page.locator(".tv-frame .tv-title")).toBeVisible({ timeout: 20_000 });
+    await expectBoardDrawn(page.locator(".tv-frame").first());
 
     await page.keyboard.press("Enter");
     await expect(page.locator(".tv-paused")).toHaveText("⏸ מושהה");
