@@ -126,6 +126,39 @@ describe("the synagogue menu on the screen", () => {
     expect(setDeviceCommunity).not.toHaveBeenCalled();
   });
 
+  it("the arrows move within the whole list, not the part that loaded first", async () => {
+    // The synagogues arrive after the menu opens, so for a moment the list is
+    // the theme and the close. The arrows used to wrap inside those two: four
+    // presses moved one place, and when the synagogues arrived that place was
+    // a synagogue. Pressing OK then moved the screen to another shul instead
+    // of changing the theme - which is how it was reported.
+    show();
+    await screen.findByText(MAIN.name);
+    // Four rows: two synagogues, the theme, the close. Four downs come back
+    // to the first, which only holds if the whole list is being counted.
+    for (let i = 0; i < 4; i++) press("ArrowDown");
+    press("Enter");
+    // Row 0 is a synagogue, and this screen is not on it.
+    await waitFor(() => expect(setDeviceCommunity).toHaveBeenCalledWith(MAIN.id));
+  });
+
+  it("ignores keys until the list has arrived, so none lands on the wrong row", async () => {
+    let release: (v: unknown) => void = () => {};
+    listCommunities.mockReturnValue(new Promise((r) => { release = r; }));
+    const { props } = show();
+    // While it is still loading, nothing is worth pressing.
+    press("ArrowDown");
+    press("Enter");
+    expect(setDeviceCommunity).not.toHaveBeenCalled();
+    expect(props.onTheme).not.toHaveBeenCalled();
+    expect(props.onClose).not.toHaveBeenCalled();
+    // Once it is there, the keys work as normal.
+    release([MAIN, TORAH]);
+    await screen.findByText(MAIN.name);
+    press("Enter");
+    await waitFor(() => expect(setDeviceCommunity).toHaveBeenCalledWith(MAIN.id));
+  });
+
   it("says so rather than failing silently when the list will not load", async () => {
     listCommunities.mockRejectedValue(new Error("offline"));
     show();

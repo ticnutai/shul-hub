@@ -73,6 +73,18 @@ export function ScreenMenu({
    * line twice in the screen's log, one second apart, on the real box.
    */
   const busyRef = useRef(false);
+  /**
+   * The rows as they are now, for a listener that was registered earlier.
+   *
+   * The synagogues are fetched when the menu opens, so for the first moment
+   * the list is two rows - the theme and the close - and the arrows wrapped
+   * around inside those two. Four presses moved one place, and when the
+   * synagogues arrived that place was a synagogue rather than the row the
+   * gabbai was aiming for: pressing OK then moved the screen to another shul
+   * instead of changing the theme. Seen on the box, and it is exactly what
+   * was reported - "I try to change the theme and it does not change".
+   */
+  const rowsRef = useRef<Row[]>([]);
 
   // Asked for when the menu opens rather than kept fresh in the background:
   // the list changes when a synagogue is added, which is rare, and a board
@@ -110,9 +122,23 @@ export function ScreenMenu({
     { kind: "close" as const },
   ];
 
+  rowsRef.current = rows;
+  /** The synagogues have been asked for and have not come back yet. */
+  const loading = canSwitch && communities === null && !error;
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
+      // Nothing is worth pressing while the list is still arriving: the rows
+      // are about to change under the press, and a key aimed at one of them
+      // would land on another. It is a moment, and the menu says "טוען…".
+      if (loading) {
+        if (["ArrowUp", "ArrowDown", "Enter", " "].includes(e.key)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+        return;
+      }
       // The menu owns the remote while it is up, so the board underneath does
       // not also move a slide on the same press.
       const stop = () => {
@@ -122,16 +148,16 @@ export function ScreenMenu({
       switch (e.key) {
         case "ArrowUp":
           stop();
-          setIndex((i) => (i - 1 + rows.length) % Math.max(1, rows.length));
+          setIndex((i) => (i - 1 + rowsRef.current.length) % Math.max(1, rowsRef.current.length));
           break;
         case "ArrowDown":
           stop();
-          setIndex((i) => (i + 1) % Math.max(1, rows.length));
+          setIndex((i) => (i + 1) % Math.max(1, rowsRef.current.length));
           break;
         case "Enter":
         case " ": {
           stop();
-          const row = rows[liveIndex.current];
+          const row = rowsRef.current[liveIndex.current];
           if (!row || busyRef.current) break;
           if (row.kind === "close") {
             onClose();
@@ -179,7 +205,7 @@ export function ScreenMenu({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, rows.length, themes, currentTheme, currentCommunity, onTheme, onClose, reload]);
+  }, [open, loading, rows.length, themes, currentTheme, currentCommunity, onTheme, onClose, reload]);
 
   if (!open) return null;
 
