@@ -9,7 +9,8 @@ import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
 import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
-import { OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
+import { lastKnownCommunity, OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
+import { ScreenMenu } from "./ScreenMenu";
 import { allThemes, getTheme } from "./themes";
 import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
@@ -191,6 +192,8 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const [cycle, setCycle] = useState(0);
   const [toast, setToast] = useState<string | null>(null);
   const [help, setHelp] = useState(false);
+  /** The remote's menu: which synagogue this screen shows, and the theme. */
+  const [menuOpen, setMenuOpen] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const found = slides.findIndex((s) => s.id === currentId);
@@ -418,10 +421,11 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
           setPausedTo(!p);
           break;
         case "ArrowUp":
-          cycleTheme(1);
-          break;
         case "ArrowDown":
-          cycleTheme(-1);
+          // Up and Down used to cycle the theme, which nobody could discover
+          // and which the menu now offers by name. They open the menu, where
+          // the synagogue this screen shows can also be chosen.
+          setMenuOpen(true);
           break;
         case "0":
           applyTheme(null);
@@ -514,6 +518,16 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
             zmanim={zmanim}
             zmanimOn={zmanimOn}
             schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
+          />
+          <ScreenMenu
+            open={menuOpen}
+            onClose={() => setMenuOpen(false)}
+            currentCommunity={lastKnownCommunity()?.id ?? null}
+            canSwitch={!web}
+            themes={themes}
+            currentTheme={config.theme}
+            onTheme={applyTheme}
+            onLog={(level, message) => link.current?.log(level, "command", message)}
           />
           {toast && <div className="tv-toast">{toast}</div>}
           {updateText(update.state) && <div className="tv-update-line">{updateText(update.state)}</div>}

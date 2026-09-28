@@ -1150,20 +1150,29 @@
   gap: calc(var(--u) * 0.9);
 }
 
+/*
+ * The connection light, in the board's own gold rather than a browser green.
+ *
+ * It is also the way into the remote's menu, so it says two things at once
+ * and must not say them both with colour alone: connected is a filled disc,
+ * not connected is a hollow ring. On a wall seen from the back of the hall,
+ * and for anyone who does not separate those hues, the shape carries it.
+ */
 .tv-status-dot {
   width: calc(var(--u) * 1.2);
   height: calc(var(--u) * 1.2);
   border-radius: 50%;
-  background: #4ade80;
+  background: #e9c46a;
+  box-shadow: 0 0 0 1px rgba(233, 196, 106, 0.35);
 }
 
 .tv-status-dot.is-connecting {
-  background: #fbbf24;
   animation: tv-pulse 1.4s ease-in-out infinite;
 }
 
 .tv-status-dot.is-offline {
-  background: #fbbf24;
+  background: transparent;
+  box-shadow: inset 0 0 0 calc(var(--u) * 0.22) #e9c46a;
 }
 
 @keyframes tv-pulse {
@@ -5044,4 +5053,95 @@
   opacity: 1;
   background: rgba(246, 215, 122, 0.2);
   color: #f6d77a;
+}
+
+/* ------------------------------------------------- the remote's menu -- */
+/*
+ * Reached with Up or Down from the board, and owning the remote while it is
+ * up. Sized in the board's own units so it reads from the back of a hall on
+ * a 1080p screen and still fits a phone-shaped preview.
+ */
+.tv-menu {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 9, 18, 0.72);
+  backdrop-filter: blur(calc(var(--u) * 0.6));
+  animation: tv-enter 240ms ease-out both;
+}
+
+.tv-menu-card {
+  width: min(70cqw, calc(var(--u) * 52));
+  max-height: 82cqh;
+  overflow: hidden auto;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1.4);
+  padding: calc(var(--u) * 2.6) calc(var(--u) * 2.8);
+  border-radius: calc(var(--u) * 1.4);
+  background: #0b1628;
+  border: 1px solid rgba(233, 196, 106, 0.45);
+  box-shadow: 0 calc(var(--u) * 2) calc(var(--u) * 5) rgba(0, 0, 0, 0.55);
+  color: #f4f7fb;
+}
+
+.tv-menu-title {
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--u) * 2.4);
+  color: #e9c46a;
+}
+
+.tv-menu-note {
+  font-size: calc(var(--u) * 1.5);
+  opacity: 0.75;
+}
+
+.tv-menu-note.is-error {
+  color: #f0a3a3;
+  opacity: 1;
+}
+
+.tv-menu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 0.5);
+}
+
+.tv-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--u) * 1.5);
+  padding: calc(var(--u) * 1.1) calc(var(--u) * 1.4);
+  border-radius: calc(var(--u) * 0.8);
+  font-size: calc(var(--u) * 1.8);
+  /* A transparent border, so the focused row does not shift by a pixel. */
+  border: 1px solid transparent;
+}
+
+/* Focus on a TV is not a browser outline: it has to be obvious across a room. */
+.tv-menu-row.is-active {
+  background: rgba(233, 196, 106, 0.16);
+  border-color: #e9c46a;
+}
+
+.tv-menu-row.is-here .tv-menu-value,
+.tv-menu-row.is-theme .tv-menu-value {
+  color: #e9c46a;
+}
+
+.tv-menu-value {
+  font-size: calc(var(--u) * 1.4);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.tv-menu-hint {
+  font-size: calc(var(--u) * 1.3);
+  opacity: 0.6;
 }

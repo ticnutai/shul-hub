@@ -142,6 +142,54 @@ export async function deviceCommunity(): Promise<string | null> {
   }
 }
 
+/** A synagogue on this system, as the screen's own menu lists them. */
+export interface CommunityChoice {
+  id: string;
+  slug: string;
+  name: string;
+  active: boolean;
+}
+
+/**
+ * Every synagogue on the system, for the menu on the screen.
+ *
+ * Readable with the public key - the list of synagogues is not a secret, it
+ * is what the website's own switcher shows - so this needs no device secret
+ * and works before a screen has proved anything.
+ */
+export async function listCommunities(): Promise<CommunityChoice[]> {
+  const res = await fetch(`${URL_BASE}/rest/v1/communities?select=id,slug,name,active&order=name`, {
+    headers: { apikey: KEY, Authorization: `Bearer ${KEY}` },
+    signal: AbortSignal.timeout(15_000),
+    cache: "no-store",
+  });
+  if (!res.ok) throw new RpcError(`communities: ${res.status}`, res.status);
+  const rows = (await res.json()) as CommunityChoice[];
+  return Array.isArray(rows) ? rows : [];
+}
+
+/**
+ * Point this screen at another synagogue.
+ *
+ * The answer is written to the screen's row on the server, not kept on the
+ * box: a clean install wipes the box on purpose (cloud backup is off, after
+ * one restored a stale identity onto a wall), and a gabbai who chose a
+ * synagogue from the remote should not lose it to an update.
+ */
+export async function setDeviceCommunity(communityId: string): Promise<CommunityChoice> {
+  const me = identity();
+  const chosen = await rpc<CommunityChoice>("tv_set_community", {
+    p_device_id: me.id,
+    p_secret: me.secret,
+    p_community_id: communityId,
+  });
+  // Also on the box, so the board comes back to the right synagogue after
+  // the reload even if the network drops in between - which is the moment a
+  // screen is least able to ask anybody anything.
+  rememberCommunity({ id: chosen.id, slug: chosen.slug, name: chosen.name });
+  return chosen;
+}
+
 function identity(): { id: string; secret: string } {
   const existing = load<{ id?: string; secret?: string }>(IDENTITY_KEY, {});
   if (existing.id && existing.secret && existing.secret.length >= 32) return existing as { id: string; secret: string };
