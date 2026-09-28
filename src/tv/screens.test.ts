@@ -83,7 +83,7 @@ describe("reading an existing board as screens", () => {
       const shown = new Set(screens.flatMap((s) => ids(s.blocks)));
       for (const slide of config.slides ?? []) {
         if (!slide.enabled) continue;
-        const expected = { prayer: "prayers", learning: "learning", announcements: "announcements", shiurim: "shiurim", slideshow: "slideshow" }[slide.kind];
+        const expected = ({ prayer: "prayers", learning: "learning", announcements: "announcements", shiurim: "shiurim", slideshow: "slideshow" } as const)[slide.kind];
         expect(shown.has(expected), `${name}: ${slide.kind} disappeared`).toBe(true);
       }
       // And nothing switched off appears.

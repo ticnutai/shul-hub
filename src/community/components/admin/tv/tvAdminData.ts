@@ -229,15 +229,44 @@ export function useTvConfig() {
       if (error) throw error;
       return { config: normalizeTvConfig(data?.config), updatedAt: (data?.updated_at as string) ?? null };
     },
+    // An editor is left open for hours. It follows the stored board (the
+    // draft takes each change in under its own edits), so what it shows is
+    // what is on the wall plus what was changed here - not a morning copy.
+    refetchInterval: 30_000,
   });
+  /**
+   * Writes a change to the board as it is in the database at that moment.
+   *
+   * It takes a change, not a finished config, because a finished config was
+   * built from a copy read earlier, and writing it puts back everything that
+   * changed since - which is how a removed name came back onto a board. The
+   * change is applied to a fresh read and written only if nobody wrote in
+   * between (compared on updated_at); if somebody did, it is applied again
+   * to what they wrote. Resolves to the config actually stored.
+   */
   const save = useMutation({
-    mutationFn: async (config: TvConfig) => {
+    mutationFn: async (change: (current: TvConfig) => TvConfig): Promise<TvConfig> => {
       const { data: auth } = await tvDb.auth.getUser();
-      const { error } = await tvDb
-        .from("tv_config")
-        .update({ config, updated_at: new Date().toISOString(), updated_by: auth.user?.id ?? null })
-        .eq("community_id", communityId());
-      if (error) throw error;
+      for (let attempt = 0; attempt < 4; attempt++) {
+        const { data: row, error: readError } = await tvDb
+          .from("tv_config")
+          .select("config, updated_at")
+          .eq("community_id", communityId())
+          .maybeSingle();
+        if (readError) throw readError;
+        if (!row) throw new Error("הגדרות הלוח של בית הכנסת הזה לא נמצאו");
+        const config = normalizeTvConfig(change(normalizeTvConfig(row.config)));
+        let write = tvDb
+          .from("tv_config")
+          .update({ config, updated_at: new Date().toISOString(), updated_by: auth.user?.id ?? null })
+          .eq("community_id", communityId());
+        write = row.updated_at === null ? write.is("updated_at", null) : write.eq("updated_at", row.updated_at);
+        const { data: written, error } = await write.select("updated_at");
+        if (error) throw error;
+        if (written && written.length) return config;
+        // Somebody saved between the read and the write: go again on theirs.
+      }
+      throw new Error("הלוח נשמר עכשיו גם ממקום אחר. נסו לשמור שוב.");
     },
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["tv_config_admin"] }),
   });

@@ -109,3 +109,24 @@ describe("the screen composer", () => {
     expect((screen.getByLabelText("שם המסך") as HTMLInputElement).value).toBe("תפילות");
   });
 });
+
+describe("a screen with nothing on it", () => {
+  // Saved on the real board of תורה ואהבתה: a third screen with only the bars,
+  // which the wall skips. The composer said "3 screens" and the wall had two.
+  const withEmpty: TvConfig = {
+    ...DEFAULT_TV_CONFIG,
+    screens: [
+      { id: "a", name: "הלוח", seconds: 40, blocks: [{ block: "prayers" }] },
+      { id: "b", name: "מסך החג", seconds: 40, blocks: [{ block: "festival" }] },
+      { id: "c", name: "מסך 3", seconds: 15, blocks: [{ block: "header" }, { block: "clock" }, { block: "footer" }] },
+    ],
+  };
+
+  it("is marked as one the board will not show, and not counted", () => {
+    show(withEmpty);
+    expect(screen.getByText(/2 מסכים/)).toBeTruthy();
+    expect(screen.getByText(/מסך אחד ריק ולא יוצג/)).toBeTruthy();
+    const tab = screen.getAllByRole("button").find((b) => b.textContent?.includes("מסך 3"))!;
+    expect(within(tab).getByText("לא יוצג")).toBeTruthy();
+  });
+});

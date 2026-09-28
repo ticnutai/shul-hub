@@ -173,6 +173,8 @@ import { applyImport, buildExport, exportFileName, parseImport, planIllustration
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
 import { commitRecordEdits } from "./tvRecords";
+import { mergeConfig, sameJson } from "@/tv/configMerge";
+import { draftReducer } from "./draftState";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTvSlides } from "./tvPreviewData";
 import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdminData";
@@ -186,91 +188,6 @@ import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdmi
  * draft; consecutive edits of the same field (dragging a colour picker)
  * collapse into one history step so undo stays meaningful.
  */
-
-/* ---------------------------------------------------------------- draft -- */
-
-interface DraftState {
-  past: TvConfig[];
-  present: TvConfig;
-  future: TvConfig[];
-  lastKey: string | null;
-  lastAt: number;
-  /** When the draft was last changed here or in another window (0 = as loaded). */
-  editedAt: number;
-}
-
-type DraftAction =
-  | { type: "load"; config: TvConfig }
-  | { type: "edit"; key: string; update: (c: TvConfig) => TvConfig }
-  | { type: "undo" }
-  | { type: "redo" }
-  /** A newer draft from the other editor window (tvDraftChannel). */
-  | { type: "adopt"; config: TvConfig; editedAt: number };
-
-const COALESCE_MS = 800;
-
-function draftReducer(state: DraftState, action: DraftAction): DraftState {
-  switch (action.type) {
-    case "load":
-      return {
-        past: [],
-        present: action.config,
-        future: [],
-        lastKey: null,
-        lastAt: 0,
-        editedAt: 0,
-      };
-    case "adopt":
-      if (JSON.stringify(action.config) === JSON.stringify(state.present))
-        return { ...state, editedAt: action.editedAt };
-      return {
-        past: [...state.past.slice(-60), state.present],
-        present: action.config,
-        future: [],
-        lastKey: null,
-        lastAt: 0,
-        editedAt: action.editedAt,
-      };
-    case "edit": {
-      const next = action.update(state.present);
-      if (JSON.stringify(next) === JSON.stringify(state.present)) return state;
-      const now = Date.now();
-      const coalesce = action.key === state.lastKey && now - state.lastAt < COALESCE_MS;
-      return {
-        past: coalesce ? state.past : [...state.past.slice(-60), state.present],
-        present: next,
-        future: [],
-        lastKey: action.key,
-        lastAt: now,
-        editedAt: now,
-      };
-    }
-    case "undo": {
-      if (!state.past.length) return state;
-      const previous = state.past[state.past.length - 1];
-      return {
-        past: state.past.slice(0, -1),
-        present: previous,
-        future: [state.present, ...state.future],
-        lastKey: null,
-        lastAt: 0,
-        editedAt: Date.now(),
-      };
-    }
-    case "redo": {
-      if (!state.future.length) return state;
-      const [next, ...rest] = state.future;
-      return {
-        past: [...state.past, state.present],
-        present: next,
-        future: rest,
-        lastKey: null,
-        lastAt: 0,
-        editedAt: Date.now(),
-      };
-    }
-  }
-}
 
 /* --------------------------------------------------------- small inputs -- */
 
@@ -429,6 +346,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const [state, dispatch] = useReducer(draftReducer, {
     past: [],
     present: DEFAULT_TV_CONFIG,
+    base: DEFAULT_TV_CONFIG,
     future: [],
     lastKey: null,
     lastAt: 0,
@@ -437,21 +355,29 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const draft = state.present;
   const loadedRef = useRef(false);
   const savedJson = saved.data ? JSON.stringify(saved.data.config) : null;
-  const dirty = savedJson !== null && JSON.stringify(draft) !== savedJson;
+  // Unsaved = changed here since the board was read, not "differs from the
+  // server": a change made elsewhere is not this editor's work to lose.
+  const dirty = savedJson !== null && !sameJson(draft, state.base);
 
-  // Load the saved config into the draft once, and again after a save.
+  // Load the saved config into the draft once; after that, every change to
+  // the stored board is taken in under the edits made here (rebase).
   // A draft already adopted from the other editor window (it can arrive
   // before the saved row does) is newer than the saved row: keep it.
   const editedAtRef = useRef(0);
   editedAtRef.current = state.editedAt;
   useEffect(() => {
-    if (saved.data && (!loadedRef.current || !dirty)) {
-      const first = !loadedRef.current;
+    if (!saved.data) return;
+    if (!loadedRef.current) {
       loadedRef.current = true;
-      if (first && editedAtRef.current > 0) return;
+      if (editedAtRef.current > 0) {
+        dispatch({ type: "rebase", config: saved.data.config });
+        return;
+      }
       dispatch({ type: "load", config: saved.data.config });
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reload only when the saved row changes
+    dispatch({ type: "rebase", config: saved.data.config });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- follow the saved row only
   }, [savedJson]);
 
   // Unsaved edits must not vanish with a stray navigation - nor with the
@@ -773,6 +699,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   // must survive it.
   const latestDraft = useRef(draft);
   latestDraft.current = draft;
+  const baseRef = useRef(state.base);
+  baseRef.current = state.base;
   const [saving, setSaving] = useState(false);
   const save = async () => {
     if (saving) return; // a double click must not save twice
@@ -790,19 +718,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         );
       }
       const clean = normalizeTvConfig(snapshot);
-      await saved.save.mutateAsync(clean);
+      // Only what was changed here goes onto the board as it is now.
+      const base = baseRef.current;
+      const stored = await saved.save.mutateAsync((current) => mergeConfig(base, clean, current));
       sync.announceSaved();
       const now = latestDraft.current;
-      if (now === snapshot) {
-        // The draft carried the content edits; start clean from what was saved.
-        dispatch({ type: "load", config: clean });
-      } else {
+      dispatch({ type: "load", config: stored });
+      if (now !== snapshot) {
         // Edited meanwhile: keep those edits, minus the content already written.
         const done = new Set(snapshot._records ?? []);
-        dispatch({
-          type: "load",
-          config: { ...now, _records: (now._records ?? []).filter((r) => !done.has(r)) },
-        });
+        const left = (now._records ?? []).filter((r) => !done.has(r));
+        const kept = { ...now, _records: left.length ? left : undefined };
+        dispatch({ type: "edit", key: "after-save", update: () => mergeConfig(clean, kept, stored) });
       }
       toast.success(
         approvedCount

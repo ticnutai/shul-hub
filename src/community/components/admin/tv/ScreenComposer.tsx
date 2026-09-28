@@ -98,6 +98,14 @@ export function ScreenComposer({
   };
 
   const rows = place(screen.blocks);
+  /**
+   * A screen of only the bars has nothing between them, and the board skips
+   * it rather than show an empty frame for its seconds. It used to skip it
+   * without a word here, so a board saved with three screens turned two on
+   * the wall and nothing said why.
+   */
+  const empty = (s: Screen) => !s.blocks.some((b) => !BLOCK_BY_ID[b.block].chrome);
+  const shown = screens.filter((s) => !empty(s)).length;
   const on = (id: BlockId) => screen.blocks.some((b) => b.block === id);
   const areaOf = (id: BlockId) => screen.blocks.find((b) => b.block === id)?.area ?? "auto";
 
@@ -119,6 +127,9 @@ export function ScreenComposer({
               >
                 <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
                 <span>{s.name}</span>
+                {empty(s) && (
+                  <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-900">לא יוצג</span>
+                )}
                 {screens.length > 1 && (
                   <span
                     role="button"
@@ -140,9 +151,11 @@ export function ScreenComposer({
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            {screens.length > 1
-              ? `${screens.length} מסכים — הלוח מתחלף ביניהם, וחץ בשלט מדלג.`
+            {shown > 1
+              ? `${shown} מסכים — הלוח מתחלף ביניהם, וחץ בשלט מדלג.`
               : "מסך אחד — הלוח עומד. אין סיבוב ואין מה לדלג."}
+            {shown < screens.length &&
+              ` ${screens.length - shown === 1 ? "מסך אחד ריק ולא יוצג" : `${screens.length - shown} מסכים ריקים ולא יוצגו`} — סמנו בו תוכן, או הסירו אותו.`}
           </p>
         </div>
 
@@ -158,7 +171,7 @@ export function ScreenComposer({
               onChange={(e) => editScreen({ name: e.target.value })}
             />
           </div>
-          {screens.length > 1 && (
+          {shown > 1 && !empty(screen) && (
             <div className="w-28">
               <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="composer-seconds">
                 שניות
@@ -190,7 +203,7 @@ export function ScreenComposer({
             <div className="grid min-h-0 gap-1.5" style={{ gridAutoRows: "minmax(0,1fr)" }}>
               {rows.length === 0 ? (
                 <div className="grid place-items-center rounded border border-dashed border-[#f0c35c]/30 text-[11px] opacity-60">
-                  אין עדיין תוכן במסך הזה
+                  אין עדיין תוכן במסך הזה, ולכן הוא לא יוצג בלוח. סמנו תוכן מהרשימה.
                 </div>
               ) : (
                 rows.map((row, i) => (

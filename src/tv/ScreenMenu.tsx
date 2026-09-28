@@ -19,7 +19,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { listCommunities, setDeviceCommunity, type CommunityChoice } from "./device";
-import type { TvTheme } from "./config";
+import type { TvTheme } from "./themes";
 
 export type MenuState = "closed" | "open";
 

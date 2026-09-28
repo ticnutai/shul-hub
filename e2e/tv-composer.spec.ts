@@ -101,14 +101,25 @@ test.describe("the composer on תורה ואהבתה", () => {
     await expect(sketch).toContainText("שיעורים");
   });
 
-  test("adding a screen turns the standing board into a rotating one", async ({ adminPage: page }) => {
+  test("a new screen counts once something is on it", async ({ adminPage: page }) => {
     await asTorahVeahavata(page);
     const composer = await openComposer(page);
+    // How many screens the wall shows now - whatever the saved board holds.
+    const summary = composer.locator("p", { hasText: /מסכים —|מסך אחד —/ });
+    const shown = async () => {
+      const text = (await summary.textContent()) ?? "";
+      return text.startsWith("מסך אחד") ? 1 : Number(/^(\d+) מסכים/.exec(text)?.[1]);
+    };
+    const before = await shown();
 
     await composer.getByRole("button", { name: /^מסך$/ }).click();
-    // It opened on two, so adding makes three.
-    await expect(composer.getByText(/3 מסכים/)).toBeVisible();
-    // Which is the whole point: with two screens the arrow has somewhere to go.
+    // A new screen has only the bars, so the wall would skip it - and says so.
+    await expect(composer.getByText(/אין עדיין תוכן במסך הזה/)).toBeVisible();
+    expect(await shown()).toBe(before);
+
+    // Something on it, and it is one more screen taking a turn.
+    await composer.locator("#block-learning").click();
+    await expect.poll(shown).toBe(before + 1);
     await expect(composer.getByText(/חץ בשלט מדלג/)).toBeVisible();
   });
 });

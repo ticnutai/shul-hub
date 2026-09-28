@@ -75,16 +75,11 @@ export function SpecialDaysAdmin({
   }, [preview]);
   const tvConfig = tv.data?.config;
 
-  // The picture lives in the board's config. Read it fresh before writing, so
-  // a change made elsewhere in the meantime is not written over.
+  // The picture lives in the board's config. The save applies the change to
+  // the row as it is when written, so a change made elsewhere is not written over.
   const saveBoard = async (patch: (c: NonNullable<typeof tvConfig>) => NonNullable<typeof tvConfig>) => {
-    const fresh = (await tv.refetch()).data?.config;
-    if (!fresh) {
-      toast.error("הגדרות הלוח לא נטענו");
-      return false;
-    }
     try {
-      await tv.save.mutateAsync(patch(fresh));
+      await tv.save.mutateAsync(patch);
       return true;
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "השמירה נכשלה");

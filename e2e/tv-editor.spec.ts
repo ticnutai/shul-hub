@@ -182,7 +182,9 @@ test.describe("TV editor", () => {
     await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
     await expectNotFrozen(page, "save as new theme");
 
-    await page.getByRole("button", { name: "שמור ושדר למסכים" }).click();
+    // The bar at the top; the same button also stands under the preview while
+    // there is something to save.
+    await page.getByRole("button", { name: "שמור ושדר למסכים" }).first().click();
     await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
     await expectNotFrozen(page, "saved and broadcast");
   });
@@ -280,7 +282,9 @@ test.describe("TV editor", () => {
     await page.getByRole("button", { name: "דוגמת התראת זמנים" }).click();
     await expectNotFrozen(page, "alert demo");
 
-    await page.getByRole("button", { name: "שמור ושדר למסכים" }).click();
+    // The bar at the top; the same button also stands under the preview while
+    // there is something to save.
+    await page.getByRole("button", { name: "שמור ושדר למסכים" }).first().click();
     await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
     await expectNotFrozen(page, "saved");
   });

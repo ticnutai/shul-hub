@@ -488,7 +488,8 @@ export function EventSplash({
   config: Pick<
     TvConfig,
     "eventImages" | "eventSplash" | "eventStyles" | "eventHold" | "eventAuto" | "eventNationalAuto" | "eventDetail" | "eventCombine"
-  > & {
+  > &
+    Partial<Pick<TvConfig, "eventEverySeconds">> & {
     shabbat?: Pick<TvConfig["shabbat"], "endMinutesAfterSunset">;
   };
   now: Date;
