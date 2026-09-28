@@ -203,6 +203,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   /** For the native BACK listener, which is registered once and sees no state. */
   const menuOpenRef = useRef(false);
   menuOpenRef.current = menuOpen;
+  /** Same reason: the key listener is registered once and would see a stale value. */
+  const helpRef = useRef(false);
+  helpRef.current = help;
   const [notice, setNotice] = useState<Notice | null>(null);
 
   const found = slides.findIndex((s) => s.id === currentId);
@@ -439,6 +442,31 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         case "0":
           applyTheme(null);
           break;
+        case "GoBack": {
+          /**
+           * Back, now that the APK hands it to the page.
+           *
+           * It used to be answered by a Capacitor listener that was never
+           * registered - the plugin is not available on the origin the board
+           * is served from - so Back did nothing at all. The app now offers
+           * the press here and carries out its own behaviour only if nothing
+           * on the page wanted it, which is what `preventDefault` says.
+           *
+           * The guard the old listener was meant to provide is restored: one
+           * press asks, a second within three seconds is let through and the
+           * app closes. A stray press must not drop the congregation onto
+           * the TV's home screen.
+           */
+          if (helpRef.current) {
+            setHelp(false);
+            exitArmed.current = 0;
+            break;
+          }
+          if (Date.now() < exitArmed.current) return; // let the app close
+          exitArmed.current = Date.now() + 3000;
+          flash("לחצו שוב על ׳חזור׳ ליציאה · לעזרה: כפתור התפריט");
+          break;
+        }
         case "Escape":
         case "ContextMenu":
         case "m":

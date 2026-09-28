@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.View;
 import android.view.WindowManager;
+import android.webkit.WebView;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -60,6 +61,45 @@ public class MainActivity extends BridgeActivity {
                 | View.SYSTEM_UI_FLAG_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         );
+    }
+
+    /**
+     * Back, handed to the board rather than swallowed.
+     *
+     * The board is served from the website, not from the copy inside this
+     * APK, and on that origin Capacitor's plugin bridge does not apply: every
+     * call answers '"App" plugin is not implemented on android' - measured on
+     * a box on 28.9. So the app's own Back listener was never registered, and
+     * pressing Back on the remote did nothing at all. A menu that says "press
+     * Back to close" and does not close is a trap on a wall nobody can reach.
+     *
+     * This needs no plugin. The key press is offered to the page as an
+     * ordinary event, and the page says whether it used it: a menu that is
+     * open closes, and if nothing wanted it the app behaves as it did before.
+     * Asking the page is asynchronous, so the press cannot be answered on the
+     * spot - the answer comes back and, if the page did not want it, Back is
+     * carried out then.
+     */
+    @Override
+    public void onBackPressed() {
+        WebView web = getBridge() != null ? getBridge().getWebView() : null;
+        if (web == null) {
+            super.onBackPressed();
+            return;
+        }
+        web.evaluateJavascript(
+            "(function(){try{var e=new KeyboardEvent('keydown',{key:'GoBack',bubbles:true,cancelable:true});"
+                + "window.dispatchEvent(e);return e.defaultPrevented?'1':'0';}catch(err){return '0';}})()",
+            value -> {
+                // `super` cannot be reached from inside a lambda, so the
+                // ordinary behaviour is kept in a method of its own.
+                if (!"\"1\"".equals(value) && !"1".equals(value)) defaultBack();
+            });
+    }
+
+    /** What Back did before the page was given the chance to want it. */
+    private void defaultBack() {
+        super.onBackPressed();
     }
 
     @Override
