@@ -120,21 +120,36 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   const shabbat = slides[0]?.kind === "shabbat";
   /**
-   * A board built in the composer draws what was composed, and the old layout
-   * choice steps aside.
+   * A board built in the composer: the composer decides which screens and
+   * what is on them, and the layout decides how each one is drawn.
    *
-   * It has to be one or the other. `screenLayout` decides the arrangement by
-   * itself - the full board and the painted one merge every slide into a
-   * single picture and read the prayer rows straight out of the slide list -
-   * so a composed screen shown through them would hand them a list with no
-   * prayer slide in it and they would draw empty panels. Two arrangements
-   * quietly disagreeing is the fault this change exists to remove, so the
-   * composer wins where it was used, and boards that never opened it are
-   * untouched.
+   * The first version of this made the layout choice "step aside" for a
+   * composed board, which treated the painted board and the full board as
+   * rival arrangements of content. They are looks. And stepping aside meant
+   * switching them off: a gabbai who had saved screens and then moved the
+   * painted board's sliders - brightness, hue, stone, frames - saw nothing
+   * change on the preview or on the wall, because nothing was drawing them.
+   * Reported from תורה ואהבתה.
+   *
+   * The merged looks read their content from a slide list, so they are handed
+   * the content of the screen that is up now rather than the list of screens.
+   * A screen with nothing those looks have a place for - only the daf yomi,
+   * say - is drawn as an ordinary composed screen instead of as an empty
+   * painting.
    */
-  const composed = slides[0]?.kind === "composed";
+  const composed = slide?.kind === "composed" ? slide : null;
+  const screenSlides = composed
+    ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
+    : slides;
+  const mergedLook = config.screenLayout === "illustrated" || config.screenLayout === "dashboard";
+  const screenFitsLook =
+    !composed || composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim");
   // The Shabbat screen always takes the whole stage, whatever the layout.
-  const layout = shabbat || composed ? "rotate" : config.screenLayout;
+  const layout = shabbat
+    ? "rotate"
+    : composed && !(mergedLook && screenFitsLook)
+      ? "rotate"
+      : config.screenLayout;
   const dashboard = layout === "dashboard";
   // A painted board draws its own header, clock and bottom line.
   const illustrated = layout === "illustrated";
@@ -176,7 +191,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               illustration={config.illustration}
               customIllustrations={config.customIllustrations}
               look={config.illustratedStyle}
-              slides={slides}
+              slides={screenSlides}
               now={minuteNow}
               zmanim={zmanim}
               settings={data.settings}
@@ -184,7 +199,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             />
           ) : dashboard ? (
             <ClockContext.Provider value={now}>
-              <MemoDashboard slides={slides} now={minuteNow} zmanim={zmanim} index={index} clockStyle={config.clockStyle} countdown={config.countdown.enabled} />
+              <MemoDashboard slides={screenSlides} now={minuteNow} zmanim={zmanim} index={index} clockStyle={config.clockStyle} countdown={config.countdown.enabled} />
             </ClockContext.Provider>
           ) : layout === "split" ? (
             <div className="tv-split">
