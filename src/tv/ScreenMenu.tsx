@@ -47,7 +47,8 @@ interface Props {
 
 type Row =
   | { kind: "community"; community: CommunityChoice }
-  | { kind: "theme" };
+  | { kind: "theme" }
+  | { kind: "close" };
 
 export function ScreenMenu({
   open,
@@ -101,6 +102,15 @@ export function ScreenMenu({
   const rows: Row[] = [
     ...(canSwitch ? communities ?? [] : []).map((community) => ({ kind: "community" as const, community })),
     { kind: "theme" as const },
+    // A way out that needs nothing but the arrows and OK.
+    //
+    // The obvious way out is Back, and on this hardware Back never reaches
+    // the page at all: Android hands it to the app, and the app can only act
+    // on it through a Capacitor plugin the installed APK does not have -
+    // measured on the box, where every call answers '"App" plugin is not
+    // implemented on android'. A menu that can only be left by a button that
+    // does nothing is a trap, and this is signage on a wall.
+    { kind: "close" as const },
   ];
 
   useEffect(() => {
@@ -126,6 +136,10 @@ export function ScreenMenu({
           stop();
           const row = rows[liveIndex.current];
           if (!row || busyRef.current) break;
+          if (row.kind === "close") {
+            onClose();
+            break;
+          }
           if (row.kind === "theme") {
             const at = themes.findIndex((t) => t.id === currentTheme);
             onTheme(themes[(at + 1) % Math.max(1, themes.length)]?.id ?? currentTheme);
@@ -184,6 +198,13 @@ export function ScreenMenu({
         <ul className="tv-menu-list">
           {rows.map((row, i) => {
             const active = i === index;
+            if (row.kind === "close") {
+              return (
+                <li key="close" className={`tv-menu-row is-close${active ? " is-active" : ""}`}>
+                  <span>סגירה</span>
+                </li>
+              );
+            }
             if (row.kind === "theme") {
               return (
                 <li key="theme" className={`tv-menu-row is-theme${active ? " is-active" : ""}`}>
@@ -208,7 +229,7 @@ export function ScreenMenu({
           })}
         </ul>
 
-        <div className="tv-menu-hint">חיצים לתנועה · OK לבחירה · חזרה ליציאה</div>
+        <div className="tv-menu-hint">חיצים לתנועה · OK לבחירה</div>
       </div>
     </div>
   );

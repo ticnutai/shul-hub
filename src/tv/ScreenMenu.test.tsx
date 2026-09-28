@@ -113,6 +113,19 @@ describe("the synagogue menu on the screen", () => {
     await waitFor(() => expect(setDeviceCommunity).toHaveBeenCalledTimes(1));
   });
 
+  it("can be left with the arrows alone, because Back never reaches the page", async () => {
+    // Android hands Back to the app, and the installed APK has no plugin to
+    // receive it, so a menu that could only be left with Back would be a
+    // trap on a wall. Past the synagogues and the theme is "סגירה".
+    const { props } = show();
+    await screen.findByText(MAIN.name);
+    expect(screen.getByText("סגירה")).toBeTruthy();
+    for (let i = 0; i < 3; i++) press("ArrowDown");
+    press("Enter");
+    expect(props.onClose).toHaveBeenCalled();
+    expect(setDeviceCommunity).not.toHaveBeenCalled();
+  });
+
   it("says so rather than failing silently when the list will not load", async () => {
     listCommunities.mockRejectedValue(new Error("offline"));
     show();
@@ -132,7 +145,7 @@ describe("the synagogue menu on the screen", () => {
     const { props } = show({ canSwitch: false });
     expect(screen.queryByText(MAIN.name)).toBeNull();
     expect(screen.getByText(/בחירת בית כנסת נעשית מהמסך עצמו/)).toBeTruthy();
-    // The theme is the only row, so OK reaches it straight away.
+    // Without synagogues the rows are theme, then close.
     press("Enter");
     expect(props.onTheme).toHaveBeenCalledWith("parchment");
     expect(listCommunities).not.toHaveBeenCalled();
