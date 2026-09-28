@@ -43,6 +43,23 @@ const HOLD_SLIDE_SECONDS = 30;
 const HOLD_PAGE_SECONDS = 20;
 /** An arrow on the remote with one screen up: the ordinary board for this long, then the day again. */
 const AWAY_MS = 2 * 60_000;
+/**
+ * And the way back, for the same arrow.
+ *
+ * Sending the day's screen away was only half a control. Once it was gone the
+ * key listener went with it - it was registered only while the screen was up -
+ * so a second press did nothing at all, and there was no way to ask for the
+ * day back except to wait out the two minutes. From the hall that reads as a
+ * remote whose arrows are dead: press, something happens once, press again,
+ * nothing. Reported from the box at תורה ואהבתה on chol hamoed, where the
+ * arrows "did not move the screens".
+ *
+ * So the arrow now works in both directions, and this is how long the day's
+ * screen stays when it was asked for rather than scheduled. Same span as the
+ * other way, so the control is symmetric and easy to explain: an arrow shows
+ * the other screen for two minutes, whichever one you are on.
+ */
+const BACK_MS = AWAY_MS;
 
 /** Shabbat as a page of its own, when the days of the date are shown one by one. */
 const SHABBAT_PAGE: SpecialDayDef = { key: "shabbat", name: "שבת קודש", group: "shabbatot", match: /(?!)/ };
@@ -527,28 +544,48 @@ export function EventSplash({
   // two minutes, and the day comes back by itself.
   const [offset, setOffset] = useState(0);
   const [awayUntil, setAwayUntil] = useState(0);
+  // Asked for from the remote, rather than arrived at by the clock. It has to
+  // override the phase as well as the dismissal: in "short" mode the day's
+  // screen takes its turn 15 seconds in 90, and somebody pressing an arrow in
+  // the other 75 wants it now, not whenever its turn comes round.
+  const [showUntil, setShowUntil] = useState(0);
+  const asked = now.getTime() < showUntil;
   const visible =
     !!def &&
     (config.eventSplash || force) &&
-    (force || hold || allDay || phase < SHOW_SECONDS) &&
-    (force || now.getTime() >= awayUntil);
+    (force || asked || hold || allDay || phase < SHOW_SECONDS) &&
+    (force || asked || now.getTime() >= awayUntil);
   const pageCount = pages.length;
+  // Listen whenever the day has a screen at all, not only while it is up:
+  // the press that asks for it back necessarily happens when it is not.
+  const hasDayScreen = !!def && config.eventSplash;
   useEffect(() => {
-    if (!visible || force || infoOnly) return;
+    if (!hasDayScreen || force || infoOnly) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (!visible) {
+        // The ordinary board is up: bring the day's screen back. The board
+        // must not also act on this key - moving a slide at the same moment
+        // as the screen changes looks like one press doing two things.
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        setAwayUntil(0);
+        setShowUntil(Date.now() + BACK_MS);
+        return;
+      }
       if (pageCount > 1) {
         e.preventDefault();
         e.stopImmediatePropagation();
         setOffset((o) => o + (e.key === "ArrowLeft" ? 1 : -1));
       } else {
         // Let the board have the key too: it moves to the next slide underneath.
+        setShowUntil(0);
         setAwayUntil(Date.now() + AWAY_MS);
       }
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [visible, force, infoOnly, pageCount]);
+  }, [visible, hasDayScreen, force, infoOnly, pageCount]);
   if (!def || !visible) return null;
   const autoPage =
     pages.length < 2

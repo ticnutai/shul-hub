@@ -159,4 +159,57 @@ describe("the day's screen all day, and the remote", () => {
     expect(r.container.querySelector(".tv-event-splash")).not.toBeNull();
     vi.useRealTimers();
   });
+
+  it("and the same arrow brings the day back, without waiting out the two minutes", async () => {
+    const { act } = await import("@testing-library/react");
+    const { vi } = await import("vitest");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(chm(0));
+    const r = at(0);
+    const rerenderAt = (sec: number) => {
+      vi.setSystemTime(chm(sec));
+      r.rerender(
+        <EventSplash categories={[]} config={DEFAULT_TV_CONFIG} now={chm(sec)} zmanim={zmanimOn(chm(0))} zmanimOn={zmanimOn} />,
+      );
+    };
+
+    // One press sends it away, as before.
+    act(() => void window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" })));
+    rerenderAt(5);
+    expect(r.container.querySelector(".tv-event-splash")).toBeNull();
+
+    // The second press is the one that used to do nothing at all: the
+    // listener had gone with the screen, so the only way back was to wait.
+    act(() => void window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" })));
+    rerenderAt(10);
+    expect(r.container.querySelector(".tv-event-splash")).not.toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("asks for the day back even in the part of the cycle it does not take its turn", async () => {
+    const { act } = await import("@testing-library/react");
+    const { vi } = await import("vitest");
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // "short": the day's card takes 15 seconds in 90. Stand in the other 75.
+    const phase = (sec: number) => Math.floor(chm(sec).getTime() / 1000) % 90;
+    let off = 0;
+    while (phase(off) < 15) off += 1;
+    vi.setSystemTime(chm(off));
+    const r = at(off, { eventDetail: "short" });
+    expect(r.container.querySelector(".tv-event-splash")).toBeNull();
+
+    act(() => void window.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })));
+    vi.setSystemTime(chm(off + 1));
+    r.rerender(
+      <EventSplash
+        categories={[]}
+        config={{ ...DEFAULT_TV_CONFIG, eventDetail: "short" }}
+        now={chm(off + 1)}
+        zmanim={zmanimOn(chm(0))}
+        zmanimOn={zmanimOn}
+      />,
+    );
+    expect(r.container.querySelector(".tv-event-splash")).not.toBeNull();
+    vi.useRealTimers();
+  });
 });
