@@ -561,12 +561,6 @@ export function MinyanimAdmin() {
               <Settings2 className="size-4" /> ניהול הטאב
             </Button>
           )}
-          <Button
-            disabled={!selectedCategory}
-            onClick={() => selectedCategory && openDraft(emptyDraft(selectedCategory))}
-          >
-            <Plus className="size-4" /> מניין חדש
-          </Button>
         </div>
       </div>
 
@@ -782,6 +776,17 @@ export function MinyanimAdmin() {
           ))}
         </div>
       )}
+
+      {/* Under the tabs and sub-categories, over the list it adds to: a new
+          minyan goes into what is chosen above it. */}
+      <div className="flex justify-end">
+        <Button
+          disabled={!selectedCategory}
+          onClick={() => selectedCategory && openDraft(emptyDraft(selectedCategory))}
+        >
+          <Plus className="size-4" /> מניין חדש
+        </Button>
+      </div>
 
       <div className="card-elev divide-y divide-border">
         {rows.length === 0 && (
