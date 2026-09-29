@@ -307,6 +307,16 @@ export function MinyanimAdmin() {
 
   useEffect(() => () => dragCleanupRef.current?.(), []);
 
+  /**
+   * Dragging a tab, a minyan or a sub-category into place.
+   *
+   * It used to show nothing while the pointer moved: the row went pale, and
+   * only on letting go did the list jump - so it was impossible to tell
+   * whether a drag was happening at all, or where it would land. Now the row
+   * itself travels under the pointer, the place it will land is marked with
+   * a bar on the side it will go, and the list scrolls when the pointer
+   * reaches the edge of the screen.
+   */
   function beginPointerDrag(
     event: ReactPointerEvent<HTMLButtonElement>,
     draggedId: string,
@@ -322,28 +332,121 @@ export function MinyanimAdmin() {
 
     const ownerDocument = event.currentTarget.ownerDocument;
     const pointerId = event.pointerId;
+    const source = event.currentTarget.closest<HTMLElement>(selector);
+
+    // The row, following the pointer.
+    let ghost: HTMLElement | null = null;
+    let grabX = 0;
+    let grabY = 0;
+    if (source) {
+      const rect = source.getBoundingClientRect();
+      grabX = event.clientX - rect.left;
+      grabY = event.clientY - rect.top;
+      ghost = source.cloneNode(true) as HTMLElement;
+      ghost.removeAttribute("data-reorder-id");
+      ghost.removeAttribute("data-testid");
+      ghost.setAttribute("aria-hidden", "true");
+      Object.assign(ghost.style, {
+        position: "fixed",
+        left: `${rect.left}px`,
+        top: `${rect.top}px`,
+        width: `${rect.width}px`,
+        height: `${rect.height}px`,
+        margin: "0",
+        zIndex: "9999",
+        pointerEvents: "none",
+        opacity: "0.95",
+        transform: "rotate(-1.5deg) scale(1.03)",
+        boxShadow: "0 12px 28px rgba(0,0,0,.25)",
+        borderRadius: "10px",
+        background: "hsl(var(--card))",
+        outline: "2px solid hsl(var(--primary))",
+        transition: "transform 120ms ease",
+      });
+      ownerDocument.body.appendChild(ghost);
+    }
+    const previousCursor = ownerDocument.body.style.cursor;
+    ownerDocument.body.style.cursor = "grabbing";
+
+    // Where it will land: a bar on the side it will go.
+    let marked: HTMLElement | null = null;
+    const unmark = () => {
+      if (!marked) return;
+      marked.style.boxShadow = marked.dataset["dragShadow"] ?? "";
+      marked.style.background = marked.dataset["dragBackground"] ?? "";
+      delete marked.dataset["dragShadow"];
+      delete marked.dataset["dragBackground"];
+      marked = null;
+    };
+    const targetAt = (x: number, y: number) => {
+      const target = ownerDocument.elementFromPoint(x, y)?.closest<HTMLElement>(selector);
+      return target?.dataset["reorderId"] && target.dataset["reorderId"] !== draggedId ? target : null;
+    };
+    const mark = (target: HTMLElement | null) => {
+      if (target === marked) return;
+      unmark();
+      if (!target || !source) return;
+      const a = source.getBoundingClientRect();
+      const b = target.getBoundingClientRect();
+      const vertical = Math.abs(b.top - a.top) > Math.abs(b.left - a.left);
+      // Dropped on a row further on, it goes after it; further back, before it.
+      const after = Boolean(source.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING);
+      const rtl = getComputedStyle(target).direction === "rtl";
+      const bar = "hsl(var(--primary))";
+      const shadow = vertical
+        ? `inset 0 ${after ? -4 : 4}px 0 0 ${bar}`
+        : `inset ${(after ? !rtl : rtl) ? -4 : 4}px 0 0 0 ${bar}`;
+      target.dataset["dragShadow"] = target.style.boxShadow;
+      target.dataset["dragBackground"] = target.style.background;
+      target.style.boxShadow = shadow;
+      target.style.background = "hsl(var(--primary) / 0.08)";
+      marked = target;
+    };
+
+    const follow = (pointerEvent: PointerEvent) => {
+      if (pointerEvent.pointerId !== pointerId) return;
+      if (ghost) {
+        ghost.style.left = `${pointerEvent.clientX - grabX}px`;
+        ghost.style.top = `${pointerEvent.clientY - grabY}px`;
+      }
+      mark(targetAt(pointerEvent.clientX, pointerEvent.clientY));
+      // Near the top or bottom of the window, the page moves with the drag.
+      const view = ownerDocument.defaultView;
+      if (view) {
+        const edge = 70;
+        if (pointerEvent.clientY < edge) view.scrollBy(0, -14);
+        else if (pointerEvent.clientY > view.innerHeight - edge) view.scrollBy(0, 14);
+      }
+    };
     const finish = (pointerEvent: PointerEvent) => {
       if (pointerEvent.pointerId !== pointerId) return;
-      const target = ownerDocument
-        .elementFromPoint(pointerEvent.clientX, pointerEvent.clientY)
-        ?.closest<HTMLElement>(selector);
-      if (target?.dataset["reorderId"] && target.dataset["reorderId"] !== draggedId) {
-        void move(target.dataset["reorderId"]);
-      }
+      const target = targetAt(pointerEvent.clientX, pointerEvent.clientY);
+      if (target?.dataset["reorderId"]) void move(target.dataset["reorderId"]);
       cleanup();
     };
     const cancel = (pointerEvent: PointerEvent) => {
       if (pointerEvent.pointerId === pointerId) cleanup();
     };
+    const onKey = (keyEvent: KeyboardEvent) => {
+      if (keyEvent.key === "Escape") cleanup();
+    };
     const cleanup = () => {
+      ownerDocument.removeEventListener("pointermove", follow, true);
       ownerDocument.removeEventListener("pointerup", finish, true);
       ownerDocument.removeEventListener("pointercancel", cancel, true);
+      ownerDocument.removeEventListener("keydown", onKey, true);
+      ghost?.remove();
+      ghost = null;
+      unmark();
+      ownerDocument.body.style.cursor = previousCursor;
       dragCleanupRef.current = null;
       clear();
     };
 
+    ownerDocument.addEventListener("pointermove", follow, true);
     ownerDocument.addEventListener("pointerup", finish, true);
     ownerDocument.addEventListener("pointercancel", cancel, true);
+    ownerDocument.addEventListener("keydown", onKey, true);
     dragCleanupRef.current = cleanup;
   }
 
