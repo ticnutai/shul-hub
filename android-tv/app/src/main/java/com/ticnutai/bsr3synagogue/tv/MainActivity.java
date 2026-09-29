@@ -52,6 +52,14 @@ public class MainActivity extends BridgeActivity {
             getBridge().getWebView().setDefaultFocusHighlightEnabled(false);
         }
 
+        // Text at the size the board lays it out. Android's font-size setting
+        // otherwise enlarges the text and not the boxes around it, and the
+        // board's lists spill out of their panels (seen at אהל אברהם). The
+        // board has its own text size, set by the gabbai in the editor.
+        if (getBridge() != null) {
+            getBridge().getWebView().getSettings().setTextZoom(100);
+        }
+
         View decor = getWindow().getDecorView();
         decor.setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE

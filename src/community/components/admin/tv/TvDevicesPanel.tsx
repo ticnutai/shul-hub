@@ -229,6 +229,17 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
         )}
         {s.paused && <Badge variant="outline">⏸ מושהה</Badge>}
         {s.themeOverride && <Badge variant="outline">ערכה מהשלט: {getTheme(s.themeOverride, baseConfig?.customThemes).name}</Badge>}
+        {/* What the box itself measured (screenHealth.ts): text the TV enlarged, and what does not fit. */}
+        {typeof s.textBoost === "number" && Math.abs(s.textBoost - 1) >= 0.05 && (
+          <Badge variant="outline" title="הטלוויזיה מגדילה או מקטינה את הטקסט בעצמה (הגדרת גודל הגופן של אנדרואיד)">
+            טקסט ×{s.textBoost.toFixed(2)} מהטלוויזיה
+          </Badge>
+        )}
+        {Array.isArray(s.clipped) && s.clipped.length > 0 && (
+          <Badge variant="destructive" title="נמדד על המסך עצמו, בשקופית שמוצגת עכשיו">
+            לא נכנס: {s.clipped.join(", ")}
+          </Badge>
+        )}
         <span className="ms-auto text-xs text-muted-foreground">
           {device.app_version ? `גרסה ${device.app_version}` : ""}
           {s.screen ? ` · ${s.screen.split("@")[0]}` : ""}

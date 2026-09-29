@@ -33,6 +33,8 @@ const KIND_LABELS: Record<string, string> = {
   background: "אפליקציה אחרת",
   // The screen protected itself: something ran away and was switched off.
   watchdog: "הגנה עצמית",
+  // Something on the wall did not fit its frame (screenHealth.ts).
+  clipped: "לא נכנס במסך",
 };
 
 interface Outage {

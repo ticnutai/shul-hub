@@ -19,6 +19,7 @@ import { useDeviceLink, type TvCommand } from "./useDeviceLink";
 import { scheduleNightlyRefresh, setWatchdogReport, watchMainThread } from "./watchdog";
 import { reloadBoard } from "./remoteBoard";
 import { WebControls } from "./TvWebControls";
+import { findClipped, measureTextBoost } from "./screenHealth";
 
 /**
  * The board as it runs on the TV: owns rotation, pause, the remote, and the
@@ -326,8 +327,47 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     );
   }, [shabbatUp, data.stale, link]);
 
+  // ------------------------------------------ what the wall really shows --
+  // How much larger than laid out the box draws text (1 = as laid out), and
+  // what on this screen is cut off. See screenHealth.ts: the preview cannot
+  // show either, and a gabbai should not have to photograph the wall.
+  const [textBoost, setTextBoost] = useState<number | null>(null);
+  const [clippedNow, setClippedNow] = useState<string[]>([]);
+  useEffect(() => {
+    const measure = () => setTextBoost(measureTextBoost());
+    measure();
+    void document.fonts?.ready.then(measure);
+  }, []);
+  const clipReported = useRef(new Set<string>());
+  useEffect(() => {
+    // After the slide has laid itself out and its lists have fitted.
+    const id = window.setTimeout(() => {
+      const frame = document.querySelector(".tv-frame");
+      if (!frame) return;
+      const clipped = findClipped(frame);
+      setClippedNow(clipped.map((c) => c.what));
+      const day = new Date().toDateString();
+      for (const c of clipped) {
+        // Once a day per screen and panel: the log is for noticing, not counting.
+        const key = `${day}|${slideId}|${c.what}`;
+        if (clipReported.current.has(key)) continue;
+        clipReported.current.add(key);
+        link.current?.log(
+          "warn",
+          "clipped",
+          `"${c.what}" לא נכנס במסך - ${c.hidden} פיקסלים מוסתרים${c.lastLine ? `, עד "${c.lastLine}"` : ""}`,
+          { slide: slideId, hidden: c.hidden, textBoost, screen: `${innerWidth}x${innerHeight}@${devicePixelRatio}` },
+        );
+      }
+    }, 2500);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per slide shown
+  }, [slideId, cycle]);
+
   // ------------------------------------------------ state for the admin --
   stateRef.current = {
+    textBoost,
+    clipped: clippedNow,
     slideId: slide?.id ?? null,
     slideKind: slide?.kind ?? null,
     slideIndex: index,

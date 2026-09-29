@@ -37,6 +37,10 @@ export interface TvDeviceState {
   version?: string;
   uptimeSec?: number;
   screen?: string;
+  /** Drawn text size against laid-out size on the box (1 = as laid out). */
+  textBoost?: number | null;
+  /** Panels whose content does not fit, on the slide showing now. */
+  clipped?: string[];
 }
 
 export interface TvDevice {

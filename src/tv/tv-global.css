@@ -15,6 +15,23 @@ body,
 }
 
 /*
+ * Text exactly the size the board lays it out at.
+ *
+ * Android's "font size" setting reaches the page as text boosting: Chrome
+ * enlarges text inside its boxes and leaves the boxes as they were. On the
+ * box at אהל אברהם the clock and title came out a quarter larger than laid
+ * out and the zmanim a tenth, so the last of them hung outside their panel -
+ * while the admin's preview, which has no such setting, showed it fitting.
+ * The board has its own text size (in the editor); this stops a setting
+ * nobody on the wall knows about from overriding it. The app also sets the
+ * WebView's text zoom to 100% (MainActivity), for boxes with the new APK.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/*
  * Lovable puts an "Edit with Lovable" badge on every published page. Since
  * the boxes load the board from the website (remoteBoard.ts) it sat in the
  * corner of the wall, over the prayer times, where nobody has a mouse to
