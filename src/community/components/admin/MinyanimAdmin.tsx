@@ -4,11 +4,13 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarRange,
+  ChevronLeft,
   GripVertical,
   Pencil,
   Plus,
@@ -104,6 +106,21 @@ export function MinyanimAdmin() {
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
   const [draggedMinyanId, setDraggedMinyanId] = useState<string | null>(null);
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
+  const [draggedSubcategoryId, setDraggedSubcategoryId] = useState<string | null>(null);
+
+  /** Sub-categories are ordered by dragging, in the draft, until "שמירת קטגוריה". */
+  function moveSubcategory(draggedId: string, targetId: string) {
+    setCategoryDraft((current) => {
+      if (!current) return current;
+      const list = [...current.subcategories];
+      const from = list.findIndex((item) => item.id === draggedId);
+      const to = list.findIndex((item) => item.id === targetId);
+      if (from < 0 || to < 0 || from === to) return current;
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved!);
+      return { ...current, subcategories: list };
+    });
+  }
   const draggedMinyanRef = useRef<string | null>(null);
   const draggedCategoryRef = useRef<string | null>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
@@ -469,58 +486,19 @@ export function MinyanimAdmin() {
               {categoryDraft.id ? "עריכת קטגוריית מניינים" : "קטגוריית מניינים חדשה"}
             </h3>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <Label htmlFor="minyan-category-name">שם הטאב</Label>
-              <Input
-                id="minyan-category-name"
-                value={categoryDraft.name}
-                onChange={(event) =>
-                  setCategoryDraft({ ...categoryDraft, name: event.target.value })
-                }
-                placeholder="לדוגמה: סליחות"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="minyan-category-order">סדר תצוגה (מתקדם)</Label>
-              <Input
-                id="minyan-category-order"
-                type="number"
-                dir="ltr"
-                value={categoryDraft.sort_order}
-                onChange={(event) =>
-                  setCategoryDraft({ ...categoryDraft, sort_order: Number(event.target.value) })
-                }
-              />
-              <p className="text-xs text-muted-foreground">
-                מספר קטן מופיע קודם. בדרך כלל פשוט גוררים את הטאבים למיקום הרצוי.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="minyan-category-from">הצגה מתאריך (רשות)</Label>
-              <Input
-                id="minyan-category-from"
-                type="date"
-                dir="ltr"
-                value={categoryDraft.visible_from ?? ""}
-                onChange={(event) =>
-                  setCategoryDraft({ ...categoryDraft, visible_from: event.target.value || null })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="minyan-category-until">עד תאריך (רשות)</Label>
-              <Input
-                id="minyan-category-until"
-                type="date"
-                dir="ltr"
-                value={categoryDraft.visible_until ?? ""}
-                onChange={(event) =>
-                  setCategoryDraft({ ...categoryDraft, visible_until: event.target.value || null })
-                }
-              />
-            </div>
+          {/* The place of a tab is set by dragging it in the bar above, not
+              by typing a number; the order field is gone from here. */}
+          <div className="space-y-2 sm:max-w-md">
+            <Label htmlFor="minyan-category-name">שם הטאב</Label>
+            <Input
+              id="minyan-category-name"
+              value={categoryDraft.name}
+              onChange={(event) =>
+                setCategoryDraft({ ...categoryDraft, name: event.target.value })
+              }
+              placeholder="לדוגמה: סליחות"
+              required
+            />
           </div>
           <div className="space-y-3 rounded-lg border border-border p-4">
             <div>
@@ -532,7 +510,32 @@ export function MinyanimAdmin() {
             </div>
             <div className="space-y-2" data-testid="minyan-subcategory-editor">
               {categoryDraft.subcategories.map((subcategory, index) => (
-                <div key={subcategory.id} className="flex items-center gap-2">
+                <div
+                  key={subcategory.id}
+                  data-reorder-id={subcategory.id}
+                  data-reorder-kind="subcategory"
+                  className={
+                    "flex items-center gap-2" + (draggedSubcategoryId === subcategory.id ? " opacity-50" : "")
+                  }
+                >
+                  <button
+                    type="button"
+                    aria-label={`גרירת ${subcategory.label || `תת־קטגוריה ${index + 1}`}`}
+                    title="גרור לשינוי הסדר"
+                    className="cursor-grab touch-none p-1.5 text-muted-foreground active:cursor-grabbing"
+                    onPointerDown={(event) =>
+                      beginPointerDrag(
+                        event,
+                        subcategory.id,
+                        '[data-reorder-kind="subcategory"]',
+                        async (targetId) => moveSubcategory(subcategory.id, targetId),
+                        () => setDraggedSubcategoryId(subcategory.id),
+                        () => setDraggedSubcategoryId(null),
+                      )
+                    }
+                  >
+                    <GripVertical className="size-4" />
+                  </button>
                   <Input
                     aria-label={`שם תת־קטגוריה ${index + 1}`}
                     value={subcategory.label}
@@ -584,6 +587,45 @@ export function MinyanimAdmin() {
               </Button>
             </div>
           </div>
+          <Advanced
+            summary={
+              categoryDraft.visible_from || categoryDraft.visible_until
+                ? `מוצג ${categoryDraft.visible_from ? `מ-${formatDay(categoryDraft.visible_from)}` : ""}${
+                    categoryDraft.visible_until ? ` עד ${formatDay(categoryDraft.visible_until)}` : ""
+                  }`
+                : undefined
+            }
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="minyan-category-from">הצגה מתאריך</Label>
+                <Input
+                  id="minyan-category-from"
+                  type="date"
+                  dir="ltr"
+                  value={categoryDraft.visible_from ?? ""}
+                  onChange={(event) =>
+                    setCategoryDraft({ ...categoryDraft, visible_from: event.target.value || null })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="minyan-category-until">עד תאריך</Label>
+                <Input
+                  id="minyan-category-until"
+                  type="date"
+                  dir="ltr"
+                  value={categoryDraft.visible_until ?? ""}
+                  onChange={(event) =>
+                    setCategoryDraft({ ...categoryDraft, visible_until: event.target.value || null })
+                  }
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              בלי תאריכים הטאב מוצג תמיד. עם תאריכים — רק בתקופה הזו, למשל סליחות.
+            </p>
+          </Advanced>
           <div className="flex flex-wrap items-center gap-3">
             <Switch
               id="minyan-category-active"
@@ -918,38 +960,7 @@ export function MinyanimAdmin() {
                 placeholder="לדוגמה: רק בימי שני וחמישי"
               />
             </div>
-            {/* A minyan for a season (בין הזמנים, שעון קיץ): it leaves the site
-                and the board by itself after its last day. */}
-            <div className="space-y-2">
-              <Label>מתקיים מתאריך</Label>
-              <Input
-                type="date"
-                dir="ltr"
-                value={draft.active_from ?? ""}
-                onChange={(e) => setDraft({ ...draft, active_from: e.target.value || null })}
-                data-testid="minyan-active-from"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>מתקיים עד תאריך (כולל)</Label>
-              <Input
-                type="date"
-                dir="ltr"
-                value={draft.active_until ?? ""}
-                onChange={(e) => setDraft({ ...draft, active_until: e.target.value || null })}
-                data-testid="minyan-active-until"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>סדר תצוגה</Label>
-              <Input
-                type="number"
-                dir="ltr"
-                value={draft.sort_order ?? 0}
-                onChange={(e) => setDraft({ ...draft, sort_order: Number(e.target.value) })}
-              />
-            </div>
-            <div className="flex items-center gap-3 pt-6">
+            <div className="flex items-center gap-3 sm:pt-6">
               <Switch
                 checked={draft.active ?? true}
                 onCheckedChange={(v) => setDraft({ ...draft, active: v })}
@@ -957,29 +968,70 @@ export function MinyanimAdmin() {
               />
               <Label htmlFor="active">מוצג באתר</Label>
             </div>
-            <div className="flex items-center gap-3 pt-6">
-              <Switch
-                checked={draft.notification_enabled ?? false}
-                onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
-                id="minyan-notification"
-              />
-              <Label htmlFor="minyan-notification">לאפשר תזכורת למניין</Label>
-            </div>
-            <div className="space-y-2">
-              <Label>כמה דקות לפני</Label>
-              <Input
-                type="number"
-                dir="ltr"
-                min={0}
-                max={10080}
-                disabled={!draft.notification_enabled}
-                value={draft.reminder_minutes ?? 15}
-                onChange={(event) =>
-                  setDraft({ ...draft, reminder_minutes: Number(event.target.value) })
-                }
-              />
-            </div>
           </div>
+
+          {/* The order of the minyanim is set by dragging them in the list. */}
+          <Advanced
+            summary={
+              [
+                draft.active_from || draft.active_until
+                  ? `מתקיים ${draft.active_from ? `מ-${formatDay(draft.active_from)}` : ""}${
+                      draft.active_until ? ` עד ${formatDay(draft.active_until)}` : ""
+                    }`
+                  : "",
+                draft.notification_enabled ? `תזכורת ${draft.reminder_minutes ?? 15} דק׳ לפני` : "",
+              ]
+                .filter(Boolean)
+                .join(" · ") || undefined
+            }
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* A minyan for a season (בין הזמנים, שעון קיץ): it leaves the site
+                  and the board by itself after its last day. */}
+              <div className="space-y-2">
+                <Label>מתקיים מתאריך</Label>
+                <Input
+                  type="date"
+                  dir="ltr"
+                  value={draft.active_from ?? ""}
+                  onChange={(e) => setDraft({ ...draft, active_from: e.target.value || null })}
+                  data-testid="minyan-active-from"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>מתקיים עד תאריך (כולל)</Label>
+                <Input
+                  type="date"
+                  dir="ltr"
+                  value={draft.active_until ?? ""}
+                  onChange={(e) => setDraft({ ...draft, active_until: e.target.value || null })}
+                  data-testid="minyan-active-until"
+                />
+              </div>
+              <div className="flex items-center gap-3 sm:pt-6">
+                <Switch
+                  checked={draft.notification_enabled ?? false}
+                  onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
+                  id="minyan-notification"
+                />
+                <Label htmlFor="minyan-notification">לאפשר תזכורת למניין</Label>
+              </div>
+              <div className="space-y-2">
+                <Label>כמה דקות לפני</Label>
+                <Input
+                  type="number"
+                  dir="ltr"
+                  min={0}
+                  max={10080}
+                  disabled={!draft.notification_enabled}
+                  value={draft.reminder_minutes ?? 15}
+                  onChange={(event) =>
+                    setDraft({ ...draft, reminder_minutes: Number(event.target.value) })
+                  }
+                />
+              </div>
+            </div>
+          </Advanced>
 
           <div className="flex gap-2">
             <Button type="submit" disabled={save.isPending}>
@@ -992,5 +1044,30 @@ export function MinyanimAdmin() {
         </form>
       )}
     </div>
+  );
+}
+
+/** 2026-09-01 -> 1.9.2026, for the line that says what is set under "מתקדם". */
+function formatDay(iso: string) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return y && m && d ? `${d}.${m}.${y}` : iso;
+}
+
+/**
+ * What a gabbai needs to build a minyan is its name, its time and its place.
+ * Everything else - a season, a reminder, a tab shown only for a while - is
+ * folded away here, closed by default, with a line saying what is set in it
+ * so nothing hidden is also forgotten.
+ */
+function Advanced({ summary, children }: { summary?: string; children: ReactNode }) {
+  return (
+    <details className="group rounded-lg border border-border">
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        <ChevronLeft className="size-4 transition-transform group-open:-rotate-90" />
+        מתקדם
+        {summary && <span className="truncate text-xs font-normal text-muted-foreground">· {summary}</span>}
+      </summary>
+      <div className="space-y-3 border-t border-border p-4">{children}</div>
+    </details>
   );
 }
