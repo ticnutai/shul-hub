@@ -10,6 +10,7 @@ import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
 import { ShabbatSlide } from "./ShabbatScene";
 import { composedRows, jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
 import { useFitText } from "./useFitText";
+import { useShrinkToFit } from "./useShrinkToFit";
 
 /**
  * The slide bodies. Pure presentation: everything they need arrives as props,
@@ -312,12 +313,15 @@ export function ZmanimPanel({ zmanim, now, titleKey = "panel.zmanim" }: { zmanim
   const nextEvent = shown.find((e) => (zmanim[e]?.getTime() ?? 0) > nowMs);
   // A fast's start and end, candle lighting before a festival, צאת החג.
   const special = specialZmanim(now, zmanim, useHolyEndMinutes());
+  // Measured against the panel, since the box's fonts are not the ones the
+  // board was laid out with (see useShrinkToFit).
+  const listRef = useShrinkToFit<HTMLDListElement>(`${special.length}:${shown.length}`);
   return (
     <div className="tv-panel" {...edit.attr("panel.zmanim")}>
       <h3 className="tv-panel-title" {...(titleKey !== "panel.zmanim" ? edit.attr(titleKey) : {})}>
         {edit.text(titleKey, "זמני היום")}
       </h3>
-      <dl className="tv-zman-list">
+      <dl className="tv-zman-list" ref={listRef}>
         {special.map((r) => (
           <div className={`tv-zman-row is-special${r.time && r.time.getTime() <= nowMs ? " is-past" : ""}`} key={`special-${r.key}`}>
             <dt>{r.label}</dt>

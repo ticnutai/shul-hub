@@ -20,6 +20,8 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+import { LIGHT_BOARD_PALETTE, themeStyle, THEME_VARS } from "./themes";
+
 const CSS = readFileSync("src/tv/tv.css", "utf8");
 
 /** WCAG AA for body text. A wall is read from further away, never nearer. */
@@ -133,15 +135,9 @@ function boardBackground(skin: string): string | null {
   return stops.length ? average(stops) : null;
 }
 
-/** A palette value this skin restates on `.tv-root`, if it does. */
+/** A palette value this skin restates for the whole board, if it does. */
 function boardVar(skin: string, name: string): string | null {
-  const rule = new RegExp(
-    String.raw`\.tv-root\.is-skin-SKIN\s*\{[^}]*NAME:\s*(#[0-9a-f]{6})`
-      .replace("SKIN", skin)
-      .replace("NAME", name),
-    "i",
-  );
-  return rule.exec(CSS)?.[1] ?? null;
+  return (LIGHT_BOARD_PALETTE[skin] as Record<string, string> | undefined)?.[name] ?? null;
 }
 
 /** Every skin named anywhere in the stylesheet. */
@@ -188,5 +184,48 @@ describe("the palette on a light board", () => {
       }
     }
     expect(failures).toEqual([]);
+  });
+});
+
+describe("the palette reaches the board", () => {
+  /**
+   * It was declared, measured and tested - and never drawn. The theme's
+   * colours are an inline style on the board, and a stylesheet rule on the
+   * same element loses to it; the test above read the stylesheet, which said
+   * the right thing. This asks the style the board is actually given.
+   */
+  it("a light skin's palette wins over a dark theme's", () => {
+    for (const [skin, palette] of Object.entries(LIGHT_BOARD_PALETTE)) {
+      const style = themeStyle({ theme: "forest", skin, font: "heebo" }) as Record<string, string>;
+      for (const [name, value] of Object.entries(palette)) expect(style[name], `${skin} ${name}`).toBe(value);
+    }
+  });
+
+  it("and the gabbai's own colour still wins over the skin's", () => {
+    const style = themeStyle({ theme: "forest", skin: "sky", font: "heebo", overrides: { "--tv-accent": "#123456" } }) as Record<string, string>;
+    expect(style["--tv-accent"]).toBe("#123456");
+  });
+
+  it("a dark skin keeps its theme's colours", () => {
+    const style = themeStyle({ theme: "forest", skin: "plain", font: "heebo" }) as Record<string, string>;
+    expect(style["--tv-text"]).not.toBe(LIGHT_BOARD_PALETTE.sky["--tv-text"]);
+  });
+
+  it("names only real palette variables", () => {
+    for (const palette of Object.values(LIGHT_BOARD_PALETTE))
+      for (const name of Object.keys(palette)) expect(THEME_VARS as readonly string[]).toContain(name);
+  });
+});
+
+describe("the analog clock on a skin that paints its own face", () => {
+  it("is not covered by the theme's dark tint", () => {
+    // Every theme is dark, and the tint over the face is the theme's
+    // background at 70%: over a cream face, a black disc.
+    const painted = [...CSS.matchAll(/\.tv-root\.is-skin-([a-z]+)[^{,]*\.tv-analog-face/g)].map((m) => m[1]);
+    const hidden = new Set(
+      [...CSS.matchAll(/\.tv-root\.is-skin-([a-z]+)[^{,]*\.tv-analog-tint/g)].map((m) => m[1]),
+    );
+    expect(painted.length).toBeGreaterThan(3);
+    expect([...new Set(painted)].filter((s) => !hidden.has(s))).toEqual([]);
   });
 });

@@ -509,9 +509,10 @@
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: calc(var(--u) * 0.6) calc(var(--u) * 1);
+  /* --fit: set by useShrinkToFit when the list would spill out of its panel. */
+  padding: calc(var(--u) * 0.6 * var(--fit, 1)) calc(var(--u) * 1);
   border-radius: calc(var(--u) * 0.6);
-  font-size: calc(var(--fs) * 2.3);
+  font-size: calc(var(--fs) * 2.3 * var(--fit, 1));
 }
 
 .tv-zman-row dt {
@@ -1544,9 +1545,17 @@
   fill: #fbf3df;
 }
 
-/* These skins paint the face themselves; the tint on top would undo it. */
+/* These skins paint the face themselves; the tint on top would undo it.
+   The tint is the theme's background at 70%, and every theme is dark: over a
+   cream face it is a dark disc. Photographed at אהל אברהם (sky skin, forest
+   theme) as a black circle beside the time, where the clock should be. */
 .tv-root.is-skin-tablets .tv-panel .tv-analog-tint,
-.tv-root.is-skin-parchment .tv-panel .tv-analog-tint {
+.tv-root.is-skin-parchment .tv-panel .tv-analog-tint,
+.tv-root.is-skin-medallion .tv-analog-tint,
+.tv-root.is-skin-heichal .tv-analog-tint,
+.tv-root.is-skin-stone .tv-analog-tint,
+.tv-root.is-skin-sky .tv-analog-tint,
+.tv-root.is-skin-dome .tv-analog-tint {
   display: none;
 }
 
@@ -2449,8 +2458,8 @@
 
 /* the zmanim panel is reused as-is; it only needs to fit its column */
 .tv-dash .tv-zman-row {
-  font-size: calc(var(--fs) * 2.05);
-  padding-block: calc(var(--u) * 0.35);
+  font-size: calc(var(--fs) * 2.05 * var(--fit, 1));
+  padding-block: calc(var(--u) * 0.35 * var(--fit, 1));
 }
 
 .tv-dash-strip {
@@ -2530,7 +2539,7 @@
 }
 
 .tv-split .tv-zman-row {
-  font-size: calc(var(--fs) * 2.1);
+  font-size: calc(var(--fs) * 2.1 * var(--fit, 1));
 }
 
 /* the slide heading is smaller beside a side column */
@@ -4339,7 +4348,7 @@
  * metres nobody can see the sliver that was given up.
  */
 .tv-zman-row {
-  padding-block: calc(var(--u) * 0.45);
+  padding-block: calc(var(--u) * 0.45 * var(--fit, 1));
 }
 
 .tv-dash-row {
@@ -5241,48 +5250,14 @@
 
 /* --------------------------------------- the whole palette, on a light board -- */
 /*
- * Four of the skins paint the board itself light, and the theme underneath
- * is always dark. Setting the panel colours was not enough: anything drawn
- * straight onto the board - the prayer timeline is the one that showed it -
- * takes the theme's own text and accent, which are a near-white and a pale
- * gold meant for navy.
+ * The four skins that paint the board itself light (sky, crown, medallion,
+ * pillars) restate the whole palette - text, dim text, accent - because
+ * every theme underneath is dark. That palette lives in themes.ts
+ * (LIGHT_BOARD_PALETTE), applied where the theme's colours are applied.
  *
- * Photographed at אהל אברהם: a full timeline of minyanim with the names
- * barely there, every dot empty, and one time visible - the next one, which
- * gets the accent. Measured against that sky background: the text at 1.09:1
- * and the accent at 1.35:1, where 4.5:1 is the floor. The times were not
- * dim, they were the same colour as the paper.
- *
- * So these three restate the palette for the board they actually draw. The
- * accent keeps its hue and is darkened only until it can be read, so a gold
- * board stays gold. The other light skins are not here on purpose: their
- * panels are light but their board is the theme's own dark one, where the
- * theme's colours are still right.
+ * It lived here, as a `.tv-root.is-skin-X { --tv-text: ... }` rule, and never
+ * once took effect: the theme's colours are written on the same element as
+ * an inline style, and an inline style beats any rule. Photographed at אהל
+ * אברהם on the sky skin with the forest theme: near-white times on light
+ * blue, the past ones fading into the paper.
  */
-.tv-root.is-skin-sky {
-  --tv-text: #1c2b3a;
-  --tv-text-dim: #3d5a75;
-  --tv-accent: #7d6418;
-  --tv-accent-2: #5c4b12;
-}
-
-.tv-root.is-skin-crown {
-  --tv-text: #2a2213;
-  --tv-text-dim: #5c5140;
-  --tv-accent: #816819;
-  --tv-accent-2: #604e13;
-}
-
-.tv-root.is-skin-medallion {
-  --tv-text: #2a2213;
-  --tv-text-dim: #5a4f3c;
-  --tv-accent: #806318;
-  --tv-accent-2: #5b4611;
-}
-
-.tv-root.is-skin-pillars {
-  --tv-text: #2a2418;
-  --tv-text-dim: #6b5f48;
-  --tv-accent: #7d6418;
-  --tv-accent-2: #584711;
-}

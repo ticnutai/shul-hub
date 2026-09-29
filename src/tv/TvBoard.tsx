@@ -74,6 +74,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     () =>
       themeStyle({
         theme: config.theme,
+        skin: config.skin,
         customThemes: config.customThemes,
         overrides: config.themeOverrides,
         font: config.font,
@@ -84,6 +85,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       }),
     [
       config.theme,
+      config.skin,
       config.customThemes,
       config.themeOverrides,
       config.font,
