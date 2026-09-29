@@ -58,6 +58,13 @@ export function AdminPage() {
   });
   const showCommunities = myShuls.length > 1 || isPlatformAdmin;
 
+  function openTab(tab: string) {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", tab);
+    if (tab !== "settings") next.delete("settingsTab");
+    setSearchParams(next, { replace: true });
+  }
+
   async function signOut() {
     await qc.cancelQueries();
     qc.clear();
@@ -80,7 +87,18 @@ export function AdminPage() {
             <ShulNow />
             <p className="mt-1 text-sm text-muted-foreground">{session?.user.email}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Beside the switcher rather than among the tabs: it is about all
+                the synagogues, and the tabs below are about the one chosen. */}
+            {showCommunities && isAdmin && (
+              <Button
+                variant={activeTab === "communities" ? "default" : "outline"}
+                aria-pressed={activeTab === "communities"}
+                onClick={() => openTab("communities")}
+              >
+                <Building2 className="size-4" /> בתי כנסת
+              </Button>
+            )}
             <CommunitySwitcher />
             <Button variant="outline" onClick={signOut}>
               <LogOut className="size-4" /> יציאה
@@ -106,12 +124,7 @@ export function AdminPage() {
           <Tabs
             dir="rtl"
             value={activeTab}
-            onValueChange={(tab) => {
-              const next = new URLSearchParams(searchParams);
-              next.set("tab", tab);
-              if (tab !== "settings") next.delete("settingsTab");
-              setSearchParams(next, { replace: true });
-            }}
+            onValueChange={openTab}
             className="mt-5 min-w-0 text-right sm:mt-6"
           >
             <TabsList
@@ -137,11 +150,6 @@ export function AdminPage() {
               <TabsTrigger value="tv">
                 <Tv className="size-4" /> תצוגות
               </TabsTrigger>
-              {showCommunities && (
-                <TabsTrigger value="communities">
-                  <Building2 className="size-4" /> בתי כנסת
-                </TabsTrigger>
-              )}
             </TabsList>
 
             <TabsContent value="communities" className="mt-6">
