@@ -425,20 +425,6 @@ export function MinyanimAdmin() {
               <Plus className="ml-1 inline size-3.5" /> טאב שבת
             </button>
           )}
-          {/* The special days moved to "תצוגות": what the board shows on them.
-              Their own timetables still open here, from there. */}
-          <button
-            type="button"
-            data-testid="special-days-tab"
-            onClick={() => openSpecialDays()}
-            className={
-              "rounded-md px-3 py-1.5 text-sm " +
-              (selectedIsEvent ? "bg-card font-semibold shadow-soft" : "font-medium text-foreground hover:bg-card")
-            }
-            title="נמצא עכשיו בלשונית תצוגות"
-          >
-            📅 מועדים ואירועים ←
-          </button>
         </div>
         <div className="flex gap-2">
           {selectedCategory && (
