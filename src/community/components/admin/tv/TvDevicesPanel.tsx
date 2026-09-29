@@ -34,6 +34,8 @@ import {
 import { useNow } from "@community/lib/realtime";
 import { allThemes, getTheme } from "@/tv/themes";
 import { DEFAULT_TV_CONFIG } from "@/tv/config";
+import { boardConfig } from "@/tv/boardConfig";
+import { useSettings } from "@community/lib/data";
 import { formatDuration } from "@/tv/device";
 import { SlideStrip, TvPreview } from "./TvPreview";
 import { useTvSlides } from "./tvPreviewData";
@@ -167,14 +169,24 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
   const saved = useTvConfig();
   const baseConfig = saved.data?.config;
 
-  // What the TV is actually rendering: the admin's config with the theme the
-  // TV reports (it may have been changed from the remote).
+  const { data: settings } = useSettings();
+  // What the TV is actually rendering, resolved exactly as the TV resolves it
+  // (boardConfig.ts): its own screen settings, the day's look, and a theme
+  // chosen from its remote. It used to be the saved board with only the
+  // theme swapped, which is how אהל אברהם's light-blue wall appeared here as
+  // a dark board with two logos.
+  const minute = Math.floor(now / 60_000);
   const mirrorConfig = useMemo(
     () =>
       baseConfig
-        ? { ...baseConfig, theme: (s.theme as typeof baseConfig.theme) ?? baseConfig.theme, themeOverrides: s.themeOverride ? {} : baseConfig.themeOverrides }
+        ? boardConfig(baseConfig, {
+            deviceClass: "tv",
+            themeOverride: s.themeOverride ?? null,
+            now: new Date(minute * 60_000),
+            settings,
+          })
         : null,
-    [baseConfig, s.theme, s.themeOverride],
+    [baseConfig, s.themeOverride, minute, settings],
   );
   // Until the saved config arrives, build from the defaults rather than an
   // empty object (buildSlides reads config.slides).

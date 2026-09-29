@@ -1,11 +1,11 @@
-import { applyDayLook } from "./dayLooks";
+import { boardConfig } from "./boardConfig";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
 import { EventSplash } from "./EventSplash";
 import { updateText, useApkUpdate } from "./apkUpdate";
-import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
+import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
 import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
@@ -176,21 +176,11 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const minuteStamp = Math.floor(now.getTime() / 60_000);
   const minuteNow = useMemo(() => new Date(minuteStamp * 60_000), [minuteStamp]);
 
-  const config = useMemo<TvConfig>(() => {
-    const chosen =
-      // A remote choice the admin has since deleted is simply ignored.
-      themeOverride && themes.some((t) => t.id === themeOverride)
-        ? { ...baseConfig, theme: themeOverride, themeOverrides: {} }
-        : baseConfig;
-    // Shabbat, a festival, Rosh Chodesh or Friday may have a look of its own.
-    // When Shabbat and Yom Tov end is the synagogue's setting now, shared
-    // with the website; the board's own old number is only a fallback.
-    const withEnd =
-      typeof data.settings?.shabbat_end_minutes === "number"
-        ? { ...chosen, shabbat: { ...chosen.shabbat, endMinutesAfterSunset: data.settings.shabbat_end_minutes } }
-        : chosen;
-    return applyDayLook(configForDevice(withEnd, deviceClass), minuteNow, data.settings);
-  }, [baseConfig, themeOverride, themes, deviceClass, minuteNow, data.settings]);
+  // The same resolution the admin's picture of this screen uses (boardConfig.ts).
+  const config = useMemo<TvConfig>(
+    () => boardConfig(baseConfig, { deviceClass, themeOverride, now: minuteNow, settings: data.settings }),
+    [baseConfig, themeOverride, deviceClass, minuteNow, data.settings],
+  );
   const slides = useMemo(() => buildSlides(data, config, minuteNow, zmanim), [data, config, minuteNow, zmanim]);
 
   const [currentId, setCurrentId] = useState<string | null>(null);
