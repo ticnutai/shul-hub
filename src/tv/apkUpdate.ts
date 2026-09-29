@@ -14,7 +14,7 @@ import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor
  */
 
 interface ApkUpdaterPlugin {
-  info(): Promise<{ versionCode: number; versionName: string; canInstall: boolean; downloaded: boolean }>;
+  info(): Promise<{ versionCode: number; versionName: string; canInstall: boolean; downloaded: boolean; silent?: boolean }>;
   download(opts: { url: string }): Promise<{ bytes: number }>;
   install(): Promise<{ needsPermission: boolean }>;
   addListener(event: "progress", fn: (e: { percent: number }) => void): Promise<PluginListenerHandle>;
@@ -36,6 +36,36 @@ export interface ShulTvNative {
   info(): string;
   download(url: string): boolean;
   install(): string;
+  /** From app 1.38: check, fetch and install now (AutoUpdate). */
+  installNow?(): boolean;
+}
+
+/** What the app says about itself, for the admin (version, silent updates). */
+export interface NativeAppInfo {
+  versionCode: number;
+  versionName: string;
+  canInstall: boolean;
+  silent?: boolean;
+  readyName?: string;
+  lastError?: string;
+  lastResult?: string;
+}
+
+export function nativeAppInfo(): NativeAppInfo | null {
+  const n = nativeBridge();
+  if (!n) return null;
+  try {
+    const raw = n.info();
+    return raw ? (JSON.parse(raw) as NativeAppInfo) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** "עדכון עכשיו" from the admin. False when this app cannot (older app, or Android before 12). */
+export function installUpdateNow(): boolean {
+  const n = nativeBridge();
+  return Boolean(n?.installNow?.());
 }
 
 function nativeBridge(): ShulTvNative | null {
@@ -108,7 +138,9 @@ export type UpdateState =
   | { phase: "idle" }
   | { phase: "downloading"; version: string; percent: number }
   | { phase: "ready"; version: string }
-  | { phase: "permission"; version: string };
+  | { phase: "permission"; version: string }
+  /** Silent updates are on, but Android has not yet been told this app may install. */
+  | { phase: "allow"; version: string };
 
 export function canSelfUpdate(): boolean {
   return (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("ApkUpdater")) || nativeBridge() !== null;
@@ -127,6 +159,13 @@ export function useApkUpdate(log?: (msg: string) => void): { state: UpdateState;
     const ApkUpdater = updater();
     try {
       const mine = await ApkUpdater.info();
+      // The app updates itself at night (AutoUpdate, Android 12+): no "press
+      // OK" here. All it may need, once, is to be allowed to install apps -
+      // and that is asked for on the screen, with OK opening Android's switch.
+      if (mine.silent) {
+        setState(mine.canInstall ? { phase: "idle" } : { phase: "allow", version: mine.versionName });
+        return;
+      }
       const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
       const next = newerVersion(await res.json(), mine.versionCode);
@@ -162,9 +201,15 @@ export function useApkUpdate(log?: (msg: string) => void): { state: UpdateState;
   }, [check]);
 
   const install = useCallback(async () => {
-    if (state.phase !== "ready" && state.phase !== "permission") return false;
+    if (state.phase !== "ready" && state.phase !== "permission" && state.phase !== "allow") return false;
     try {
       const r = await updater().install();
+      if (state.phase === "allow") {
+        // The switch is open; nothing more to press here - the night does the rest.
+        setState({ phase: "idle" });
+        logRef.current?.("נפתח מסך ההרשאה להתקנה - לעדכונים שקטים");
+        return true;
+      }
       // First time: Android opened its "allow installs from this app" screen; after that, OK again.
       setState(r.needsPermission ? { phase: "permission", version: state.version } : { phase: "ready", version: state.version });
       logRef.current?.(r.needsPermission ? "נפתח מסך ההרשאה להתקנה" : "נפתח מתקין אנדרואיד");
@@ -186,6 +231,8 @@ export function updateText(state: UpdateState): string | null {
       return `גרסה חדשה של הלוח (${state.version}) מוכנה · לחצו OK בשלט להתקנה`;
     case "permission":
       return `אשרו "התקנת אפליקציות" ללוח במסך שנפתח, חזרו ולחצו OK שוב`;
+    case "allow":
+      return `כדי שהלוח יתעדכן לבד בלילה: לחצו OK ואשרו "התקנת אפליקציות" - פעם אחת בלבד`;
     default:
       return null;
   }

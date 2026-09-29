@@ -4,7 +4,7 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
 import { EventSplash } from "./EventSplash";
-import { updateText, useApkUpdate } from "./apkUpdate";
+import { installUpdateNow, nativeAppInfo, updateText, useApkUpdate } from "./apkUpdate";
 import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
@@ -91,6 +91,7 @@ const COMMAND_LABELS: Record<TvCommand["command"], string> = {
   snapshot: "צילום מסך",
   message: "הודעה על המסך",
   identify: "זיהוי מסך",
+  update: "עדכון אפליקציה",
 };
 
 interface Notice {
@@ -323,6 +324,12 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   // show either, and a gabbai should not have to photograph the wall.
   const [textBoost, setTextBoost] = useState<number | null>(null);
   const [clippedNow, setClippedNow] = useState<string[]>([]);
+  // Read every few minutes: the app's own update state changes by itself.
+  const [appInfo, setAppInfo] = useState(() => nativeAppInfo());
+  useEffect(() => {
+    const id = window.setInterval(() => setAppInfo(nativeAppInfo()), 5 * 60_000);
+    return () => window.clearInterval(id);
+  }, []);
   useEffect(() => {
     const measure = () => {
       const boost = measureTextBoost();
@@ -368,6 +375,11 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
 
   // ------------------------------------------------ state for the admin --
   stateRef.current = {
+    // The app itself (not the board): its version, and whether it updates
+    // itself silently. Null in a browser or on an app older than 1.37.
+    app: appInfo
+      ? { version: appInfo.versionName, code: appInfo.versionCode, silent: Boolean(appInfo.silent), canInstall: appInfo.canInstall, ready: appInfo.readyName || null, error: appInfo.lastError || null, result: appInfo.lastResult || null }
+      : null,
     textBoost,
     clipped: clippedNow,
     slideId: slide?.id ?? null,
@@ -436,6 +448,16 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         l.log("info", "command", "טעינה מחדש לפי בקשת המנהל");
         window.setTimeout(reloadBoard, 500);
         return;
+      case "update":
+        // The app checks, fetches and installs itself now (AutoUpdate, 1.38+).
+        l.log(
+          "info",
+          "update",
+          installUpdateNow()
+            ? "עדכון אפליקציה עכשיו לפי בקשת המנהל - המסך ייעלם לכמה שניות ויחזור"
+            : "עדכון עכשיו לא נתמך במסך הזה (אפליקציה ישנה או אנדרואיד לפני 12) - העדכון יוצע בלחיצת OK",
+        );
+        break;
     }
     l.log("info", "command", `פקודה מהמנהל: ${COMMAND_LABELS[cmd.command] ?? cmd.command}`, { command: cmd.command, payload: p });
     l.reportNow();
@@ -458,7 +480,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       const { slides: s, index: i, paused: p } = live.current;
       // An update is waiting: OK installs it instead of pausing the board.
       const u = updateRef.current;
-      if ((e.key === "Enter" || e.key === " ") && (u.state.phase === "ready" || u.state.phase === "permission")) {
+      if ((e.key === "Enter" || e.key === " ") && (u.state.phase === "ready" || u.state.phase === "permission" || u.state.phase === "allow")) {
         e.preventDefault();
         void u.install();
         return;

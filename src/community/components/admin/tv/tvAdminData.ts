@@ -39,6 +39,8 @@ export interface TvDeviceState {
   screen?: string;
   /** Drawn text size against laid-out size on the box (1 = as laid out). */
   textBoost?: number | null;
+  /** The app on the box (1.37+): version, and whether it updates itself at night. */
+  app?: { version: string; code: number; silent: boolean; canInstall: boolean; ready: string | null; error: string | null; result: string | null } | null;
   /** Panels whose content does not fit, on the slide showing now. */
   clipped?: string[];
 }
@@ -187,7 +189,8 @@ export type TvCommandName =
   | "theme"
   | "snapshot"
   | "message"
-  | "identify";
+  | "identify"
+  | "update";
 
 export async function sendCommand(deviceId: string | null, command: TvCommandName, payload: Record<string, unknown> = {}) {
   const { data: auth } = await tvDb.auth.getUser();

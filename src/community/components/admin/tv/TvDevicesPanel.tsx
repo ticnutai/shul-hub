@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Camera,
   Link2,
@@ -9,6 +9,7 @@ import {
   Pause,
   Pencil,
   Play,
+  Download,
   RefreshCw,
   ScanEye,
   SkipBack,
@@ -199,6 +200,17 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
       ? (clock - s.slideStartedAt) / ((s.slideSeconds ?? 20) * 1000)
       : 0;
 
+  // The app published on the website, to say which boxes are behind it.
+  const published = useQuery({
+    queryKey: ["tv-app-version"],
+    queryFn: async () => {
+      const r = await fetch(`/tv-version.json?t=${Date.now()}`, { cache: "no-store" });
+      return r.ok ? ((await r.json()) as { versionCode: number; versionName: string }) : null;
+    },
+    staleTime: 10 * 60_000,
+  });
+  const behind = Boolean(published.data && s.app && s.app.code < published.data.versionCode);
+
   const [busy, setBusy] = useState<string | null>(null);
   const run = async (label: string, command: TvCommandName, payload?: Record<string, unknown>) => {
     setBusy(label);
@@ -242,6 +254,28 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
         {s.paused && <Badge variant="outline">⏸ מושהה</Badge>}
         {s.themeOverride && <Badge variant="outline">ערכה מהשלט: {getTheme(s.themeOverride, baseConfig?.customThemes).name}</Badge>}
         {/* What the box itself measured (screenHealth.ts): text the TV enlarged, and what does not fit. */}
+        {s.app ? (
+          <Badge
+            variant={behind ? "destructive" : "outline"}
+            title={
+              s.app.silent
+                ? s.app.canInstall
+                  ? "מתעדכנת לבד בלילה (02:00-05:00)"
+                  : "תתעדכן לבד אחרי אישור חד-פעמי של 'התקנת אפליקציות' במסך (OK בשלט)"
+                : "העדכון מוצע על המסך ומותקן בלחיצת OK"
+            }
+          >
+            אפליקציה {s.app.version}
+            {behind ? ` · יש ${published.data?.versionName}` : ""}
+            {s.app.silent ? (s.app.canInstall ? " · עדכון שקט" : " · ממתין לאישור התקנה") : ""}
+          </Badge>
+        ) : (
+          published.data && (
+            <Badge variant="outline" title="התקנה חד-פעמית: Downloader בטלוויזיה, הכתובת shul-hub.lovable.app/tv.apk">
+              אפליקציה ישנה · לעדכון ידני פעם אחת
+            </Badge>
+          )
+        )}
         {typeof s.textBoost === "number" && Math.abs(s.textBoost - 1) >= 0.05 && (
           <Badge variant="outline" title="הטלוויזיה מגדילה או מקטינה את הטקסט בעצמה (הגדרת גודל הגופן של אנדרואיד)">
             טקסט ×{s.textBoost.toFixed(2)} מהטלוויזיה · מתוקן אוטומטית
@@ -373,6 +407,14 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
             <Button type="button" variant="outline" size="sm" onClick={() => run("reload", "reload")} disabled={busy !== null}>
               <RefreshCw className="size-4" /> טעינה מחדש
             </Button>
+            {/* The app on the box. From 1.38 on Android 12+ it updates itself at
+                night; this does it now. Older apps take one install by hand
+                (Downloader: shul-hub.lovable.app/tv.apk), after which they never need it again. */}
+            {behind && s.app?.silent && (
+              <Button type="button" variant="outline" size="sm" onClick={() => run("update", "update")} disabled={busy !== null}>
+                <Download className="size-4" /> עדכון אפליקציה עכשיו ({published.data?.versionName})
+              </Button>
+            )}
             <RemoveDevice device={device} />
           </div>
 

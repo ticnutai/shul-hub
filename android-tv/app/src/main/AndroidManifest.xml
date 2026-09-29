@@ -75,6 +75,7 @@
             android:directBootAware="true">
             <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
                 <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
                 <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
@@ -95,6 +96,11 @@
             android:name=".Keepalive"
             android:exported="false" />
 
+        <!-- Android's answer to a silent self-update (AutoUpdate). -->
+        <receiver
+            android:name=".InstallResult"
+            android:exported="false" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -113,6 +119,9 @@
     <!-- The board installs its own updates (ApkUpdater): Android still shows its
          installer and waits for OK on the remote. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- From Android 12: the board may update ITSELF without a person pressing
+         OK (AutoUpdate, at night). Older Android ignores this and asks. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <!-- Read so the display can tell "the server is down" from "this TV lost
          Wi-Fi", and reconnect promptly when the link returns. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />

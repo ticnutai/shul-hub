@@ -64,3 +64,29 @@ describe("the updater from the website (NativeBridge)", () => {
     expect(await bridgeUpdater(fake({ install: () => "permission" })).install()).toEqual({ needsPermission: true });
   });
 });
+
+describe("silent updates (app 1.38, Android 12+)", () => {
+  it("asks once, on the screen, for the permission to install", () => {
+    expect(updateText({ phase: "allow", version: "1.38" })).toContain("פעם אחת");
+  });
+
+  it("tells the admin what the app is and does 'update now' through the app", async () => {
+    const { nativeAppInfo, installUpdateNow } = await import("./apkUpdate");
+    let asked = 0;
+    (window as { ShulTvNative?: unknown }).ShulTvNative = {
+      info: () => JSON.stringify({ versionCode: 39, versionName: "1.38", canInstall: true, silent: true }),
+      download: () => true,
+      install: () => "installing",
+      installNow: () => {
+        asked++;
+        return true;
+      },
+    };
+    expect(nativeAppInfo()).toMatchObject({ versionName: "1.38", silent: true });
+    expect(installUpdateNow()).toBe(true);
+    expect(asked).toBe(1);
+    delete (window as { ShulTvNative?: unknown }).ShulTvNative;
+    expect(nativeAppInfo()).toBeNull();
+    expect(installUpdateNow()).toBe(false);
+  });
+});

@@ -31,14 +31,28 @@ final class NativeBridge {
         this.web = web;
     }
 
-    /** {versionCode, versionName, canInstall, downloaded} as JSON, or "" on failure. */
+    /**
+     * {versionCode, versionName, canInstall, downloaded, silent, ...} as JSON,
+     * or "" on failure. `silent`: this app updates itself at night (AutoUpdate),
+     * so the page's own "press OK" flow stands aside.
+     */
     @JavascriptInterface
     public String info() {
         try {
-            return UpdateFiles.info(activity).toString();
+            JSONObject info = UpdateFiles.info(activity);
+            AutoUpdate.describe(activity, info);
+            return info.toString();
         } catch (Exception e) {
             return "";
         }
+    }
+
+    /** "עדכון עכשיו" from the admin: check, fetch and install now, silently where Android allows. */
+    @JavascriptInterface
+    public boolean installNow() {
+        if (!AutoUpdate.silentCapable()) return false;
+        AutoUpdate.installNow(activity);
+        return true;
     }
 
     /** Starts the download; progress and the result arrive as `shul-apk` events. */

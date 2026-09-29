@@ -34,6 +34,8 @@ public class MainActivity extends BridgeActivity {
         // And the check that opens the board again if it ever stops being on
         // the screen (Keepalive).
         Keepalive.schedule(this);
+        // And updates itself at night, where Android allows it (AutoUpdate).
+        AutoUpdate.start(this);
 
         // The board is useless once the panel sleeps, and a TV with no input
         // events sleeps on its own schedule. The web layer also requests a

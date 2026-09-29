@@ -44,7 +44,11 @@ public class BootReceiver extends BroadcastReceiver {
         String action = intent == null ? null : intent.getAction();
         if (action == null) return;
 
+        // MY_PACKAGE_REPLACED: the app has just updated itself (AutoUpdate), and
+        // the update ended the old process - the board comes back the same way
+        // it comes back after a power cut.
         if (!Intent.ACTION_BOOT_COMPLETED.equals(action)
+            && !Intent.ACTION_MY_PACKAGE_REPLACED.equals(action)
             && !Intent.ACTION_LOCKED_BOOT_COMPLETED.equals(action)
             && !QUICKBOOT.equals(action)
             && !QUICKBOOT_HTC.equals(action)) {

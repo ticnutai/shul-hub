@@ -25,7 +25,7 @@ const db = typedClient as unknown as SupabaseClient;
 export interface TvCommand {
   id: number;
   device_id: string | null;
-  command: "pause" | "resume" | "next" | "prev" | "goto" | "reload" | "theme" | "snapshot" | "message" | "identify";
+  command: "pause" | "resume" | "next" | "prev" | "goto" | "reload" | "theme" | "snapshot" | "message" | "identify" | "update";
   payload: Record<string, unknown>;
   created_at: string;
 }
