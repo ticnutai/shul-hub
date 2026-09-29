@@ -324,7 +324,19 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const [textBoost, setTextBoost] = useState<number | null>(null);
   const [clippedNow, setClippedNow] = useState<string[]>([]);
   useEffect(() => {
-    const measure = () => setTextBoost(measureTextBoost());
+    const measure = () => {
+      const boost = measureTextBoost();
+      setTextBoost(boost);
+      // Android's text zoom cannot be switched off from a page (the app does
+      // it, from the next APK - MainActivity). What a page can do is ask for
+      // every size that much smaller: measured ×1.3 at אהל אברהם, where it
+      // pushed the zmanim out of their panel. The probe is a fixed 100px, so
+      // compensating does not change what is measured next time.
+      const root = document.documentElement;
+      if (boost && boost > 0.5 && boost < 2 && Math.abs(boost - 1) >= 0.03)
+        root.style.setProperty("--tv-text-boost", String(boost));
+      else root.style.removeProperty("--tv-text-boost");
+    };
     measure();
     void document.fonts?.ready.then(measure);
   }, []);

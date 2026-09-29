@@ -34,7 +34,11 @@
 
 .tv-root {
   --u: 1cqh;
-  --fs: calc(var(--u) * var(--tv-scale, 1));
+  /* --tv-text-boost: how much larger the TV draws text than it is asked to
+     (Android's text zoom; measured on the box, screenHealth.ts). Every size
+     is asked for that much smaller, so what reaches the wall is the size
+     the board was laid out at. 1 everywhere else. */
+  --fs: calc(var(--u) * var(--tv-scale, 1) / var(--tv-text-boost, 1));
   --tv-safe-x: 4cqw;
   --tv-safe-y: 3.6cqh;
   --tv-border: color-mix(in srgb, var(--tv-accent) 22%, transparent);
@@ -2276,7 +2280,7 @@
 .tv-analog-num {
   fill: var(--tv-text);
   font-family: var(--tv-font-display);
-  font-size: 19px;
+  font-size: calc((19px) / var(--tv-text-boost, 1));
   font-weight: 700;
 }
 
@@ -4642,7 +4646,7 @@
   width: 100%;
   height: 100%;
   padding: 4% 6%;
-  font-size: var(--ill-size, 1.95cqw);
+  font-size: calc((var(--ill-size, 1.95cqw)) / var(--tv-text-boost, 1));
 }
 
 .tv-ill-title {
@@ -4704,49 +4708,49 @@
 
 /* The clock sits in a painted medallion of fixed size: it keeps its own size and one line. */
 .tv-ill-clock {
-  font-size: 3.4cqw;
+  font-size: calc((3.4cqw) / var(--tv-text-boost, 1));
   white-space: nowrap;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .tv-ill-plaque {
-  font-size: calc(2.6cqw * var(--ill-k, 1));
+  font-size: calc((calc(2.6cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
   font-weight: 700;
 }
 
 .tv-ill-bar {
-  font-size: calc(1.5cqw * var(--ill-k, 1));
+  font-size: calc((calc(1.5cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
   font-weight: 700;
 }
 
 .tv-ill-name-big {
-  font-size: calc(2.6cqw * var(--ill-k, 1));
+  font-size: calc((calc(2.6cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
   font-weight: 700;
 }
 
 .tv-ill-day {
-  font-size: calc(1.8cqw * var(--ill-k, 1));
+  font-size: calc((calc(1.8cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
   font-weight: 700;
 }
 
 .tv-ill-sub {
-  font-size: calc(1.4cqw * var(--ill-k, 1));
+  font-size: calc((calc(1.4cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
 }
 
 .tv-ill-shabbat-title {
-  font-size: calc(2.1cqw * var(--ill-k, 1));
+  font-size: calc((calc(2.1cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
   font-weight: 700;
 }
 
 .tv-ill-shabbat-line {
   margin-top: 2%;
-  font-size: calc(1.7cqw * var(--ill-k, 1));
+  font-size: calc((calc(1.7cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
 }
 
 .tv-ill-shabbat-bless {
   margin-top: 6%;
-  font-size: calc(2.5cqw * var(--ill-k, 1));
+  font-size: calc((calc(2.5cqw * var(--ill-k, 1))) / var(--tv-text-boost, 1));
   font-weight: 700;
 }
 
@@ -4847,7 +4851,7 @@
   border: 1px solid rgba(240, 195, 92, 0.55);
   background: rgba(8, 12, 24, 0.9);
   color: #fff;
-  font-size: 1.4cqw;
+  font-size: calc((1.4cqw) / var(--tv-text-boost, 1));
   line-height: 1.3;
   box-shadow: 0 0.cqw 1.cqw rgba(0, 0, 0, 0.35);
 }
@@ -4867,7 +4871,7 @@
   background: rgba(8, 12, 24, 0.8);
 }
 .tv-event-splash.is-info .tv-event-title {
-  font-size: 2.cqw;
+  font-size: calc((2.cqw) / var(--tv-text-boost, 1));
 }
 .tv-event-card {
   position: relative;
@@ -4882,11 +4886,11 @@
   box-shadow: 0 cqw cqw rgba(0, 0, 0, 0.35);
 }
 .tv-event-date {
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
   opacity: 0.85;
 }
 .tv-event-title {
-  font-size: 4.cqw;
+  font-size: calc((4.cqw) / var(--tv-text-boost, 1));
   font-weight: 800;
   line-height: 1.1;
   margin: 0.cqw 0 cqw;
@@ -4894,7 +4898,7 @@
 }
 .tv-event-also {
   margin: -0.cqw 0 0.cqw;
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
   letter-spacing: 0.02em;
   opacity: 0.85;
 }
@@ -4912,14 +4916,14 @@
   align-items: baseline;
 }
 .tv-event-torah dt {
-  font-size: 1.3cqw;
+  font-size: calc((1.3cqw) / var(--tv-text-boost, 1));
   opacity: 0.8;
   white-space: nowrap;
 }
 .tv-event-torah dd {
   margin: 0;
   font-family: "Frank Ruhl Libre", "David Libre", serif;
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
   font-weight: 700;
   color: #f8ecc9;
   text-align: left;
@@ -4949,18 +4953,18 @@
   margin: 0;
 }
 .tv-event-verse-head {
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
   font-weight: 800;
   color: #f6d77a;
   letter-spacing: 0.03em;
   margin-bottom: 0.cqw;
 }
 .tv-event-verses blockquote {
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
 }
 .tv-event-verse figcaption {
   margin-top: 0.cqw;
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
   opacity: 0.7;
 }
 .tv-event-times {
@@ -4972,7 +4976,7 @@
   display: flex;
   justify-content: space-between;
   gap: cqw;
-  font-size: 2.cqw;
+  font-size: calc((2.cqw) / var(--tv-text-boost, 1));
   border-top: 1px solid rgba(255, 255, 255, 0.18);
   padding-top: 0.cqw;
 }
@@ -5025,17 +5029,17 @@
   padding: 1.cqw 2.cqw;
 }
 .tv-event-splash.is-full .tv-event-title {
-  font-size: 3.cqw;
+  font-size: calc((3.cqw) / var(--tv-text-boost, 1));
   margin-bottom: 0.cqw;
 }
 .tv-event-splash.is-full .tv-event-verse blockquote {
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
 }
 .tv-event-splash.is-full .tv-event-times {
   gap: 0.2cqw;
 }
 .tv-event-splash.is-full .tv-event-times > div {
-  font-size: 1.4cqw;
+  font-size: calc((1.4cqw) / var(--tv-text-boost, 1));
   padding-top: 0.2cqw;
 }
 .tv-event-grid {
@@ -5055,7 +5059,7 @@
   padding-top: 0.3cqw;
 }
 .tv-event-prayers dt {
-  font-size: 1.3cqw;
+  font-size: calc((1.3cqw) / var(--tv-text-boost, 1));
   font-weight: 800;
   color: #f6d77a;
 }
@@ -5064,7 +5068,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.cqw 0.cqw;
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   /* Read from the right, like the rest of the board: the earliest first. */
@@ -5082,7 +5086,7 @@
   margin-top: 0.cqw;
 }
 .tv-event-pages span {
-  font-size: 1.cqw;
+  font-size: calc((1.cqw) / var(--tv-text-boost, 1));
   padding: 0.1cqw 0.cqw;
   border-radius: 999px;
   border: 1px solid rgba(246, 215, 122, 0.35);
@@ -5128,12 +5132,12 @@
 
 .tv-menu-title {
   font-family: var(--tv-font-display);
-  font-size: calc(var(--u) * 2.4);
+  font-size: calc((calc(var(--u) * 2.4)) / var(--tv-text-boost, 1));
   color: #e9c46a;
 }
 
 .tv-menu-note {
-  font-size: calc(var(--u) * 1.5);
+  font-size: calc((calc(var(--u) * 1.5)) / var(--tv-text-boost, 1));
   opacity: 0.75;
 }
 
@@ -5158,7 +5162,7 @@
   gap: calc(var(--u) * 1.5);
   padding: calc(var(--u) * 1.1) calc(var(--u) * 1.4);
   border-radius: calc(var(--u) * 0.8);
-  font-size: calc(var(--u) * 1.8);
+  font-size: calc((calc(var(--u) * 1.8)) / var(--tv-text-boost, 1));
   /* A transparent border, so the focused row does not shift by a pixel. */
   border: 1px solid transparent;
 }
@@ -5175,13 +5179,13 @@
 }
 
 .tv-menu-value {
-  font-size: calc(var(--u) * 1.4);
+  font-size: calc((calc(var(--u) * 1.4)) / var(--tv-text-boost, 1));
   opacity: 0.85;
   white-space: nowrap;
 }
 
 .tv-menu-hint {
-  font-size: calc(var(--u) * 1.3);
+  font-size: calc((calc(var(--u) * 1.3)) / var(--tv-text-boost, 1));
   opacity: 0.6;
 }
 

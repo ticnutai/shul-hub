@@ -244,7 +244,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
         {/* What the box itself measured (screenHealth.ts): text the TV enlarged, and what does not fit. */}
         {typeof s.textBoost === "number" && Math.abs(s.textBoost - 1) >= 0.05 && (
           <Badge variant="outline" title="הטלוויזיה מגדילה או מקטינה את הטקסט בעצמה (הגדרת גודל הגופן של אנדרואיד)">
-            טקסט ×{s.textBoost.toFixed(2)} מהטלוויזיה
+            טקסט ×{s.textBoost.toFixed(2)} מהטלוויזיה · מתוקן אוטומטית
           </Badge>
         )}
         {Array.isArray(s.clipped) && s.clipped.length > 0 && (
