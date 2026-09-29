@@ -99,6 +99,20 @@ function minutesInJerusalem(d: Date): number {
   return minutesFromHHMM(formatTime(d));
 }
 
+/**
+ * Where a minyan falls in the day, for ordering and for "what is next".
+ *
+ * A day of prayer does not end at midnight: an arvit at 00:00 is the last
+ * minyan of the evening, not the first of the morning. Counted from midnight
+ * it sorted before shacharit - the wall at אהל אברהם listed "ערבית 00:00,
+ * 18:54, 19:30..." - and at 23:40 it counted as already over. Anything before
+ * 03:00 belongs to the end of the day it is listed in.
+ */
+export const PRAYER_DAY_STARTS = 3 * 60;
+function onPrayerDay(minutes: number): number {
+  return minutes < PRAYER_DAY_STARTS ? minutes + 24 * 60 : minutes;
+}
+
 export function resolveMinyan(
   minyan: Minyan,
   zmanim: Zmanim,
@@ -114,7 +128,7 @@ export function resolveMinyan(
       return {
         minyan,
         time: hhmm,
-        minutes: minutesFromHHMM(hhmm),
+        minutes: onPrayerDay(minutesFromHHMM(hhmm)),
         source: override.cancelled ? "מבוטל היום" : "היום בלבד",
         cancelled: override.cancelled,
         overridden: true,
@@ -137,7 +151,7 @@ export function resolveMinyan(
     return {
       minyan,
       time: hhmm,
-      minutes: minutesFromHHMM(hhmm),
+      minutes: onPrayerDay(minutesFromHHMM(hhmm)),
       source: "שעה קבועה",
     };
   }
@@ -156,7 +170,7 @@ export function resolveMinyan(
       : off > 0
         ? `${off} דק׳ אחרי ${relLabel}`
         : `${Math.abs(off)} דק׳ לפני ${relLabel}`;
-  return { minyan, time: formatTime(d), minutes: minutesInJerusalem(d), source };
+  return { minyan, time: formatTime(d), minutes: onPrayerDay(minutesInJerusalem(d)), source };
 }
 
 export const RELATIVE_LABELS: Record<SolarEvent, string> = {

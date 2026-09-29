@@ -117,3 +117,31 @@ describe("which day an override belongs to", () => {
     expect(map.get("m1")?.at_time).toBe("09:00");
   });
 });
+
+describe("a minyan after midnight", () => {
+  // אהל אברהם has an arvit at 00:00. Counted from midnight it came first,
+  // before shacharit, on the wall - "ערבית 00:00, 18:54, 19:30...".
+  const midnight = minyan({ id: "late", label: "ערבית י״א", prayer: "arvit", fixed_time: "00:00:00" });
+  const evening = minyan({ id: "eve", label: "ערבית א׳", prayer: "arvit", fixed_time: "19:30:00" });
+  const morning = minyan({ id: "shach", label: "שחרית", prayer: "shacharit", fixed_time: "06:15:00" });
+
+  it("is the last minyan of the day, not the first", () => {
+    const order = [midnight, evening, morning]
+      .map((m) => resolveMinyan(m, ZMANIM)!)
+      .sort((a, b) => a.minutes - b.minutes)
+      .map((r) => r.time);
+    expect(order).toEqual(["06:15", "19:30", "00:00"]);
+  });
+
+  it("is still ahead at 23:40", () => {
+    const r = resolveMinyan(midnight, ZMANIM)!;
+    expect(r.minutes).toBeGreaterThan(23 * 60 + 40);
+    // Still written as the clock shows it.
+    expect(r.time).toBe("00:00");
+  });
+
+  it("an early-morning minyan is where it always was", () => {
+    const vatikin = resolveMinyan(minyan({ fixed_time: "05:10:00" }), ZMANIM)!;
+    expect(vatikin.minutes).toBe(5 * 60 + 10);
+  });
+});

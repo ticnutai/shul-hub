@@ -68,7 +68,8 @@ describe("the synagogue menu on the screen", () => {
   it("moves with the arrows and moves the screen with OK", async () => {
     const { props } = show();
     await screen.findByText(MAIN.name);
-    // The first row is the first synagogue; OK on it moves the screen there.
+    // It opens on this screen's synagogue (the second row); up is the first.
+    press("ArrowUp");
     press("Enter");
     await waitFor(() => expect(setDeviceCommunity).toHaveBeenCalledWith(MAIN.id));
     // The board is rebuilt from that synagogue's own data, so it starts again.
@@ -94,8 +95,7 @@ describe("the synagogue menu on the screen", () => {
   it("keeps the theme, which used to be on these arrows and nowhere else", async () => {
     const { props } = show();
     await screen.findByText(MAIN.name);
-    // Past the two synagogues is the theme row.
-    press("ArrowDown");
+    // It opens on this screen's synagogue, the second row; next is the theme.
     press("ArrowDown");
     press("Enter");
     expect(props.onTheme).toHaveBeenCalledWith("parchment");
@@ -107,6 +107,7 @@ describe("the synagogue menu on the screen", () => {
     // A TV remote's OK repeats while held, and the flag the handler could see
     // never changed, so the move was sent twice - twice in the screen's log,
     // as the real box showed.
+    press("ArrowUp");
     press("Enter");
     press("Enter");
     press("Enter");
@@ -120,7 +121,8 @@ describe("the synagogue menu on the screen", () => {
     const { props } = show();
     await screen.findByText(MAIN.name);
     expect(screen.getByText("סגירה")).toBeTruthy();
-    for (let i = 0; i < 3; i++) press("ArrowDown");
+    // From this screen's synagogue: the theme, then the close.
+    for (let i = 0; i < 2; i++) press("ArrowDown");
     press("Enter");
     expect(props.onClose).toHaveBeenCalled();
     expect(setDeviceCommunity).not.toHaveBeenCalled();
@@ -134,9 +136,10 @@ describe("the synagogue menu on the screen", () => {
     // of changing the theme - which is how it was reported.
     show();
     await screen.findByText(MAIN.name);
-    // Four rows: two synagogues, the theme, the close. Four downs come back
-    // to the first, which only holds if the whole list is being counted.
-    for (let i = 0; i < 4; i++) press("ArrowDown");
+    // Four rows: two synagogues, the theme, the close. From the second, three
+    // downs wrap round to the first, which only holds if the whole list is
+    // being counted.
+    for (let i = 0; i < 3; i++) press("ArrowDown");
     press("Enter");
     // Row 0 is a synagogue, and this screen is not on it.
     await waitFor(() => expect(setDeviceCommunity).toHaveBeenCalledWith(MAIN.id));
@@ -155,8 +158,21 @@ describe("the synagogue menu on the screen", () => {
     // Once it is there, the keys work as normal.
     release([MAIN, TORAH]);
     await screen.findByText(MAIN.name);
+    press("ArrowUp");
     press("Enter");
     await waitFor(() => expect(setDeviceCommunity).toHaveBeenCalledWith(MAIN.id));
+  });
+
+  it("opens on the synagogue this screen shows, so a stray OK changes nothing", async () => {
+    // אהל אברהם's screen was moved to another shul by the menu: it opened on
+    // the first synagogue in the list, and an arrow and OK were enough.
+    const { props } = show();
+    await screen.findByText(MAIN.name);
+    const active = document.querySelector(".tv-menu-row.is-active");
+    expect(active?.textContent).toContain(TORAH.name);
+    press("Enter");
+    expect(setDeviceCommunity).not.toHaveBeenCalled();
+    expect(props.onClose).toHaveBeenCalled();
   });
 
   it("says so rather than failing silently when the list will not load", async () => {

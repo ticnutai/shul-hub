@@ -94,7 +94,17 @@ export function ScreenMenu({
     let alive = true;
     setError(null);
     listCommunities()
-      .then((rows) => alive && setCommunities(rows))
+      .then((rows) => {
+        if (!alive) return;
+        setCommunities(rows);
+        // Start on the synagogue this screen already shows. Starting on the
+        // first in the list meant a stray arrow and OK - somebody waking the
+        // box, or looking for the board's own arrows - moved the screen to
+        // another shul. It happened at אהל אברהם: its screen ended up
+        // showing אושר של יהודי. From here a stray OK changes nothing.
+        const here = rows.findIndex((r) => r.id === currentCommunity);
+        if (here >= 0) setIndex(here);
+      })
       .catch(() => alive && setError("אין חיבור - רשימת בתי הכנסת לא נטענה"));
     return () => {
       alive = false;
