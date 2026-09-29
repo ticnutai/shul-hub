@@ -8,8 +8,9 @@ import { Capacitor, registerPlugin, type PluginListenerHandle } from "@capacitor
  * install". Android's installer then asks for one more OK - an app can never
  * install itself silently on a device nobody manages.
  *
- * Needs the ApkUpdater plugin (android-tv, from 1.35). On an older app, or in
- * a browser, nothing here runs.
+ * Needs the ApkUpdater plugin (android-tv, from 1.35) when the board runs from
+ * the APK's own copy, or NativeBridge (from 1.37) when it runs from the
+ * website, as every box does. On an older app, or in a browser, nothing here runs.
  */
 
 interface ApkUpdaterPlugin {
@@ -19,7 +20,72 @@ interface ApkUpdaterPlugin {
   addListener(event: "progress", fn: (e: { percent: number }) => void): Promise<PluginListenerHandle>;
 }
 
-const ApkUpdater = registerPlugin<ApkUpdaterPlugin>("ApkUpdater");
+const ApkUpdaterPluginImpl = registerPlugin<ApkUpdaterPlugin>("ApkUpdater");
+
+/**
+ * The same updater through the WebView's own bridge (NativeBridge.java, from
+ * app 1.37).
+ *
+ * Every box shows the board from the website, and there Capacitor's plugins
+ * are not reachable - so the plugin above never ran on a wall, and a box kept
+ * whatever APK it was first given. A JavaScript interface belongs to the
+ * WebView, not to the page's origin, and is there either way. Its download
+ * reports back through `shul-apk` events.
+ */
+export interface ShulTvNative {
+  info(): string;
+  download(url: string): boolean;
+  install(): string;
+}
+
+function nativeBridge(): ShulTvNative | null {
+  const n = (window as { ShulTvNative?: ShulTvNative }).ShulTvNative;
+  return n && typeof n.info === "function" ? n : null;
+}
+
+export function bridgeUpdater(n: ShulTvNative): ApkUpdaterPlugin {
+  const progressFns = new Set<(e: { percent: number }) => void>();
+  return {
+    async info() {
+      const raw = n.info();
+      if (!raw) throw new Error("info failed");
+      return JSON.parse(raw);
+    },
+    download({ url }) {
+      return new Promise((resolve, reject) => {
+        const onEvent = (e: Event) => {
+          const d = (e as CustomEvent<{ type: string; percent?: number; bytes?: number; message?: string }>).detail;
+          if (d.type === "progress") progressFns.forEach((fn) => fn({ percent: d.percent ?? 0 }));
+          else {
+            window.removeEventListener("shul-apk", onEvent);
+            if (d.type === "done") resolve({ bytes: d.bytes ?? 0 });
+            else reject(new Error(d.message ?? "download failed"));
+          }
+        };
+        window.addEventListener("shul-apk", onEvent);
+        if (!n.download(url)) {
+          window.removeEventListener("shul-apk", onEvent);
+          reject(new Error("url not allowed"));
+        }
+      });
+    },
+    async install() {
+      const r = n.install();
+      if (r === "error") throw new Error("install failed");
+      return { needsPermission: r === "permission" };
+    },
+    async addListener(_event, fn) {
+      progressFns.add(fn);
+      return { remove: async () => void progressFns.delete(fn) } as PluginListenerHandle;
+    },
+  };
+}
+
+/** The plugin when the board runs from the APK's own copy; the bridge when it runs from the website. */
+function updater(): ApkUpdaterPlugin {
+  const n = nativeBridge();
+  return n && !(Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("ApkUpdater")) ? bridgeUpdater(n) : ApkUpdaterPluginImpl;
+}
 
 export const VERSION_URL = "https://shul-hub.lovable.app/tv-version.json";
 const CHECK_EVERY_MS = 3 * 60 * 60 * 1000;
@@ -45,7 +111,7 @@ export type UpdateState =
   | { phase: "permission"; version: string };
 
 export function canSelfUpdate(): boolean {
-  return Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("ApkUpdater");
+  return (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable("ApkUpdater")) || nativeBridge() !== null;
 }
 
 /** Checks, downloads and offers the update. `install()` is what OK on the remote calls. */
@@ -58,6 +124,7 @@ export function useApkUpdate(log?: (msg: string) => void): { state: UpdateState;
   const check = useCallback(async () => {
     if (busy.current || !canSelfUpdate()) return;
     busy.current = true;
+    const ApkUpdater = updater();
     try {
       const mine = await ApkUpdater.info();
       const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: "no-store" });
@@ -97,7 +164,7 @@ export function useApkUpdate(log?: (msg: string) => void): { state: UpdateState;
   const install = useCallback(async () => {
     if (state.phase !== "ready" && state.phase !== "permission") return false;
     try {
-      const r = await ApkUpdater.install();
+      const r = await updater().install();
       // First time: Android opened its "allow installs from this app" screen; after that, OK again.
       setState(r.needsPermission ? { phase: "permission", version: state.version } : { phase: "ready", version: state.version });
       logRef.current?.(r.needsPermission ? "נפתח מסך ההרשאה להתקנה" : "נפתח מתקין אנדרואיד");

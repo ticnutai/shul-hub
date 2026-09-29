@@ -28,3 +28,39 @@ describe("board app self-update", () => {
     expect(newerVersion(published, 0)).not.toBeNull();
   });
 });
+
+describe("the updater from the website (NativeBridge)", () => {
+  const fake = (over: Partial<import("./apkUpdate").ShulTvNative> = {}) => ({
+    info: () => JSON.stringify({ versionCode: 37, versionName: "1.36", canInstall: true, downloaded: false }),
+    download: () => true,
+    install: () => "installing",
+    ...over,
+  });
+
+  it("is found on a box whose board comes from the website", async () => {
+    const { canSelfUpdate } = await import("./apkUpdate");
+    expect(canSelfUpdate()).toBe(false);
+    (window as { ShulTvNative?: unknown }).ShulTvNative = fake();
+    expect(canSelfUpdate()).toBe(true);
+    delete (window as { ShulTvNative?: unknown }).ShulTvNative;
+  });
+
+  it("reads the installed version and finishes a download when the app says so", async () => {
+    const { bridgeUpdater } = await import("./apkUpdate");
+    const u = bridgeUpdater(fake());
+    expect((await u.info()).versionCode).toBe(37);
+    const seen: number[] = [];
+    await u.addListener("progress", (e) => seen.push(e.percent));
+    const done = u.download({ url: "https://shul-hub.lovable.app/tv.apk" });
+    window.dispatchEvent(new CustomEvent("shul-apk", { detail: { type: "progress", percent: 50 } }));
+    window.dispatchEvent(new CustomEvent("shul-apk", { detail: { type: "done", bytes: 5_000_000 } }));
+    await expect(done).resolves.toEqual({ bytes: 5_000_000 });
+    expect(seen).toEqual([50]);
+  });
+
+  it("reports a refused download and the permission screen", async () => {
+    const { bridgeUpdater } = await import("./apkUpdate");
+    await expect(bridgeUpdater(fake({ download: () => false })).download({ url: "https://evil.example/x.apk" })).rejects.toThrow();
+    expect(await bridgeUpdater(fake({ install: () => "permission" })).install()).toEqual({ needsPermission: true });
+  });
+});

@@ -58,6 +58,9 @@ public class MainActivity extends BridgeActivity {
         // board has its own text size, set by the gabbai in the editor.
         if (getBridge() != null) {
             getBridge().getWebView().getSettings().setTextZoom(100);
+            // The updater, reachable from the board on the website too (NativeBridge).
+            WebView web = getBridge().getWebView();
+            web.addJavascriptInterface(new NativeBridge(this, web), NativeBridge.NAME);
         }
 
         View decor = getWindow().getDecorView();
