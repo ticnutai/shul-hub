@@ -7,8 +7,8 @@ import {
   Check,
   ExternalLink,
   Expand,
-  Maximize2,
-  Minimize2,
+  Columns2,
+  Rows2,
   ImagePlus,
   Minus,
   Pencil,
@@ -172,6 +172,7 @@ import { DayLooksEditor } from "./DayLooksEditor";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
+import { SplitHandle } from "./SplitHandle";
 import { commitRecordEdits } from "./tvRecords";
 import { mergeConfig, sameJson } from "@/tv/configMerge";
 import { draftReducer } from "./draftState";
@@ -535,9 +536,47 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [studio, selected]);
-  // A bigger preview: "wide" stacks the controls under a full-width preview;
-  // fullscreen puts the preview column alone on the whole screen.
-  const [wide, setWide] = useState(false);
+  /**
+   * How the editor is laid out, and how much room each part has.
+   *
+   * "side": the controls and the board side by side, with a bar between
+   * them to widen either. "top": the board on top, staying put under the
+   * site's header while the controls scroll beneath it, with a bar under it
+   * to make it taller or shorter. Both, and the sizes, are remembered in
+   * this browser. Fullscreen still puts the board column alone on the screen.
+   */
+  const [layout, setLayoutState] = useState<"side" | "top">(() => (readStored(LAYOUT_KEY) === "top" ? "top" : "side"));
+  const setLayout = (next: "side" | "top") => {
+    setLayoutState(next);
+    writeStored(LAYOUT_KEY, next);
+  };
+  const [sideShare, setSideShareState] = useState(() => clampShare(Number(readStored(SIDE_KEY)) || SIDE_SHARE_DEFAULT));
+  const setSideShare = (v: number) => {
+    const next = clampShare(v);
+    setSideShareState(next);
+    writeStored(SIDE_KEY, String(next));
+  };
+  const [topHeight, setTopHeightState] = useState(() => clampHeight(Number(readStored(TOP_KEY)) || TOP_HEIGHT_DEFAULT));
+  const setTopHeight = (v: number) => {
+    const next = clampHeight(v);
+    setTopHeightState(next);
+    writeStored(TOP_KEY, String(Math.round(next)));
+  };
+  const splitBox = useRef<HTMLDivElement>(null);
+  /** Side by side needs a desktop; below it the two stack, as they always did. */
+  const [isLarge, setIsLarge] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
+  /** The site's header is pinned too: the board is pinned under it, not behind it. */
+  const [headerOffset, setHeaderOffset] = useState(0);
+  useEffect(() => {
+    const measure = () => {
+      setIsLarge(window.innerWidth >= 1024);
+      const header = document.querySelector<HTMLElement>('[data-testid="global-app-header"]');
+      setHeaderOffset(header ? Math.round(header.getBoundingClientRect().height) : 0);
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
   /**
    * A palette sent by the Figma plugin: it arrives in the URL fragment, is
    * read once, and the address is cleaned so a refresh does not import it
@@ -2155,132 +2194,202 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     );
   }
 
+  const top = layout === "top" && !fullscreen;
+  const side = layout === "side" && !fullscreen;
+  // The studio in "top": as wide as the height it was given allows, so the
+  // whole board stays in view however low the bar is dragged. The toolbar
+  // and captions around the frame take about 120px.
+  const studioWidth = top ? { maxWidth: `calc((${topHeight}px - 120px) * 16 / 9)` } : undefined;
+
+  const layoutButtons = (
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="פריסת העורך">
+        <Button
+          type="button"
+          variant={layout === "side" ? "default" : "ghost"}
+          size="sm"
+          className="h-7"
+          aria-pressed={layout === "side"}
+          onClick={() => setLayout("side")}
+          title="הבקרות והתצוגה זו לצד זו, עם ידית ביניהן לשינוי הרוחב"
+        >
+          <Columns2 className="size-4" /> זה לצד זה
+        </Button>
+        <Button
+          type="button"
+          variant={layout === "top" ? "default" : "ghost"}
+          size="sm"
+          className="h-7"
+          aria-pressed={layout === "top"}
+          onClick={() => setLayout("top")}
+          title="התצוגה למעלה ונשארת במקום, הבקרות מתחתיה נגללות, עם ידית לשינוי הגובה"
+        >
+          <Rows2 className="size-4" /> תצוגה למעלה
+        </Button>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={toggleFullscreen}
+        title="התצוגה והעורך על כל המסך (Esc ליציאה)"
+      >
+        <Expand className="size-4" /> {fullscreen ? "יציאה ממסך מלא" : "מסך מלא לעריכה"}
+      </Button>
+    </div>
+  );
+
+  const studioView = (
+    <div className="mx-auto w-full" style={studioWidth}>
+      <TvDeviceStudio
+        onDeviceChange={onDeviceChange}
+        preview={preview}
+        {...board}
+        config={state.present}
+        index={index}
+        cycle={cycle}
+        progress={0}
+        paused={!autoplay}
+        editing={editing}
+        selected={selected}
+        onSelect={setSelected}
+        onEdit={edit}
+        large={top || fullscreen}
+      />
+    </div>
+  );
+
+  /** Everything under the board: the inspector, the actions, the slides, the save bar. */
+  const underPreview = (
+    <>
+      {editing && (
+        <div className="mt-3">
+          <TvEditInspector
+            selected={selected}
+            config={view}
+            data={board.data}
+            onEdit={edit}
+            onSelect={setSelected}
+          />
+        </div>
+      )}
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {previewActions}
+        <span className="ms-auto flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            title="פותח את הלוח על כל המסך בחלון נפרד, עם כל כלי העריכה בחלונית צפה. השינויים עוברים בין החלון לכאן בשני הכיוונים, ונשמרים רק ב'שמור ושדר'. אפשר לגרור אותו למסך שני או לטלוויזיה שמחוברת למחשב."
+            onClick={() => window.open("/admin/tv-board?draft=1", "shul-tv-draft")}
+          >
+            <ExternalLink className="size-4" /> עורך חי בחלון נפרד
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            title="הלוח במסך מלא בעיצוב השמור, בדיוק כמו בטלוויזיות. מתאים גם כדי להשתמש במחשב כמסך תצוגה."
+            onClick={() => window.open("/admin/tv-board", "_blank")}
+          >
+            <ExternalLink className="size-4" /> לוח במסך מלא
+          </Button>
+        </span>
+      </div>
+      <div className="mt-2">
+        <SlideStrip
+          slides={board.slides}
+          index={index}
+          onPick={(i) => {
+            setPreviewIndex(i);
+            setCycle((c) => c + 1);
+          }}
+        />
+      </div>
+
+      {/* The same save as the bar at the top, kept under the preview.
+
+          The options run to several screens, so by the time somebody has
+          finished changing something the only button that matters has
+          scrolled out of sight, and they have to go back up to press it.
+          It shows only while there is something to save, so a board that
+          is up to date carries no extra furniture. */}
+      {dirty && (
+        <div
+          data-sticky-chrome
+          className="sticky bottom-0 z-20 -mx-1 mt-3 flex items-center gap-2 border-t bg-background/95 px-1 py-2 backdrop-blur"
+        >
+          <span className="text-xs text-muted-foreground">יש שינויים שלא נשמרו</span>
+          <Button type="button" size="sm" className="ms-auto" onClick={save} disabled={saving}>
+            <Save className="size-4" /> {saving ? "שומר…" : "שמור ושדר למסכים"}
+          </Button>
+        </div>
+      )}
+    </>
+  );
+
+  if (top)
+    return (
+      <div className="space-y-4">
+        {/* The board stays under the site's header while the controls
+            scroll beneath it; the bar under it sets how much of the screen
+            it takes. The column is the fullscreen target, as in "side". */}
+        <div
+          ref={previewColumn}
+          className="sticky z-30 -mx-1 bg-background px-1 pb-1 shadow-[0_6px_12px_-10px_rgba(0,0,0,0.35)]"
+          style={{ top: headerOffset }}
+          data-testid="editor-preview-top"
+        >
+          {layoutButtons}
+          <div className="mt-2 overflow-y-auto" style={{ height: topHeight }}>
+            {studioView}
+          </div>
+          <SplitHandle
+            orientation="horizontal"
+            label="גובה התצוגה"
+            onDrag={(y) => {
+              const box = previewColumn.current?.getBoundingClientRect();
+              if (box) setTopHeight(y - box.top - 44);
+            }}
+            onStep={(d) => setTopHeight(topHeight + d * 40)}
+            onReset={() => setTopHeight(TOP_HEIGHT_DEFAULT)}
+          />
+        </div>
+        {underPreview}
+        <div className="space-y-4">{controls}</div>
+      </div>
+    );
+
   return (
     <div
-      className={`grid gap-5 ${
-        wide || fullscreen
-          ? ""
-          : "lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]"
-      }`}
+      ref={splitBox}
+      className={`gap-2 ${side ? "grid lg:gap-2" : "grid gap-5"}`}
+      style={
+        side && isLarge
+          ? { gridTemplateColumns: `minmax(0, ${1 - sideShare}fr) auto minmax(0, ${sideShare}fr)` }
+          : undefined
+      }
     >
       {/* ------------------------------------------------ preview column -- */}
       <div
         ref={previewColumn}
-        className={`order-1 space-y-3 lg:order-2 ${
-          fullscreen ? "overflow-auto bg-background p-4" : ""
-        }`}
+        className={`order-1 space-y-3 lg:order-3 ${fullscreen ? "overflow-auto bg-background p-4" : ""}`}
       >
         {/* Pinned while the controls scroll. It is capped to the window
             height and scrolls inside itself, because a sticky block taller
             than the window simply scrolls away - which left the whole left
             side of a wide screen empty. */}
         <div
-          className={
-            wide || fullscreen
-              ? "space-y-3"
-              : "lg:sticky lg:top-4 lg:max-h-[calc(100dvh-2rem)] lg:space-y-3 lg:overflow-y-auto lg:pe-1"
+          className={fullscreen ? "space-y-3" : "lg:sticky lg:space-y-3 lg:overflow-y-auto lg:pe-1"}
+          style={
+            fullscreen || !isLarge
+              ? undefined
+              : { top: headerOffset + 8, maxHeight: `calc(100dvh - ${headerOffset + 16}px)` }
           }
         >
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant={wide ? "default" : "outline"}
-              size="sm"
-              aria-pressed={wide}
-              onClick={() => setWide((w) => !w)}
-              title="התצוגה על כל רוחב המסך, והבקרות מתחתיה"
-            >
-              {wide ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}{" "}
-              {wide ? "תצוגה רגילה" : "תצוגה רחבה"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={toggleFullscreen}
-              title="התצוגה והעורך על כל המסך (Esc ליציאה)"
-            >
-              <Expand className="size-4" /> {fullscreen ? "יציאה ממסך מלא" : "מסך מלא לעריכה"}
-            </Button>
-          </div>
-          <TvDeviceStudio
-            onDeviceChange={onDeviceChange}
-            preview={preview}
-            {...board}
-            config={state.present}
-            index={index}
-            cycle={cycle}
-            progress={0}
-            paused={!autoplay}
-            editing={editing}
-            selected={selected}
-            onSelect={setSelected}
-            onEdit={edit}
-            large={wide || fullscreen}
-          />
-          {editing && (
-            <div className="mt-3">
-              <TvEditInspector
-                selected={selected}
-                config={view}
-                data={board.data}
-                onEdit={edit}
-                onSelect={setSelected}
-              />
-            </div>
-          )}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            {previewActions}
-            <span className="ms-auto flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                title="פותח את הלוח על כל המסך בחלון נפרד, עם כל כלי העריכה בחלונית צפה. השינויים עוברים בין החלון לכאן בשני הכיוונים, ונשמרים רק ב'שמור ושדר'. אפשר לגרור אותו למסך שני או לטלוויזיה שמחוברת למחשב."
-                onClick={() => window.open("/admin/tv-board?draft=1", "shul-tv-draft")}
-              >
-                <ExternalLink className="size-4" /> עורך חי בחלון נפרד
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                title="הלוח במסך מלא בעיצוב השמור, בדיוק כמו בטלוויזיות. מתאים גם כדי להשתמש במחשב כמסך תצוגה."
-                onClick={() => window.open("/admin/tv-board", "_blank")}
-              >
-                <ExternalLink className="size-4" /> לוח במסך מלא
-              </Button>
-            </span>
-          </div>
-          <div className="mt-2">
-            <SlideStrip
-              slides={board.slides}
-              index={index}
-              onPick={(i) => {
-                setPreviewIndex(i);
-                setCycle((c) => c + 1);
-              }}
-            />
-          </div>
-
-          {/* The same save as the bar at the top, kept under the preview.
-
-              The options run to several screens, so by the time somebody has
-              finished changing something the only button that matters has
-              scrolled out of sight, and they have to go back up to press it.
-              It shows only while there is something to save, so a board that
-              is up to date carries no extra furniture. */}
-          {dirty && (
-            <div
-              data-sticky-chrome
-              className="sticky bottom-0 z-20 -mx-1 mt-3 flex items-center gap-2 border-t bg-background/95 px-1 py-2 backdrop-blur"
-            >
-              <span className="text-xs text-muted-foreground">יש שינויים שלא נשמרו</span>
-              <Button type="button" size="sm" className="ms-auto" onClick={save} disabled={saving}>
-                <Save className="size-4" /> {saving ? "שומר…" : "שמור ושדר למסכים"}
-              </Button>
-            </div>
-          )}
+          {layoutButtons}
+          {studioView}
+          {underPreview}
 
           {/* In full screen only this column is on the screen - the browser
               puts *it* into fullscreen, not the page - so the controls come
@@ -2291,8 +2400,25 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </div>
       </div>
 
+      {/* --------------------------------------------- the bar between -- */}
+      {side && isLarge && (
+        <div className="order-2 hidden lg:flex">
+          <SplitHandle
+            orientation="vertical"
+            label="רוחב התצוגה מול הבקרות"
+            onDrag={(x) => {
+              const box = splitBox.current?.getBoundingClientRect();
+              // The preview is the left column (the page is right to left).
+              if (box) setSideShare((x - box.left) / box.width);
+            }}
+            onStep={(d) => setSideShare(sideShare + d * 0.05)}
+            onReset={() => setSideShare(SIDE_SHARE_DEFAULT)}
+          />
+        </div>
+      )}
+
       {/* ----------------------------------------------- controls column -- */}
-      <div className="order-2 space-y-4 lg:order-1">{!fullscreen && controls}</div>
+      <div className="order-3 space-y-4 lg:order-1">{!fullscreen && controls}</div>
     </div>
   );
 }
@@ -2349,4 +2475,40 @@ function LeadMinutesEditor({
       )}
     </div>
   );
+}
+
+/* ------------------------------------------------------ editor layout -- */
+
+const LAYOUT_KEY = "shul-hub.tv-editor.layout";
+const SIDE_KEY = "shul-hub.tv-editor.side-share";
+const TOP_KEY = "shul-hub.tv-editor.top-height";
+/** The board's share of the width, side by side - what the page gave it before. */
+const SIDE_SHARE_DEFAULT = 0.52;
+const TOP_HEIGHT_DEFAULT = 440;
+
+/** Neither side so narrow it is useless: a board under 30%, controls under 25%. */
+function clampShare(v: number): number {
+  return Math.min(0.75, Math.max(0.3, v));
+}
+
+/** A board at least readable, and room left for at least a few controls. */
+function clampHeight(v: number): number {
+  const max = typeof window === "undefined" ? 900 : Math.max(260, window.innerHeight - 260);
+  return Math.min(max, Math.max(220, v));
+}
+
+function readStored(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeStored(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* private mode: it simply is not remembered */
+  }
 }
