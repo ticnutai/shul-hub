@@ -4802,15 +4802,15 @@
    board's own clock for a whole Shabbat. */
 .tv-event-clock {
   position: absolute;
-  top: 2.4vw;
-  left: 3vw;
+  top: 2.cqw;
+  left: cqw;
   z-index: 2;
-  padding: 0.5vw 1.4vw;
-  border-radius: 1vw;
+  padding: 0.cqw 1.cqw;
+  border-radius: cqw;
   background: rgba(8, 12, 24, 0.55);
   backdrop-filter: blur(6px);
   color: #fff;
-  font-size: 4vw;
+  font-size: cqw;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -4820,122 +4820,152 @@
 .tv-event-splash.is-info {
   pointer-events: none;
 }
+/* The day beside other content: a line along the bottom, over the footer. */
+.tv-event-splash.is-banner {
+  align-items: flex-end;
+  justify-content: center;
+}
+.tv-event-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4em 1.4em;
+  max-width: 92%;
+  margin-bottom: 0.9%;
+  padding: 0.35em 1.3em;
+  border-radius: 999px;
+  border: 1px solid rgba(240, 195, 92, 0.55);
+  background: rgba(8, 12, 24, 0.9);
+  color: #fff;
+  font-size: 1.4cqw;
+  line-height: 1.3;
+  box-shadow: 0 0.cqw 1.cqw rgba(0, 0, 0, 0.35);
+}
+.tv-event-banner-title {
+  color: #f0c35c;
+  font-weight: 700;
+  font-size: 1.15em;
+}
+.tv-event-banner-time b {
+  font-variant-numeric: tabular-nums;
+}
 .tv-event-splash.is-info .tv-event-card {
-  min-width: 26vw;
-  max-width: 34vw;
-  padding: 1.2vw 1.6vw;
-  margin: 2vw;
+  min-width: 2cqw;
+  max-width: 3cqw;
+  padding: 1.cqw 1.cqw;
+  margin: cqw;
   background: rgba(8, 12, 24, 0.8);
 }
 .tv-event-splash.is-info .tv-event-title {
-  font-size: 2.8vw;
+  font-size: 2.cqw;
 }
 .tv-event-card {
   position: relative;
-  margin: 3.5vw;
-  padding: 2vw 2.6vw;
-  min-width: 34vw;
-  max-width: 50vw;
-  border-radius: 1.4vw;
+  margin: 3.cqw;
+  padding: cqw 2.cqw;
+  min-width: 3cqw;
+  max-width: 5cqw;
+  border-radius: 1.cqw;
   background: rgba(8, 12, 24, 0.62);
   backdrop-filter: blur(6px);
   color: #fff;
-  box-shadow: 0 1vw 3vw rgba(0, 0, 0, 0.35);
+  box-shadow: 0 cqw cqw rgba(0, 0, 0, 0.35);
 }
 .tv-event-date {
-  font-size: 1.6vw;
+  font-size: 1.cqw;
   opacity: 0.85;
 }
 .tv-event-title {
-  font-size: 4.6vw;
+  font-size: 4.cqw;
   font-weight: 800;
   line-height: 1.1;
-  margin: 0.3vw 0 1vw;
+  margin: 0.cqw 0 cqw;
   color: #f6d77a;
 }
 .tv-event-also {
-  margin: -0.4vw 0 0.8vw;
-  font-size: 1.5vw;
+  margin: -0.cqw 0 0.cqw;
+  font-size: 1.cqw;
   letter-spacing: 0.02em;
   opacity: 0.85;
 }
 .tv-event-torah {
   display: grid;
-  gap: 0.35vw;
-  margin: 0 0 1.1vw;
-  padding: 0.6vw 0 0;
+  gap: 0.3cqw;
+  margin: 0 0 1.cqw;
+  padding: 0.cqw 0 0;
   border-top: 1px solid rgba(246, 215, 122, 0.35);
 }
 .tv-event-torah div {
   display: flex;
   justify-content: space-between;
-  gap: 1.2vw;
+  gap: 1.cqw;
   align-items: baseline;
 }
 .tv-event-torah dt {
-  font-size: 1.35vw;
+  font-size: 1.3cqw;
   opacity: 0.8;
   white-space: nowrap;
 }
 .tv-event-torah dd {
   margin: 0;
   font-family: "Frank Ruhl Libre", "David Libre", serif;
-  font-size: 1.7vw;
+  font-size: 1.cqw;
   font-weight: 700;
   color: #f8ecc9;
   text-align: left;
 }
 .tv-event-verse {
-  margin: 0 0 1.2vw;
-  padding: 0.7vw 0 0.2vw;
+  margin: 0 0 1.cqw;
+  padding: 0.cqw 0 0.cqw;
   border-top: 1px solid rgba(246, 215, 122, 0.35);
 }
 .tv-event-verse blockquote {
   margin: 0;
   font-family: "Frank Ruhl Libre", "David Libre", serif;
-  font-size: 2vw;
+  font-size: cqw;
   line-height: 1.35;
   color: #f8ecc9;
 }
 .tv-event-card:has(.tv-event-verses) {
-  min-width: 46vw;
+  min-width: 4cqw;
 }
 .tv-event-verses {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.6vw;
-  margin: 0 0 1.2vw;
+  gap: 1.cqw;
+  margin: 0 0 1.cqw;
 }
 .tv-event-verses .tv-event-verse {
   margin: 0;
 }
 .tv-event-verse-head {
-  font-size: 1.5vw;
+  font-size: 1.cqw;
   font-weight: 800;
   color: #f6d77a;
   letter-spacing: 0.03em;
-  margin-bottom: 0.3vw;
+  margin-bottom: 0.cqw;
 }
 .tv-event-verses blockquote {
-  font-size: 1.7vw;
+  font-size: 1.cqw;
 }
 .tv-event-verse figcaption {
-  margin-top: 0.2vw;
-  font-size: 1.1vw;
+  margin-top: 0.cqw;
+  font-size: 1.cqw;
   opacity: 0.7;
 }
 .tv-event-times {
   display: grid;
-  gap: 0.6vw;
+  gap: 0.cqw;
   margin: 0;
 }
 .tv-event-times > div {
   display: flex;
   justify-content: space-between;
-  gap: 2vw;
-  font-size: 2.2vw;
+  gap: cqw;
+  font-size: 2.cqw;
   border-top: 1px solid rgba(255, 255, 255, 0.18);
-  padding-top: 0.5vw;
+  padding-top: 0.cqw;
 }
 .tv-event-times dt { margin: 0; }
 .tv-event-times dd {
@@ -4946,12 +4976,12 @@
 }
 .tv-event-dots {
   display: flex;
-  gap: 0.5vw;
-  margin-top: 1vw;
+  gap: 0.cqw;
+  margin-top: cqw;
 }
 .tv-event-dots span {
-  width: 0.6vw;
-  height: 0.6vw;
+  width: 0.cqw;
+  height: 0.cqw;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.35);
 }
@@ -4981,51 +5011,51 @@
    reading under them. Type a little smaller than the short card so it all
    fits a 16:9 wall. */
 .tv-event-splash.is-full .tv-event-card {
-  min-width: 58vw;
-  max-width: 72vw;
-  padding: 1.6vw 2.2vw;
+  min-width: 5cqw;
+  max-width: 7cqw;
+  padding: 1.cqw 2.cqw;
 }
 .tv-event-splash.is-full .tv-event-title {
-  font-size: 3.6vw;
-  margin-bottom: 0.6vw;
+  font-size: 3.cqw;
+  margin-bottom: 0.cqw;
 }
 .tv-event-splash.is-full .tv-event-verse blockquote {
-  font-size: 1.6vw;
+  font-size: 1.cqw;
 }
 .tv-event-splash.is-full .tv-event-times {
-  gap: 0.25vw;
+  gap: 0.2cqw;
 }
 .tv-event-splash.is-full .tv-event-times > div {
-  font-size: 1.45vw;
-  padding-top: 0.25vw;
+  font-size: 1.4cqw;
+  padding-top: 0.2cqw;
 }
 .tv-event-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: 2vw;
+  gap: cqw;
   align-items: start;
-  margin-bottom: 0.9vw;
+  margin-bottom: 0.cqw;
 }
 .tv-event-prayers {
   display: grid;
-  gap: 0.5vw;
+  gap: 0.cqw;
   margin: 0;
 }
 .tv-event-prayers > div {
   border-top: 1px solid rgba(255, 255, 255, 0.18);
-  padding-top: 0.35vw;
+  padding-top: 0.3cqw;
 }
 .tv-event-prayers dt {
-  font-size: 1.35vw;
+  font-size: 1.3cqw;
   font-weight: 800;
   color: #f6d77a;
 }
 .tv-event-prayers dd {
-  margin: 0.15vw 0 0;
+  margin: 0.1cqw 0 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.2vw 0.9vw;
-  font-size: 1.5vw;
+  gap: 0.cqw 0.cqw;
+  font-size: 1.cqw;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   /* Read from the right, like the rest of the board: the earliest first. */
@@ -5039,12 +5069,12 @@
 .tv-event-pages {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5vw;
-  margin-top: 0.8vw;
+  gap: 0.cqw;
+  margin-top: 0.cqw;
 }
 .tv-event-pages span {
-  font-size: 1.1vw;
-  padding: 0.15vw 0.7vw;
+  font-size: 1.cqw;
+  padding: 0.1cqw 0.cqw;
   border-radius: 999px;
   border: 1px solid rgba(246, 215, 122, 0.35);
   opacity: 0.6;

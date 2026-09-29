@@ -33,9 +33,13 @@ function show(config: TvConfig = illustrated) {
 describe("the screen composer", () => {
   it("opens on the board as it is, not on an empty sheet", () => {
     show();
-    // Illustrated merges its content into one screen, and the day's screen
-    // is a second beside it - so this board reads as two, each taking a turn.
-    expect(screen.getByText(/2 מסכים/)).toBeTruthy();
+    // Illustrated merges its content into one screen. The day's screen and
+    // the Shabbat screen stand beside it, each appearing only in its time -
+    // so on an ordinary day the board is one screen, and it says when the
+    // other two come in.
+    expect(screen.getByText(/מסך אחד — הלוח עומד/)).toBeTruthy();
+    expect(screen.getByText(/כשיש מועד, מסך החג נכנס לסבב/)).toBeTruthy();
+    expect(screen.getByText(/בשבת מוצגים רק מסך השבת/)).toBeTruthy();
     expect(screen.getByLabelText("תפילות היום")).toBeTruthy();
   });
 
@@ -70,12 +74,11 @@ describe("the screen composer", () => {
     const { onChange } = show();
     fireEvent.click(screen.getByRole("button", { name: "מסך" }));
     const [next, current] = onChange.mock.calls[0];
-    // It opened on two (the board and the day's screen), so adding makes three.
-    expect(next).toHaveLength(3);
-    expect(current).toBe(2);
+    // It opened on three (the board, the day's screen, Shabbat), so adding makes four.
+    expect(next).toHaveLength(4);
+    expect(current).toBe(3);
     // A new screen is never blank on a wall: it starts with the bars.
-    // The new screen is the third; the first two are the board and the day.
-    expect(next[2].blocks.map((b) => b.block)).toContain("header");
+    expect(next[3].blocks.map((b) => b.block)).toContain("header");
   });
 
   it("pinning a block is the same field, not a second mode", () => {
@@ -124,7 +127,9 @@ describe("a screen with nothing on it", () => {
 
   it("is marked as one the board will not show, and not counted", () => {
     show(withEmpty);
-    expect(screen.getByText(/2 מסכים/)).toBeTruthy();
+    // One ordinary screen (the day's screen comes in only in its time), and
+    // the empty one is neither.
+    expect(screen.getByText(/מסך אחד — הלוח עומד/)).toBeTruthy();
     expect(screen.getByText(/מסך אחד ריק ולא יוצג/)).toBeTruthy();
     const tab = screen.getAllByRole("button").find((b) => b.textContent?.includes("מסך 3"))!;
     expect(within(tab).getByText("לא יוצג")).toBeTruthy();

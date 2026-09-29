@@ -109,3 +109,47 @@ describe("the painted look on a composed board", () => {
     expect(container.querySelector(".tv-ill")).toBeTruthy();
   });
 });
+
+describe("the day on a board built of screens", () => {
+  const cholHamoed = new Date("2026-09-29T10:00:00+03:00");
+  const drawAt = (config: TvConfig, at: Date) => {
+    const zm = zmanimFor(at, null);
+    const slides = buildSlides(data, config, at, zm);
+    return render(
+      <TvBoard data={data} config={config} now={at} zmanim={zm} slides={slides} index={0} cycle={0} progress={0} paused={false} />,
+    );
+  };
+
+  it("beside the prayer times, is a line along the bottom and hides nothing", () => {
+    const withDay = painted();
+    withDay.screens = [{ ...screens[0], blocks: [...screens[0].blocks, { block: "festival" }] }];
+    const { container } = drawAt(withDay, cholHamoed);
+    expect(container.querySelector(".tv-ill"), "the painted board is still drawn").toBeTruthy();
+    expect(container.querySelector(".tv-event-banner")?.textContent).toContain("חול המועד סוכות");
+    // Not the day's full screen over the board.
+    expect(container.querySelector(".tv-event-splash:not(.is-banner)")).toBeNull();
+  });
+
+  it("alone on its screen, is the day's full screen - also in the admin's preview", () => {
+    const dayOnly = painted();
+    dayOnly.screens = [{ id: "festival", name: "מסך החג", seconds: 40, blocks: [{ block: "festival" }] }];
+    const { container } = drawAt(dayOnly, cholHamoed);
+    expect(container.querySelector(".tv-event-splash:not(.is-banner)")).toBeTruthy();
+    expect(container.querySelector(".tv-event-title")?.textContent).toContain("סוכות");
+  });
+});
+
+describe("Shabbat on a board built of screens", () => {
+  it("is the Shabbat screen, drawn as it always was", () => {
+    const at = new Date("2026-10-10T10:00:00+03:00");
+    const config = painted();
+    config.screens = [...screens, { id: "shabbat", name: "מסך השבת", seconds: 40, blocks: [{ block: "shabbat" }] }];
+    const zm = zmanimFor(at, null);
+    const slides = buildSlides(data, config, at, zm);
+    const { container } = render(
+      <TvBoard data={data} config={config} now={at} zmanim={zm} slides={slides} index={0} cycle={0} progress={0} paused={false} />,
+    );
+    expect(container.querySelector(".tv-shabbat")).toBeTruthy();
+    expect(container.querySelector(".tv-ill")).toBeNull();
+  });
+});

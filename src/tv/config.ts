@@ -47,12 +47,13 @@ export type BlockId =
   | "learning"
   | "slideshow"
   | "festival"
+  | "shabbat"
   | "ticker"
   | "footer";
 
 export const BLOCK_IDS: readonly BlockId[] = [
   "header", "clock", "prayers", "zmanim", "announcements",
-  "shiurim", "learning", "slideshow", "festival", "ticker", "footer",
+  "shiurim", "learning", "slideshow", "festival", "shabbat", "ticker", "footer",
 ];
 
 /** A pinned block's place. Absent means the layout decides. */

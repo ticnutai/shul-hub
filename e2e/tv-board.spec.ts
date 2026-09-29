@@ -28,6 +28,21 @@ const TV_BASE_URL = process.env.TV_BASE_URL ?? "http://127.0.0.1:4320";
 const BOARD_NAME = ":is(.tv-title, .tv-ill-name-big, .tv-ill-bar)";
 
 /**
+ * These specs manage the main synagogue. With more than one open to the
+ * public, a visitor who has not chosen is first asked which - so the choice
+ * is made here, as a returning visitor's browser would already have it.
+ */
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      if (!localStorage.getItem("shul-hub.community")) localStorage.setItem("shul-hub.community", "main");
+    } catch {
+      /* private mode */
+    }
+  });
+});
+
+/**
  * That a board really drew, rather than that one layout's markup exists.
  *
  * Every assertion here that named a class has failed the day the saved design

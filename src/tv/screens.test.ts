@@ -14,8 +14,8 @@
  */
 import { describe, expect, it } from "vitest";
 
-import type { TvConfig } from "./config";
-import { place, toScreens, type BlockEntry } from "./screens";
+import { DEFAULT_TV_CONFIG, type TvConfig } from "./config";
+import { dayScreen, place, toScreens, type BlockEntry } from "./screens";
 
 /** The five slides every one of the four rows carries, slideshow off. */
 const SLIDES = [
@@ -54,7 +54,8 @@ describe("reading an existing board as screens", () => {
     // to go. The day's screen is no longer an overlay that decides for
     // itself when to take the board: it is a screen beside it, taking turns.
     const screens = toScreens(REAL.illustratedWithFestival);
-    expect(screens.map((s) => s.id)).toEqual(["board", "festival"]);
+    // And Shabbat, which used to take the board by itself, is a screen too.
+    expect(screens.map((s) => s.id)).toEqual(["board", "festival", "shabbat"]);
     expect(ids(screens[0].blocks)).toEqual(
       expect.arrayContaining(["prayers", "zmanim", "learning", "announcements", "shiurim"]),
     );
@@ -65,16 +66,18 @@ describe("reading an existing board as screens", () => {
   it("gives the day its own screen, and none at all where it was never turned on", () => {
     const withIt = toScreens(REAL.illustratedWithFestival);
     expect(withIt.find((s) => s.id === "festival")).toBeTruthy();
-    // A board that never switched it on stays a single screen.
+    // A board that never switched it on has one screen of content (and its
+    // Shabbat screen, which only appears on Shabbat).
     const without = toScreens(REAL.illustratedPlain);
-    expect(without).toHaveLength(1);
+    expect(without.filter((s) => !dayScreen(s))).toHaveLength(1);
     expect(without.flatMap((s) => ids(s.blocks))).not.toContain("festival");
   });
 
   it("a rotating board keeps one screen per slide, in the order they were in", () => {
     const screens = toScreens(REAL.rotating);
-    expect(screens.map((s) => s.id)).toEqual(["prayers", "learning", "announcements", "shiurim"]);
-    expect(screens.map((s) => s.seconds)).toEqual([20, 15, 18, 18]);
+    const ordinary = screens.filter((s) => !dayScreen(s));
+    expect(ordinary.map((s) => s.id)).toEqual(["prayers", "learning", "announcements", "shiurim"]);
+    expect(ordinary.map((s) => s.seconds)).toEqual([20, 15, 18, 18]);
   });
 
   it("loses nothing the gabbai switched on", () => {
@@ -136,5 +139,19 @@ describe("where the blocks go", () => {
   it("leaves the bars out of the body", () => {
     const rows = place([e("header"), e("footer"), e("prayers")]);
     expect(rows.flat().map((x) => x.block)).toEqual(["prayers"]);
+  });
+});
+
+describe("Shabbat, as a screen", () => {
+  it("is a screen of its own on every board that has it on", () => {
+    for (const [name, config] of Object.entries(REAL)) {
+      const shabbat = toScreens(config).filter((s) => dayScreen(s) === "shabbat");
+      expect(shabbat, name).toHaveLength(config.shabbat?.enabled === false ? 0 : 1);
+    }
+  });
+
+  it("is not there when the gabbai switched the Shabbat screen off", () => {
+    const off = { ...REAL.illustratedPlain, shabbat: { ...DEFAULT_TV_CONFIG.shabbat, enabled: false } };
+    expect(toScreens(off).some((s) => dayScreen(s) === "shabbat")).toBe(false);
   });
 });

@@ -250,9 +250,6 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
 
   /** A board built in the composer; nothing outside the list may take it. */
   const usingComposer = Boolean(config.screens?.length);
-  /** The screen showing now carries the day's screen as one of its blocks. */
-  const festivalScreen =
-    slide?.kind === "composed" && slide.parts.some((p) => p.block === "festival");
 
   const slideId = slide?.id;
   const slideSeconds = slide?.seconds ?? 20;
@@ -574,14 +571,15 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
             the screens it was put on, for as long as those screens hold, and
             nothing takes the board that was not asked to.
           */}
-          {(!usingComposer || festivalScreen) && (
+          {/* On a board built of screens the day is drawn by TvBoard, as one
+              of the screen's blocks - the same in the admin's preview. */}
+          {!usingComposer && (
             <EventSplash
               categories={data.categories}
               config={config}
               now={now}
               zmanim={zmanim}
               zmanimOn={zmanimOn}
-              force={festivalScreen}
               schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
             />
           )}

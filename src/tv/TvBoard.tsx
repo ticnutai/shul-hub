@@ -16,7 +16,9 @@ import { SlideView } from "./TvSlides";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
 import { ClockContext } from "./clockContext";
 import { TvShapes } from "./TvShapes";
-import type { BoardData, BoardSlide } from "./useBoardData";
+import { prayerSchedules, type BoardData, type BoardSlide } from "./useBoardData";
+import { EventSplash } from "./EventSplash";
+import { zmanimFor } from "@community/lib/minyan-time";
 import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
 import karovimLogo from "./assets/karovim-logo.png";
 import effiLogo from "./assets/effi-capital-logo.png";
@@ -118,7 +120,12 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   }, [config.frame, config.spacing, config.tracking]);
 
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
-  const shabbat = slides[0]?.kind === "shabbat";
+  // The screen up now decides how it is drawn; any Shabbat screen in the list
+  // means it is Shabbat, and nothing counts down on the wall.
+  const shabbat = slide?.kind === "shabbat";
+  const shabbatNowOn = slides.some(
+    (s) => s.kind === "shabbat" || (s.kind === "composed" && s.parts.some((p) => p.block === "shabbat")),
+  );
   /**
    * A board built in the composer: the composer decides which screens and
    * what is on them, and the layout decides how each one is drawn.
@@ -138,6 +145,8 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
    * painting.
    */
   const composed = slide?.kind === "composed" ? slide : null;
+  const festivalPart = Boolean(composed?.parts.some((p) => p.block === "festival"));
+  const festivalAlone = Boolean(composed?.parts.every((p) => p.block === "festival"));
   const screenSlides = composed
     ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
     : slides;
@@ -153,7 +162,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const dashboard = layout === "dashboard";
   // A painted board draws its own header, clock and bottom line.
   const illustrated = layout === "illustrated";
-  const alert = shabbat ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
+  const alert = shabbatNowOn ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
     <HolyEndMinutesContext.Provider value={holyEndMinutes}>
@@ -265,6 +274,25 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               </div>
             </div>
           </div>
+        )}
+
+        {/*
+          The day, as a block of the screen that is up. A screen of only the
+          day is the day's screen; beside other content it is a line along
+          the bottom, so what else is on that screen stays visible. Drawn
+          here rather than by the app, so the admin's preview shows it too.
+        */}
+        {festivalPart && (
+          <EventSplash
+            categories={data.categories}
+            config={config}
+            now={now}
+            zmanim={zmanim}
+            zmanimOn={(d) => zmanimFor(d, data.settings)}
+            force
+            card={!festivalAlone}
+            schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
+          />
         )}
 
         {pauseChip && <div className="tv-paused">{pauseChip === "paused" ? "⏸ מושהה" : "▶ ממשיך"}</div>}

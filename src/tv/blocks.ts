@@ -152,7 +152,19 @@ export const BLOCKS: readonly BlockSpec[] = [
   {
     id: "festival",
     name: "מסך החג",
-    note: "סוכות, פסח, שבת",
+    note: "מופיע רק כשיש מועד: סוכות, פסח, תעניות, ראש חודש",
+    zone: "main",
+    weight: 4,
+    elements: [],
+  },
+  {
+    // Shabbat was a mode, not a block: from candle lighting it took the whole
+    // board. On a board built of screens that mode was switched off - nothing
+    // may take the board uninvited - and nothing took its place, so a
+    // composed board showed its weekday screens right through Shabbat.
+    id: "shabbat",
+    name: "מסך השבת",
+    note: "מופיע רק בשבת, מהדלקת נרות עד צאת השבת",
     zone: "main",
     weight: 4,
     elements: ["shabbat.title", "shabbat.blessing", "shabbat.art", "shabbat.times"],

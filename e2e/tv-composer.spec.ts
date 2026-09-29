@@ -54,15 +54,16 @@ test.describe("the composer on תורה ואהבתה", () => {
     await expect(page.getByTestId("composer-sketch")).toBeVisible();
   });
 
-  test("reads the saved board as its content and the day, taking turns", async ({
+  test("reads the saved board as its content, the day and Shabbat, each in its time", async ({
     adminPage: page,
   }) => {
     await asTorahVeahavata(page);
     const composer = await openComposer(page);
-    // It used to read as a single screen, which is why an arrow had nowhere
-    // to go. The day's screen is no longer an overlay that decides for
-    // itself when to take the board - it is a screen beside it.
-    await expect(composer.getByText(/2 מסכים/)).toBeVisible();
+    // The day's screen is no longer an overlay that decides for itself when
+    // to take the board - it is a screen beside it, and so is Shabbat. Each
+    // comes in only in its time, and the composer says when.
+    await expect(composer.getByText(/כשיש מועד, מסך החג נכנס לסבב/)).toBeVisible();
+    await expect(composer.getByText(/בשבת מוצגים רק מסך השבת/)).toBeVisible();
   });
 
   test("offers a switch for every block, and the day's screen is one of them", async ({
@@ -78,11 +79,13 @@ test.describe("the composer on תורה ואהבתה", () => {
     for (const id of ["prayers", "zmanim", "announcements", "shiurim", "learning", "festival"]) {
       await expect(composer.locator(`#block-${id}`), `no switch for ${id}`).toBeVisible();
     }
-    // This synagogue has the day's screen on, and it now has a screen of its
-    // own rather than covering the board - so it is not a block of the first
-    // screen, it is the second one.
-    await expect(composer.locator("#block-festival")).toHaveAttribute("aria-checked", "false");
-    await expect(composer.getByRole("button", { name: /מסך החג/ }).first()).toBeVisible();
+    // The day's screen and Shabbat are switches here like any other block,
+    // and this synagogue has a screen of its own for each - shown only in
+    // its time. (Whether the first screen also carries the day's line is the
+    // gabbai's choice, and not asked here.)
+    await expect(composer.locator("#block-shabbat")).toBeVisible();
+    await expect(composer.getByRole("button", { name: /מסך החג.*רק במועד/ }).first()).toBeVisible();
+    await expect(composer.getByRole("button", { name: /מסך השבת.*רק בשבת/ }).first()).toBeVisible();
   });
 
   test("turning a block off changes only the sketch, and saves nothing", async ({ adminPage: page }) => {

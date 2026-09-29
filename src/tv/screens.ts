@@ -79,7 +79,13 @@ export function toScreens(config: Partial<TvConfig>): Screen[] {
   if (config.ticker?.enabled) extras.push({ block: "ticker" });
 
   const chrome = (): BlockEntry[] => CHROME.map((block) => ({ block }));
-  const festival = (): BlockEntry[] => (config.eventSplash ? [{ block: "festival" as BlockId }] : []);
+  // Shabbat is a screen of its own, shown only while it is Shabbat - the same
+  // thing the old board did by taking itself over, now written down where
+  // the gabbai can see it, change what is on it, or take it away.
+  const shabbatScreen: Screen[] =
+    config.shabbat?.enabled === false
+      ? []
+      : [{ id: "shabbat", name: screenName("shabbat"), seconds: TURN_SECONDS, blocks: [{ block: "shabbat" }] }];
 
   if (!ROTATING.has(layout)) {
     // One screen with everything on it - and the day's screen beside it as a
@@ -99,10 +105,11 @@ export function toScreens(config: Partial<TvConfig>): Screen[] {
       seconds: config.eventSplash ? TURN_SECONDS : 0,
       blocks: [...chrome(), ...extras, ...content],
     };
-    if (!config.eventSplash) return [board];
+    if (!config.eventSplash) return [board, ...shabbatScreen];
     return [
       board,
       { id: "festival", name: screenName("festival"), seconds: TURN_SECONDS, blocks: [{ block: "festival" }] },
+      ...shabbatScreen,
     ];
   }
 
@@ -127,7 +134,7 @@ export function toScreens(config: Partial<TvConfig>): Screen[] {
   if (screens.length === 0)
     screens.push({ id: "board", name: "הלוח", seconds: 0, blocks: [...chrome(), ...extras] });
 
-  return screens;
+  return [...screens, ...shabbatScreen];
 }
 
 /**
@@ -141,6 +148,24 @@ export function toScreens(config: Partial<TvConfig>): Screen[] {
  * Returns rows of blocks for the body of the board; the bars are placed by
  * their zone and are not the layout's business.
  */
+/** The blocks that have something to show only in their time. */
+export const DAY_BLOCKS: readonly BlockId[] = ["festival", "shabbat"];
+
+/**
+ * Whether a screen appears only in its time, and which time.
+ *
+ * A screen with the Shabbat block is a Shabbat screen, whatever else is on
+ * it: that is how prayer times get onto the wall on Shabbat. A screen of only
+ * the day's screen appears only when there is a day. A screen of ordinary
+ * content that also has the day's block is an ordinary screen - on a festival
+ * it carries the day's card, and on any other day it is simply itself.
+ */
+export function dayScreen(screen: Screen): "shabbat" | "festival" | null {
+  if (screen.blocks.some((b) => b.block === "shabbat")) return "shabbat";
+  const content = screen.blocks.filter((b) => !BLOCKS.find((x) => x.id === b.block)?.chrome);
+  return content.length > 0 && content.every((b) => b.block === "festival") ? "festival" : null;
+}
+
 export function place(blocks: BlockEntry[]): BlockEntry[][] {
   const main = blocks.filter((e) => BLOCKS.find((b) => b.id === e.block)?.zone === "main");
   const rows: BlockEntry[][] = [];

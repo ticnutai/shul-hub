@@ -481,6 +481,7 @@ export function EventSplash({
   zmanim,
   zmanimOn,
   force = false,
+  card = false,
   day,
   schedulesFor,
 }: {
@@ -498,6 +499,11 @@ export function EventSplash({
   zmanimOn?: (date: Date) => Zmanim;
   /** Always show (the admin's preview). */
   force?: boolean;
+  /**
+   * As a card in the corner, over a screen that has other content: the day's
+   * name and times, with the prayer times still readable beside it.
+   */
+  card?: boolean;
   /** Show this day, whatever today is (the admin's preview). */
   day?: SpecialDayDef;
   /** The day's minyanim, for the full screen (the board's own schedules for that date). */
@@ -521,7 +527,7 @@ export function EventSplash({
   );
   const def = day ?? found?.def ?? null;
   // "Name and times only": an automatic day gets a card over the board, not a full-screen picture.
-  const infoOnly = !force && !day && !!found?.auto && config.eventAuto === "info";
+  const infoOnly = card || (!force && !day && !!found?.auto && config.eventAuto === "info");
   const seconds = Math.floor(now.getTime() / 1000);
   const phase = seconds % CYCLE_SECONDS;
   // The days of the date, each on its own screen, when the gabbai chose that:
@@ -619,7 +625,7 @@ export function EventSplash({
       ? Math.floor(seconds / HOLD_SLIDE_SECONDS)
       : Math.floor(seconds / CYCLE_SECONDS) * Math.ceil(SHOW_SECONDS / SLIDE_SECONDS) + Math.floor(phase / SLIDE_SECONDS);
   const active = step % slides.length;
-  const full = config.eventDetail !== "short";
+  const full = !card && config.eventDetail !== "short";
   // The day's own times first (candle lighting, the end of the fast or of
   // the festival). On the full screen, then every zman of the day; on the
   // short one, the two a congregant looks for on a Shabbat or festival
@@ -655,6 +661,22 @@ export function EventSplash({
   // Shabbat and a festival together: a verse of each, side by side.
   const pair = !separate && combined.shabbat && ownVerse ? { shabbat: verseFor("shabbat")!, day: ownVerse } : null;
   const verse = pair ? null : ownVerse ?? (combined.shabbat ? verseFor("shabbat") : null);
+  // Beside other content: one line along the bottom of the board, where the
+  // footer is, so nothing on the screen is covered. As a card in the corner
+  // it hid the names of the evening minyanim on the painted board.
+  if (card)
+    return (
+      <div className="tv-event-splash is-info is-banner" role="region" aria-label={combined.title}>
+        <div className="tv-event-banner">
+          <span className="tv-event-banner-title">{combined.title}</span>
+          {rows.map((r) => (
+            <span key={r.key} className="tv-event-banner-time">
+              {r.label} <b>{formatTime(r.time)}</b>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
   return (
     <div
       className={`tv-event-splash${infoOnly ? " is-info" : ""}${full ? " is-full" : ""}`}
