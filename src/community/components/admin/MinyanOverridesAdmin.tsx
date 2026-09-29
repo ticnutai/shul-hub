@@ -15,14 +15,20 @@
  */
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { CalendarClock, ChevronDown, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId, useCommunityId } from "@/community/lib/community";
 import { useMinyanim, type MinyanOverrideRow } from "@community/lib/data";
@@ -57,6 +63,24 @@ export function MinyanOverridesAdmin() {
   const [time, setTime] = useState("");
   const [cancelled, setCancelled] = useState(false);
   const [note, setNote] = useState("");
+  // Folds down to its title line, and stays as it was left: most days the
+  // timetable is the whole job, and this form is the rest of the page.
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(OPEN_KEY) !== "0";
+    } catch {
+      return true;
+    }
+  });
+  const toggle = () =>
+    setOpen((was) => {
+      try {
+        localStorage.setItem(OPEN_KEY, was ? "0" : "1");
+      } catch {
+        /* private mode: it simply is not remembered */
+      }
+      return !was;
+    });
 
   const { data: overrides = [], isLoading } = useQuery({
     queryKey: ["minyan-overrides-admin", community],
@@ -131,143 +155,174 @@ export function MinyanOverridesAdmin() {
   return (
     <section className="card-elev space-y-4 p-4 sm:p-5" data-testid="minyan-overrides">
       <header>
-        <h3 className="flex items-center gap-2 text-base font-semibold">
-          <CalendarClock className="size-4" /> שינוי ליום אחד
-        </h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          להזיז או לבטל מניין ביום מסוים, בלי לשנות את הלוח הקבוע. אחרי אותו יום הכול חוזר מעצמו.
-        </p>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className="flex w-full items-center gap-2 text-right"
+        >
+          <CalendarClock className="size-4 shrink-0" />
+          <h3 className="text-base font-semibold">שינוי ליום אחד</h3>
+          {!open && overrides.length > 0 && (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+              {overrides.length === 1 ? "שינוי קרוב אחד" : `${overrides.length} שינויים קרובים`}
+            </span>
+          )}
+          <span className="ms-auto flex items-center gap-1 text-xs text-muted-foreground">
+            {open ? "מזעור" : "פתיחה"}
+            <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+          </span>
+        </button>
+        {open && (
+          <p className="mt-1 text-sm text-muted-foreground">
+            להזיז או לבטל מניין ביום מסוים, בלי לשנות את הלוח הקבוע. אחרי אותו יום הכול חוזר מעצמו.
+          </p>
+        )}
       </header>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="lg:col-span-2">
-          <Label className="text-sm">המניין</Label>
-          <Select value={minyanId} onValueChange={setMinyanId}>
-            <SelectTrigger className="mt-1" aria-label="בחירת מניין">
-              <SelectValue placeholder="בחירת מניין" />
-            </SelectTrigger>
-            <SelectContent>
-              {minyanim
-                .filter((m) => m.active)
-                .map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.label}
-                    <span className="text-muted-foreground">
-                      {" · "}
-                      {DAY_TYPE_LABEL[m.day_type as "weekday" | "friday"] ?? m.day_type}
-                      {m.fixed_time ? ` · ${m.fixed_time.slice(0, 5)}` : ""}
-                    </span>
-                  </SelectItem>
-                ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {open && (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="lg:col-span-2">
+              <Label className="text-sm">המניין</Label>
+              <Select value={minyanId} onValueChange={setMinyanId}>
+                <SelectTrigger className="mt-1" aria-label="בחירת מניין">
+                  <SelectValue placeholder="בחירת מניין" />
+                </SelectTrigger>
+                <SelectContent>
+                  {minyanim
+                    .filter((m) => m.active)
+                    .map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.label}
+                        <span className="text-muted-foreground">
+                          {" · "}
+                          {DAY_TYPE_LABEL[m.day_type as "weekday" | "friday"] ?? m.day_type}
+                          {m.fixed_time ? ` · ${m.fixed_time.slice(0, 5)}` : ""}
+                        </span>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        <div>
-          <Label htmlFor="ov-date" className="text-sm">התאריך</Label>
-          <Input
-            id="ov-date"
-            type="date"
-            className="mt-1"
-            value={date}
-            min={today}
-            max={addDays(today, HORIZON_DAYS * 6)}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
+            <div>
+              <Label htmlFor="ov-date" className="text-sm">
+                התאריך
+              </Label>
+              <Input
+                id="ov-date"
+                type="date"
+                className="mt-1"
+                value={date}
+                min={today}
+                max={addDays(today, HORIZON_DAYS * 6)}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
 
-        <div>
-          <Label htmlFor="ov-time" className="text-sm">
-            השעה ביום הזה
-          </Label>
-          <Input
-            id="ov-time"
-            type="time"
-            className="mt-1"
-            value={time}
-            disabled={cancelled && !time}
-            onChange={(e) => setTime(e.target.value)}
-          />
-          <p className="mt-1 text-[11px] text-muted-foreground">ריק = נשארת השעה הרגילה</p>
-        </div>
-      </div>
+            <div>
+              <Label htmlFor="ov-time" className="text-sm">
+                השעה ביום הזה
+              </Label>
+              <Input
+                id="ov-time"
+                type="time"
+                className="mt-1"
+                value={time}
+                disabled={cancelled && !time}
+                onChange={(e) => setTime(e.target.value)}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">ריק = נשארת השעה הרגילה</p>
+            </div>
+          </div>
 
-      <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
-        <label className="flex items-center gap-2 text-sm">
-          <Checkbox checked={cancelled} onCheckedChange={(v) => setCancelled(v === true)} />
-          אין מניין ביום הזה
-        </label>
-        <div>
-          <Label htmlFor="ov-note" className="text-sm">הערה (לא חובה)</Label>
-          <Input
-            id="ov-note"
-            className="mt-1"
-            value={note}
-            maxLength={80}
-            placeholder="למשל: היום בבית מדרש"
-            onChange={(e) => setNote(e.target.value)}
-          />
-        </div>
-      </div>
+          <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={cancelled} onCheckedChange={(v) => setCancelled(v === true)} />
+              אין מניין ביום הזה
+            </label>
+            <div>
+              <Label htmlFor="ov-note" className="text-sm">
+                הערה (לא חובה)
+              </Label>
+              <Input
+                id="ov-note"
+                className="mt-1"
+                value={note}
+                maxLength={80}
+                placeholder="למשל: היום בבית מדרש"
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+          </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Button disabled={!canSave} onClick={() => save.mutate()}>
-          {save.isPending ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-          שמירת השינוי
-        </Button>
-        {minyanId && !saysSomething && (
-          <p className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
-            <TriangleAlert className="size-3.5" />
-            צריך לומר משהו: שעה אחרת, ביטול, או הערה.
-          </p>
-        )}
-      </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button disabled={!canSave} onClick={() => save.mutate()}>
+              {save.isPending ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Plus className="size-4" />
+              )}
+              שמירת השינוי
+            </Button>
+            {minyanId && !saysSomething && (
+              <p className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
+                <TriangleAlert className="size-3.5" />
+                צריך לומר משהו: שעה אחרת, ביטול, או הערה.
+              </p>
+            )}
+          </div>
 
-      <div className="border-t pt-3">
-        <h4 className="text-sm font-medium">שינויים קרובים</h4>
-        {isLoading ? (
-          <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> טוען…
-          </p>
-        ) : overrides.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            אין שינויים. הלוח הרגיל תקף בכל יום.
-          </p>
-        ) : (
-          <ul className="mt-2 space-y-1.5">
-            {overrides.map((o) => {
-              const m = byId.get(o.minyan_id);
-              return (
-                <li
-                  key={o.id}
-                  className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted/40 px-3 py-2 text-sm"
-                >
-                  <span className="font-medium">{m?.label ?? "מניין שנמחק"}</span>
-                  <span className="text-muted-foreground">{hebrewDay(o.on_date)}</span>
-                  {o.cancelled ? (
-                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                      אין מניין
-                    </span>
-                  ) : o.at_time ? (
-                    <span className="font-semibold">{o.at_time.slice(0, 5)}</span>
-                  ) : null}
-                  {o.note && <span className="text-muted-foreground">״{o.note}״</span>}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="ms-auto"
-                    aria-label="ביטול השינוי"
-                    title="ביטול השינוי - חזרה ללוח הרגיל"
-                    onClick={() => remove.mutate(o.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
+          <div className="border-t pt-3">
+            <h4 className="text-sm font-medium">שינויים קרובים</h4>
+            {isLoading ? (
+              <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" /> טוען…
+              </p>
+            ) : overrides.length === 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                אין שינויים. הלוח הרגיל תקף בכל יום.
+              </p>
+            ) : (
+              <ul className="mt-2 space-y-1.5">
+                {overrides.map((o) => {
+                  const m = byId.get(o.minyan_id);
+                  return (
+                    <li
+                      key={o.id}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md bg-muted/40 px-3 py-2 text-sm"
+                    >
+                      <span className="font-medium">{m?.label ?? "מניין שנמחק"}</span>
+                      <span className="text-muted-foreground">{hebrewDay(o.on_date)}</span>
+                      {o.cancelled ? (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                          אין מניין
+                        </span>
+                      ) : o.at_time ? (
+                        <span className="font-semibold">{o.at_time.slice(0, 5)}</span>
+                      ) : null}
+                      {o.note && <span className="text-muted-foreground">״{o.note}״</span>}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="ms-auto"
+                        aria-label="ביטול השינוי"
+                        title="ביטול השינוי - חזרה ללוח הרגיל"
+                        onClick={() => remove.mutate(o.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+        </>
+      )}
     </section>
   );
 }
+
+const OPEN_KEY = "shul-hub.minyan-overrides-open";
