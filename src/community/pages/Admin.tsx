@@ -9,7 +9,7 @@ import { MinyanimAdmin } from "@community/components/admin/MinyanimAdmin";
 import { MinyanOverridesAdmin } from "@community/components/admin/MinyanOverridesAdmin";
 import { AnnouncementsAdmin, ChavrutotAdmin, ShiurimAdmin } from "@community/components/admin/ContentAdmin";
 import { MessagesAdmin } from "@community/components/admin/MessagesAdmin";
-import { SettingsAdmin } from "@community/components/admin/SettingsAdmin";
+import { SiteDesignShortcuts, SiteHeaderSettings } from "@community/components/admin/SiteHeaderAdmin";
 import { WidgetsAdmin } from "@community/components/admin/WidgetsAdmin";
 import { UsersAdmin } from "@community/components/admin/UsersAdmin";
 import { ChavrutaRequestsAdmin } from "@community/components/admin/ChavrutaRequestsAdmin";
@@ -36,18 +36,20 @@ export function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
 
-  const requestedTab = searchParams.get("tab");
+  // "הגדרות" is gone: the synagogue's details moved to its window under
+  // "בתי כנסת", the site header and themes to "תצוגת דף הבית". An old link
+  // or bookmark to it lands where the details are now.
+  const requestedTab = searchParams.get("tab") === "settings" ? "communities" : searchParams.get("tab");
   const activeTab = [
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
-    "messages", "widgets", "settings", "users", "data", "qr", "apps", "ai", "tv", "communities",
+    "messages", "widgets", "users", "data", "qr", "apps", "ai", "tv", "communities",
   ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
 
-  // The synagogues tab is for whoever has more than one to keep straight, and
-  // for whoever may add one. A gabbai of a single synagogue would get a page
-  // listing that synagogue, which is a tab that only ever says what they
-  // already know.
+  // Every admin has at least the synagogue they run, and its details (the
+  // address, the location, its logos) live in its window under this button.
+  // With several, or for the platform admin, it is the list of them.
   const { data: myShuls = [] } = useQuery({
     queryKey: ["my-communities"],
     queryFn: listMyCommunities,
@@ -56,12 +58,12 @@ export function AdminPage() {
     queryKey: ["is-platform-admin"],
     queryFn: async () => Boolean((await supabase.rpc("is_platform_admin")).data),
   });
-  const showCommunities = myShuls.length > 1 || isPlatformAdmin;
+  const manyShuls = myShuls.length > 1 || isPlatformAdmin;
 
   function openTab(tab: string) {
     const next = new URLSearchParams(searchParams);
     next.set("tab", tab);
-    if (tab !== "settings") next.delete("settingsTab");
+    next.delete("settingsTab");
     setSearchParams(next, { replace: true });
   }
 
@@ -90,13 +92,13 @@ export function AdminPage() {
           <div className="flex flex-wrap items-center gap-2">
             {/* Beside the switcher rather than among the tabs: it is about all
                 the synagogues, and the tabs below are about the one chosen. */}
-            {showCommunities && isAdmin && (
+            {isAdmin && (
               <Button
                 variant={activeTab === "communities" ? "default" : "outline"}
                 aria-pressed={activeTab === "communities"}
                 onClick={() => openTab("communities")}
               >
-                <Building2 className="size-4" /> בתי כנסת
+                <Building2 className="size-4" /> {manyShuls ? "בתי כנסת" : "פרטי בית הכנסת"}
               </Button>
             )}
             <CommunitySwitcher />
@@ -142,7 +144,6 @@ export function AdminPage() {
               <TabsTrigger value="widgets">
                 <LayoutDashboard className="size-4" /> תצוגת דף הבית
               </TabsTrigger>
-              <TabsTrigger value="settings">הגדרות</TabsTrigger>
               <TabsTrigger value="users">משתמשים</TabsTrigger>
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
               <TabsTrigger value="qr">קודי QR</TabsTrigger>
@@ -177,11 +178,12 @@ export function AdminPage() {
             <TabsContent value="messages" className="mt-6">
               <MessagesAdmin />
             </TabsContent>
-            <TabsContent value="widgets" className="mt-6">
+            <TabsContent value="widgets" className="mt-6 space-y-6">
+              {/* The site as a whole first - its header and its themes - then
+                  what stands on the home page. */}
+              <SiteHeaderSettings />
+              <SiteDesignShortcuts />
               <WidgetsAdmin />
-            </TabsContent>
-            <TabsContent value="settings" className="mt-6">
-              <SettingsAdmin />
             </TabsContent>
             <TabsContent value="users" className="mt-6">
               <UsersAdmin />

@@ -7,6 +7,7 @@ import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 import { useAuth } from "@/contexts/AuthContext";
 import { AdminAiShortcut } from "./AdminAiShortcut";
 import { useAuth as useCommunityAuth } from "@community/lib/use-auth";
+import { readLogos } from "@community/lib/logos";
 
 function boundedDimension(value: number | null | undefined, fallback: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? Number(value) : fallback));
@@ -29,6 +30,10 @@ const navItemClass = (isActive: boolean) =>
 export function GlobalAppHeader() {
   const { data: settings } = useSettings();
   const showKarovimLogo = settings?.home_header_variant === "karovim_logo";
+  // One of the synagogue's own logos when it chose one (SiteHeaderAdmin),
+  // otherwise the built-in קרובים logo - which is what logo mode always was.
+  const withLogos = settings as { logos?: unknown; header_logo?: string | null } | null | undefined;
+  const ownLogo = readLogos(withLogos?.logos).find((l) => l.id === withLogos?.header_logo) ?? null;
   const karovimLogoDimensions = {
     "--karovim-logo-mobile-width": `${boundedDimension(settings?.karovim_logo_mobile_width, 230, 140, 360)}px`,
     "--karovim-logo-mobile-height": `${boundedDimension(settings?.karovim_logo_mobile_height, 130, 70, 240)}px`,
@@ -78,8 +83,8 @@ export function GlobalAppHeader() {
           {showKarovimLogo ? (
             <img
               data-testid="community-karovim-logo"
-              src="/karovim-logo-v2.png"
-              alt="קרובים – להיות קרוב זה יהודי"
+              src={ownLogo?.url ?? "/karovim-logo-v2.png"}
+              alt={ownLogo ? settings?.name ?? ownLogo.name : "קרובים – להיות קרוב זה יהודי"}
               className="community-karovim-logo mx-auto object-contain"
               style={karovimLogoDimensions}
             />

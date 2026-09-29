@@ -18,7 +18,7 @@
  */
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Eye, EyeOff, Loader2, MonitorSmartphone, Plus, ScrollText } from "lucide-react";
+import { Building2, Eye, EyeOff, Loader2, MonitorSmartphone, Pencil, Plus, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -40,6 +40,7 @@ import {
   useCommunityId,
   writeCommunityToUrl,
 } from "@/community/lib/community";
+import { SynagogueDetailsDialog } from "./SynagogueDetails";
 
 interface Overview {
   id: string;
@@ -56,6 +57,8 @@ export function CommunitiesAdmin() {
   const currentId = useCommunityId();
   const [newName, setNewName] = useState("");
   const [about, setAbout] = useState<Overview | null>(null);
+  /** The synagogue whose details window is open. */
+  const [details, setDetails] = useState<Overview | null>(null);
 
   const { data: all = [], isLoading } = useQuery({
     queryKey: ["communities-overview"],
@@ -142,7 +145,14 @@ export function CommunitiesAdmin() {
 
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="truncate font-semibold">{c.name}</span>
+                    <button
+                      type="button"
+                      className="truncate text-right font-semibold hover:underline"
+                      onClick={() => setDetails(c)}
+                      title="פרטי בית הכנסת, מיקום ולוגואים"
+                    >
+                      {c.name}
+                    </button>
                     {here && (
                       <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                         בעריכה עכשיו
@@ -177,6 +187,9 @@ export function CommunitiesAdmin() {
                 </div>
 
                 <div className="flex shrink-0 items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setDetails(c)} aria-label={`פרטי ${c.name}`}>
+                    <Pencil className="size-3.5" /> פרטים
+                  </Button>
                   <Button size="sm" variant={here ? "secondary" : "outline"} disabled={here} onClick={() => manage(c)}>
                     {here ? "נערך כאן" : "לערוך את זה"}
                   </Button>
@@ -224,6 +237,12 @@ export function CommunitiesAdmin() {
           </p>
         </form>
       )}
+
+      <SynagogueDetailsDialog
+        community={details ? { id: details.id, name: details.name } : null}
+        canRename={isPlatformAdmin}
+        onClose={() => setDetails(null)}
+      />
 
       <AlertDialog open={Boolean(about)} onOpenChange={(o) => !o && setAbout(null)}>
         <AlertDialogContent dir="rtl" className="text-right">

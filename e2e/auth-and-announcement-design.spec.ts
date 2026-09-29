@@ -116,20 +116,20 @@ test("administrator can switch to the Karovim logo header and restore the curren
   await page.waitForURL((url) => !url.pathname.endsWith("/auth"));
 
   if (testInfo.project.name !== "desktop-chromium") {
-    await page.goto("/community/admin?tab=settings");
+    await page.goto("/community/admin?tab=widgets");
     const choices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
     await expect(choices.getByRole("button", { name: /שם וכתובת/ })).toBeVisible();
-    await expect(choices.getByRole("button", { name: /קרובים/ })).toBeVisible();
+    await expect(choices.getByRole("button", { name: /לוגו/ })).toBeVisible();
     return;
   }
 
   try {
-    await page.goto("/community/admin?tab=settings");
+    await page.goto("/community/admin?tab=widgets");
     const choices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
-    await choices.getByRole("button", { name: /קרובים/ }).click();
+    await choices.getByRole("button", { name: /לוגו/ }).click();
     await Promise.all([
       page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/rest/v1/settings")),
-      page.getByRole("button", { name: "שמירת הגדרות" }).click(),
+      page.getByRole("button", { name: "שמירת הכותרת" }).click(),
     ]);
     await expect(page.getByText("נשמר בהצלחה")).toBeVisible();
 
@@ -150,12 +150,12 @@ test("administrator can switch to the Karovim logo header and restore the curren
     expect(Math.abs((headerBox!.x + headerBox!.width / 2) - contentCenter)).toBeLessThanOrEqual(2);
     expect(headerBox!.width).toBeGreaterThan(240);
   } finally {
-    await page.goto("/community/admin?tab=settings");
+    await page.goto("/community/admin?tab=widgets");
     const choices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
     await choices.getByRole("button", { name: /שם וכתובת/ }).click();
     await Promise.all([
       page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/rest/v1/settings")),
-      page.getByRole("button", { name: "שמירת הגדרות" }).click(),
+      page.getByRole("button", { name: "שמירת הכותרת" }).click(),
     ]);
     await expect(page.getByText("נשמר בהצלחה")).toBeVisible();
     await page.goto("/community");
@@ -173,13 +173,13 @@ test("administrator can persist shared responsive Karovim logo dimensions", asyn
   await page.getByLabel("סיסמה", { exact: true }).fill(password!);
   await page.getByRole("button", { name: "התחבר", exact: true }).click();
   await page.waitForURL((url) => !url.pathname.endsWith("/auth"));
-  await page.goto("/community/admin?tab=settings");
+  await page.goto("/community/admin?tab=widgets");
 
   const choices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
   const originalVariant = (await choices.getByRole("button", { name: /שם וכתובת/ }).getAttribute("aria-pressed")) === "true"
     ? "standard"
     : "karovim_logo";
-  await choices.getByRole("button", { name: /קרובים/ }).click();
+  await choices.getByRole("button", { name: /לוגו/ }).click();
   const mobileWidth = page.getByTestId("setting-karovim_logo_mobile_width");
   const mobileHeight = page.getByTestId("setting-karovim_logo_mobile_height");
   const mobileOffsetX = page.getByTestId("setting-karovim_logo_mobile_offset_x");
@@ -245,7 +245,7 @@ test("administrator can persist shared responsive Karovim logo dimensions", asyn
     await desktopOffsetY.fill("18");
     await Promise.all([
       page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/rest/v1/settings")),
-      page.getByRole("button", { name: "שמירת הגדרות" }).click(),
+      page.getByRole("button", { name: "שמירת הכותרת" }).click(),
     ]);
     await expect(page.getByText("נשמר בהצלחה")).toBeVisible();
 
@@ -268,11 +268,11 @@ test("administrator can persist shared responsive Karovim logo dimensions", asyn
       await anonymousPage.close();
     }
   } finally {
-    await page.goto("/community/admin?tab=settings");
+    await page.goto("/community/admin?tab=widgets");
     const restoreChoices = page.getByRole("group", { name: "בחירת תצוגת כותרת" });
-    await restoreChoices.getByRole("button", { name: original.variant === "standard" ? /שם וכתובת/ : /קרובים/ }).click();
+    await restoreChoices.getByRole("button", { name: original.variant === "standard" ? /שם וכתובת/ : /לוגו/ }).click();
     if (original.variant === "standard") {
-      await restoreChoices.getByRole("button", { name: /קרובים/ }).click();
+      await restoreChoices.getByRole("button", { name: /לוגו/ }).click();
     }
     await page.getByTestId("setting-karovim_logo_mobile_width").fill(original.mobileWidth);
     await page.getByTestId("setting-karovim_logo_mobile_height").fill(original.mobileHeight);
@@ -287,7 +287,7 @@ test("administrator can persist shared responsive Karovim logo dimensions", asyn
     }
     await Promise.all([
       page.waitForResponse((response) => response.request().method() === "PATCH" && response.url().includes("/rest/v1/settings")),
-      page.getByRole("button", { name: "שמירת הגדרות" }).click(),
+      page.getByRole("button", { name: "שמירת הכותרת" }).click(),
     ]);
   }
 });

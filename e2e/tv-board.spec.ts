@@ -87,11 +87,16 @@ test.describe("administrator", () => {
     const errors = collectErrors(page);
     await page.goto("/community/admin");
     await expect(page.getByRole("tab", { name: "מניינים" })).toBeVisible({ timeout: 20_000 });
-    for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "הודעות", "הגדרות", "משתמשים", "ייצוא/ייבוא", "קודי QR", "תצוגות", "מניינים"]) {
+    // "הגדרות" is gone: the synagogue's details are in its window under "בתי
+    // כנסת", the site header and themes in "תצוגת דף הבית".
+    for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "הודעות", "תצוגת דף הבית", "משתמשים", "ייצוא/ייבוא", "קודי QR", "תצוגות", "מניינים"]) {
       const tab = page.getByRole("tab", { name: new RegExp(name) }).first();
       await tab.click();
       await expect(tab).toHaveAttribute("data-state", "active");
     }
+    await expect(page.getByRole("tab", { name: "הגדרות" })).toHaveCount(0);
+    await page.getByRole("button", { name: /בתי כנסת|פרטי בית הכנסת/ }).first().click();
+    await expect(page.getByRole("heading", { name: "בתי הכנסת" })).toBeVisible();
     await noHorizontalOverflow(page);
     await testInfo.attach("admin", { body: await page.screenshot(), contentType: "image/png" });
     expect(errors).toEqual([]);

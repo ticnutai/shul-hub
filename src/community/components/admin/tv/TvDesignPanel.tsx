@@ -1733,7 +1733,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         >
           <Section
             title="מסך שבת"
-            hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי הגדרות בית הכנסת."
+            hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי מיקום בית הכנסת (בתי כנסת ← פרטים)."
           >
             <label className="flex items-center gap-3">
               <Switch
@@ -1752,7 +1752,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 {board.data.settings?.shabbat_end_minutes ?? draft.shabbat.endMinutesAfterSunset} דק׳ אחרי השקיעה
               </strong>{" "}
               <span className="text-xs text-muted-foreground">
-                (או צאת הכוכבים, המאוחר מביניהם). משנים בהגדרות בית הכנסת ← כוונון ידני, וזה חל על הלוח ועל האתר יחד.
+                (או צאת הכוכבים, המאוחר מביניהם). משנים בפרטי בית הכנסת (הכפתור "בתי כנסת" למעלה ← פרטים ← כוונון ידני), וזה חל על הלוח ועל האתר יחד.
               </span>
             </p>
             <div className="space-y-2 rounded-lg border p-3">
