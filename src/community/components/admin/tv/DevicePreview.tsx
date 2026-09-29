@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Columns2, LayoutGrid, Maximize2, RotateCw } from "lucide-react";
+import { ChevronDown, Columns2, LayoutGrid, Maximize2, RotateCw } from "lucide-react";
 import { DEVICE_ORDER, DEVICES, viewportOf, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 /**
  * Shows the board inside a picture of the device it would run on.
@@ -227,6 +228,15 @@ function Below({ device, bodyW, bodyH, totalW, chrome }: { device: DeviceId; bod
 
 /* ----------------------------------------------------------- toolbar -- */
 
+/**
+ * Which screen the preview shows, and how - folded into one button.
+ *
+ * It was a strip of six buttons, a line of explanation and a row of options
+ * above the board. On a narrow window the strip wrapped to three lines, and
+ * with the board pinned on top of the editor those lines took the height the
+ * board was meant to have: the board shrank to a thumbnail. The button says
+ * which screen and at what size; everything else is in its menu.
+ */
 export function DeviceToolbar({
   mode,
   view,
@@ -247,80 +257,111 @@ export function DeviceToolbar({
   onActualSize: (v: boolean) => void;
   onCompare?: (v: boolean) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const spec = mode === "all" ? null : DEVICES[mode];
   const vp = mode === "all" ? null : viewportOf(view);
+  const Current = mode === "all" ? LayoutGrid : DEVICES[mode].icon;
+  const label = mode === "all" ? "כל המסכים" : DEVICES[mode].label;
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-1 rounded-lg border bg-muted/40 p-1" role="radiogroup" aria-label="מכשיר לתצוגה">
-        {[...DEVICE_ORDER, "all" as const].map((id) => {
-          const Icon = id === "all" ? LayoutGrid : DEVICES[id].icon;
-          const active = mode === id;
-          return (
-            <button
-              key={id}
-              type="button"
-              role="radio"
-              aria-checked={active}
-              onClick={() => onMode(id)}
-              className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
-                active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Icon className="size-4" />
-              {id === "all" ? "כל המסכים" : DEVICES[id].label}
-            </button>
-          );
-        })}
-      </div>
-      {mode === "all" && onCompare && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span>
-            {compare
-              ? "כל תצוגה עם הלוח שלה, זו לצד זו - כך רואים איפה הן נבדלות."
-              : "השינויים חלים על כל התצוגות. מוצג הלוח כפי שהטלוויזיה מראה אותו."}
-          </span>
-          <Button
-            type="button"
-            variant={compare ? "default" : "outline"}
-            size="sm"
-            className="ms-auto h-7 px-2 text-xs"
-            aria-pressed={compare}
-            onClick={() => onCompare(!compare)}
-          >
-            <Columns2 className="size-3.5" /> השוואה בין התצוגות
-          </Button>
-        </div>
-      )}
-      {spec && vp && (
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-          <span className="tabular-nums" dir="ltr">
-            {vp.width}×{vp.height}
-          </span>
-          <span>· {spec.note}</span>
-          <span className="ms-auto flex flex-wrap gap-1">
-            {spec.rotatable && (
-              <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onView({ ...view, landscape: !view.landscape })}>
-                <RotateCw className="size-3.5" /> {view.landscape ? "לאורך" : "לרוחב"}
-              </Button>
-            )}
-            {spec.bar && (
-              <Button
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 px-2.5 text-xs"
+          aria-label={`בחירת מכשיר לתצוגה: ${label}`}
+          data-testid="device-menu"
+        >
+          <Current className="size-4" />
+          <span className="font-medium">{label}</span>
+          {vp && (
+            <span className="tabular-nums text-muted-foreground" dir="ltr">
+              {vp.width}×{vp.height}
+            </span>
+          )}
+          {mode === "all" && compare && <span className="text-muted-foreground">· השוואה</span>}
+          <ChevronDown className="size-3.5 opacity-60" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent dir="rtl" align="start" className="w-80 space-y-3 p-3 text-right">
+        <div className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/40 p-1" role="radiogroup" aria-label="מכשיר לתצוגה">
+          {[...DEVICE_ORDER, "all" as const].map((id) => {
+            const Icon = id === "all" ? LayoutGrid : DEVICES[id].icon;
+            const active = mode === id;
+            return (
+              <button
+                key={id}
                 type="button"
-                variant="outline"
-                size="sm"
-                className="h-7 px-2 text-xs"
-                aria-pressed={view.fullscreen}
-                onClick={() => onView({ ...view, fullscreen: !view.fullscreen })}
+                role="radio"
+                aria-checked={active}
+                onClick={() => {
+                  onMode(id);
+                  // "כל המסכים" has one more question (compare or not); the rest are done.
+                  if (id !== "all") setOpen(false);
+                }}
+                className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
+                  active ? "bg-background text-foreground shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"
+                }`}
               >
-                <Maximize2 className="size-3.5" /> {view.fullscreen ? "מסך מלא" : "בתוך דפדפן"}
-              </Button>
-            )}
-            <Button type="button" variant={actualSize ? "default" : "outline"} size="sm" className="h-7 px-2 text-xs" onClick={() => onActualSize(!actualSize)}>
-              {actualSize ? "גודל אמיתי 100%" : "מותאם לחלון"}
-            </Button>
-          </span>
+                <Icon className="size-4" />
+                {id === "all" ? "כל המסכים" : DEVICES[id].label}
+              </button>
+            );
+          })}
         </div>
-      )}
-    </div>
+        {mode === "all" && onCompare && (
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>
+              {compare
+                ? "כל תצוגה עם הלוח שלה, זו לצד זו - כך רואים איפה הן נבדלות."
+                : "השינויים חלים על כל התצוגות. מוצג הלוח כפי שהטלוויזיה מראה אותו."}
+            </p>
+            <Button
+              type="button"
+              variant={compare ? "default" : "outline"}
+              size="sm"
+              className="h-7 w-full px-2 text-xs"
+              aria-pressed={compare}
+              onClick={() => onCompare(!compare)}
+            >
+              <Columns2 className="size-3.5" /> השוואה בין התצוגות
+            </Button>
+          </div>
+        )}
+        {spec && vp && (
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>
+              <span className="tabular-nums" dir="ltr">
+                {vp.width}×{vp.height}
+              </span>{" "}
+              · {spec.note}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {spec.rotatable && (
+                <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onView({ ...view, landscape: !view.landscape })}>
+                  <RotateCw className="size-3.5" /> {view.landscape ? "לאורך" : "לרוחב"}
+                </Button>
+              )}
+              {spec.bar && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  aria-pressed={view.fullscreen}
+                  onClick={() => onView({ ...view, fullscreen: !view.fullscreen })}
+                >
+                  <Maximize2 className="size-3.5" /> {view.fullscreen ? "מסך מלא" : "בתוך דפדפן"}
+                </Button>
+              )}
+              <Button type="button" variant={actualSize ? "default" : "outline"} size="sm" className="h-7 px-2 text-xs" onClick={() => onActualSize(!actualSize)}>
+                {actualSize ? "גודל אמיתי 100%" : "מותאם לחלון"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

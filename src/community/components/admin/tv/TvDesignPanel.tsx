@@ -2196,13 +2196,11 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
   const top = layout === "top" && !fullscreen;
   const side = layout === "side" && !fullscreen;
-  // The studio in "top": as wide as the height it was given allows, so the
-  // whole board stays in view however low the bar is dragged. The toolbar
-  // and captions around the frame take about 120px.
-  const studioWidth = top ? { maxWidth: `calc((${topHeight}px - 120px) * 16 / 9)` } : undefined;
 
+  // On the studio's own toolbar row, beside the device menu: one row above
+  // the board, not three.
   const layoutButtons = (
-    <div className="flex flex-wrap items-center gap-2">
+    <>
       <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="פריסת העורך">
         <Button
           type="button"
@@ -2236,11 +2234,11 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       >
         <Expand className="size-4" /> {fullscreen ? "יציאה ממסך מלא" : "מסך מלא לעריכה"}
       </Button>
-    </div>
+    </>
   );
 
   const studioView = (
-    <div className="mx-auto w-full" style={studioWidth}>
+    <div className="w-full">
       <TvDeviceStudio
         onDeviceChange={onDeviceChange}
         preview={preview}
@@ -2255,6 +2253,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         onSelect={setSelected}
         onEdit={edit}
         large={top || fullscreen}
+        fitHeight={top ? topHeight : undefined}
+        toolbarExtra={layoutButtons}
       />
     </div>
   );
@@ -2340,8 +2340,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           style={{ top: headerOffset }}
           data-testid="editor-preview-top"
         >
-          {layoutButtons}
-          <div className="mt-2 overflow-y-auto" style={{ height: topHeight }}>
+          <div className="overflow-hidden pt-1" style={{ height: topHeight }}>
             {studioView}
           </div>
           <SplitHandle
@@ -2349,7 +2348,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             label="גובה התצוגה"
             onDrag={(y) => {
               const box = previewColumn.current?.getBoundingClientRect();
-              if (box) setTopHeight(y - box.top - 44);
+              if (box) setTopHeight(y - box.top - 4);
             }}
             onStep={(d) => setTopHeight(topHeight + d * 40)}
             onReset={() => setTopHeight(TOP_HEIGHT_DEFAULT)}
@@ -2387,7 +2386,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               : { top: headerOffset + 8, maxHeight: `calc(100dvh - ${headerOffset + 16}px)` }
           }
         >
-          {layoutButtons}
           {studioView}
           {underPreview}
 

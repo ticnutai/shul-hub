@@ -135,8 +135,19 @@ export function TvDeviceStudio({
   fullscreen = false,
   onDeviceChange,
   preview,
+  fitHeight,
+  toolbarExtra,
   ...props
 }: BoardProps & {
+  /**
+   * The whole studio - its toolbar and the framed board - fits this many
+   * pixels of height. The editor's "תצוגה למעלה" gives it the height its bar
+   * was dragged to, and the board takes all of it rather than a width that
+   * happened to be left over.
+   */
+  fitHeight?: number;
+  /** Buttons that belong on the toolbar's row (the editor's layout switches). */
+  toolbarExtra?: ReactNode;
   /** The live editor window: the board alone on the whole screen, no device frame. */
   fullscreen?: boolean;
   selected?: string | null;
@@ -182,7 +193,12 @@ export function TvDeviceStudio({
   const [actualSize, setActualSize] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const editing = Boolean(props.editing);
-  const maxH = large ? Math.max(360, (typeof window === "undefined" ? 900 : window.innerHeight) - 220) : undefined;
+  // The toolbar row (32px), the gap under it (12px), the frame's padding (24px).
+  const maxH = fitHeight
+    ? Math.max(120, fitHeight - 72)
+    : large
+      ? Math.max(360, (typeof window === "undefined" ? 900 : window.innerHeight) - 220)
+      : undefined;
 
   // Drag-to-move. The delta is converted to percent of the board's frame
   // (cqw / cqh), which is what ElementStyle stores, so it lands in the same
@@ -278,16 +294,19 @@ export function TvDeviceStudio({
   return (
     <div className={`space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
       {editing && <EditHighlight hovered={hovered} selected={selected} />}
-      <DeviceToolbar
-        compare={compare}
-        onCompare={setCompare}
-        mode={choice.mode}
-        view={choice.view}
-        actualSize={actualSize}
-        onMode={choice.setMode}
-        onView={choice.setView}
-        onActualSize={setActualSize}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <DeviceToolbar
+          compare={compare}
+          onCompare={setCompare}
+          mode={choice.mode}
+          view={choice.view}
+          actualSize={actualSize}
+          onMode={choice.setMode}
+          onView={choice.setView}
+          onActualSize={setActualSize}
+        />
+        {toolbarExtra && <div className="ms-auto flex flex-wrap items-center gap-2">{toolbarExtra}</div>}
+      </div>
       {choice.mode === "all" && compare ? (
         <div className="grid grid-cols-2 items-end gap-x-4 gap-y-5 rounded-xl bg-muted/30 p-3 sm:grid-cols-6">
           {DEVICE_ORDER.map((id) => (

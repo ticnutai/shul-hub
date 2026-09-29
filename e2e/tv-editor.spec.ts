@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { BOARD_SKINS } from "../src/tv/config";
 import { TV_THEMES } from "../src/tv/themes";
 import { expectNotFrozen, serveEditor, type EditorServer } from "./support/tvEditor";
+import { chooseDevice } from "./support/deviceMenu";
 
 /**
  * The editor itself, control by control.
@@ -514,9 +515,8 @@ test.describe("TV editor", () => {
    */
   test("choosing a device to look at is choosing what you edit", async ({ page }) => {
     const banner = page.getByTestId("device-scope");
-    const strip = page.getByRole("radiogroup", { name: "מכשיר לתצוגה" });
     const look = async (name: string) => {
-      await strip.getByRole("radio", { name, exact: true }).click();
+      await chooseDevice(page, name);
       await page.waitForTimeout(400);
     };
     const skinOf = async () =>
@@ -571,15 +571,14 @@ test.describe("TV editor", () => {
 
   test("every display is shown side by side, each with its own board", async ({ page }) => {
     // The answer to "which screens disagree with each other": look at them.
-    const strip = page.getByRole("radiogroup", { name: "מכשיר לתצוגה" });
-    await strip.getByRole("radio", { name: "מובייל", exact: true }).click();
+    await chooseDevice(page, "מובייל");
     await page.waitForTimeout(350);
     await page.getByRole("tab", { name: "פריסה" }).click();
     const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
     await skins.nth(5).click();
     await page.waitForTimeout(400);
 
-    await strip.getByRole("radio", { name: "כל המסכים", exact: true }).click();
+    await chooseDevice(page, "כל המסכים");
     await page.waitForTimeout(350);
     await page.getByRole("button", { name: /השוואה בין התצוגות/ }).click();
     await page.waitForTimeout(700);

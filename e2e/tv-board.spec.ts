@@ -1,4 +1,5 @@
 import { expect, hasAdmin, test } from "./support/admin";
+import { chooseDevice, openDeviceMenu } from "./support/deviceMenu";
 
 /**
  * The wall board: the admin control center (screens, live editor, device
@@ -126,8 +127,7 @@ test.describe("administrator", () => {
   test("device studio shows the board on every kind of screen", async ({ adminPage: page }, testInfo) => {
     const errors = collectErrors(page);
     await page.goto("/community/admin?tab=tv&tvTab=design");
-    const picker = page.getByRole("radiogroup", { name: "מכשיר לתצוגה" });
-    await expect(picker).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId("device-menu").first()).toBeVisible({ timeout: 20_000 });
 
     for (const [device, size] of [
       ["Android TV", "960×540"],
@@ -136,8 +136,9 @@ test.describe("administrator", () => {
       ["טאבלט", "×"],
       ["מובייל", "390×"],
     ] as const) {
-      await picker.getByRole("radio", { name: device }).click();
-      await expect(picker.getByRole("radio", { name: device })).toHaveAttribute("aria-checked", "true");
+      await chooseDevice(page, device);
+      // The menu closes on a choice; its button says what was chosen.
+      await expect(page.getByTestId("device-menu").first()).toContainText(device);
       await expect(page.getByText(size, { exact: false }).first()).toBeVisible();
       await expectBoardDrawn(page.locator(".tv-frame").first());
       await testInfo.attach(`device-${device}`, { body: await page.locator(".tv-frame").first().screenshot(), contentType: "image/png" });
@@ -147,11 +148,12 @@ test.describe("administrator", () => {
     const unit = await page.locator(".tv-root").first().evaluate((el) => getComputedStyle(el).getPropertyValue("--u").trim());
     expect(unit).toContain("cqw");
 
+    await openDeviceMenu(page);
     await page.getByRole("button", { name: "לרוחב" }).click();
     await expect(page.getByRole("button", { name: "לאורך" })).toBeVisible();
     await page.getByRole("button", { name: "לאורך" }).click();
 
-    await picker.getByRole("radio", { name: "כל המסכים" }).click();
+    await chooseDevice(page, "כל המסכים");
     // "All screens" shows one board by default - the change applies to every
     // device - and only draws the five side by side once comparison is on.
     // The button appeared after these specs were written, and without it the
@@ -159,7 +161,7 @@ test.describe("administrator", () => {
     await page.getByRole("button", { name: /השוואה בין התצוגות/ }).click();
     await expect(page.locator(".tv-frame")).toHaveCount(5);
     await testInfo.attach("all-devices", { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
-    await picker.getByRole("radio", { name: "Android TV" }).click();
+    await chooseDevice(page, "Android TV");
     expect(errors).toEqual([]);
   });
 
@@ -167,8 +169,7 @@ test.describe("administrator", () => {
     const errors = collectErrors(page);
     await page.goto("/community/admin?tab=tv&tvTab=design");
     await expect(page.getByText("הכל שמור").first()).toBeVisible({ timeout: 20_000 });
-    const picker = page.getByRole("radiogroup", { name: "מכשיר לתצוגה" });
-    await picker.getByRole("radio", { name: "כל המסכים" }).click();
+    await chooseDevice(page, "כל המסכים");
     // "All screens" shows one board by default - the change applies to every
     // device - and only draws the five side by side once comparison is on.
     // The button appeared after these specs were written, and without it the
