@@ -120,6 +120,7 @@ function updater(): ApkUpdaterPlugin {
 export const VERSION_URL = "https://shul-hub.lovable.app/tv-version.json";
 const CHECK_EVERY_MS = 3 * 60 * 60 * 1000;
 const FIRST_CHECK_MS = 60 * 1000;
+const ALLOW_RECHECK_MS = 60 * 1000;
 
 export type RemoteVersion = { versionCode: number; versionName: string; apk: string };
 
@@ -194,11 +195,27 @@ export function useApkUpdate(log?: (msg: string) => void): { state: UpdateState;
     if (!canSelfUpdate()) return;
     const first = window.setTimeout(() => void check(), FIRST_CHECK_MS);
     const every = window.setInterval(() => void check(), CHECK_EVERY_MS);
+    // Back on the board from Android's settings (the switch was just turned
+    // on there, or from a computer over adb): ask again now, not in 3 hours.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       window.clearTimeout(first);
       window.clearInterval(every);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, [check]);
+
+  // While the board is asking for the permission, look every minute: it can
+  // be granted without the board ever leaving the screen, and a line that
+  // stays after the thing it asks for is done teaches people to ignore it.
+  useEffect(() => {
+    if (state.phase !== "allow") return;
+    const id = window.setInterval(() => void check(), ALLOW_RECHECK_MS);
+    return () => window.clearInterval(id);
+  }, [state.phase, check]);
 
   const install = useCallback(async () => {
     if (state.phase !== "ready" && state.phase !== "permission" && state.phase !== "allow") return false;

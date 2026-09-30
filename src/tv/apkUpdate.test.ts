@@ -70,6 +70,32 @@ describe("silent updates (app 1.38, Android 12+)", () => {
     expect(updateText({ phase: "allow", version: "1.38" })).toContain("פעם אחת");
   });
 
+  it("takes the line off the screen once the permission is given, without anyone pressing OK", async () => {
+    // Granted from Android's settings, or from a computer over adb: the board
+    // used to keep asking until its next check, three hours later.
+    const { useApkUpdate } = await import("./apkUpdate");
+    const { renderHook, act } = await import("@testing-library/react");
+    const { vi } = await import("vitest");
+    vi.useFakeTimers();
+    let canInstall = false;
+    (window as { ShulTvNative?: unknown }).ShulTvNative = {
+      info: () => JSON.stringify({ versionCode: 39, versionName: "1.38", canInstall, silent: true }),
+      download: () => true,
+      install: () => "installing",
+    };
+    try {
+      const { result } = renderHook(() => useApkUpdate());
+      await act(async () => vi.advanceTimersByTimeAsync(61_000));
+      expect(result.current.state.phase).toBe("allow");
+      canInstall = true;
+      await act(async () => vi.advanceTimersByTimeAsync(61_000));
+      expect(result.current.state.phase).toBe("idle");
+    } finally {
+      vi.useRealTimers();
+      delete (window as { ShulTvNative?: unknown }).ShulTvNative;
+    }
+  });
+
   it("tells the admin what the app is and does 'update now' through the app", async () => {
     const { nativeAppInfo, installUpdateNow } = await import("./apkUpdate");
     let asked = 0;
