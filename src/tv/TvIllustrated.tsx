@@ -1,16 +1,13 @@
 import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { useHolyEndMinutes } from "./holyEnd";
-import { HDate } from "@hebcal/core";
 import type { Settings } from "@community/lib/data";
-import { jerusalemWeekday, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
+import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
-import { SHOWN_ZMANIM, useBoardEdit } from "./boardEdit";
-import { specialZmanim } from "@community/lib/specialDays";
+import { useBoardEdit } from "./boardEdit";
+import { frameZmanim, useBoardDay } from "./boardDay";
 import { illustratedLayers } from "./illustratedAdjust";
 import type { IllustratedStyle } from "./config";
 import { illustrationDef, rowWindow, todaysRows, type Box, type CustomIllustration, type Illustration } from "./illustrated";
-import { weeklyParasha } from "./learning";
-import { nextCandleLighting } from "./shabbat";
 import { jerusalemMinutes, type BoardSlide } from "./useBoardData";
 import { ILLUSTRATION_PICTURES } from "./illustrationPictures";
 import type { FrameId, FrameLook } from "./frameLooks";
@@ -23,7 +20,6 @@ import { fillCss } from "./layerCss";
  * for the pictures and why they keep their own colours).
  */
 
-const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 type PrayerSlide = Extract<BoardSlide, { kind: "prayer" }>;
 
 function At({ b, children, style }: { b: Box; children: ReactNode; style?: CSSProperties }) {
@@ -49,9 +45,6 @@ function useMark() {
     return a["data-edit"] ? { "data-edit": a["data-edit"] } : {};
   };
 }
-
-/** What a full frame of zmanim gives up first, so dawn, sunrise and nightfall always stay. */
-const ZMAN_DROP_ORDER = ["misheyakir", "mincha_gedola", "plag", "sof_zman_tefila", "candle", "chatzot"];
 
 /** Row type size: a narrow frame (the carved wood's side panels) gets smaller type, not clipped names. */
 const rowSize = (b: Box) => `calc(${b[2] - b[0] < 25 ? 1.55 : 1.95}cqw * var(--ill-k, 1))`;
@@ -101,14 +94,7 @@ function ZmanimFrame({ d, zmanim, box, max, now }: { d: Illustration; zmanim: Zm
   const mark = useMark();
   // The day's own times (a fast's start and end, צאת החג) come first; the
   // ordinary zmanim give up their places to them.
-  const special = specialZmanim(now, zmanim, useHolyEndMinutes()).slice(0, max);
-  const room = max - special.length;
-  let shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
-  for (const drop of ZMAN_DROP_ORDER) {
-    if (shown.length <= room) break;
-    shown = shown.filter((e) => e !== drop);
-  }
-  shown = shown.slice(0, room);
+  const { special, shown } = frameZmanim(now, zmanim, useHolyEndMinutes(), edit.hidden, max);
   return (
     <At b={box} style={{ color: d.ink }}>
       <div className="tv-ill-list" style={{ "--ill-size": rowSize(box) } as CSSProperties}>
@@ -190,20 +176,8 @@ export function IllustratedStage({
     return own && (own.bg || own.line) ? [{ id, box, look: own }] : [];
   });
   const clockLook = edit.frameLook("clock");
-  const dayKey = now.toDateString();
-  const day = useMemo(() => {
-    const date = new Date(dayKey);
-    const candle = nextCandleLighting(date, settings);
-    const saturday = candle ? zmanimFor(new Date(candle.getTime() + 86_400_000), settings) : null;
-    const out = saturday?.sunset ? new Date(saturday.sunset.getTime() + shabbatEndMinutes * 60_000) : null;
-    return {
-      hebrew: new HDate(date).renderGematriya(true),
-      parasha: weeklyParasha(date),
-      candle,
-      out,
-    };
-  }, [dayKey, settings, shabbatEndMinutes]);
-  const weekday = `יום ${WEEKDAYS[jerusalemWeekday(now)]}`;
+  const day = useBoardDay(now, settings, shabbatEndMinutes);
+  const weekday = day.weekday;
   /**
    * The name, and whether it is on the board at all.
    *

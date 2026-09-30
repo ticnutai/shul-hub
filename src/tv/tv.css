@@ -5326,3 +5326,179 @@
     var(--frame-bottom, calc(var(--u) * 1.6)) !important;
   padding-top: calc(var(--u) * 3);
 }
+
+/* ------------------------------------------------------- the medallion -- */
+/*
+ * The painted boards' arrangement, built from ordinary frames (TvMedallion):
+ * a clock in a medallion between the weekday and the date, the prayers and
+ * the zmanim in two large frames, a strip along the bottom. Every piece is a
+ * .tv-panel, so the style, the corners, the layers and one frame's own look
+ * all reach it; the background is the board's own.
+ */
+.tv-slide.tv-med {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: calc(var(--u) * 2.4);
+  padding: calc(var(--u) * 3) calc(var(--u) * 4) calc(var(--u) * 2.4);
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.tv-med-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: calc(var(--u) * 4);
+}
+
+.tv-root .tv-med .tv-panel.tv-med-plaque {
+  /* A plaque is one line: the tall padding some styles give a frame for its
+     arch or dome would push that line out of it. */
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4);
+}
+
+.tv-med-plaque {
+  justify-content: center;
+  text-align: center;
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 4.4);
+  font-weight: 700;
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2.4);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* A circle whatever the corners are set to elsewhere: it is the medallion. */
+.tv-root .tv-med .tv-panel.tv-med-clock {
+  width: calc(var(--u) * 21);
+  height: calc(var(--u) * 21);
+  border-radius: 50% !important;
+  padding: 0 !important;
+  display: grid;
+  place-items: center;
+  font-family: var(--tv-font-display);
+  font-size: calc(var(--fs) * 6.6);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--tv-accent);
+}
+
+.tv-med-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+}
+
+.tv-med-list {
+  padding: calc(var(--u) * 2.6) calc(var(--u) * 3.2);
+}
+
+.tv-med-list .tv-panel-title {
+  text-align: center;
+  font-size: calc(var(--fs) * 3.4);
+  color: var(--tv-accent);
+}
+
+.tv-med-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+}
+
+.tv-med-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: calc(var(--u) * 2);
+  /* --fit: set by useShrinkToFit when a style's frame leaves less room. */
+  font-size: calc(var(--fs) * 3.5 * var(--fit, 1));
+  line-height: 1.25;
+}
+
+.tv-med-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tv-med-name small {
+  font-size: 0.6em;
+  color: var(--tv-text-dim);
+}
+
+.tv-med-time {
+  flex: 0 0 auto;
+  color: var(--tv-accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.tv-med-row.is-next {
+  font-weight: 700;
+}
+
+.tv-med-row.is-next .tv-med-name::before {
+  content: "◂ ";
+  color: var(--tv-accent);
+}
+
+.tv-med-row.is-cancelled {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.tv-med-row.is-special {
+  font-weight: 700;
+}
+
+.tv-med-empty {
+  margin: auto;
+  color: var(--tv-text-dim);
+  font-size: calc(var(--fs) * 3);
+}
+
+.tv-med-strip {
+  justify-content: center;
+  text-align: center;
+  font-size: calc(var(--fs) * 3);
+}
+
+.tv-root .tv-med .tv-panel.tv-med-strip {
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 3);
+}
+
+.tv-med-strip p {
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Standing up (a phone): the frames one above the other. */
+@container (max-aspect-ratio: 1/1) {
+  .tv-med-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tv-med-top {
+    gap: calc(var(--u) * 2);
+  }
+
+  .tv-root .tv-med .tv-panel.tv-med-clock {
+    width: calc(var(--u) * 14);
+    height: calc(var(--u) * 14);
+  }
+}
+
+/* The medallion stays round under a style that frames its panels square. */
+.tv-root .tv-med .tv-panel.tv-med-clock::before,
+.tv-root .tv-med .tv-panel.tv-med-clock::after {
+  border-radius: 50% !important;
+}

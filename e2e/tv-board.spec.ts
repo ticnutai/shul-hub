@@ -236,7 +236,8 @@ test.describe("administrator", () => {
     await page.getByRole("button", { name: /זהב מלכותי/ }).first().click();
     await expect.poll(accent).not.toBe(before);
 
-    await page.getByRole("button", { name: "הגדלת גודל טקסט" }).click();
+    // The text size is a slider under "טקסט" (the painted board has its own of the same name).
+    await page.getByTestId("layer-text").getByLabel("גודל הטקסט", { exact: true }).fill("1.1");
     for (const tab of await page.getByRole("tab").filter({ hasText: /^\d+\./ }).all()) await tab.click();
 
     await page.getByRole("button", { name: "דוגמת התראת זמנים" }).click();

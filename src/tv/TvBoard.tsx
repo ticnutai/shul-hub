@@ -9,6 +9,7 @@ import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { Settings } from "@community/lib/data";
 import { CORNER_SHAPE, type TvConfig } from "./config";
 import { layerVars } from "./layerCss";
+import { MedallionStage } from "./TvMedallion";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
 import { backdropUrl } from "./backdrops";
@@ -157,7 +158,8 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const screenSlides = composed
     ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
     : slides;
-  const mergedLook = config.screenLayout === "illustrated" || config.screenLayout === "dashboard";
+  const mergedLook =
+    config.screenLayout === "illustrated" || config.screenLayout === "dashboard" || config.screenLayout === "medallion";
   const screenFitsLook =
     !composed || composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim");
   // The Shabbat screen always takes the whole stage, whatever the layout.
@@ -169,6 +171,9 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const dashboard = layout === "dashboard";
   // A painted board draws its own header, clock and bottom line.
   const illustrated = layout === "illustrated";
+  // The medallion draws its own header too: the clock, the day and the date are its frames.
+  const medallion = layout === "medallion";
+  const ownHeader = illustrated || medallion;
   const alert = shabbatNowOn ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
@@ -193,7 +198,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           )}
         </div>
         <TvShapes />
-        {!illustrated && <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />}
+        {!ownHeader && <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />}
 
         <main className="tv-stage">
           {!data.anyLoaded ? (
@@ -218,6 +223,15 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               settings={data.settings}
               shabbatEndMinutes={holyEndMinutes}
             />
+          ) : medallion ? (
+            <MedallionStage
+              slides={screenSlides}
+              now={minuteNow}
+              zmanim={zmanim}
+              settings={data.settings}
+              shabbatEndMinutes={holyEndMinutes}
+              rowsPerFrame={config.illustratedStyle.rows}
+            />
           ) : dashboard ? (
             <ClockContext.Provider value={now}>
               <MemoDashboard slides={screenSlides} now={minuteNow} zmanim={zmanim} index={index} clockStyle={config.clockStyle} countdown={config.countdown.enabled} />
@@ -238,7 +252,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 
         {dashboard && <DashboardStrip now={minuteNow} extra={config.ticker.enabled ? config.ticker.text : ""} />}
 
-        {!dashboard && !illustrated && config.ticker.enabled && config.ticker.text.trim() && (
+        {!dashboard && !ownHeader && config.ticker.enabled && config.ticker.text.trim() && (
           <div className="tv-ticker" {...edit.attr("ticker")}>
             <span
               className="tv-ticker-text"
@@ -250,7 +264,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         <footer className="tv-footer">
-          {edit.hidden("footer.dots") || shabbat || dashboard || illustrated ? (
+          {edit.hidden("footer.dots") || shabbat || dashboard || ownHeader ? (
             <span />
           ) : (
             <div className="tv-footer-slides" {...edit.attr("footer.dots")}>

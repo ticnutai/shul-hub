@@ -92,6 +92,29 @@ test.describe("TV editor, by layer", () => {
     await expectNotFrozen(page, "frame line and arch");
   });
 
+  test("the medallion layout is built from ordinary frames that every layer reaches", async ({ page }) => {
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("button", { name: /^מדליון/ }).click();
+    const med = root(page).locator(".tv-med");
+    await expect(med).toBeVisible();
+    for (const id of ["clock", "date", "prayers", "zmanim", "strip"])
+      await expect(med.locator(`[data-frame="${id}"]`).first()).toBeVisible();
+    // Its own header: the board's header strip is not drawn over it.
+    await expect(root(page).locator(".tv-header")).toHaveCount(0);
+
+    // A frame style reaches its frames, and one frame can stand apart.
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await page.getByTestId("skin-picker").getByRole("button").nth(1).click();
+    const layer = page.getByTestId("layer-background");
+    await layer.getByLabel("רקע של").selectOption("frame:clock");
+    await layer.getByRole("radio", { name: "צבע" }).click();
+    await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
+    await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(90, 26, 42)");
+    // The plaque's text stays above whatever the style draws behind it.
+    await expect(med.locator('[data-frame="date"] span').first()).toBeVisible();
+    await expectNotFrozen(page, "medallion");
+  });
+
   test("text is chosen for the board, inside one frame, or one area", async ({ page }) => {
     const layer = page.getByTestId("layer-text");
     await layer.getByLabel("טקסט של").selectOption("frame:zmanim");

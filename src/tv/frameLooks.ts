@@ -18,7 +18,7 @@ import { isSafeLayerFill } from "./layers";
  * draws it, which is every frame of every board that existed before this.
  */
 
-export const FRAME_IDS = ["prayers", "zmanim", "next", "clock", "announcements", "shiurim", "learning"] as const;
+export const FRAME_IDS = ["prayers", "zmanim", "next", "clock", "date", "strip", "announcements", "shiurim", "learning"] as const;
 export type FrameId = (typeof FRAME_IDS)[number];
 
 export const FRAME_LABELS: Record<FrameId, string> = {
@@ -26,6 +26,8 @@ export const FRAME_LABELS: Record<FrameId, string> = {
   zmanim: "זמני היום",
   next: "המניין הבא",
   clock: "השעון",
+  date: "היום והתאריך",
+  strip: "הפס התחתון",
   announcements: "המודעות",
   shiurim: "השיעורים",
   learning: "לימוד יומי ופרשה",

@@ -167,9 +167,12 @@ export interface ElementStyle {
  *   illustrated  a whole painted board (curtain, stone tablets, carved wood...)
  *              with the day's times written into its frames - see
  *              illustrated.ts and `illustration` below
+ *   medallion  the painted boards' arrangement - a clock in a medallion
+ *              between two plaques, prayers and zmanim in two large frames,
+ *              a strip below - built from ordinary frames (TvMedallion.tsx)
  */
-export type ScreenLayout = "rotate" | "split" | "dashboard" | "illustrated";
-export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard", "illustrated"];
+export type ScreenLayout = "rotate" | "split" | "dashboard" | "illustrated" | "medallion";
+export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard", "illustrated", "medallion"];
 
 /** Kinds of day that can have their own look (see dayLooks.ts), highest first. */
 export const DAY_KINDS = ["shabbat", "festival", "roshChodesh", "friday"] as const;

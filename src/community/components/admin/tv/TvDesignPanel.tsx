@@ -113,6 +113,23 @@ const LAYOUT_CHOICES: Array<{
     ),
   },
   {
+    id: "medallion",
+    name: "מדליון",
+    hint: "שעון במדליון בין היום לתאריך, תפילות וזמנים בשתי מסגרות גדולות ופס למטה - כל חלק ניתן לעיצוב",
+    sketch: (
+      <>
+        <i className="h-2 rounded-sm bg-current opacity-50" />
+        <i className="mx-auto h-3 w-3 rounded-full bg-current opacity-70" />
+        <i className="h-2 rounded-sm bg-current opacity-50" />
+        <i className="col-span-3 row-span-2 grid grid-cols-2 gap-1">
+          <i className="rounded-sm bg-current opacity-40" />
+          <i className="rounded-sm bg-current opacity-40" />
+        </i>
+        <i className="col-span-3 h-1.5 rounded-sm bg-current opacity-60" />
+      </>
+    ),
+  },
+  {
     id: "illustrated",
     name: "תבנית מאוירת",
     hint: "לוח מצויר (פרוכת, לוחות אבן, עץ מגולף) עם הזמנים של היום בתוך המסגרות",
@@ -1375,7 +1392,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 במעבר בין תפילות — שחרית לא תיחתך באמצע.
               </p>
             </div>
-            {painted && <PaintedRows config={draft} onEdit={edit} />}
+            {(painted || draft.screenLayout === "medallion") && <PaintedRows config={draft} onEdit={edit} />}
           </Section>
 
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים — המסכים שלו קובעים, גם בשבת.">

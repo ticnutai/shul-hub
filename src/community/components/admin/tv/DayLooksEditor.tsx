@@ -10,6 +10,7 @@ const LAYOUT_NAMES: Record<ScreenLayout, string> = {
   split: "מפוצל",
   dashboard: "לוח מלא",
   illustrated: "תבנית מאוירת",
+  medallion: "מדליון",
 };
 
 /**

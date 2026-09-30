@@ -308,7 +308,7 @@ export function PaintedRows({ config, onEdit }: Props) {
     <Range
       look={config.illustratedStyle}
       set={set}
-      label="לוח מצויר: שורות בכל מסגרת"
+      label="מדליון ולוח מצויר: שורות בכל מסגרת"
       k="rows"
       min={4}
       max={10}
