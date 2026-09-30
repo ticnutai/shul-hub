@@ -3,12 +3,13 @@ import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { civilDayProfile } from "@/lib/jewishDay";
 import type { DayKind, TvConfig } from "./config";
 import { shabbatNow } from "./shabbat";
+import { applyDesign, findDesign } from "./designs";
 
 /**
  * A different look for different days, switched by the board itself.
  *
- * The admin chooses, per kind of day, a layout, a painted board and a theme
- * (each one optional: what is not chosen stays as on every other day). The
+ * The admin chooses, per kind of day, a design, a layout, a painted board and
+ * a theme (each one optional: what is not chosen stays as on every other day). The
  * board works out what kind of day it is and wears that look - the curtain
  * for Shabbat, the stone tablets for Sukkot - without anyone touching it.
  *
@@ -49,10 +50,15 @@ export function applyDayLook(config: TvConfig, now: Date, settings: Settings | n
   const kind = dayKindAt(now, settings, config.shabbat.endMinutesAfterSunset);
   const look = kind ? config.dayLooks[kind] : undefined;
   if (!look) return config;
+  // The theme first and the design over it, so the design's colours are not
+  // wiped by the theme; a layout or painted board chosen for the day wins
+  // over the design's own.
+  let next: TvConfig = look.theme ? { ...config, theme: look.theme, themeOverrides: {} } : config;
+  const design = findDesign(config, look.design);
+  if (design) next = applyDesign(next, design);
   return {
-    ...config,
+    ...next,
     ...(look.screenLayout ? { screenLayout: look.screenLayout } : {}),
     ...(look.illustration ? { illustration: look.illustration } : {}),
-    ...(look.theme ? { theme: look.theme, themeOverrides: {} } : {}),
   };
 }

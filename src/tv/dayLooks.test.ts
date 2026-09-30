@@ -47,3 +47,33 @@ describe("wearing the day's look", () => {
     expect([friday.screenLayout, friday.theme]).toEqual(["dashboard", "shabbat"]);
   });
 });
+
+describe("a design for the day", () => {
+  it("puts a ready or saved design on for the day, and forgets one that is gone", async () => {
+    const { captureDesign, coloursOnScreen } = await import("./designs");
+    const base = normalizeTvConfig({ theme: "navy", screenLayout: "dashboard" });
+    const mine = captureDesign(normalizeTvConfig({ theme: "forest", font: "bold" }), "שלי", ["text"], "d_mine01");
+    const config = normalizeTvConfig({
+      ...base,
+      designs: [mine],
+      dayLooks: {
+        shabbat: { design: "d_curtain" },
+        festival: { design: "d_mine01", theme: "royal" },
+        friday: { design: "d_gone00" },
+      },
+    });
+    expect(config.dayLooks.friday).toBeUndefined();
+
+    const shabbat = applyDayLook(config, il("2026-09-25", 20), null);
+    expect(shabbat.screenLayout).toBe("medallion");
+    expect(shabbat.backgroundImage).toBe("backdrop:royal");
+    expect(shabbat.frameStyle.image).toBe("frame:gold-ornate");
+
+    // The theme goes on first, the design over it: the design's text colours stay.
+    const sukkot = applyDayLook(config, il("2026-09-28", 12), null);
+    expect(sukkot.theme).toBe("royal");
+    expect(sukkot.font).toBe("bold");
+    expect(coloursOnScreen(sukkot)["--tv-text"]).toBe(mine.colours["--tv-text"]);
+    expect(sukkot.screenLayout).toBe("dashboard");
+  });
+});

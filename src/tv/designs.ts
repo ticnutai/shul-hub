@@ -200,6 +200,12 @@ export function normalizeDesigns(raw: unknown, normalize: (raw: unknown) => TvCo
   return out;
 }
 
+/** A design by id: one the admin saved, or a ready one. */
+export function findDesign(c: Pick<TvConfig, "designs">, id: string | null | undefined): SavedDesign | undefined {
+  if (!id) return undefined;
+  return c.designs.find((d) => d.id === id) ?? BUILTIN_DESIGNS.find((d) => d.id === id);
+}
+
 /* --------------------------------------------------- the ready designs -- */
 
 /**

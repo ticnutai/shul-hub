@@ -1,5 +1,5 @@
 import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
-import { normalizeDesigns, type SavedDesign } from "./designs";
+import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
 import {
   DEFAULT_BACKGROUND_TUNE,
   DEFAULT_FRAME_STYLE,
@@ -182,6 +182,8 @@ export interface DayLook {
   screenLayout?: ScreenLayout;
   illustration?: string;
   theme?: string;
+  /** A design - a ready one or one the admin saved (designs.ts) - put on for the day. */
+  design?: string;
 }
 
 /** The painted boards the "illustrated" layout can draw (pictures in TvIllustrated.tsx). */
@@ -856,7 +858,12 @@ function normalizeEventStyles(raw: unknown): Record<string, number[]> {
 }
 
 /** Day looks from storage: only known kinds, and only layouts, boards and themes that exist. */
-function normalizeDayLooks(raw: unknown, themes: string[], illustrations: string[]): TvConfig["dayLooks"] {
+function normalizeDayLooks(
+  raw: unknown,
+  themes: string[],
+  illustrations: string[],
+  designs: string[],
+): TvConfig["dayLooks"] {
   const out: TvConfig["dayLooks"] = {};
   const r = (raw ?? {}) as Record<string, unknown>;
   for (const kind of DAY_KINDS) {
@@ -866,6 +873,7 @@ function normalizeDayLooks(raw: unknown, themes: string[], illustrations: string
     if (SCREEN_LAYOUTS.includes(v.screenLayout as ScreenLayout)) look.screenLayout = v.screenLayout as ScreenLayout;
     if (typeof v.illustration === "string" && illustrations.includes(v.illustration)) look.illustration = v.illustration;
     if (typeof v.theme === "string" && themes.includes(v.theme)) look.theme = v.theme;
+    if (typeof v.design === "string" && designs.includes(v.design)) look.design = v.design;
     if (Object.keys(look).length) out[kind] = look;
   }
   return out;
@@ -904,6 +912,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
   if (!isObj(raw)) return structuredClone(d);
 
   const customThemes = normalizeCustomThemes(raw.customThemes);
+  const designs = normalizeDesigns(raw.designs, normalizeTvConfig);
   const customIllustrations = normalizeCustomIllustrations(raw.customIllustrations);
   const theme =
     TV_THEMES.some((t) => t.id === raw.theme) || customThemes.some((t) => t.id === raw.theme) ? String(raw.theme) : d.theme;
@@ -998,7 +1007,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
     customThemes,
-    designs: normalizeDesigns(raw.designs, normalizeTvConfig),
+    designs,
     gradients: normalizeGradients(raw.gradients),
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
@@ -1009,10 +1018,12 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     frameLooks: normalizeFrameLooks(raw.frameLooks),
     backgroundTune: normalizeBackgroundTune(raw.backgroundTune),
     frameStyle: normalizeFrameStyle(raw.frameStyle),
-    dayLooks: normalizeDayLooks(raw.dayLooks, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)], [
-      ...ILLUSTRATIONS,
-      ...customIllustrations.map((i) => i.id),
-    ]),
+    dayLooks: normalizeDayLooks(
+      raw.dayLooks,
+      [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)],
+      [...ILLUSTRATIONS, ...customIllustrations.map((i) => i.id)],
+      [...BUILTIN_DESIGNS.map((x) => x.id), ...designs.map((x) => x.id)],
+    ),
     eventImages: normalizeEventImages(raw.eventImages),
     eventStyles: normalizeEventStyles(raw.eventStyles),
     eventSplash: raw.eventSplash !== false,

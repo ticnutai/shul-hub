@@ -2,6 +2,7 @@ import { DAY_KINDS, type DayKind, type DayLook, type ScreenLayout, type TvConfig
 import { DAY_KIND_LABELS, dayKindAt } from "@/tv/dayLooks";
 import { ILLUSTRATION_DEFS } from "@/tv/illustrated";
 import { allThemes } from "@/tv/themes";
+import { BUILTIN_DESIGNS } from "@/tv/designs";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -15,7 +16,7 @@ const LAYOUT_NAMES: Record<ScreenLayout, string> = {
 
 /**
  * "מראה לפי יום": for Shabbat, festivals, Rosh Chodesh and Friday, the board
- * can switch by itself to another layout, painted board or theme. Each choice
+ * can switch by itself to a design, another layout, painted board or theme. Each choice
  * is optional - "כרגיל" keeps what every other day has.
  */
 export function DayLooksEditor({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
@@ -50,8 +51,9 @@ export function DayLooksEditor({ config, onEdit }: { config: TvConfig; onEdit: E
             : "עכשיו יום רגיל — המסכים במראה הרגיל."}
         </p>
       </div>
-      <div className="hidden grid-cols-[1fr_repeat(3,minmax(0,1fr))] gap-1.5 text-[11px] text-muted-foreground sm:grid">
+      <div className="hidden grid-cols-[1fr_repeat(4,minmax(0,1fr))] gap-1.5 text-[11px] text-muted-foreground sm:grid">
         <span />
+        <span>עיצוב</span>
         <span>פריסה</span>
         <span>לוח מצויר</span>
         <span>ערכת נושא</span>
@@ -60,8 +62,32 @@ export function DayLooksEditor({ config, onEdit }: { config: TvConfig; onEdit: E
         const look = config.dayLooks[kind] ?? {};
         const layout = look.screenLayout;
         return (
-          <div key={kind} className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_repeat(3,minmax(0,1fr))] sm:items-center">
+          <div key={kind} className="grid grid-cols-1 gap-1.5 sm:grid-cols-[1fr_repeat(4,minmax(0,1fr))] sm:items-center">
             <span className="text-xs font-medium">{DAY_KIND_LABELS[kind]}</span>
+            <select
+              aria-label={`עיצוב · ${DAY_KIND_LABELS[kind]}`}
+              value={look.design ?? ""}
+              onChange={(e) => set(kind, { design: e.target.value || undefined })}
+              className="h-8 rounded-md border bg-background px-1 text-xs"
+            >
+              <option value="">כרגיל</option>
+              <optgroup label="עיצובים מוכנים">
+                {BUILTIN_DESIGNS.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </optgroup>
+              {config.designs.length > 0 && (
+                <optgroup label="העיצובים שלי">
+                  {config.designs.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+            </select>
             <select
               aria-label={`פריסה · ${DAY_KIND_LABELS[kind]}`}
               value={layout ?? ""}
