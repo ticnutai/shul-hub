@@ -1,37 +1,18 @@
-import { useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ElementStyle, TvConfig } from "@/tv/config";
-import { FAMILY_PREFIX, setElementStyle } from "@/tv/boardEdit";
+import { setElementStyle } from "@/tv/boardEdit";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
 /**
- * "עיצוב טקסט לפי אזור": the board's text, one area at a time - the name,
- * the clock, every minyan row at once - with sliders for size, weight and
- * how strong it is, and its own colour.
+ * The board's text one area at a time - the name, the clock, every minyan
+ * row at once - with sliders for size, weight and strength, and a colour.
  *
  * It writes the same per-element styling as clicking a line on the preview
  * (config.styles, boardEdit.ts), so the two are one setting reached from two
- * places: what is set here shows in the inspector, and the other way round.
- * The "all rows" areas are the style families, so one rule holds for every
- * row, today's and tomorrow's.
+ * places. Which areas there are: textAreas.ts.
  */
-const AREAS: Array<{ key: string; label: string }> = [
-  { key: "header.title", label: "שם בית הכנסת" },
-  { key: "header.clock", label: "השעון" },
-  { key: "header.date", label: "התאריך" },
-  { key: "header.weekday", label: "היום בשבוע" },
-  { key: "panel.minyanim", label: "כותרת המניינים" },
-  { key: "panel.zmanim", label: "כותרת זמני היום" },
-  { key: `${FAMILY_PREFIX}minyan`, label: "כל שורות המניינים" },
-  { key: `${FAMILY_PREFIX}minyan:label`, label: "כל שמות המניינים" },
-  { key: `${FAMILY_PREFIX}zman`, label: "כל שורות זמני היום" },
-  { key: `${FAMILY_PREFIX}ann:title`, label: "כותרות המודעות" },
-  { key: `${FAMILY_PREFIX}ann:body`, label: "גוף המודעות" },
-  { key: `${FAMILY_PREFIX}shiur`, label: "שורות השיעורים" },
-  { key: "ticker", label: "הסרגל הרץ" },
-];
 
 const WEIGHTS: Array<{ value: number; label: string }> = [
   { value: 0, label: "כמו בעיצוב" },
@@ -41,40 +22,17 @@ const WEIGHTS: Array<{ value: number; label: string }> = [
   { value: 900, label: "שחור" },
 ];
 
-export function TextAreaStyles({ config, onEdit, painted }: { config: TvConfig; onEdit: Edit; painted: boolean }) {
-  const [key, setKey] = useState(AREAS[0].key);
+export function TextAreaControls({ config, onEdit, areaKey }: { config: TvConfig; onEdit: Edit; areaKey: string }) {
+  const key = areaKey;
   const style: ElementStyle = config.styles[key] ?? {};
   const set = (patch: Partial<ElementStyle>, group: string) =>
     onEdit(`style:${group}:${key}`, (c) => setElementStyle(c, key, patch));
   const scale = style.scale ?? 1;
   const opacity = style.opacity ?? 1;
-  const color = style.color && /^#[0-9a-f]{6}$/i.test(style.color) ? style.color : "#ffffff";
+  const color = style.color && /^#[0-9a-f]{6}$/i.test(style.color) ? style.color : "#f0c35c";
 
   return (
-    <div className="space-y-2 rounded-lg border p-3" data-testid="text-areas">
-      <div className="text-sm font-medium">עיצוב טקסט לפי אזור</div>
-      <p className="text-[11px] leading-tight text-muted-foreground">
-        {painted
-          ? "חל על הלוחות הרגילים. בלוח המצויר הטקסט נכתב בצבעי הציור - הם למעלה, ובכל מסגרת בנפרד תחת \"מסגרות\"."
-          : "אותו עיצוב כמו לחיצה על שורה בתצוגה. מה שנקבע כאן מופיע גם שם."}
-      </p>
-      <label className="flex items-center gap-2 text-xs">
-        <span className="shrink-0">אזור</span>
-        <select
-          aria-label="אזור טקסט"
-          value={key}
-          onChange={(e) => setKey(e.target.value)}
-          className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
-        >
-          {AREAS.map((a) => (
-            <option key={a.key} value={a.key}>
-              {a.label}
-              {config.styles[a.key] ? " •" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
-
+    <div className="space-y-2" data-testid="text-areas">
       <label className="block text-xs">
         <span className="flex justify-between">
           <span>גודל</span>

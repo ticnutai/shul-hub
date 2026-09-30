@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
-import { isSafeCssValue, isSafeFill } from "./themes";
+import { isSafeCssValue } from "./themes";
+import { isSafeLayerFill } from "./layers";
 
 /**
  * One frame dressed differently from the rest.
@@ -32,19 +32,24 @@ export const FRAME_LABELS: Record<FrameId, string> = {
 };
 
 export interface FrameLook {
-  /** The frame's background: a colour or a gradient. */
+  /** The frame's background: a colour, a gradient, or a picture (layers.isSafeLayerFill). */
   bg?: string;
+  /** 0–1, for a colour or a gradient. */
+  bgOpacity?: number;
   /** Its text. */
   text?: string;
   /** Its titles and times. */
   accent?: string;
   /** A line around it. */
   line?: string;
+  /** 0–6, as FrameStyle.lineWidth. */
+  lineWidth?: number;
 }
 
 export type FrameLooks = Partial<Record<FrameId, FrameLook>>;
 
 const FIELDS = ["bg", "text", "accent", "line"] as const;
+const NUMBERS = { bgOpacity: [0, 1], lineWidth: [0, 6] } as const;
 
 /** Only frames that exist, only colours (and, for the background, gradients) that are safe in a style attribute. */
 export function normalizeFrameLooks(raw: unknown): FrameLooks {
@@ -57,50 +62,36 @@ export function normalizeFrameLooks(raw: unknown): FrameLooks {
     for (const f of FIELDS) {
       const value = (v as Record<string, unknown>)[f];
       if (typeof value !== "string") continue;
-      const ok = f === "bg" ? isSafeFill(value) : isSafeCssValue(value);
+      const ok = f === "bg" ? isSafeLayerFill(value) : isSafeCssValue(value);
       if (ok) look[f] = value.trim();
     }
+    for (const [f, [lo, hi]] of Object.entries(NUMBERS) as [keyof typeof NUMBERS, readonly [number, number]][]) {
+      const value = (v as Record<string, unknown>)[f];
+      if (typeof value === "number" && Number.isFinite(value)) look[f] = Math.round(Math.min(hi, Math.max(lo, value)) * 100) / 100;
+    }
+    if (!look.bg) delete look.bgOpacity;
+    if (!look.line) delete look.lineWidth;
     if (Object.keys(look).length) out[id] = look;
   }
   return out;
 }
 
 /** Sets or clears one field; a frame left with nothing is dropped. */
-export function setFrameLook(looks: FrameLooks, id: FrameId, patch: Partial<Record<keyof FrameLook, string | null>>): FrameLooks {
-  const next: FrameLook = { ...looks[id] };
-  for (const [k, v] of Object.entries(patch) as [keyof FrameLook, string | null][]) {
-    if (v) next[k] = v;
-    else delete next[k];
+export function setFrameLook(
+  looks: FrameLooks,
+  id: FrameId,
+  patch: { [K in keyof FrameLook]?: FrameLook[K] | null },
+): FrameLooks {
+  const next: Record<string, unknown> = { ...looks[id] };
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === null || v === undefined || v === "") delete next[k];
+    else next[k] = v;
   }
+  // Only a size, with nothing to size, is no look at all.
+  if (!next.bg) delete next.bgOpacity;
+  if (!next.line) delete next.lineWidth;
   const out = { ...looks };
-  if (Object.keys(next).length) out[id] = next;
+  if (Object.keys(next).length) out[id] = next as FrameLook;
   else delete out[id];
   return out;
-}
-
-/**
- * The frame's look as an inline style on a flat board's panel.
- *
- * Colours go in as the theme's own variables, redefined on the panel, so
- * every line inside it - the times, the dim labels, the titles - takes them
- * the way it takes the theme's. An inline style is the only thing that beats
- * the skins' per-panel rules (tv.css sets --tv-text-dim on light panels).
- * The background replaces the skin's texture on this one panel: that is
- * what "this frame looks different" means.
- */
-export function frameLookCss(look: FrameLook | undefined): CSSProperties | undefined {
-  if (!look) return undefined;
-  const css: Record<string, string> = {};
-  if (look.bg) {
-    css.background = look.bg;
-    if (isSafeCssValue(look.bg)) css["--tv-panel"] = look.bg;
-  }
-  if (look.text) {
-    css.color = look.text;
-    css["--tv-text"] = look.text;
-    css["--tv-text-dim"] = look.text;
-  }
-  if (look.accent) css["--tv-accent"] = look.accent;
-  if (look.line) css.boxShadow = `inset 0 0 0 calc(var(--u, 1vh) * 0.3) ${look.line}`;
-  return Object.keys(css).length ? (css as CSSProperties) : undefined;
 }

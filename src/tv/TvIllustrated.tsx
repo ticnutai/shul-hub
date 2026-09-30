@@ -14,6 +14,7 @@ import { nextCandleLighting } from "./shabbat";
 import { jerusalemMinutes, type BoardSlide } from "./useBoardData";
 import { ILLUSTRATION_PICTURES } from "./illustrationPictures";
 import type { FrameId, FrameLook } from "./frameLooks";
+import { fillCss } from "./layerCss";
 
 /**
  * The "illustrated" layout: a painted board - curtain and gold frames, stone
@@ -238,8 +239,8 @@ export function IllustratedStage({
             top: `${f.box[1]}%`,
             width: `${f.box[2] - f.box[0]}%`,
             height: `${f.box[3] - f.box[1]}%`,
-            background: f.look.bg,
-            border: f.look.line ? `0.2cqw solid ${f.look.line}` : undefined,
+            background: fillCss(f.look.bg, f.look.bgOpacity ?? 1) ?? undefined,
+            border: f.look.line ? `${((f.look.lineWidth ?? 2) * 0.1).toFixed(2)}cqw solid ${f.look.line}` : undefined,
             borderRadius: "0.4cqw",
           }}
         />

@@ -258,4 +258,10 @@ export const FRAME_CHOICES: Array<{ id: FrameShape; name: string; hint: string; 
     hint: "פינה בצורת מדרגה",
     css: { borderRadius: "14px", cornerShape: "notch" } as CSSProperties,
   },
+  {
+    id: "arch",
+    name: "קשת",
+    hint: "ראש מקושת כמו לוחות הברית, והתחתית לפי העיגול למטה",
+    css: { borderRadius: "50% 50% 4px 4px / 45% 45% 4px 4px" },
+  },
 ];

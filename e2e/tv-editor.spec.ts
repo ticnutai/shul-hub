@@ -146,6 +146,8 @@ test.describe("TV editor", () => {
   });
 
   test("a ready-made background shows on the board before it is taken", async ({ page }) => {
+    // Pictures are one kind of background among colour and gradient.
+    await page.getByTestId("layer-background").getByRole("radio", { name: "תמונה" }).click();
     const picker = page.getByTestId("backdrop-picker");
     const bgImage = () =>
       root(page)
@@ -168,6 +170,8 @@ test.describe("TV editor", () => {
 
     // Taking it keeps it.
     await page.getByRole("tab", { name: "עיצוב" }).click();
+    // Back on the tab, the background opens on the kind it has (none yet: gradient).
+    await page.getByTestId("layer-background").getByRole("radio", { name: "תמונה" }).click();
     await picker.getByRole("button", { name: "אבן ירושלים" }).click();
     await page.getByRole("button", { name: "החלת הרקע הנבחר" }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-image");

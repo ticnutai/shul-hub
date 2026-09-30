@@ -1,4 +1,5 @@
-import { frameLookCss, type FrameId, type FrameLook } from "./frameLooks";
+import type { FrameId, FrameLook } from "./frameLooks";
+import { frameLookProps } from "./layerCss";
 import { createContext, useContext, type CSSProperties } from "react";
 import { ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import type { ElementStyle, FlipArea, TvConfig } from "./config";
@@ -323,20 +324,29 @@ export interface BoardEditApi {
    * element inside it was given, plus that element's click-to-edit marker
    * when it has one. `key` is the element the frame also is, if any.
    */
-  frame: (id: FrameId, key?: string) => { "data-frame": FrameId; "data-edit"?: string; style?: CSSProperties };
+  frame: (id: FrameId, key?: string) => FrameProps;
   /** The frame's own look, for boards that draw their frames themselves (the painted one). */
   frameLook: (id: FrameId) => FrameLook | undefined;
 }
 
 const NO_ATTR = {};
 
+type FrameProps = {
+  "data-frame": FrameId;
+  "data-edit"?: string;
+  "data-own-fill"?: "";
+  "data-own-line"?: "";
+  style?: CSSProperties;
+};
+
 function frameProps(
   id: FrameId,
-  look: CSSProperties | undefined,
+  look: FrameLook | undefined,
   inner: { "data-edit"?: string; style?: CSSProperties },
-): { "data-frame": FrameId; "data-edit"?: string; style?: CSSProperties } {
-  const style = look || inner.style ? { ...look, ...inner.style } : undefined;
-  return { "data-frame": id, ...inner, ...(style ? { style } : {}) };
+): FrameProps {
+  const own = frameLookProps(look);
+  const style = own.style || inner.style ? { ...own.style, ...inner.style } : undefined;
+  return { "data-frame": id, ...own, ...inner, ...(style ? { style } : {}) };
 }
 
 export function makeBoardEdit(config: TvConfig, editing: boolean): BoardEditApi {
@@ -353,7 +363,7 @@ export function makeBoardEdit(config: TvConfig, editing: boolean): BoardEditApi 
     hidden: (key) => isHidden(config, key),
     flipped: (area) => config.flipped.includes(area),
     attr,
-    frame: (id, key) => frameProps(id, frameLookCss(config.frameLooks?.[id]), key ? attr(key) : NO_ATTR),
+    frame: (id, key) => frameProps(id, config.frameLooks?.[id], key ? attr(key) : NO_ATTR),
     frameLook: (id) => config.frameLooks?.[id],
   };
 }

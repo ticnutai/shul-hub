@@ -1,4 +1,12 @@
 import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
+import {
+  DEFAULT_BACKGROUND_TUNE,
+  DEFAULT_FRAME_STYLE,
+  normalizeBackgroundTune,
+  normalizeFrameStyle,
+  type BackgroundTune,
+  type FrameStyle,
+} from "./layers";
 import { normalizeCustomIllustrations, type CustomIllustration } from "./illustrated";
 import type { SolarEvent } from "@community/lib/zmanim";
 import type { EventAutoMode } from "@community/lib/specialDays";
@@ -231,8 +239,8 @@ export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
  * corner, a corner scooped inwards, or a notch. They are CSS corner-shape
  * values; a browser without it still gets the roundness.
  */
-export type FrameShape = "auto" | "round" | "squircle" | "bevel" | "scoop" | "notch";
-export const FRAME_SHAPES: FrameShape[] = ["auto", "round", "squircle", "bevel", "scoop", "notch"];
+export type FrameShape = "auto" | "round" | "squircle" | "bevel" | "scoop" | "notch" | "arch";
+export const FRAME_SHAPES: FrameShape[] = ["auto", "round", "squircle", "bevel", "scoop", "notch", "arch"];
 
 /** What each shape is in CSS. */
 export const CORNER_SHAPE: Record<Exclude<FrameShape, "auto">, string> = {
@@ -241,6 +249,9 @@ export const CORNER_SHAPE: Record<Exclude<FrameShape, "auto">, string> = {
   bevel: "bevel",
   scoop: "scoop",
   notch: "notch",
+  // The top as an arch, like the tablets: round corners, and its own radius
+  // rule in tv.css (has-frame-arch), since no corner-shape draws an arch.
+  arch: "round",
 };
 
 /** How round a corner may be set to, in --u units. */
@@ -300,6 +311,9 @@ export interface DeviceOverlay {
   spacing?: TvConfig["spacing"];
   /** A frame dressed apart from the others (frameLooks.ts). */
   frameLooks?: FrameLooks;
+  /** The background's adjustments and every frame's dress (layers.ts). */
+  backgroundTune?: BackgroundTune;
+  frameStyle?: FrameStyle;
   theme?: string;
   themeOverrides?: Record<string, string>;
   backgroundGradient?: string | null;
@@ -415,6 +429,16 @@ export interface TvConfig {
    * and line (frameLooks.ts). Empty on every board until somebody sets one.
    */
   frameLooks: FrameLooks;
+  /**
+   * The board's background adjusted - brightness, colour, blur, a tint -
+   * whatever the background is (layers.ts). Neutral until somebody moves it.
+   */
+  backgroundTune: BackgroundTune;
+  /**
+   * Every frame's own dress over whatever style draws it: a background, a
+   * line, depth, or a picture of a frame (layers.ts). Neutral by default.
+   */
+  frameStyle: FrameStyle;
   /** A built-in theme id, or the id of one of `customThemes`. */
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
@@ -600,6 +624,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
   frameLooks: {},
+  backgroundTune: DEFAULT_BACKGROUND_TUNE,
+  frameStyle: DEFAULT_FRAME_STYLE,
   skin: "plain",
 };
 
@@ -969,6 +995,8 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     customIllustrations,
     illustratedStyle: normalizeIllustratedStyle(raw.illustratedStyle),
     frameLooks: normalizeFrameLooks(raw.frameLooks),
+    backgroundTune: normalizeBackgroundTune(raw.backgroundTune),
+    frameStyle: normalizeFrameStyle(raw.frameStyle),
     dayLooks: normalizeDayLooks(raw.dayLooks, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)], [
       ...ILLUSTRATIONS,
       ...customIllustrations.map((i) => i.id),
@@ -1017,7 +1045,15 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
       // so a screen's copy is checked exactly as the board's is. Everything
       // else on this list is written by the editor and read straight back.
       (kept as Record<string, unknown>)[k] =
-        k === "illustratedStyle" ? normalizeIllustratedStyle(v) : k === "frameLooks" ? normalizeFrameLooks(v) : v;
+        k === "illustratedStyle"
+          ? normalizeIllustratedStyle(v)
+          : k === "frameLooks"
+            ? normalizeFrameLooks(v)
+            : k === "backgroundTune"
+              ? normalizeBackgroundTune(v)
+              : k === "frameStyle"
+                ? normalizeFrameStyle(v)
+                : v;
     }
     if (Object.keys(kept).length > 0) out[device] = kept;
   }
@@ -1030,7 +1066,7 @@ const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,
-  illustration: true, illustratedStyle: true, frameLooks: true,
+  illustration: true, illustratedStyle: true, frameLooks: true, backgroundTune: true, frameStyle: true,
 };
 
 /**

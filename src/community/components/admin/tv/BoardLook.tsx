@@ -9,6 +9,7 @@ import {
 import { ILLUSTRATION_DEFS } from "@/tv/illustrated";
 import { ILLUSTRATION_PICTURES } from "@/tv/illustrationPictures";
 import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
+import { leavingPainted } from "./leavingPainted";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -24,15 +25,6 @@ type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
  * The style and the corners are how the frames look, and sit under "עיצוב ›
  * מסגרות"; the spacing is where they stand, and sits under "פריסה".
  */
-
-/**
- * The layout a board takes when it leaves a painted board for a drawn style.
- *
- * A painted board shows everything at once, and so does "לוח מלא"; switching
- * to the rotating board instead would take half of what was on the wall off
- * it at the same moment the frames changed.
- */
-const LEAVING_PAINTED: TvConfig["screenLayout"] = "dashboard";
 
 const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
   top: { name: "מרווח עליון", hint: "בין שורת הכותרת לבין הלוחות. פחות מרווח = לוחות גבוהים יותר" },
@@ -70,11 +62,7 @@ export function StylePicker({
             aria-pressed={!painted && config.skin === sk.id}
             title={sk.hint}
             onClick={() =>
-              onEdit("skin", (c) => ({
-                ...c,
-                skin: sk.id,
-                ...(c.screenLayout === "illustrated" ? { screenLayout: LEAVING_PAINTED } : {}),
-              }))
+              onEdit("skin", (c) => ({ ...c, skin: sk.id, ...leavingPainted(c) }))
             }
             className={`rounded-lg border p-1.5 text-right transition ${
               !painted && config.skin === sk.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"

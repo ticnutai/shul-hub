@@ -27,7 +27,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Slider } from "@/components/ui/slider";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -60,8 +59,6 @@ import {
   newCustomThemeId,
   newGradientId,
   THEME_VAR_LABELS,
-  THEME_VAR_LAYERS,
-  TV_FONTS,
   TV_THEMES,
   type ThemeVar,
   type TvTheme,
@@ -148,17 +145,16 @@ const intervalLabel = (s: number) =>
   s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
 import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
 import type { DeviceMode } from "./devices";
-import { BackdropPicker } from "./BackdropPicker";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
-import { FrameCorners, FrameSpacing, PaintedBoardsPicker, StylePicker } from "./BoardLook";
-import { FrameLooksEditor } from "./FrameLooksEditor";
-import { TextAreaStyles } from "./TextAreaStyles";
+import { FrameSpacing } from "./BoardLook";
+import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
+import { uploadImages } from "./uploadImages";
 import { ScreenComposer } from "./ScreenComposer";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
 import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
-import { GradientStudio, TransferPanel } from "./GradientStudio";
+import { TransferPanel } from "./GradientStudio";
 import {
   dataUrlToFile,
   toPortableIllustration,
@@ -166,7 +162,7 @@ import {
   type CustomIllustration,
   type PortableIllustration,
 } from "@/tv/illustrated";
-import { PaintedFrameLook, PaintedPresets, PaintedRows, PaintedText, PaintedWall } from "./IllustratedLookEditor";
+import { PaintedPresets, PaintedRows } from "./IllustratedLookEditor";
 import { DayLooksEditor } from "./DayLooksEditor";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
@@ -433,16 +429,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const onDeviceChange = useCallback((mode: DeviceMode) => {
     setScope(mode === "all" ? "all" : classOfPreviewDevice(mode));
   }, []);
-
-  const previewBackgroundImage = useCallback(
-    (value: string | null) => setPreview(value === null ? null : { backgroundImage: value }),
-    [],
-  );
-
-  const previewBackgroundGradient = useCallback(
-    (value: string | null) => setPreview(value === null ? null : { backgroundGradient: value }),
-    [],
-  );
 
   /** Puts one screen back to following the board. */
   const clearDevice = useCallback(
@@ -788,6 +774,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const isCustom = draft.customThemes.some((t) => t.id === draft.theme);
   const hasOverrides = Object.keys(draft.themeOverrides).length > 0;
   const painted = draft.screenLayout === "illustrated";
+  const layerProps: LayerProps = {
+    config: view,
+    saved: scoped,
+    onEdit: edit,
+    setPreview,
+    colourFields: (vars) => colourFields(vars),
+  };
   /** The theme's colours for one layer; ↺ puts one back to the theme's. */
   const colourFields = (vars: ThemeVar[]) => (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -967,30 +960,19 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   };
 
   const [uploading, setUploading] = useState(false);
-  const upload = async (files: FileList | null, into: "background" | "slideshow") => {
+  const upload = async (files: FileList | null) => {
     if (!files?.length) return;
     setUploading(true);
     try {
-      const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        const uploaded = await uploadTvImage(file);
-        urls.push(uploaded.url);
-        if (uploaded.lowRes)
-          toast.warning(
-            `"${file.name}" קטנה מדי לטלוויזיה (${uploaded.lowRes.width}×${uploaded.lowRes.height}) ותיראה מעט מטושטשת. לאיכות מלאה העלו תמונה ברוחב 1920 פיקסלים לפחות.`,
-            { duration: 9000 },
-          );
-      }
-      if (into === "background") edit("bg", (c) => ({ ...c, backgroundImage: urls[0] }));
-      else
-        edit("show", (c) => ({
-          ...c,
-          slideshow: {
-            ...c.slideshow,
-            images: [...c.slideshow.images, ...urls.map((url) => ({ url }))],
-          },
-          slides: c.slides.map((s) => (s.kind === "slideshow" ? { ...s, enabled: true } : s)),
-        }));
+      const urls = await uploadImages(files);
+      edit("show", (c) => ({
+        ...c,
+        slideshow: {
+          ...c.slideshow,
+          images: [...c.slideshow.images, ...urls.map((url) => ({ url }))],
+        },
+        slides: c.slides.map((s) => (s.kind === "slideshow" ? { ...s, enabled: true } : s)),
+      }));
       toast.success(urls.length > 1 ? `${urls.length} תמונות הועלו` : "התמונה הועלתה");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "ההעלאה נכשלה");
@@ -1343,173 +1325,21 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           </Section>
 
           <Section
-            title="רקע"
-            hint="מה שמאחורי המסגרות: צבע, גרדיאנט, שמיים ועננים, או תמונה משלכם."
+            title="רקעים"
+            hint="מה שמאחורי: צבע, גרדיאנט, תמונה (שמיים, עננים...) או תמונה משלכם - ללוח כולו, לכל המסגרות או למסגרת אחת, עם סליידרים לכל אחד."
           >
-            {painted && (
-              <>
-                <PaintedWall config={draft} onEdit={edit} />
-                <p className="text-xs text-muted-foreground">
-                  בלוח מצויר הקיר הוא חלק מהציור. הבחירות שלמטה חלות על הלוחות הרגילים - למשל ביום
-                  שיש לו מראה אחר, או במסך שמוגדר אחרת.
-                </p>
-              </>
-            )}
-            <div className="text-xs font-medium text-muted-foreground">צבעי הרקע</div>
-            {colourFields(THEME_VAR_LAYERS.background)}
-            <div className="h-px bg-border" />
-            <GradientStudio
-              config={view}
-              onEdit={edit}
-              applyLabel="החלה על רקע הלוח"
-              /* What is actually saved - not what is being tried out, or the
-                 studio would think its own preview was already the board's. */
-              current={scoped.backgroundGradient}
-              onPreview={previewBackgroundGradient}
-              onApply={(value) => {
-                setPreview(null);
-                edit("bg-gradient", (c) => ({ ...c, backgroundGradient: value }));
-              }}
-            />
-            <div className="h-px bg-border" />
-            <div className="text-xs font-medium text-muted-foreground">
-              או רקע מוכן · לחיצה מציגה על הלוח
-            </div>
-            <BackdropPicker
-              config={view}
-              current={scoped.backgroundImage}
-              onPreview={previewBackgroundImage}
-              onApply={(value) => {
-                setPreview(null);
-                edit("bg-image", (c) => ({ ...c, backgroundImage: value }));
-              }}
-            />
-            <div className="h-px bg-border" />
-            <div className="text-xs font-medium text-muted-foreground">או תמונה משלכם</div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
-                <label className="cursor-pointer">
-                  <ImagePlus className="size-4" />{" "}
-                  {draft.backgroundImage ? "החלפת תמונה" : "העלאת תמונה"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={(e) => void upload(e.target.files, "background")}
-                  />
-                </label>
-              </Button>
-              {draft.backgroundImage && (
-                <>
-                  <img
-                    src={draft.backgroundImage}
-                    alt=""
-                    className="h-10 w-16 rounded object-cover"
-                  />
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => edit("bg", (c) => ({ ...c, backgroundImage: null }))}
-                  >
-                    <Trash2 className="size-4" /> הסרה
-                  </Button>
-                </>
-              )}
-            </div>
-            {draft.backgroundImage && (
-              <div className="space-y-1">
-                <Label>החשכה: {Math.round(draft.backgroundDim * 100)}%</Label>
-                <Slider
-                  value={[draft.backgroundDim * 100]}
-                  min={0}
-                  max={95}
-                  step={5}
-                  onValueChange={([v]) => edit("dim", (c) => ({ ...c, backgroundDim: v / 100 }))}
-                  aria-label="החשכת תמונת הרקע"
-                />
-              </div>
-            )}
+            <BackgroundLayer {...layerProps} />
           </Section>
 
           <Section
             title="מסגרות"
-            hint="איך נראות המסגרות שהזמנים כתובים בהן: סגנון, צורה, צבע, קו. איפה הן עומדות ומה המרווחים ביניהן - בלשונית פריסה."
+            hint="הצורה של המסגרות: סגנון, פינות, קו, עובי, בליטה, או צורה משלכם מתמונה. איפה הן עומדות - בלשונית פריסה."
           >
-            <StylePicker config={view} onEdit={edit} />
-            <div className="h-px bg-border" />
-            <PaintedBoardsPicker config={draft} onEdit={edit} />
-            <div className="h-px bg-border" />
-            {painted ? (
-              <PaintedFrameLook config={draft} onEdit={edit} />
-            ) : (
-              <>
-                <FrameCorners config={view} onEdit={edit} />
-                <div className="text-xs font-medium text-muted-foreground">צבעי המסגרות</div>
-                {colourFields(THEME_VAR_LAYERS.frames)}
-              </>
-            )}
-            <FrameLooksEditor config={view} onEdit={edit} />
+            <FramesLayer {...layerProps} />
           </Section>
 
-          <Section title="טקסט" hint="גופן, גודל וצבעים לכל הלוח, ואחר כך לכל אזור בנפרד.">
-            {painted && <PaintedText config={draft} onEdit={edit} />}
-            <div className="flex flex-wrap items-end gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="tv-font">גופן</Label>
-                <select
-                  id="tv-font"
-                  value={draft.font}
-                  onChange={(e) =>
-                    edit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))
-                  }
-                  className="block h-9 rounded-md border bg-background px-2 text-sm"
-                >
-                  {TV_FONTS.map((f) => (
-                    <option key={f.id} value={f.id}>
-                      {f.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-1">
-                <Label>{painted ? "גודל טקסט (לוחות רגילים)" : "גודל טקסט"}</Label>
-                <Stepper
-                  label="גודל טקסט"
-                  value={Math.round(draft.textScale * 100)}
-                  min={80}
-                  max={130}
-                  step={5}
-                  format={(v) => `${v}%`}
-                  onChange={(v) => edit("scale", (c) => ({ ...c, textScale: v / 100 }))}
-                />
-              </div>
-              <div className="space-y-1">
-                <Label>מרווח אותיות בכותרות</Label>
-                <Stepper
-                  label="מרווח אותיות בכותרות"
-                  // -1 is "as the skin draws it" - the state every board is in
-                  // until somebody moves this, and a value it can return to.
-                  value={draft.tracking === null ? -1 : Math.round(draft.tracking * 100)}
-                  min={-1}
-                  max={24}
-                  step={1}
-                  format={(v) => (v < 0 ? "כמו הסקין" : `${(v / 100).toFixed(2)}em`)}
-                  onChange={(v) =>
-                    edit("track", (c) => ({ ...c, tracking: v < 0 ? null : v / 100 }))
-                  }
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  כותרת עברית פרושה רחב נקראת ככותרת בלי להיות גדולה יותר. 0.16–0.18em הוא הטווח
-                  שנראה מודפס; מעל זה המילים מתחילות להתפרק. משפיע על כותרות בלבד.
-                </p>
-              </div>
-            </div>
-            <div className="text-xs font-medium text-muted-foreground">
-              {painted ? "צבעי הטקסט בלוחות הרגילים" : "צבעי הטקסט"}
-            </div>
-            {colourFields(THEME_VAR_LAYERS.text)}
-            <TextAreaStyles config={view} onEdit={edit} painted={painted} />
+          <Section title="טקסט" hint="גופן, גודל וצבעים - לכל הלוח, בתוך מסגרת מסוימת, או לאזור אחד על הלוח.">
+            <TextLayer {...layerProps} />
           </Section>
         </TabsContent>
         <TabsContent
@@ -1920,7 +1750,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                     accept="image/*"
                     multiple
                     className="sr-only"
-                    onChange={(e) => void upload(e.target.files, "slideshow")}
+                    onChange={(e) => void upload(e.target.files)}
                   />
                 </label>
               </Button>

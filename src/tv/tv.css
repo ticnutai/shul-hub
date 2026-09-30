@@ -5265,3 +5265,64 @@
  * אברהם on the sky skin with the forest theme: near-white times on light
  * blue, the past ones fading into the paper.
  */
+
+/* ------------------------------------------------------------ the layers -- */
+/*
+ * The admin's background adjustments and every frame's dress (layers.ts,
+ * layerCss.ts). Each rule is off until TvBoard sets its class, which is how
+ * every board that existed before them looks exactly as it did.
+ *
+ * The frame rules are !important because each skin paints its panels its own
+ * way, some with more specific selectors than these. Their values are
+ * variables, so one frame dressed apart (data-own-fill / data-own-line) only
+ * redefines them on itself. The skins' own ::before and ::after are left
+ * alone: that is where their gold edges and carvings live.
+ */
+.tv-root.has-bg-tune .tv-bg {
+  filter: var(--tv-bg-filter);
+}
+
+.tv-bg-tint {
+  position: absolute;
+  inset: 0;
+  mix-blend-mode: color;
+  pointer-events: none;
+}
+
+.tv-root.has-frame-fill .tv-panel,
+.tv-root.has-frame-fill .tv-card,
+.tv-root .tv-panel[data-own-fill],
+.tv-root .tv-card[data-own-fill] {
+  background: var(--frame-fill) !important;
+}
+
+.tv-root.has-frame-line .tv-panel,
+.tv-root.has-frame-line .tv-card,
+.tv-root .tv-panel[data-own-line],
+.tv-root .tv-card[data-own-line] {
+  outline: var(--frame-line-w) solid var(--frame-line) !important;
+  outline-offset: calc(var(--frame-line-w) * -1);
+}
+
+.tv-root.has-frame-depth .tv-panel,
+.tv-root.has-frame-depth .tv-card {
+  box-shadow: var(--frame-depth) !important;
+}
+
+/* A picture of a frame: its corners kept, its edges stretched along the panel. */
+.tv-root.has-frame-image .tv-panel,
+.tv-root.has-frame-image .tv-card {
+  border-style: solid !important;
+  border-color: transparent !important;
+  border-width: var(--frame-image-w) !important;
+  border-image: var(--frame-image) var(--frame-image-slice) fill / var(--frame-image-w) stretch !important;
+}
+
+/* The arch: a round top like the tablets, the bottom as the corners are set. */
+.tv-root.has-frame-arch .tv-panel,
+.tv-root.has-frame-arch .tv-card {
+  border-radius: 50% 50% var(--frame-bottom, calc(var(--u) * 1.6)) var(--frame-bottom, calc(var(--u) * 1.6)) /
+    min(38%, calc(var(--u) * 16)) min(38%, calc(var(--u) * 16)) var(--frame-bottom, calc(var(--u) * 1.6))
+    var(--frame-bottom, calc(var(--u) * 1.6)) !important;
+  padding-top: calc(var(--u) * 3);
+}

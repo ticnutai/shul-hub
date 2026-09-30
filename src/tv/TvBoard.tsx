@@ -8,6 +8,7 @@ import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { Settings } from "@community/lib/data";
 import { CORNER_SHAPE, type TvConfig } from "./config";
+import { layerVars } from "./layerCss";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
 import { backdropUrl } from "./backdrops";
@@ -106,6 +107,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     // asking for one drops the skin's clip path (see tv.css).
     let classes =
       (shape !== "auto" ? " has-frame-shape" : "") +
+      (shape === "arch" ? " has-frame-arch" : "") +
       (top !== null || bottom !== null ? " has-frame-radius" : "");
 
     // The air around the panels, when the admin sets it instead of the layout.
@@ -118,8 +120,11 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     // out entirely when the admin has not asked - which is how the skin keeps
     // its own answer.
     if (config.tracking !== null) vars["--tv-tracking"] = `${config.tracking}em`;
-    return { vars, classes };
-  }, [config.frame, config.spacing, config.tracking]);
+    // The background's adjustments and every frame's dress (layers.ts).
+    const layers = layerVars(config.backgroundTune, config.frameStyle);
+    return { vars: { ...vars, ...layers.vars }, classes: classes + layers.classes };
+  }, [config.frame, config.spacing, config.tracking, config.backgroundTune, config.frameStyle]);
+  const tint = config.backgroundTune.tint;
 
   // On Shabbat the screen already shows its times; no countdowns or pop-ups.
   // The screen up now decides how it is drawn; any Shabbat screen in the list
@@ -181,7 +186,12 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         style={{ ...style, ...frame.vars }}
         {...edit.attr("board.background")}
       >
-        <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }} />
+        <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }}>
+          {/* A colour over the background that keeps its light and shade. */}
+          {tint && (
+            <div className="tv-bg-tint" style={{ background: tint, opacity: config.backgroundTune.tintStrength }} />
+          )}
+        </div>
         <TvShapes />
         {!illustrated && <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />}
 

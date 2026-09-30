@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TV_CONFIG, configForDevice, editForDevice, normalizeTvConfig } from "./config";
 import { makeBoardEdit } from "./boardEdit";
-import { frameLookCss, normalizeFrameLooks, setFrameLook } from "./frameLooks";
+import { normalizeFrameLooks, setFrameLook } from "./frameLooks";
+import { frameLookProps } from "./layerCss";
 import { THEME_VARS, THEME_VAR_LAYERS } from "./themes";
 
 describe("frame looks", () => {
@@ -30,13 +31,15 @@ describe("frame looks", () => {
   });
 
   it("dresses one frame through the theme's own variables", () => {
-    const css = frameLookCss({ bg: "#5a1a2a", text: "#ffffff", accent: "#f0c35c" }) as Record<string, string>;
-    expect(css.background).toBe("#5a1a2a");
-    expect(css["--tv-panel"]).toBe("#5a1a2a");
+    const props = frameLookProps({ bg: "#5a1a2a", bgOpacity: 0.5, text: "#ffffff", accent: "#f0c35c", line: "#c9a227" });
+    const css = props.style as Record<string, string>;
+    expect(css["--frame-fill"]).toBe("rgba(90, 26, 42, 0.5)");
+    expect(props["data-own-fill"]).toBe("");
+    expect(props["data-own-line"]).toBe("");
     expect(css["--tv-text"]).toBe("#ffffff");
     expect(css["--tv-text-dim"]).toBe("#ffffff");
     expect(css["--tv-accent"]).toBe("#f0c35c");
-    expect(frameLookCss(undefined)).toBeUndefined();
+    expect(frameLookProps(undefined)).toEqual({});
   });
 
   it("reaches that frame on the board and no other, under the element's own look", () => {
@@ -45,7 +48,7 @@ describe("frame looks", () => {
       styles: { "panel.zmanim": { color: "#123456" } },
     });
     const edit = makeBoardEdit(config, true);
-    expect(edit.frame("prayers").style).toMatchObject({ background: "#5a1a2a" });
+    expect(edit.frame("prayers").style).toMatchObject({ "--frame-fill": "#5a1a2a" });
     expect(edit.frame("prayers")["data-frame"]).toBe("prayers");
     const zmanim = edit.frame("zmanim", "panel.zmanim");
     expect(zmanim.style).toEqual({ color: "#123456" });
