@@ -22,8 +22,9 @@ import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime
 import type { BlockArea, BlockId, Screen, TvConfig } from "./config";
 import { dayScreen, place, readScreens } from "./screens";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
-import { shabbatNow, type ShabbatTimes } from "./shabbat";
 import { checkClock } from "./clock";
+import { occasionPagesNow, pageDisplay, SHABBAT_ID, type OccasionPage } from "./occasions";
+import type { DaySchedule } from "./OccasionCard";
 
 /**
  * Data for the board, plus the rules that turn it into slides. Shared by the
@@ -99,7 +100,17 @@ export type BoardSlide =
   | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
   | (SlideBase & { kind: "shiurim"; items: Shiur[] })
   | (SlideBase & { kind: "slideshow"; images: TvConfig["slideshow"]["images"]; secondsPerImage: number })
-  | (SlideBase & { kind: "shabbat"; times: ShabbatTimes; scenes: string[]; secondsPerScene: number })
+  /**
+   * An occasion's card (occasions.ts), drawn over the whole board by TvBoard.
+   * Everything it draws is worked out here, so the view needs no data of its own.
+   */
+  | (SlideBase & {
+      kind: "occasion";
+      page: OccasionPage;
+      settings: Settings | null;
+      endMinutes: number;
+      schedules: DaySchedule[];
+    })
   /**
    * A screen the gabbai built in the composer: several blocks at once.
    *
@@ -224,25 +235,6 @@ export function shiurMinutes(timeText: string | null | undefined): number {
 }
 
 export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim: Zmanim): BoardSlide[] {
-  // Shabbat: one screen, no rotation, from candle lighting until it ends.
-  //
-  // It takes the whole board, so it is the one thing here that must not
-  // happen on a guess. A box that lost power while the router was down can
-  // come back believing it is a different day, and the board would then
-  // hide every time in the building and look entirely deliberate about it.
-  // A clock that cannot be trusted keeps the ordinary board (clock.ts).
-  //
-  // This takeover is for a board that was never composed: Shabbat arrives
-  // and the screen becomes the Shabbat screen, with nobody there to arrange
-  // it. A board built of screens has Shabbat as one of its screens instead
-  // (the "shabbat" block, see compose), which the gabbai can see and change.
-  if (!config.screens?.length && config.shabbat.enabled && checkClock(now).trusted) {
-    const times = shabbatNow(now, data.settings, config.shabbat.endMinutesAfterSunset);
-    if (times) {
-      const { scenes, rotate, secondsPerScene } = config.shabbat;
-      return [{ id: "shabbat", kind: "shabbat", seconds: 3600, layout: "scene", times, scenes: rotate ? scenes : scenes.slice(0, 1), secondsPerScene }];
-    }
-  }
   const slides: BoardSlide[] = [];
   const nowMs = now.getTime();
   const hidden = new Set(config.hidden);
@@ -320,7 +312,82 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
   }
 
   const built = slides.length ? slides : [{ id: "learning", kind: "learning", seconds: 30, layout: "cards" } as BoardSlide];
-  return config.screens?.length ? compose(built, config, data, now, zmanim) : built;
+  const board = config.screens?.length ? compose(built, config) : built;
+  return withOccasions(board, built, config, data, now);
+}
+
+/**
+ * The board with today's occasions on it (occasions.ts): each page its card
+ * on a screen of its own, and - when the gabbai chose blocks of the ordinary
+ * board for it (announcements, shiurim...) - a screen of those beside it, so
+ * the card is never squeezed into a corner of a crowded screen. An occasion
+ * that holds the board has it to itself; one that takes turns joins the
+ * ordinary screens.
+ *
+ * None of this happens on a guess. A box that lost power while the router
+ * was down can come back believing it is another day, and the board would
+ * then hide every time in the building behind "שבת שלום" on a Tuesday and
+ * look entirely deliberate about it. On a clock that cannot be trusted
+ * (clock.ts) the board stays ordinary.
+ */
+function withOccasions(board: BoardSlide[], built: BoardSlide[], config: TvConfig, data: BoardData, now: Date): BoardSlide[] {
+  if (!checkClock(now).trusted) return board;
+  const zmanimOn = (d: Date) => zmanimFor(d, data.settings);
+  const { pages } = occasionPagesNow(config, data.settings, now, zmanimOn);
+  const shown = pages.filter((p) => pageDisplay(p) !== "off");
+  if (!shown.length) return board;
+
+  const byBlock = new Map<BlockId, BoardSlide[]>();
+  for (const slide of built) {
+    const block = SLIDE_KIND_BLOCK[slide.kind];
+    if (block) byBlock.set(block, [...(byBlock.get(block) ?? []), slide]);
+  }
+  const hidden = new Set(config.hidden);
+  const endMinutes = occasionPagesEnd(config, data);
+
+  const slides = shown.flatMap((page): BoardSlide[] => {
+    const o = page.main.occasion;
+    const id = `occasion:${o.id}`;
+    const z = zmanimOn(page.main.date);
+    const card: BoardSlide = {
+      id,
+      kind: "occasion",
+      seconds: o.seconds,
+      layout: "stage",
+      page,
+      settings: data.settings ?? null,
+      endMinutes,
+      schedules: o.elements.includes("prayers") ? prayerSchedules(data, page.main.date, z, hidden) : [],
+    };
+    const blocks = [...new Set([o, ...page.with.map((w) => w.occasion)].flatMap((x) => x.blocks))];
+    const parts: ComposedPart[] = blocks.flatMap((block) => (byBlock.get(block) ?? []).map((slide) => ({ block, slide })));
+    if (!parts.length) return [card];
+    const name = `${o.name} · מהלוח`;
+    return [
+      card,
+      {
+        id: `${id}:blocks`,
+        kind: "composed",
+        seconds: o.seconds,
+        layout: "composed",
+        screen: { id: `${id}:blocks`, name, seconds: o.seconds, blocks: blocks.map((block) => ({ block })) },
+        parts,
+      },
+    ];
+  });
+  const hold = shown.some((p) => pageDisplay(p) === "hold");
+  return hold ? slides : [...board, ...slides];
+}
+
+const occasionPagesEnd = (config: TvConfig, data: BoardData) =>
+  data.settings?.shabbat_end_minutes ?? config.shabbat.endMinutesAfterSunset;
+
+/** Whether an occasion kept like Shabbat (from candle lighting) is on the board: nothing counts down then. */
+export function holyOccasionOn(slides: BoardSlide[]): boolean {
+  const holy = (s: BoardSlide | undefined): boolean =>
+    s?.kind === "occasion" &&
+    [s.page.main, ...s.page.with].some((a) => a.occasion.window === "holy" || a.occasion.id === SHABBAT_ID);
+  return slides.some((s) => holy(s) || (s.kind === "composed" && s.parts.some((p) => holy(p.slide))));
 }
 
 /**
@@ -338,13 +405,7 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
  * leaves nothing at all, the board falls back to what it would have shown
  * before the composer existed.
  */
-function compose(
-  slides: BoardSlide[],
-  config: TvConfig,
-  data: BoardData,
-  now: Date,
-  zmanim: Zmanim,
-): BoardSlide[] {
+function compose(slides: BoardSlide[], config: TvConfig): BoardSlide[] {
   const byBlock = new Map<BlockId, BoardSlide[]>();
   for (const slide of slides) {
     const block = SLIDE_KIND_BLOCK[slide.kind];
@@ -356,39 +417,12 @@ function compose(
 
   const screens = readScreens(config);
 
-  // Shabbat, by the same rule the board used when it took itself over - and
-  // never on a clock that cannot be trusted (see buildSlides).
-  const shabbatTimes =
-    config.shabbat.enabled && checkClock(now).trusted
-      ? shabbatNow(now, data.settings, config.shabbat.endMinutesAfterSunset)
-      : null;
-  const shabbatSlide: BoardSlide | null = shabbatTimes
-    ? {
-        id: "shabbat",
-        kind: "shabbat",
-        seconds: 3600,
-        layout: "scene",
-        times: shabbatTimes,
-        scenes: config.shabbat.rotate ? config.shabbat.scenes : config.shabbat.scenes.slice(0, 1),
-        secondsPerScene: config.shabbat.secondsPerScene,
-      }
-    : null;
-  // Whether the day's screen has anything to show today. It is drawn by
-  // EventSplash, which on a composed board is forced and looks at today -
-  // this asks it the same question. Without it, the day's screen took its
-  // forty seconds on every ordinary day as an empty board.
-  const dayToday = specialDayFor(data.categories, config, now) !== null;
-  // On Shabbat the board shows its Shabbat and day screens only, when it has
-  // a Shabbat screen at all: what is on them is the gabbai's to decide - put
-  // the prayer times on the Shabbat screen and they are there all Shabbat.
-  // And a Shabbat screen is not shown on a weekday, whatever else is on it.
-  const holy = Boolean(shabbatSlide) && screens.some((s) => dayScreen(s) === "shabbat");
-
   const out: BoardSlide[] = [];
   for (const screen of screens) {
-    const time = dayScreen(screen);
-    if (time === "shabbat" && !shabbatSlide) continue;
-    if (holy && time === null) continue;
+    // The Shabbat screen and the day's screen were screens of their own; they
+    // are occasions now (occasions.ts reads them from here), shown in their
+    // time with what the gabbai chose for them - never on an ordinary day.
+    if (dayScreen(screen)) continue;
     // The prayer panel carries its own zmanim in most of its layouts, so a
     // screen that also has the zmanim block would show them twice - which is
     // the exact duplication this change exists to remove, appearing in the
@@ -399,18 +433,12 @@ function compose(
     for (const entry of screen.blocks) {
       // The zmanim have no slide anywhere - they are a panel - so they are
       // carried as a part with no content and drawn by the composed view.
-      // The zmanim are a panel and the day's screen is drawn over the whole
-      // board, so neither has a slide in the list; both travel as a part
-      // with no content, so a screen made only of them is still a screen.
-      if (entry.block === "zmanim" || (entry.block === "festival" && dayToday)) {
+      if (entry.block === "zmanim") {
         parts.push({ block: entry.block, area: entry.area });
         continue;
       }
-      if (entry.block === "festival") continue;
-      if (entry.block === "shabbat") {
-        if (shabbatSlide) parts.push({ block: "shabbat", area: entry.area, slide: shabbatSlide });
-        continue;
-      }
+      // The day's line on an ordinary screen is the occasion's banner now.
+      if (entry.block === "festival" || entry.block === "shabbat") continue;
       for (const slide of byBlock.get(entry.block) ?? [])
         parts.push({
           block: entry.block,
@@ -422,14 +450,8 @@ function compose(
         });
     }
     // Bars are drawn by the board around the slide, not inside it.
-    const body = parts.filter((p) => p.slide || p.block === "zmanim" || p.block === "festival");
+    const body = parts.filter((p) => p.slide || p.block === "zmanim");
     if (!body.length) continue;
-    // A screen of only Shabbat is the Shabbat screen, drawn as it always was:
-    // the whole stage, no countdowns.
-    if (body.length === 1 && body[0].slide?.kind === "shabbat") {
-      out.push({ ...body[0].slide, id: `screen:${screen.id}`, seconds: screen.seconds > 0 ? screen.seconds : 3600 });
-      continue;
-    }
     out.push({
       id: `screen:${screen.id}`,
       kind: "composed",
@@ -453,10 +475,6 @@ const SLIDE_KIND_BLOCK: Partial<Record<BoardSlide["kind"], BlockId>> = {
 
 /** The rows a composed screen lays its parts out in. */
 export function composedRows(parts: ComposedPart[]): ComposedPart[][] {
-  // The day's screen beside other content is drawn as a card over the board
-  // (TvApp), so it takes no cell of its own - it would be an empty one.
-  const alone = parts.every((p) => p.block === "festival");
-  if (!alone) parts = parts.filter((p) => p.block !== "festival");
   const entries = parts.map((p) => ({ block: p.block, area: p.area }));
   const rows = place(entries);
   const taken = new Set<ComposedPart>();

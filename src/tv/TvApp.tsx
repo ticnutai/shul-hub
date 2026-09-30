@@ -3,18 +3,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
-import { EventSplash } from "./EventSplash";
 import { installUpdateNow, nativeAppInfo, updateText, useApkUpdate } from "./apkUpdate";
 import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
-import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
+import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { lastKnownCommunity, OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { ScreenMenu } from "./ScreenMenu";
 import { allThemes, getTheme } from "./themes";
 import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
-import { buildSlides, prayerSchedules, useBoardData, useDayZmanim } from "./useBoardData";
+import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
 import { scheduleNightlyRefresh, setWatchdogReport, watchMainThread } from "./watchdog";
 import { reloadBoard } from "./remoteBoard";
@@ -122,7 +121,6 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const data = useMemo(() => applyRecordEdits(rawData, configOverride?._records), [rawData, configOverride?._records]);
   const now = useNow(1000);
   const zmanim = useDayZmanim(now, data.settings);
-  const zmanimOn = useCallback((d: Date) => zmanimFor(d, data.settings), [data.settings]);
 
   // Everything the heartbeat reports is read through this ref (filled below).
   const stateRef = useRef<Record<string, unknown>>({});
@@ -240,8 +238,6 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     setPaused(next);
   }, []);
 
-  /** A board built in the composer; nothing outside the list may take it. */
-  const usingComposer = Boolean(config.screens?.length);
 
   const slideId = slide?.id;
   const slideSeconds = slide?.seconds ?? 20;
@@ -298,7 +294,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
    * ever comes up wrongly again, the answer will be in the log instead of
    * in an afternoon of guessing.
    */
-  const shabbatUp = slide?.kind === "shabbat";
+  const shabbatUp = slide?.id === "occasion:shabbat" || (slide?.kind === "occasion" && slide.page.with.some((w) => w.occasion.id === "shabbat"));
   const wasShabbatUp = useRef(shabbatUp);
   useEffect(() => {
     if (shabbatUp === wasShabbatUp.current) return;
@@ -624,29 +620,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       paused={paused}
       overlay={
         <>
-          {/*
-            The day's screen: a screen in the list when there is a list, and
-            an overlay of its own when there is not.
-
-            Its old behaviour was the complaint - it decided for itself when
-            to take the board and for how long, and a gabbai could only
-            choose between fifteen seconds in ninety and all day. On a board
-            built in the composer it is a block like any other: it appears on
-            the screens it was put on, for as long as those screens hold, and
-            nothing takes the board that was not asked to.
-          */}
-          {/* On a board built of screens the day is drawn by TvBoard, as one
-              of the screen's blocks - the same in the admin's preview. */}
-          {!usingComposer && (
-            <EventSplash
-              categories={data.categories}
-              config={config}
-              now={now}
-              zmanim={zmanim}
-              zmanimOn={zmanimOn}
-              schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
-            />
-          )}
+          {/* Shabbat and the festivals are screens in the list now (occasions.ts), drawn by TvBoard. */}
           <ScreenMenu
             open={menuOpen}
             onClose={() => setMenuOpen(false)}

@@ -1,123 +1,13 @@
-import { useEffect, useId, useMemo, useState } from "react";
-import { formatTime } from "@community/lib/zmanim";
-import { useBoardEdit } from "./boardEdit";
-import { upcomingDays, weeklyParasha } from "./learning";
-import { SHABBAT_ART, type ShabbatArtId, type ShabbatTimes } from "./shabbat";
+import { useId, useState } from "react";
+import { SHABBAT_ART, type ShabbatArtId } from "./shabbat";
 
 /**
- * The Shabbat screen: shown alone, without rotation, from candle lighting on
- * Friday until Shabbat ends (buildSlides / shabbat.ts).
- *
- * Drawn as SVG, so it is sharp on any screen and costs no download. Two
- * things keep it kind to the TV box and the panel over ~25 hours on one
- * screen:
- *   - the flames flicker for about a minute and a half every 10 minutes and
- *     are still in between (an endless animation costs the box ~45% CPU);
- *   - the whole scene shifts slightly every 10 minutes (burn-in).
+ * The Shabbat drawings: challot and candles, a kiddush cup, Jerusalem at
+ * dusk. Drawn as SVG, so they are sharp on any screen and cost no download.
+ * Shabbat's screen itself is OccasionCard, which shows these as its pictures
+ * ("art:<id>"); the flames flicker only for a while every ten minutes
+ * (`flickerKey`), since an endless animation costs the TV box ~45% CPU.
  */
-
-/** Small offsets (cqw, cqh) stepped through every 10 minutes. */
-const DRIFT: Array<[number, number]> = [
-  [0, 0],
-  [-0.6, 0.4],
-  [0.5, -0.3],
-  [-0.3, -0.5],
-  [0.6, 0.5],
-  [0.2, -0.2],
-];
-
-export function ShabbatSlide({
-  times,
-  now,
-  scenes = ["art:classic"],
-  secondsPerScene = 60,
-  paused = false,
-}: {
-  times: ShabbatTimes;
-  now: Date;
-  scenes?: string[];
-  secondsPerScene?: number;
-  paused?: boolean;
-}) {
-  const edit = useBoardEdit();
-  // The picture slideshow: one timer per slide, only when there is more
-  // than one picture. Each switch is a finite fade, so the screen is still
-  // between switches.
-  const n = scenes.length;
-  const [active, setActive] = useState(0);
-  useEffect(() => {
-    if (paused || n <= 1) return;
-    const id = window.setInterval(() => setActive((a) => (a + 1) % n), secondsPerScene * 1000);
-    return () => window.clearInterval(id);
-  }, [paused, n, secondsPerScene]);
-  const scene = scenes[active % Math.max(1, n)] ?? "art:classic";
-  const bucket = Math.floor(now.getTime() / 600_000);
-  const [dx, dy] = DRIFT[bucket % DRIFT.length];
-
-  const dayKey = now.toDateString();
-  const { parasha, special } = useMemo(() => {
-    const day = new Date(dayKey);
-    // On Friday night the parasha is tomorrow's reading; on Saturday, today's.
-    const saturday = day.getDay() === 5 ? new Date(day.getTime() + 86_400_000) : day;
-    return {
-      parasha: weeklyParasha(saturday),
-      special:
-        upcomingDays(saturday, 1, 4).find(
-          (u) => u.inDays === 0 && /^שבת /.test(u.title) && u.title !== "שבת",
-        )?.title ?? null,
-    };
-  }, [dayKey]);
-
-  const rows = [
-    { label: "הדלקת נרות", at: times.candle },
-    { label: "סוף זמן ק״ש", at: times.shma },
-    { label: "צאת השבת", at: times.end },
-  ].filter((r) => r.at);
-
-  return (
-    // The drift sits on an inner box: .tv-slide keeps `transform` for its
-    // entrance animation (fill-mode both), which would override it here.
-    <section className="tv-slide tv-shabbat-slide">
-      <div className="tv-shabbat" style={{ transform: `translate(${dx}cqw, ${dy}cqh)` }}>
-        <div className="tv-shabbat-text">
-          <h2 className="tv-shabbat-title" {...edit.attr("shabbat.title")}>
-            {edit.text("shabbat.title", "שבת שלום")}
-          </h2>
-          {(parasha || special) && (
-            <div className="tv-shabbat-parasha">
-              {[parasha, special].filter(Boolean).join(" · ")}
-            </div>
-          )}
-          {!edit.hidden("shabbat.blessing") && (
-            <p className="tv-shabbat-blessing" {...edit.attr("shabbat.blessing")}>
-              {edit.text(
-                "shabbat.blessing",
-                "בּוֹאִי בְשָׁלוֹם עֲטֶרֶת בַּעְלָהּ, גַּם בְּשִׂמְחָה וּבְצָהֳלָה",
-              )}
-            </p>
-          )}
-          {!edit.hidden("shabbat.times") && rows.length > 0 && (
-            <dl className="tv-shabbat-times" {...edit.attr("shabbat.times")}>
-              {rows.map((r) => (
-                <div key={r.label} className="tv-shabbat-time">
-                  <dt>{r.label}</dt>
-                  <dd>{formatTime(r.at)}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
-        </div>
-        {!edit.hidden("shabbat.art") && (
-          <div className="tv-shabbat-art" {...edit.attr("shabbat.art")}>
-            <div key={`${active}:${scene}`} className="tv-shabbat-scene">
-              <ShabbatPicture scene={scene} flickerKey={bucket} />
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
 
 /* ------------------------------------------------------------ the art -- */
 

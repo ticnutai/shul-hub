@@ -1,7 +1,7 @@
 import { HolyEndMinutesContext } from "./holyEnd";
 import { useBriefly } from "@/hooks/useBriefly";
 import { IllustratedStage } from "./TvIllustrated";
-import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { HDate } from "@hebcal/core";
 import { DAYS_HE } from "@community/lib/data";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
@@ -18,8 +18,10 @@ import { SlideView } from "./TvSlides";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
 import { ClockContext } from "./clockContext";
 import { TvShapes } from "./TvShapes";
-import { prayerSchedules, type BoardData, type BoardSlide } from "./useBoardData";
-import { EventSplash } from "./EventSplash";
+import { holyOccasionOn, type BoardData, type BoardSlide } from "./useBoardData";
+import { checkClock } from "./clock";
+import { OccasionCard } from "./OccasionCard";
+import { occasionPagesNow } from "./occasions";
 import { zmanimFor } from "@community/lib/minyan-time";
 import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
 import karovimLogo from "./assets/karovim-logo.png";
@@ -127,13 +129,20 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   }, [config.frame, config.spacing, config.tracking, config.backgroundTune, config.frameStyle]);
   const tint = config.backgroundTune.tint;
 
-  // On Shabbat the screen already shows its times; no countdowns or pop-ups.
-  // The screen up now decides how it is drawn; any Shabbat screen in the list
-  // means it is Shabbat, and nothing counts down on the wall.
-  const shabbat = slide?.kind === "shabbat";
-  const shabbatNowOn = slides.some(
-    (s) => s.kind === "shabbat" || (s.kind === "composed" && s.parts.some((p) => p.block === "shabbat")),
-  );
+  // An occasion's card on the whole board: drawn over it, like a picture.
+  const occasionStage = slide?.kind === "occasion" ? slide : null;
+  // On Shabbat and festivals the screen already shows its times: no countdowns or pop-ups.
+  const shabbatNowOn = holyOccasionOn(slides);
+  // A line along the bottom of the ordinary screens, for the occasion that asked for one.
+  const zmanimOn = useCallback((d: Date) => zmanimFor(d, data.settings), [data.settings]);
+  const minuteKey = Math.floor(now.getTime() / 60_000);
+  const bannerPage = useMemo(() => {
+    if (!checkClock(now).trusted) return null;
+    const { pages } = occasionPagesNow(config, data.settings, now, zmanimOn);
+    return pages.find((p) => [p.main, ...p.with].some((a) => a.occasion.banner)) ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [config, data.settings, minuteKey, zmanimOn]);
+  const endMinutes = data.settings?.shabbat_end_minutes ?? config.shabbat.endMinutesAfterSunset;
   /**
    * A board built in the composer: the composer decides which screens and
    * what is on them, and the layout decides how each one is drawn.
@@ -153,17 +162,17 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
    * painting.
    */
   const composed = slide?.kind === "composed" ? slide : null;
-  const festivalPart = Boolean(composed?.parts.some((p) => p.block === "festival"));
-  const festivalAlone = Boolean(composed?.parts.every((p) => p.block === "festival"));
+  // An occasion's screen with blocks beside its card is drawn as a composed screen.
+  const occasionScreen = Boolean(composed?.parts.some((p) => p.slide?.kind === "occasion"));
   const screenSlides = composed
     ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
     : slides;
   const mergedLook =
     config.screenLayout === "illustrated" || config.screenLayout === "dashboard" || config.screenLayout === "medallion";
   const screenFitsLook =
-    !composed || composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim");
-  // The Shabbat screen always takes the whole stage, whatever the layout.
-  const layout = shabbat
+    !composed || (!occasionScreen && composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim"));
+  // An occasion's screen always takes the whole stage, whatever the layout.
+  const layout = occasionStage
     ? "rotate"
     : composed && !(mergedLook && screenFitsLook)
       ? "rotate"
@@ -264,7 +273,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         <footer className="tv-footer">
-          {edit.hidden("footer.dots") || shabbat || dashboard || ownHeader ? (
+          {edit.hidden("footer.dots") || occasionStage || dashboard || ownHeader ? (
             <span />
           ) : (
             <div className="tv-footer-slides" {...edit.attr("footer.dots")}>
@@ -303,22 +312,32 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         {/*
-          The day, as a block of the screen that is up. A screen of only the
-          day is the day's screen; beside other content it is a line along
-          the bottom, so what else is on that screen stays visible. Drawn
-          here rather than by the app, so the admin's preview shows it too.
+          An occasion on the whole board, or its line along the bottom of an
+          ordinary screen. Drawn here rather than by the app, so the admin's
+          preview shows exactly what the wall will.
         */}
-        {festivalPart && (
-          <EventSplash
-            categories={data.categories}
-            config={config}
+        {occasionStage ? (
+          <OccasionCard
+            page={occasionStage.page}
+            mode="stage"
             now={now}
-            zmanim={zmanim}
-            zmanimOn={(d) => zmanimFor(d, data.settings)}
-            force
-            card={!festivalAlone}
-            schedulesFor={(date, z) => prayerSchedules(data, date, z, new Set(config.hidden))}
+            settings={occasionStage.settings}
+            endMinutes={occasionStage.endMinutes}
+            zmanimFor={zmanimOn}
+            schedules={occasionStage.schedules}
           />
+        ) : (
+          bannerPage &&
+          !occasionScreen && (
+            <OccasionCard
+              page={bannerPage}
+              mode="banner"
+              now={now}
+              settings={data.settings}
+              endMinutes={endMinutes}
+              zmanimFor={zmanimOn}
+            />
+          )
         )}
 
         {pauseChip && <div className="tv-paused">{pauseChip === "paused" ? "⏸ מושהה" : "▶ ממשיך"}</div>}

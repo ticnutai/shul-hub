@@ -37,12 +37,23 @@ const AREA_LABELS: Record<"auto" | BlockArea, string> = {
   wide: "רוחב מלא",
 };
 
-/** The blocks, in the order the registry lists them, grouped for the eye. */
+/**
+ * The blocks, in the order the registry lists them, grouped for the eye.
+ * Shabbat and the day's screen are not among them: they are occasions, set
+ * in their own tab with everything else about them (occasions.ts).
+ */
 const GROUPS: { title: string; ids: BlockId[] }[] = [
   { title: "קבוע על כל מסך", ids: BLOCKS.filter((b) => b.chrome).map((b) => b.id) },
   { title: "תוכן", ids: BLOCKS.filter((b) => !b.chrome && !DAY_BLOCKS.includes(b.id)).map((b) => b.id) },
-  { title: "מיוחד — מופיע רק בזמנו", ids: [...DAY_BLOCKS] },
 ];
+
+/** The ordinary screens: a board's old Shabbat and day screens are occasions now. */
+function ordinaryScreens(config: TvConfig): Screen[] {
+  const all = readScreens(config)
+    .filter((s) => !dayScreen(s))
+    .map((s) => ({ ...s, blocks: s.blocks.filter((b) => !DAY_BLOCKS.includes(b.block)) }));
+  return all.length ? all : readScreens({ ...config, screens: [] }).filter((s) => !dayScreen(s));
+}
 
 export function ScreenComposer({
   config,
@@ -56,7 +67,7 @@ export function ScreenComposer({
 }) {
   // A board that never opened the composer is read from its old fields, so
   // the first thing shown is the board as it is now, not an empty sheet.
-  const screens = readScreens(config);
+  const screens = ordinaryScreens(config);
   const index = Math.min(current, screens.length - 1);
   const screen = screens[index];
 
@@ -97,11 +108,7 @@ export function ScreenComposer({
     );
   };
 
-  // The day's block beside other content is a card over the screen, not a
-  // cell in it - so the sketch leaves it out of the grid and says so.
-  const mixedFestival =
-    screen.blocks.some((b) => b.block === "festival") && dayScreen(screen) !== "festival";
-  const rows = place(mixedFestival ? screen.blocks.filter((b) => b.block !== "festival") : screen.blocks);
+  const rows = place(screen.blocks);
   /**
    * A screen of only the bars has nothing between them, and the board skips
    * it rather than show an empty frame for its seconds. It used to skip it
@@ -112,9 +119,6 @@ export function ScreenComposer({
   const shown = screens.filter((s) => !empty(s)).length;
   // The ordinary rotation: what the wall does on a weekday with no festival.
   const ordinary = screens.filter((s) => !empty(s) && !dayScreen(s)).length;
-  const hasFestival = screens.some((s) => dayScreen(s) === "festival");
-  const hasShabbat = screens.some((s) => dayScreen(s) === "shabbat");
-  const DAY_BADGE = { festival: "רק במועד", shabbat: "רק בשבת" } as const;
   const on = (id: BlockId) => screen.blocks.some((b) => b.block === id);
   const areaOf = (id: BlockId) => screen.blocks.find((b) => b.block === id)?.area ?? "auto";
 
@@ -138,11 +142,6 @@ export function ScreenComposer({
                 <span>{s.name}</span>
                 {empty(s) && (
                   <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-900">לא יוצג</span>
-                )}
-                {dayScreen(s) && (
-                  <span className="rounded bg-sky-100 px-1 text-[10px] text-sky-900">
-                    {DAY_BADGE[dayScreen(s) as keyof typeof DAY_BADGE]}
-                  </span>
                 )}
                 {screens.length > 1 && (
                   <span
@@ -168,8 +167,7 @@ export function ScreenComposer({
             {ordinary > 1
               ? `${ordinary} מסכים — הלוח מתחלף ביניהם, וחץ בשלט מדלג.`
               : "מסך אחד — הלוח עומד. אין סיבוב ואין מה לדלג."}
-            {hasFestival && " כשיש מועד, מסך החג נכנס לסבב."}
-            {hasShabbat && " בשבת מוצגים רק מסך השבת ומסך החג."}
+            {" מה שמוצג בשבת ובחגים - בלשונית מועדים."}
             {shown < screens.length &&
               ` ${screens.length - shown === 1 ? "מסך אחד ריק ולא יוצג" : `${screens.length - shown} מסכים ריקים ולא יוצגו`} — סמנו בו תוכן, או הסירו אותו.`}
           </p>
@@ -239,16 +237,6 @@ export function ScreenComposer({
             </div>
             <Sketch ids={screen.blocks.filter((b) => BLOCK_BY_ID[b.block].zone === "bottom").map((b) => b.block)} />
           </div>
-          {mixedFestival && (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              כשיש מועד, שם החג וזמניו מופיעים בכרטיס בפינת המסך הזה, והתוכן שלו נשאר גלוי.
-            </p>
-          )}
-          {dayScreen(screen) === "shabbat" && (
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
-              המסך הזה מופיע רק בשבת, מהדלקת נרות עד צאת השבת. מה שתוסיפו לו — למשל תפילות היום — יוצג איתו.
-            </p>
-          )}
         </div>
       </div>
 

@@ -112,11 +112,13 @@ describe("the painted look on a composed board", () => {
 
 describe("the day on a board built of screens", () => {
   const cholHamoed = new Date("2026-09-29T10:00:00+03:00");
-  const drawAt = (config: TvConfig, at: Date) => {
+  /** The board at `at`, showing its first screen - or its first occasion's, with `occasion`. */
+  const drawAt = (config: TvConfig, at: Date, occasion = false) => {
     const zm = zmanimFor(at, null);
     const slides = buildSlides(data, config, at, zm);
+    const index = occasion ? Math.max(0, slides.findIndex((s) => s.kind === "occasion")) : 0;
     return render(
-      <TvBoard data={data} config={config} now={at} zmanim={zm} slides={slides} index={0} cycle={0} progress={0} paused={false} />,
+      <TvBoard data={data} config={config} now={at} zmanim={zm} slides={slides} index={index} cycle={0} progress={0} paused={false} />,
     );
   };
 
@@ -133,14 +135,14 @@ describe("the day on a board built of screens", () => {
   it("alone on its screen, is the day's full screen - also in the admin's preview", () => {
     const dayOnly = painted();
     dayOnly.screens = [{ id: "festival", name: "מסך החג", seconds: 40, blocks: [{ block: "festival" }] }];
-    const { container } = drawAt(dayOnly, cholHamoed);
+    const { container } = drawAt(dayOnly, cholHamoed, true);
     expect(container.querySelector(".tv-event-splash:not(.is-banner)")).toBeTruthy();
     expect(container.querySelector(".tv-event-title")?.textContent).toContain("סוכות");
   });
 });
 
 describe("Shabbat on a board built of screens", () => {
-  it("is the Shabbat screen, drawn as it always was", () => {
+  it("is Shabbat's screen over the whole board, not the painting", () => {
     const at = new Date("2026-10-10T10:00:00+03:00");
     const config = painted();
     config.screens = [...screens, { id: "shabbat", name: "מסך השבת", seconds: 40, blocks: [{ block: "shabbat" }] }];
@@ -149,7 +151,8 @@ describe("Shabbat on a board built of screens", () => {
     const { container } = render(
       <TvBoard data={data} config={config} now={at} zmanim={zm} slides={slides} index={0} cycle={0} progress={0} paused={false} />,
     );
-    expect(container.querySelector(".tv-shabbat")).toBeTruthy();
+    expect(container.querySelector('.tv-occasion[data-occasion="shabbat"]')).toBeTruthy();
+    expect(container.querySelector(".tv-event-title")?.textContent).toBe("שבת שלום");
     expect(container.querySelector(".tv-ill")).toBeNull();
   });
 });

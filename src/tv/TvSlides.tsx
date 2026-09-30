@@ -7,7 +7,6 @@ import { SHOWN_ZMANIM, useBoardEdit, type BoardEditApi } from "./boardEdit";
 import { specialZmanim } from "@community/lib/specialDays";
 import type { FlipArea } from "./config";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
-import { ShabbatSlide } from "./ShabbatScene";
 import { composedRows, jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
 import { useFitText } from "./useFitText";
 import { useShrinkToFit } from "./useShrinkToFit";
@@ -89,8 +88,9 @@ export function SlideView({
       return <ShiurimSlide slide={slide} now={now} />;
     case "slideshow":
       return <SlideshowSlide slide={slide} paused={paused} />;
-    case "shabbat":
-      return <ShabbatSlide times={slide.times} now={now} scenes={slide.scenes} secondsPerScene={slide.secondsPerScene} paused={paused} />;
+    case "occasion":
+      // Drawn over the whole board by TvBoard, like a picture; the stage beneath stays empty.
+      return <section className="tv-slide" aria-hidden />;
     case "composed":
       return <ComposedSlide slide={slide} now={now} zmanim={zmanim} paused={paused} />;
   }

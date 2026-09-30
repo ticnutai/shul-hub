@@ -1,5 +1,6 @@
 import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
+import { normalizeOccasions, type Occasion } from "./occasions";
 import {
   DEFAULT_BACKGROUND_TUNE,
   DEFAULT_FRAME_STYLE,
@@ -353,8 +354,18 @@ export interface TvConfig {
    * minyanim a frame shows, and the inks (null = the picture's own).
    */
   illustratedStyle: IllustratedStyle;
-  /** A look per kind of day, switched automatically (dayLooks.ts). */
+  /**
+   * A look per kind of day. Replaced by `occasions` (each has a design);
+   * still read, so a board that set one keeps it until it saves occasions.
+   */
   dayLooks: Partial<Record<DayKind, DayLook>>;
+  /**
+   * Shabbat, the festivals and the shul's own days, in order of importance:
+   * when each shows, what is on its screen, how it meets another (occasions.ts).
+   * Empty until the gabbai saves them: the board then reads them from the
+   * older settings below (shabbat, event*, dayLooks), so nothing changes by itself.
+   */
+  occasions: Occasion[];
   /**
    * The pictures of each special day (key from specialDays.ts → image URLs
    * in storage), shown in turn. A day without any gets the built-in designs
@@ -623,6 +634,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   customIllustrations: [],
   illustratedStyle: DEFAULT_ILLUSTRATED_STYLE,
   dayLooks: {},
+  occasions: [],
   eventImages: {},
   eventStyles: {},
   eventHold: true,
@@ -1025,6 +1037,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
       [...BUILTIN_DESIGNS.map((x) => x.id), ...designs.map((x) => x.id)],
     ),
     eventImages: normalizeEventImages(raw.eventImages),
+    occasions: normalizeOccasions(raw.occasions, BLOCK_IDS),
     eventStyles: normalizeEventStyles(raw.eventStyles),
     eventSplash: raw.eventSplash !== false,
     eventAuto: raw.eventAuto === "info" || raw.eventAuto === "off" ? raw.eventAuto : "full",

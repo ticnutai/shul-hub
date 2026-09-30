@@ -98,7 +98,9 @@ describe("the Shabbat screen and a clock that cannot be trusted", () => {
   };
   const zmanim = {} as never;
   const isShabbat = (now: Date) =>
-    buildSlides(data, config, now, zmanim).some((s) => s.kind === "shabbat");
+    buildSlides(data, config, now, zmanim).some(
+      (s) => s.kind === "occasion" && [s.page.main, ...s.page.with].some((a) => a.occasion.id === "shabbat"),
+    );
 
   beforeEach(() => forgetServerTime());
 

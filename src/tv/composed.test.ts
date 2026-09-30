@@ -118,7 +118,9 @@ describe("a board built in the composer", () => {
     const plain = buildSlides(data, structuredClone(DEFAULT_TV_CONFIG), friday, zmanimFor(friday, null));
     // Shabbat arrives and the screen becomes the Shabbat screen, with nobody
     // there to arrange it. That is right for a board that was never set up.
-    expect(plain[0].kind).toBe("shabbat");
+    // (18.9.2026 is Shabbat Shuva: the day leads, Shabbat with it.)
+    expect(plain.map((s) => s.kind)).toEqual(["occasion"]);
+    if (plain[0].kind === "occasion") expect(plain[0].page.with.map((w) => w.occasion.id)).toEqual(["shabbat"]);
   });
 
   it("but a composed board is not taken over, not even by Shabbat", () => {

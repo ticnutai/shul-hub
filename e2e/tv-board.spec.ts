@@ -26,7 +26,8 @@ const TV_BASE_URL = process.env.TV_BASE_URL ?? "http://127.0.0.1:4320";
  * and has no `.tv-title` anywhere. Three layouts, three pieces of markup for
  * one piece of information.
  */
-const BOARD_NAME = ":is(.tv-title, .tv-ill-name-big, .tv-ill-bar)";
+// The name, wherever the layout puts it: the header, a painting, or the medallion's strip.
+const BOARD_NAME = ":is(.tv-title, .tv-ill-name-big, .tv-ill-bar, .tv-med-strip)";
 
 /**
  * These specs manage the main synagogue. With more than one open to the
@@ -229,11 +230,17 @@ test.describe("administrator", () => {
     const accent = () => root.evaluate((el) => getComputedStyle(el).getPropertyValue("--tv-accent").trim());
     const before = await accent();
 
-    for (const theme of ["זהב מלכותי", "ירוק שבת", "מודרני", "לילה כחול"]) {
+    // A board with colour adjustments asks before a theme drops them; here it may.
+    const pick = async (theme: string) => {
       await page.getByRole("button", { name: new RegExp(theme) }).first().click();
+      const ask = page.getByRole("button", { name: "החלפה בלי לשמור" });
+      if (await ask.isVisible().catch(() => false)) await ask.click();
+    };
+    for (const theme of ["זהב מלכותי", "ירוק שבת", "מודרני", "לילה כחול"]) {
+      await pick(theme);
       await expect(page.getByRole("button", { name: new RegExp(theme) }).first()).toHaveAttribute("aria-pressed", "true");
     }
-    await page.getByRole("button", { name: /זהב מלכותי/ }).first().click();
+    await pick("זהב מלכותי");
     await expect.poll(accent).not.toBe(before);
 
     // The text size is a slider under "טקסט" (the painted board has its own of the same name).

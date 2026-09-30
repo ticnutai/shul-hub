@@ -63,9 +63,8 @@ import {
   type TvTheme,
 } from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
-import { nextCandleLighting, SHABBAT_ART } from "@/tv/shabbat";
+import { nextCandleLighting } from "@/tv/shabbat";
 import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
-import { ShabbatPicture } from "@/tv/ShabbatScene";
 
 /** The screen layouts, with a small sketch of each for the picker. */
 const LAYOUT_CHOICES: Array<{
@@ -181,7 +180,8 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { PaintedPresets, PaintedRows } from "./IllustratedLookEditor";
-import { DayLooksEditor } from "./DayLooksEditor";
+import { OccasionsEditor } from "./OccasionsEditor";
+import { readOccasions } from "@/tv/occasions";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -655,66 +655,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     );
   };
 
-  // Preview the Shabbat screen: jump the preview clock to 20 minutes after
-  // the next candle lighting, until the admin goes back to real time.
+  // Preview another moment: Shabbat, an occasion's day, any date - until the
+  // admin goes back to real time.
   const [shabbatPreview, setShabbatPreview] = useState(false);
-  // Shabbat pictures: pick one, or several for a slideshow.
-  const sb = view.shabbat;
-  const pickScene = (scene: string) =>
-    edit("sb-scene", (c) => {
-      const cur = c.shabbat.scenes;
-      if (!c.shabbat.rotate) return { ...c, shabbat: { ...c.shabbat, scenes: [scene] } };
-      const has = cur.includes(scene);
-      if (has && cur.length === 1) return c; // at least one picture
-      return {
-        ...c,
-        shabbat: { ...c.shabbat, scenes: has ? cur.filter((s) => s !== scene) : [...cur, scene] },
-      };
-    });
-  const [sbUploading, setSbUploading] = useState(false);
-  const uploadShabbat = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setSbUploading(true);
-    try {
-      const urls: string[] = [];
-      for (const file of Array.from(files)) {
-        const uploaded = await uploadTvImage(file);
-        urls.push(uploaded.url);
-        if (uploaded.lowRes)
-          toast.warning(
-            `"${file.name}" קטנה מדי לטלוויזיה (${uploaded.lowRes.width}×${uploaded.lowRes.height}) ותיראה מעט מטושטשת.`,
-            { duration: 9000 },
-          );
-      }
-      edit("sb-upload", (c) => ({
-        ...c,
-        shabbat: {
-          ...c.shabbat,
-          photos: [...c.shabbat.photos, ...urls].slice(0, 30),
-          // A new photo is shown right away: alone, or added to the slideshow.
-          scenes: c.shabbat.rotate ? [...c.shabbat.scenes, ...urls].slice(0, 30) : [urls[0]],
-        },
-      }));
-      toast.success(urls.length > 1 ? `${urls.length} תמונות נוספו` : "התמונה נוספה ונבחרה");
-    } catch (e) {
-      toast.error(`ההעלאה נכשלה: ${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setSbUploading(false);
-    }
+  const previewAt = (at: Date | null) => {
+    setShabbatPreview(Boolean(at));
+    setSimulatedNow(at);
+    setPreviewIndex(0);
   };
-  const removeShabbatPhoto = (url: string) =>
-    edit("sb-photo-del", (c) => {
-      const scenes = c.shabbat.scenes.filter((s) => s !== url);
-      return {
-        ...c,
-        shabbat: {
-          ...c.shabbat,
-          photos: c.shabbat.photos.filter((p) => p !== url),
-          scenes: scenes.length ? scenes : ["art:classic"],
-        },
-      };
-    });
-
   const toggleShabbatPreview = () => {
     if (shabbatPreview) {
       setShabbatPreview(false);
@@ -723,10 +671,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     }
     const candle = nextCandleLighting(new Date(), board.data.settings);
     if (!candle) return toast.error("לא ניתן לחשב את זמן הדלקת הנרות");
-    setShabbatPreview(true);
-    setSimulatedNow(new Date(candle.getTime() + 20 * 60_000));
-    setPreviewIndex(0);
-    if (!view.shabbat.enabled) toast.warning("מסך השבת כבוי - הוא לא יופיע בשבת עד שתפעילו אותו.");
+    previewAt(new Date(candle.getTime() + 20 * 60_000));
   };
 
   /* -------------------------------------------------------------- save -- */
@@ -1038,7 +983,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       </Button>
       {simulatedNow && (
         <span className="text-xs text-muted-foreground">
-          מדמה {shabbatPreview ? "ערב שבת, " : "את השעה "}
+          מדמה {shabbatPreview ? `${simulatedNow.toLocaleDateString("he-IL")}, ` : "את השעה "}
           {simulatedNow.toTimeString().slice(0, 5)}
         </span>
       )}
@@ -1112,12 +1057,21 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="design">עיצוב</TabsTrigger>
           <TabsTrigger value="layout">פריסה</TabsTrigger>
           <TabsTrigger value="content">תוכן</TabsTrigger>
+          <TabsTrigger value="occasions">מועדים</TabsTrigger>
           <TabsTrigger value="tools">כלים</TabsTrigger>
         </TabsList>
+        <TabsContent value="occasions" className="mt-3">
+          <Section
+            title="שבת, חגים ומועדים"
+            hint="מה מופיע על הלוח בשבת, בחגים ובימים שלכם - לכל מועד בנפרד, ובאיזה סדר חשיבות."
+          >
+            <OccasionsEditor config={draft} onEdit={edit} onPreview={previewAt} />
+          </Section>
+        </TabsContent>
         <TabsContent
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
@@ -1359,7 +1313,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               current={composerScreen}
               onChange={(screens, next) => {
                 setComposerScreen(next);
-                edit("screens", (c) => ({ ...c, screens }));
+                // The Shabbat and day screens are occasions now: the first save
+                // here fixes the occasions as they were read from those screens,
+                // before the screens themselves are left behind.
+                edit("screens", (c) => ({ ...c, occasions: readOccasions(c), screens }));
               }}
             />
           </Section>
@@ -1427,7 +1384,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 איזה ציור, והקיר, המסגרות והטקסט שלו - בלשונית עיצוב.
               </p>
             )}
-            <DayLooksEditor config={draft} onEdit={edit} />
             {/* A painted board brings its own frames and their places. */}
             {!painted && <FrameSpacing config={view} onEdit={edit} />}
 
@@ -1590,157 +1546,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           value="content"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <Section
-            title="מסך שבת"
-            hint="מהדלקת הנרות ביום שישי ועד צאת השבת הלוח מציג רק מסך שבת - חלות ונרות דולקים, 'שבת שלום', הפרשה וזמני השבת - בלי החלפת מסכים. הזמנים לפי מיקום בית הכנסת (בתי כנסת ← פרטים)."
-          >
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={draft.shabbat.enabled}
-                onCheckedChange={(on) =>
-                  edit("sb-on", (c) => ({ ...c, shabbat: { ...c.shabbat, enabled: on } }))
-                }
-              />
-              מסך שבת פעיל
-            </label>
-            {/* One number for the whole synagogue, kept with the other zmanim settings
-                and shared with the website - not a second copy here that could disagree. */}
-            <p className="text-sm">
-              צאת השבת והחג:{" "}
-              <strong>
-                {board.data.settings?.shabbat_end_minutes ?? draft.shabbat.endMinutesAfterSunset} דק׳ אחרי השקיעה
-              </strong>{" "}
-              <span className="text-xs text-muted-foreground">
-                (או צאת הכוכבים, המאוחר מביניהם). משנים בפרטי בית הכנסת (הכפתור "בתי כנסת" למעלה ← פרטים ← כוונון ידני), וזה חל על הלוח ועל האתר יחד.
-              </span>
-            </p>
-            <div className="space-y-2 rounded-lg border p-3">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                <span className="text-sm font-medium">תמונת השבת</span>
-                <label className="flex items-center gap-2 text-sm">
-                  <Switch
-                    checked={sb.rotate}
-                    onCheckedChange={(on) =>
-                      edit("sb-rotate", (c) => ({
-                        ...c,
-                        shabbat: {
-                          ...c.shabbat,
-                          rotate: on,
-                          scenes: on ? c.shabbat.scenes : c.shabbat.scenes.slice(0, 1),
-                        },
-                      }))
-                    }
-                  />
-                  מצגת: החלפת תמונות
-                </label>
-                {sb.rotate && (
-                  <label className="flex items-center gap-2 text-sm">
-                    כל
-                    <select
-                      aria-label="זמן לכל תמונה"
-                      value={sb.secondsPerScene}
-                      onChange={(e) =>
-                        edit("sb-secs", (c) => ({
-                          ...c,
-                          shabbat: { ...c.shabbat, secondsPerScene: Number(e.target.value) },
-                        }))
-                      }
-                      className="h-8 rounded-md border bg-background px-2 text-sm"
-                    >
-                      {(SCENE_INTERVALS.includes(sb.secondsPerScene)
-                        ? SCENE_INTERVALS
-                        : [...SCENE_INTERVALS, sb.secondsPerScene].sort((a, b) => a - b)
-                      ).map((s) => (
-                        <option key={s} value={s}>
-                          {intervalLabel(s)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {sb.rotate
-                  ? `לחצו על תמונות כדי להוסיף או להוציא מהמצגת; המספר הוא הסדר. נבחרו ${sb.scenes.length}.`
-                  : 'לחצו על תמונה כדי לבחור אותה. להחלפת תמונות לפי זמן - הפעילו "מצגת".'}
-              </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {[
-                  ...SHABBAT_ART.map((a) => ({
-                    scene: `art:${a.id}`,
-                    label: a.label,
-                    photo: false,
-                  })),
-                  ...sb.photos.map((p, i) => ({ scene: p, label: `תמונה ${i + 1}`, photo: true })),
-                ].map(({ scene, label, photo }) => {
-                  const order = sb.scenes.indexOf(scene);
-                  const chosen = order >= 0;
-                  return (
-                    <div
-                      key={scene}
-                      className={`relative overflow-hidden rounded-lg border bg-[#0b1628] transition ${
-                        chosen
-                          ? "ring-2 ring-primary ring-offset-2"
-                          : "opacity-80 hover:opacity-100"
-                      }`}
-                    >
-                      <button
-                        type="button"
-                        aria-pressed={chosen}
-                        aria-label={label}
-                        onClick={() => pickScene(scene)}
-                        className="block w-full"
-                      >
-                        <div className="pointer-events-none aspect-[900/520] p-1 [&_.tv-shabbat-photo]:max-h-none [&_.tv-shabbat-photo]:shadow-none [&_svg]:h-full [&_svg]:w-full">
-                          <ShabbatPicture scene={scene} />
-                        </div>
-                        <div className="bg-background/95 px-2 py-1 text-right text-xs font-medium">
-                          {label}
-                        </div>
-                      </button>
-                      {chosen && sb.rotate && (
-                        <span className="absolute start-1.5 top-1.5 grid size-6 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                          {order + 1}
-                        </span>
-                      )}
-                      {photo && (
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="icon"
-                          className="absolute end-1.5 top-1.5 size-7"
-                          aria-label={`הסרת ${label}`}
-                          onClick={() => removeShabbatPhoto(scene)}
-                        >
-                          <Trash2 className="size-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <Button type="button" variant="outline" size="sm" asChild disabled={sbUploading}>
-                <label className="cursor-pointer">
-                  <ImagePlus className="size-4" /> {sbUploading ? "מעלה…" : "העלאת תמונות משלכם"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="sr-only"
-                    onChange={(e) => void uploadShabbat(e.target.files)}
-                  />
-                </label>
-              </Button>
-              <span className="ms-2 text-xs text-muted-foreground">
-                מומלץ 1920×1080 ומעלה; התמונה מותאמת אוטומטית לטלוויזיה.
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              אפשר לשנות את הכיתוב, להסתיר חלקים ולהזיז בעריכה ישירה: לחצו "תצוגת מסך שבת" ואז
-              "עריכה ישירה בלוח".
-            </p>
-          </Section>
-
           <Section
             title="מצגת תמונות"
             hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG."

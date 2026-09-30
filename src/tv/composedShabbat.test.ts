@@ -8,7 +8,8 @@
  * with their notices right through Shabbat. And the day's screen stayed in the
  * rotation on ordinary days, drawing nothing for its forty seconds.
  *
- * Now both are screens that appear in their time, and only then.
+ * Now both are occasions (occasions.ts), read from those screens: they appear
+ * in their time, and only then.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { zmanimFor } from "@community/lib/minyan-time";
@@ -16,6 +17,7 @@ import { zmanimFor } from "@community/lib/minyan-time";
 import { forgetServerTime } from "./clock";
 import { DEFAULT_TV_CONFIG, type Screen, type TvConfig } from "./config";
 import { buildSlides, composedRows, type BoardData } from "./useBoardData";
+import { readOccasions } from "./occasions";
 
 beforeEach(() => forgetServerTime());
 
@@ -59,7 +61,7 @@ describe("on a board built of screens", () => {
     // Tuesday 29.9.2026, chol hamoed Sukkot.
     expect(onWall(board(ALL), "2026-09-29T10:00:00")).toEqual([
       "screen:board:composed",
-      "screen:festival:composed",
+      "occasion:cal:chol_hamoed_sukkot:occasion",
     ]);
   });
 
@@ -68,12 +70,12 @@ describe("on a board built of screens", () => {
   });
 
   it("from candle lighting, the Shabbat screen", () => {
-    expect(onWall(board(ALL), "2026-10-09T18:45:00")).toEqual(["screen:shabbat:shabbat"]);
+    expect(onWall(board(ALL), "2026-10-09T18:45:00")).toEqual(["occasion:shabbat:occasion"]);
   });
 
   it("all through Shabbat, and nothing else - no notices on Shabbat", () => {
     // Shabbat Bereshit, 10.10.2026.
-    expect(onWall(board(ALL), "2026-10-10T10:00:00")).toEqual(["screen:shabbat:shabbat"]);
+    expect(onWall(board(ALL), "2026-10-10T10:00:00")).toEqual(["occasion:shabbat:occasion"]);
   });
 
   it("and the weekday board is back after Shabbat ends", () => {
@@ -89,9 +91,9 @@ describe("on a board built of screens", () => {
       zmanimFor(new Date("2026-10-10T10:00:00+03:00"), null),
     );
     expect(slides).toHaveLength(1);
-    expect(slides[0].kind).toBe("composed");
-    const parts = slides[0].kind === "composed" ? slides[0].parts.map((p) => p.block) : [];
-    expect(parts).toEqual(["shabbat", "zmanim"]);
+    // The zmanim the gabbai put on his Shabbat screen are on Shabbat's card now.
+    expect(slides[0].kind).toBe("occasion");
+    if (slides[0].kind === "occasion") expect(slides[0].page.main.occasion.elements).toContain("zmanim");
   });
 
   it("a board he built without a Shabbat screen keeps its screens on Shabbat", () => {
@@ -108,16 +110,16 @@ describe("on a board built of screens", () => {
 describe("the day's block beside other content", () => {
   const BOARD_WITH_DAY: Screen = { ...BOARD, blocks: [...BOARD.blocks, { block: "festival" }] };
 
-  it("keeps the screen itself on a festival, with the day as a card rather than a cell", () => {
+  it("keeps the screen itself on a festival, with the day as a line along the bottom rather than a cell", () => {
     // Saved like this on תורה ואהבתה: the board with the day's block turned on.
     // Drawn as the day's full screen it hid every time on it all chol hamoed.
     const now = new Date("2026-09-29T10:00:00+03:00");
     const [first] = buildSlides(data, board([BOARD_WITH_DAY, FESTIVAL]), now, zmanimFor(now, null));
     expect(first.kind).toBe("composed");
     if (first.kind !== "composed") return;
-    expect(first.parts.map((p) => p.block)).toEqual(["zmanim", "festival"]);
-    // The grid has no empty cell for it.
+    // The grid has no cell for it: the occasion's banner draws the line (TvBoard).
     expect(composedRows(first.parts).flat().map((p) => p.block)).toEqual(["zmanim"]);
+    expect(readOccasions(board([BOARD_WITH_DAY, FESTIVAL])).find((o) => o.id === "cal:chol_hamoed_sukkot")!.banner).toBe(true);
   });
 
   it("and on an ordinary day is simply the board", () => {
@@ -127,5 +129,13 @@ describe("the day's block beside other content", () => {
   it("a Shabbat screen with prayer times on it is not shown on a weekday", () => {
     const shabbatWithTimes: Screen = { ...SHABBAT, blocks: [{ block: "shabbat" }, { block: "zmanim" }] };
     expect(onWall(board([BOARD, shabbatWithTimes]), "2026-10-14T10:00:00")).toEqual(["screen:board:composed"]);
+  });
+});
+
+describe("Shabbat with a day that takes turns", () => {
+  it("Shabbat Chanukah holds the board: the page takes the strongest of the occasions on it", () => {
+    // 5.12.2026 is Shabbat and Chanukah; Chanukah leads the page and takes turns, Shabbat holds.
+    const plain = { ...structuredClone(DEFAULT_TV_CONFIG) };
+    expect(onWall(plain, "2026-12-05T10:00:00")).toEqual(["occasion:cal:chanukah:occasion"]);
   });
 });

@@ -1,64 +1,26 @@
 import type { Settings } from "@community/lib/data";
-import { jerusalemWeekday } from "@community/lib/minyan-time";
-import { civilDayProfile } from "@/lib/jewishDay";
-import type { DayKind, TvConfig } from "./config";
-import { shabbatNow } from "./shabbat";
+import { zmanimFor } from "@community/lib/minyan-time";
+import { checkClock } from "./clock";
+import type { TvConfig } from "./config";
 import { applyDesign, findDesign } from "./designs";
+import { occasionDesign, occasionPagesNow } from "./occasions";
 
 /**
- * A different look for different days, switched by the board itself.
+ * The board as it should look right now: the design of the occasion that is
+ * on (occasions.ts), over the ordinary look.
  *
- * The admin chooses, per kind of day, a design, a layout, a painted board and
- * a theme (each one optional: what is not chosen stays as on every other day). The
- * board works out what kind of day it is and wears that look - the curtain
- * for Shabbat, the stone tablets for Sukkot - without anyone touching it.
+ * This was "a look per day" - a layout, painted board and theme per kind of
+ * day - which is one of the five things occasions replaced: each occasion
+ * now names the design it wears, and the most important occasion on that
+ * names one wins. A board that set looks per day reads them as its
+ * occasions' designs until it saves occasions of its own.
  *
- * Kinds, highest first when two meet (Shabbat Chol HaMoed is Shabbat):
- *   shabbat      candle lighting on Friday until Shabbat is out - the same
- *                window as the Shabbat screen (shabbat.ts)
- *   festival     Yom Tov, Chol HaMoed, Chanukah, Purim and Shushan Purim
- *   roshChodesh  Rosh Chodesh
- *   friday       the rest of Friday, before candle lighting
- * The calendar days are Jerusalem's, midnight to midnight: a board changes
- * its dress in the night, not at sunset in the middle of ma'ariv.
- */
-
-export const DAY_KIND_LABELS: Record<DayKind, string> = {
-  shabbat: "שבת (מהדלקת נרות עד צאת השבת)",
-  festival: "חגים, חול המועד, חנוכה ופורים",
-  roshChodesh: "ראש חודש",
-  friday: "יום שישי (עד הדלקת נרות)",
-};
-
-/** What kind of day it is on the board, or null for an ordinary weekday. */
-export function dayKindAt(now: Date, settings: Settings | null | undefined, shabbatEndMinutes: number): DayKind | null {
-  if (shabbatNow(now, settings, shabbatEndMinutes)) return "shabbat";
-  const day = civilDayProfile(now);
-  if (day.festival) return "festival";
-  if (day.roshChodesh) return "roshChodesh";
-  if (jerusalemWeekday(now) === 5) return "friday";
-  return null;
-}
-
-/**
- * The board as it should look right now: the day's look over the ordinary
- * one. A look that names a painted board or theme that no longer exists
- * keeps the ordinary one for that part (the config's own validation already
- * dropped such names when it was saved; this only guards a stale screen).
+ * Never on a clock that cannot be trusted: a board that believes it is
+ * Shabbat on a Tuesday would otherwise dress for it.
  */
 export function applyDayLook(config: TvConfig, now: Date, settings: Settings | null | undefined): TvConfig {
-  const kind = dayKindAt(now, settings, config.shabbat.endMinutesAfterSunset);
-  const look = kind ? config.dayLooks[kind] : undefined;
-  if (!look) return config;
-  // The theme first and the design over it, so the design's colours are not
-  // wiped by the theme; a layout or painted board chosen for the day wins
-  // over the design's own.
-  let next: TvConfig = look.theme ? { ...config, theme: look.theme, themeOverrides: {} } : config;
-  const design = findDesign(config, look.design);
-  if (design) next = applyDesign(next, design);
-  return {
-    ...next,
-    ...(look.screenLayout ? { screenLayout: look.screenLayout } : {}),
-    ...(look.illustration ? { illustration: look.illustration } : {}),
-  };
+  if (!checkClock(now).trusted) return config;
+  const { active } = occasionPagesNow(config, settings, now, (d) => zmanimFor(d, settings));
+  const design = findDesign(config, occasionDesign(active));
+  return design ? applyDesign(config, design) : config;
 }

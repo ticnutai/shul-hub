@@ -11,6 +11,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { BLOCKS } from "@/tv/blocks";
+import { DAY_BLOCKS } from "@/tv/screens";
 import { DEFAULT_TV_CONFIG, type Screen, type TvConfig } from "@/tv/config";
 import { ScreenComposer } from "./ScreenComposer";
 
@@ -33,30 +34,25 @@ function show(config: TvConfig = illustrated) {
 describe("the screen composer", () => {
   it("opens on the board as it is, not on an empty sheet", () => {
     show();
-    // Illustrated merges its content into one screen. The day's screen and
-    // the Shabbat screen stand beside it, each appearing only in its time -
-    // so on an ordinary day the board is one screen, and it says when the
-    // other two come in.
+    // Illustrated merges its content into one screen. Shabbat and the day's
+    // screen are occasions, set in their own tab - and it says where.
     expect(screen.getByText(/מסך אחד — הלוח עומד/)).toBeTruthy();
-    expect(screen.getByText(/כשיש מועד, מסך החג נכנס לסבב/)).toBeTruthy();
-    expect(screen.getByText(/בשבת מוצגים רק מסך השבת/)).toBeTruthy();
+    expect(screen.getByText(/בשבת ובחגים - בלשונית מועדים/)).toBeTruthy();
     expect(screen.getByLabelText("תפילות היום")).toBeTruthy();
   });
 
   it("offers a switch for every block in the registry, none written by hand", () => {
     show();
-    for (const block of BLOCKS) {
+    for (const block of BLOCKS.filter((b) => !DAY_BLOCKS.includes(b.id))) {
       expect(screen.getByLabelText(block.name), `no switch for ${block.id}`).toBeTruthy();
     }
   });
 
-  it("gives the day its own screen, which the old settings could not say", () => {
+  it("leaves Shabbat and the day's screen to the occasions: no screens or switches of theirs here", () => {
     const { onChange } = show();
-    // The first screen is the content; the day has one of its own, so it is
-    // not switched on here.
-    expect((screen.getByLabelText("מסך החג") as HTMLButtonElement).getAttribute("aria-checked")).toBe("false");
-    // It is the second screen, and it can be opened and edited like any other.
-    expect(screen.getAllByRole("button", { name: /מסך החג/ }).length).toBeGreaterThan(0);
+    expect(screen.queryByLabelText("מסך החג")).toBeNull();
+    expect(screen.queryByLabelText("מסך השבת")).toBeNull();
+    expect(screen.queryAllByRole("button", { name: /מסך החג|מסך השבת/ })).toHaveLength(0);
     expect(onChange).not.toHaveBeenCalled();
   });
 
@@ -74,11 +70,11 @@ describe("the screen composer", () => {
     const { onChange } = show();
     fireEvent.click(screen.getByRole("button", { name: "מסך" }));
     const [next, current] = onChange.mock.calls[0];
-    // It opened on three (the board, the day's screen, Shabbat), so adding makes four.
-    expect(next).toHaveLength(4);
-    expect(current).toBe(3);
+    // It opened on the board alone (Shabbat and the day are occasions), so adding makes two.
+    expect(next).toHaveLength(2);
+    expect(current).toBe(1);
     // A new screen is never blank on a wall: it starts with the bars.
-    expect(next[3].blocks.map((b) => b.block)).toContain("header");
+    expect(next[1].blocks.map((b) => b.block)).toContain("header");
   });
 
   it("pinning a block is the same field, not a second mode", () => {

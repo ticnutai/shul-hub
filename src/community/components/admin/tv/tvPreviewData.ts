@@ -31,7 +31,9 @@ export function slideLabel(s: BoardSlide): string {
       return "שיעורים";
     case "slideshow":
       return "מצגת";
-    case "shabbat":
-      return "שבת שלום";
+    case "occasion":
+      return s.page.main.occasion.name;
+    case "composed":
+      return s.screen.name;
   }
 }

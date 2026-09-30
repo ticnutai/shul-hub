@@ -54,19 +54,17 @@ test.describe("the composer on תורה ואהבתה", () => {
     await expect(page.getByTestId("composer-sketch")).toBeVisible();
   });
 
-  test("reads the saved board as its content, the day and Shabbat, each in its time", async ({
+  test("reads the saved board as its content, and leaves Shabbat and the days to the occasions", async ({
     adminPage: page,
   }) => {
     await asTorahVeahavata(page);
     const composer = await openComposer(page);
-    // The day's screen is no longer an overlay that decides for itself when
-    // to take the board - it is a screen beside it, and so is Shabbat. Each
-    // comes in only in its time, and the composer says when.
-    await expect(composer.getByText(/כשיש מועד, מסך החג נכנס לסבב/)).toBeVisible();
-    await expect(composer.getByText(/בשבת מוצגים רק מסך השבת/)).toBeVisible();
+    // Shabbat and the day's screen are occasions now, each with everything
+    // about it in one place - and the composer says where.
+    await expect(composer.getByText(/בשבת ובחגים - בלשונית מועדים/)).toBeVisible();
   });
 
-  test("offers a switch for every block, and the day's screen is one of them", async ({
+  test("offers a switch for every block of the ordinary screens", async ({
     adminPage: page,
   }) => {
     await asTorahVeahavata(page);
@@ -76,16 +74,12 @@ test.describe("the composer on תורה ואהבתה", () => {
     // beside it is a <label> for the same control, so asking by name finds
     // two elements. The id comes straight from the registry, which is the
     // thing being checked anyway.
-    for (const id of ["prayers", "zmanim", "announcements", "shiurim", "learning", "festival"]) {
+    for (const id of ["prayers", "zmanim", "announcements", "shiurim", "learning"]) {
       await expect(composer.locator(`#block-${id}`), `no switch for ${id}`).toBeVisible();
     }
-    // The day's screen and Shabbat are switches here like any other block,
-    // and this synagogue has a screen of its own for each - shown only in
-    // its time. (Whether the first screen also carries the day's line is the
-    // gabbai's choice, and not asked here.)
-    await expect(composer.locator("#block-shabbat")).toBeVisible();
-    await expect(composer.getByRole("button", { name: /מסך החג.*רק במועד/ }).first()).toBeVisible();
-    await expect(composer.getByRole("button", { name: /מסך השבת.*רק בשבת/ }).first()).toBeVisible();
+    // Shabbat and the day's screen are not blocks here any more: they are occasions.
+    await expect(composer.locator("#block-shabbat")).toHaveCount(0);
+    await expect(composer.locator("#block-festival")).toHaveCount(0);
   });
 
   test("turning a block off changes only the sketch, and saves nothing", async ({ adminPage: page }) => {
