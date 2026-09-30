@@ -62,3 +62,16 @@ describe("the layers: background adjustments and every frame's dress", () => {
     expect(CORNER_SHAPE.arch).toBe("round");
   });
 });
+
+describe("ready-made frame pictures", () => {
+  it("are stored by name and resolve to the shipped file", async () => {
+    const { FRAME_PICTURES, framePictureRef, framePictureUrl } = await import("./framePictures");
+    expect(FRAME_PICTURES.map((f) => f.id)).toEqual(["gold-ornate", "carved-wood"]);
+    const ref = framePictureRef("gold-ornate");
+    expect(normalizeFrameStyle({ image: ref }).image).toBe(ref);
+    expect(framePictureUrl(ref)).toBe(FRAME_PICTURES[0].url);
+    expect(framePictureUrl("frame:gone")).toBeNull();
+    expect(layerVars(DEFAULT_BACKGROUND_TUNE, { ...DEFAULT_FRAME_STYLE, image: ref }).classes).toContain("has-frame-image");
+    expect(layerVars(DEFAULT_BACKGROUND_TUNE, { ...DEFAULT_FRAME_STYLE, image: "frame:gone" }).classes).not.toContain("has-frame-image");
+  });
+});

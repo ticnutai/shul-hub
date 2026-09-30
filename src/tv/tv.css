@@ -5502,3 +5502,25 @@
 .tv-root .tv-med .tv-panel.tv-med-clock::after {
   border-radius: 50% !important;
 }
+
+/*
+ * Under a picture of a frame the frame's own thickness is the margin, so the
+ * panel's padding comes down - otherwise the two together took a row of the
+ * zmanim. The medallion keeps its circle: a picture of a square frame cannot
+ * bend round it, so it gets a ring in the accent colour instead.
+ */
+.tv-root.has-frame-image .tv-panel,
+.tv-root.has-frame-image .tv-card {
+  padding: calc(var(--u) * 1) calc(var(--u) * 1.6);
+}
+
+.tv-root.has-frame-image .tv-med .tv-panel.tv-med-clock {
+  border-image: none !important;
+  border-width: calc(var(--u) * 0.5) !important;
+  border-color: var(--tv-accent) !important;
+}
+
+.tv-med-clock span,
+.tv-med-plaque span {
+  white-space: nowrap;
+}

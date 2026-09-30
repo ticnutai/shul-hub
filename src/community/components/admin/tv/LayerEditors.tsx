@@ -7,6 +7,7 @@ import { FRAME_IDS, FRAME_LABELS, setFrameLook, type FrameId } from "@/tv/frameL
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
+import { FRAME_PICTURES, framePictureRef, framePictureUrl } from "@/tv/framePictures";
 import { THEME_VAR_LAYERS, TV_FONTS, isSafeGradient, type ThemeVar } from "@/tv/themes";
 import { BackdropPicker } from "./BackdropPicker";
 import { FrameCorners, PaintedBoardsPicker, StylePicker } from "./BoardLook";
@@ -504,21 +505,42 @@ export function FramesLayer({ config, saved, onEdit, colourFields }: LayerProps)
                 show={(v) => (v === 0 ? "לפי הסגנון" : pct(v))}
                 onChange={(v) => setFs({ depth: v })}
               />
-              <div className="space-y-2 border-t pt-2">
-                <div className="text-xs font-medium">צורה משלכם · תמונה של מסגרת</div>
+              <div className="space-y-2 border-t pt-2" data-testid="frame-pictures">
+                <div className="text-xs font-medium">מסגרת מתמונה</div>
                 <p className="text-[11px] leading-tight text-muted-foreground">
-                  תמונה של מסגרת (למשל מסגרת זהב מעוטרת): הפינות נשמרות, הצלעות נמתחות לאורך כל מסגרת.
+                  הפינות נשמרות, הצלעות נמתחות לאורך כל מסגרת. מוכנות (מהלוחות המצוירים), או תמונה משלכם.
                 </p>
+                <div className="flex flex-wrap gap-2">
+                  {FRAME_PICTURES.map((f) => {
+                    const on = fs.image === framePictureRef(f.id);
+                    return (
+                      <button
+                        key={f.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() =>
+                          setFs(on ? { image: null } : { image: framePictureRef(f.id), imageSlice: f.slice, imageWidth: f.width })
+                        }
+                        className={`w-24 overflow-hidden rounded-md border text-center text-[11px] ${
+                          on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
+                        }`}
+                      >
+                        <img src={f.url} alt="" className="aspect-square w-full object-cover" loading="lazy" />
+                        <span className="block py-0.5">{f.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
                     <label className="cursor-pointer">
-                      <ImagePlus className="size-4" /> {fs.image ? "החלפת הצורה" : "הוספת צורה"}
+                      <ImagePlus className="size-4" /> הוספת צורה משלכם
                       <input type="file" accept="image/*" className="sr-only" onChange={(e) => void uploadFrame(e.target.files)} />
                     </label>
                   </Button>
                   {fs.image && (
                     <>
-                      <img src={fs.image} alt="" className="h-10 w-16 rounded object-contain" />
+                      <img src={framePictureUrl(fs.image) ?? ""} alt="" className="h-10 w-16 rounded object-contain" />
                       <Button type="button" variant="ghost" size="sm" onClick={() => setFs({ image: null })}>
                         <Trash2 className="size-4" /> הסרה
                       </Button>

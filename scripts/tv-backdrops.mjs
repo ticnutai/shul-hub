@@ -21,7 +21,9 @@
  * the picker, so opening the editor does not pull down a megabyte of
  * full-size images.
  *
- * Re-run after changing a recipe, then commit the images.
+ * Re-run after changing a recipe, then commit the images. Name recipes to
+ * bake only those (`node scripts/tv-backdrops.mjs royal wood`), so the
+ * others' files are left exactly as committed.
  */
 import { chromium } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
@@ -94,12 +96,15 @@ const cloud = (id, freq, octaves, seed, k, c, blur, opacity, colour = "#ffffff")
   <rect width="100%" height="100%" fill="${colour}" filter="url(#c${id})" opacity="${opacity}"/>`;
 
 /** A glow, for light coming from somewhere rather than everywhere. */
+// The id is made from the position, without its "%": "url(#g10%100%)" reads
+// "%10" as an escape and points at nothing, so that glow was never drawn.
+const glowId = (cx, cy) => `g${cx}${cy}`.replace(/%/g, "p");
 const glow = (cx, cy, r, colour, opacity) => `
-  <defs><radialGradient id="g${cx}${cy}" cx="${cx}" cy="${cy}" r="${r}">
+  <defs><radialGradient id="${glowId(cx, cy)}" cx="${cx}" cy="${cy}" r="${r}">
     <stop offset="0" stop-color="${colour}" stop-opacity="${opacity}"/>
     <stop offset="1" stop-color="${colour}" stop-opacity="0"/>
   </radialGradient></defs>
-  <rect width="100%" height="100%" fill="url(#g${cx}${cy})"/>`;
+  <rect width="100%" height="100%" fill="url(#${glowId(cx, cy)})"/>`;
 
 /** Noise tinted into a material: veins, grain, weave. */
 const grain = (freq, octaves, seed, matrix, blur, opacity) => `
@@ -109,6 +114,17 @@ const grain = (freq, octaves, seed, matrix, blur, opacity) => `
     <feGaussianBlur in="v" stdDeviation="${blur}"/>
   </filter></defs>
   <rect width="100%" height="100%" fill="#808080" filter="url(#gr${seed})" opacity="${opacity}"/>`;
+
+/**
+ * Courses of cut stone: long blocks, every other row set half a block over,
+ * the joints a little darker than the face. The shading of each block comes
+ * from the grain laid over it.
+ */
+const courses = (w, h, colour, opacity) => `
+  <defs><pattern id="blk" width="${w}" height="${h * 2}" patternUnits="userSpaceOnUse">
+    <path d="M0 0H${w} M0 ${h}H${w} M0 0V${h} M${w / 2} ${h}V${h * 2}" stroke="${colour}" stroke-width="3" fill="none"/>
+  </pattern></defs>
+  <rect width="100%" height="100%" fill="url(#blk)" opacity="${opacity}"/>`;
 
 const BACKDROPS = {
   /* ------------------------------------------------------------- sky --- */
@@ -227,6 +243,57 @@ const BACKDROPS = {
       glow("50%", "28%", "70%", "#ff9a86", 0.16),
     ],
   },
+  /* --------------------------------------------- the walls of the boards --- */
+  /*
+   * The walls the painted boards stood on, as backgrounds of their own: a
+   * blue velvet curtain, a wall of cut stone, dark wood, and a dark hall
+   * with warm lights at its foot. Frames of any style go over them.
+   */
+  royal: {
+    name: "קטיפה כחולה",
+    note: "וילון קטיפה כחול עם קפלים",
+    light: false,
+    body: [
+      sky([[0, "#0a1a5c"], [0.5, "#17319c"], [1, "#0a1a5c"]]),
+      // Folds: noise stretched down the height of the curtain.
+      grain("0.009 0.0005", 2, 9, "0 0 0 0 0.01  0 0 0 0 0.02  0 0 0 0 0.12  2.2 0 0 0 -0.75", 1.5, 0.9),
+      grain("0.5", 3, 5, "0 0 0 0 0.6  0 0 0 0 0.7  0 0 0 0 1  0.5 0 0 0 -0.24", 0.3, 0.3),
+      glow("50%", "22%", "70%", "#8fb0ff", 0.2),
+    ],
+  },
+  wall: {
+    name: "קיר אבנים",
+    note: "אבן ירושלמית חתוכה, שורה על שורה",
+    light: true,
+    body: [
+      sky([[0, "#e3d2ad"], [0.6, "#d9c69d"], [1, "#c9b388"]]),
+      grain("0.035", 5, 12, "0 0 0 0 0.42  0 0 0 0 0.34  0 0 0 0 0.22  0.7 0 0 0 -0.28", 0.6, 0.6),
+      courses(240, 80, "#9b8358", 0.55),
+      glow("50%", "8%", "80%", "#fff6e0", 0.35),
+    ],
+  },
+  wood: {
+    name: "עץ אגוז",
+    note: "עץ כהה וחם, סיבים לאורך",
+    light: false,
+    body: [
+      sky([[0, "#3b2414"], [0.5, "#553520"], [1, "#301c10"]]),
+      // Grain: noise stretched along the width of the boards.
+      grain("0.003 0.11", 4, 21, "0 0 0 0 0.16  0 0 0 0 0.09  0 0 0 0 0.04  0.9 0 0 0 -0.28", 0.4, 0.6),
+      glow("50%", "30%", "75%", "#ffb877", 0.14),
+    ],
+  },
+  hall: {
+    name: "אולם כהה",
+    note: "כהה ושקט, עם אור חם למטה בצדדים",
+    light: false,
+    body: [
+      sky([[0, "#0a0e18"], [0.6, "#121827"], [1, "#07090f"]]),
+      glow("8%", "100%", "34%", "#ffb45a", 0.5),
+      glow("92%", "100%", "34%", "#ffb45a", 0.5),
+      glow("50%", "0%", "60%", "#c9a45a", 0.12),
+    ],
+  },
   waters: {
     name: "מי מנוחות",
     note: "כחול שקט עם אור על פני המים",
@@ -263,7 +330,9 @@ const bake = async (layers, w, h, quality) =>
   );
 
 let total = 0;
+const only = process.argv.slice(2);
 for (const [id, b] of Object.entries(BACKDROPS)) {
+  if (only.length && !only.includes(id)) continue;
   for (const [suffix, w, h, q] of [["", 960, 540, 0.82], ["-thumb", 160, 90, 0.7]]) {
     const dataUrl = await bake(b.body, w, h, q);
     const bytes = Buffer.from(dataUrl.split(",")[1], "base64");

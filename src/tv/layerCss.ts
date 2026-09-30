@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { backdropUrl } from "./backdrops";
+import { framePictureUrl } from "./framePictures";
 import { isSafeCssValue, isSafeGradient, isSafeUrl } from "./themes";
 import type { FrameLook } from "./frameLooks";
 import type { BackgroundTune, FrameStyle } from "./layers";
@@ -92,8 +93,9 @@ export function layerVars(tune: BackgroundTune, frames: FrameStyle): { vars: Rec
     vars["--frame-depth"] = depthShadow(frames.depth);
     classes += " has-frame-depth";
   }
-  if (frames.image) {
-    vars["--frame-image"] = `url("${frames.image}")`;
+  const framePicture = framePictureUrl(frames.image);
+  if (framePicture) {
+    vars["--frame-image"] = `url("${framePicture}")`;
     vars["--frame-image-slice"] = `${frames.imageSlice}%`;
     vars["--frame-image-w"] = `calc(var(--u) * ${frames.imageWidth})`;
     classes += " has-frame-image";

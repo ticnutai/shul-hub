@@ -1,7 +1,8 @@
 /**
  * The ready-made board backgrounds.
  *
- * Sky, light, stone, parchment, velvet and still water: surfaces a board can
+ * Sky, light, stone, parchment, velvet, still water, and the walls the
+ * painted boards stood on (blue velvet, cut stone, wood, a dark hall): surfaces a board can
  * stand on without arguing with it. Drawn, not photographed - see
  * scripts/tv-backdrops.mjs, which bakes them from gradients and noise, so
  * nothing here is downloaded or licensed and each one costs a few kilobytes.
@@ -45,6 +46,14 @@ import velvet from "./assets/backdrops/velvet.jpg";
 import velvetThumb from "./assets/backdrops/velvet-thumb.jpg";
 import waters from "./assets/backdrops/waters.jpg";
 import watersThumb from "./assets/backdrops/waters-thumb.jpg";
+import royal from "./assets/backdrops/royal.jpg";
+import royalThumb from "./assets/backdrops/royal-thumb.jpg";
+import wall from "./assets/backdrops/wall.jpg";
+import wallThumb from "./assets/backdrops/wall-thumb.jpg";
+import wood from "./assets/backdrops/wood.jpg";
+import woodThumb from "./assets/backdrops/wood-thumb.jpg";
+import hall from "./assets/backdrops/hall.jpg";
+import hallThumb from "./assets/backdrops/hall-thumb.jpg";
 
 export interface Backdrop {
   id: string;
@@ -71,6 +80,11 @@ export const TV_BACKDROPS: Backdrop[] = [
   { id: "parchment", name: "קלף", note: "קלף ישן, חם ונקי", light: true, url: parchment, thumb: parchmentThumb },
   { id: "velvet", name: "פרוכת", note: "קטיפה עמוקה עם ברק רך", light: false, url: velvet, thumb: velvetThumb },
   { id: "waters", name: "מי מנוחות", note: "כחול שקט, אור על פני המים", light: false, url: waters, thumb: watersThumb },
+  // The walls the painted boards stood on, as backgrounds for any frames.
+  { id: "royal", name: "קטיפה כחולה", note: "וילון קטיפה כחול עם קפלים", light: false, url: royal, thumb: royalThumb },
+  { id: "wall", name: "קיר אבנים", note: "אבן ירושלמית חתוכה, שורה על שורה", light: true, url: wall, thumb: wallThumb },
+  { id: "wood", name: "עץ אגוז", note: "עץ כהה וחם", light: false, url: wood, thumb: woodThumb },
+  { id: "hall", name: "אולם כהה", note: "כהה, עם אור חם למטה בצדדים", light: false, url: hall, thumb: hallThumb },
 ];
 
 const PREFIX = BACKDROP_PREFIX;

@@ -53,7 +53,10 @@ export interface FrameStyle {
   lineWidth: number;
   /** 0 (as the style draws it) – 1: how much the frames stand out. */
   depth: number;
-  /** A picture of a frame (its middle stretched, its corners kept) - a shape the admin adds. */
+  /**
+   * A picture of a frame (its corners kept, its edges stretched): a ready-made
+   * one, "frame:<id>" (framePictures.ts), or one the admin uploaded.
+   */
   image: string | null;
   /** How much of each edge of that picture is the frame, in percent (10–45). */
   imageSlice: number;
@@ -89,8 +92,11 @@ export function isSafeLayerFill(value: string): boolean {
 }
 
 const fill = (v: unknown) => (typeof v === "string" && isSafeLayerFill(v) ? v.trim() : null);
+/** A picture of a frame: a ready-made one ("frame:<id>", framePictures.ts) or an uploaded one. */
 const picture = (v: unknown) =>
-  typeof v === "string" && /^https:\/\//i.test(v.trim()) && isSafeUrl(v.trim()) ? v.trim() : null;
+  typeof v === "string" && (/^frame:[a-z0-9-]{1,40}$/.test(v.trim()) || (/^https:\/\//i.test(v.trim()) && isSafeUrl(v.trim())))
+    ? v.trim()
+    : null;
 
 export function normalizeBackgroundTune(raw: unknown): BackgroundTune {
   const r = isObj(raw) ? raw : {};
