@@ -7,6 +7,30 @@ import { expectNotFrozen, serveEditor } from "./support/tvEditor";
  */
 const HARNESS = "/e2e/harness/editor.html";
 
+test.describe("TV editor, the screen builder and the preview", () => {
+  test("choosing a screen in the builder shows it in the preview, and is not an edit", async ({ page }) => {
+    await serveEditor(page, {
+      screenLayout: "rotate",
+      screens: [
+        { id: "a", name: "הלוח", seconds: 20, blocks: [{ block: "header" }, { block: "prayers" }] },
+        { id: "b", name: "מסך ב", seconds: 20, blocks: [{ block: "header" }, { block: "learning" }] },
+      ],
+    });
+    const res = await page.goto(HARNESS).catch(() => null);
+    test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
+    await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("tab", { name: "פריסה" }).click();
+    const chips = page.getByRole("tablist", { name: "שקופיות" });
+    await expect(chips.getByRole("tab", { selected: true })).toContainText("הלוח");
+
+    await page.getByTestId("screen-composer").getByRole("button", { name: /מסך ב/ }).first().click();
+    await expect(chips.getByRole("tab", { selected: true })).toContainText("מסך ב");
+    // Looking is not changing: nothing waits to be saved.
+    await expect(page.getByText("יש שינויים שלא נשמרו")).toHaveCount(0);
+    await expectNotFrozen(page, "screen chosen");
+  });
+});
+
 test.describe("TV editor, occasions", () => {
   test.beforeEach(async ({ page }) => {
     await serveEditor(page);

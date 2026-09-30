@@ -59,11 +59,18 @@ export function ScreenComposer({
   config,
   current,
   onChange,
+  onSelect,
 }: {
   config: TvConfig;
   /** Which screen is open for editing; the composer keeps this in the parent. */
   current: number;
   onChange: (screens: Screen[], current: number) => void;
+  /**
+   * Opening another screen to look at it. Not an edit: it used to go through
+   * onChange and so marked the board as changed ("יש שינויים שלא נשמרו")
+   * when nothing had been.
+   */
+  onSelect: (current: number, screen: Screen) => void;
 }) {
   // A board that never opened the composer is read from its old fields, so
   // the first thing shown is the board as it is now, not an empty sheet.
@@ -133,7 +140,7 @@ export function ScreenComposer({
                 key={s.id + i}
                 type="button"
                 aria-current={i === index}
-                onClick={() => write(screens, i)}
+                onClick={() => onSelect(i, s)}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
                   i === index ? "border-primary ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
                 }`}

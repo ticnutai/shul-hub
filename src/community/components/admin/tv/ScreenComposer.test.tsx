@@ -27,8 +27,9 @@ const illustrated: TvConfig = {
 
 function show(config: TvConfig = illustrated) {
   const onChange = vi.fn<(s: Screen[], i: number) => void>();
-  const r = render(<ScreenComposer config={config} current={0} onChange={onChange} />);
-  return { ...r, onChange };
+  const onSelect = vi.fn<(i: number, s: Screen) => void>();
+  const r = render(<ScreenComposer config={config} current={0} onChange={onChange} onSelect={onSelect} />);
+  return { ...r, onChange, onSelect };
 }
 
 describe("the screen composer", () => {
@@ -129,5 +130,21 @@ describe("a screen with nothing on it", () => {
     expect(screen.getByText(/מסך אחד ריק ולא יוצג/)).toBeTruthy();
     const tab = screen.getAllByRole("button").find((b) => b.textContent?.includes("מסך 3"))!;
     expect(within(tab).getByText("לא יוצג")).toBeTruthy();
+  });
+});
+
+describe("opening a screen", () => {
+  it("is not an edit: it chooses the screen, and nothing is saved", () => {
+    const built: TvConfig = {
+      ...DEFAULT_TV_CONFIG,
+      screens: [
+        { id: "a", name: "תפילות", seconds: 20, blocks: [{ block: "prayers" }] },
+        { id: "b", name: "הודעות", seconds: 12, blocks: [{ block: "announcements" }] },
+      ],
+    };
+    const { onChange, onSelect } = show(built);
+    fireEvent.click(screen.getAllByRole("button").find((b) => b.textContent?.includes("הודעות"))!);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith(1, expect.objectContaining({ id: "b" }));
   });
 });

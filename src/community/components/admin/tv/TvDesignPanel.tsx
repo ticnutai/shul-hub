@@ -622,6 +622,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     return () => window.removeEventListener("keydown", onKey);
   }, [editing]);
   const [cycle, setCycle] = useState(0);
+  // The screen open in the composer is the one the preview shows: choosing
+  // "מסך 2" there and seeing the first screen here read as the choice doing nothing.
+  const [previewScreen, setPreviewScreen] = useState<string | null>(null);
+  useEffect(() => {
+    if (!previewScreen) return;
+    const i = board.slides.findIndex((s) => s.id === `screen:${previewScreen}`);
+    if (i >= 0) setPreviewIndex(i);
+  }, [previewScreen, board.slides]);
   const index = Math.min(previewIndex, Math.max(board.slides.length - 1, 0));
   const current = board.slides[index];
 
@@ -1311,8 +1319,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             <ScreenComposer
               config={draft}
               current={composerScreen}
+              onSelect={(i, s) => {
+                setComposerScreen(i);
+                setPreviewScreen(s.id);
+              }}
               onChange={(screens, next) => {
                 setComposerScreen(next);
+                if (screens[next]) setPreviewScreen(screens[next].id);
                 // The Shabbat and day screens are occasions now: the first save
                 // here fixes the occasions as they were read from those screens,
                 // before the screens themselves are left behind.
