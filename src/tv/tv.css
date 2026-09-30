@@ -5524,3 +5524,23 @@
 .tv-med-plaque span {
   white-space: nowrap;
 }
+
+/* The arch is for the big frames: a one-line plaque or strip cut into an arch loses its line. */
+.tv-root.has-frame-arch .tv-med .tv-panel.tv-med-plaque,
+.tv-root.has-frame-arch .tv-med .tv-panel.tv-med-strip {
+  border-radius: calc(var(--u) * 1.6) !important;
+  padding-top: calc(var(--u) * 1.2);
+}
+
+/* Each piece keeps its place when another is hidden: the clock stays in the middle. */
+.tv-med-top > .is-weekday {
+  grid-column: 1;
+}
+
+.tv-med-top > .tv-med-clock {
+  grid-column: 2;
+}
+
+.tv-med-top > .is-date {
+  grid-column: 3;
+}

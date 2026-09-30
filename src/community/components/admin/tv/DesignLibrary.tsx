@@ -4,7 +4,10 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TvConfig } from "@/tv/config";
+import { findBackdrop } from "@/tv/backdrops";
+import { framePictureUrl } from "@/tv/framePictures";
 import {
+  BUILTIN_DESIGNS,
   DESIGN_PARTS,
   DESIGN_PART_LABELS,
   MAX_DESIGNS,
@@ -51,6 +54,45 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
 
   return (
     <div className="space-y-2" data-testid="design-library">
+      <div className="text-sm font-medium">עיצובים מוכנים</div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="builtin-designs">
+        {BUILTIN_DESIGNS.map((d) => {
+          const wall = findBackdrop(d.values.backgroundImage ?? null);
+          const frame = framePictureUrl(d.values.frameStyle?.image ?? null);
+          return (
+            <button
+              key={d.id}
+              type="button"
+              onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
+              className="overflow-hidden rounded-lg border text-right hover:border-primary/50"
+              title="רקע, מסגרות, צבעי טקסט ופריסת מדליון - וכל חלק ניתן אחר כך לשינוי בנפרד"
+            >
+              <span
+                className="flex aspect-video items-center justify-center gap-1 p-2"
+                style={{ background: wall ? `url("${wall.thumb}") center / cover` : undefined }}
+              >
+                {[0, 1].map((i) => (
+                  <span
+                    key={i}
+                    className="h-3/4 w-2/5"
+                    style={
+                      frame
+                        ? { border: "6px solid transparent", borderImage: `url("${frame}") ${d.values.frameStyle?.imageSlice}% fill / 6px stretch` }
+                        : {
+                            background: d.values.frameStyle?.fill ?? undefined,
+                            opacity: d.values.frameStyle?.fillOpacity ? Math.max(0.35, d.values.frameStyle.fillOpacity) : 1,
+                            border: `1px solid ${d.values.frameStyle?.line ?? "transparent"}`,
+                            borderRadius: d.values.frame?.shape === "arch" ? "50% 50% 3px 3px / 30% 30% 3px 3px" : 4,
+                          }
+                    }
+                  />
+                ))}
+              </span>
+              <span className="block p-2 text-sm font-medium">{d.name}</span>
+            </button>
+          );
+        })}
+      </div>
       {designs.length > 0 && (
         <>
           <div className="text-sm font-medium">העיצובים שלי</div>

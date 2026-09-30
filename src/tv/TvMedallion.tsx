@@ -51,7 +51,7 @@ export function MedallionStage({
     <section className="tv-slide tv-med" aria-label={title}>
       <div className="tv-med-top">
         {!edit.hidden("header.weekday") && (
-          <div className="tv-panel tv-med-plaque" {...edit.frame("date", "header.weekday")}>
+          <div className="tv-panel tv-med-plaque is-weekday" {...edit.frame("date", "header.weekday")}>
             <span>{day.weekday}</span>
           </div>
         )}
@@ -61,7 +61,7 @@ export function MedallionStage({
           </div>
         )}
         {!edit.hidden("header.date") && (
-          <div className="tv-panel tv-med-plaque" {...edit.frame("date", "header.date")}>
+          <div className="tv-panel tv-med-plaque is-date" {...edit.frame("date", "header.date")}>
             <span>{day.hebrew}</span>
           </div>
         )}

@@ -84,7 +84,7 @@ export const TV_BACKDROPS: Backdrop[] = [
   { id: "royal", name: "קטיפה כחולה", note: "וילון קטיפה כחול עם קפלים", light: false, url: royal, thumb: royalThumb },
   { id: "wall", name: "קיר אבנים", note: "אבן ירושלמית חתוכה, שורה על שורה", light: true, url: wall, thumb: wallThumb },
   { id: "wood", name: "עץ אגוז", note: "עץ כהה וחם", light: false, url: wood, thumb: woodThumb },
-  { id: "hall", name: "אולם כהה", note: "כהה, עם אור חם למטה בצדדים", light: false, url: hall, thumb: hallThumb },
+  { id: "hall", name: "אולם כהה", note: "כהה, קשתות בצדדים ואור חם למטה", light: false, url: hall, thumb: hallThumb },
 ];
 
 const PREFIX = BACKDROP_PREFIX;

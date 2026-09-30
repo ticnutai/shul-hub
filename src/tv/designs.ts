@@ -199,3 +199,104 @@ export function normalizeDesigns(raw: unknown, normalize: (raw: unknown) => TvCo
   }
   return out;
 }
+
+/* --------------------------------------------------- the ready designs -- */
+
+/**
+ * The painted boards, rebuilt from parts: each is a background from the
+ * library, frames (a style, a shape, a picture of a frame), the text's
+ * colours and the medallion layout. They stand where the four paintings
+ * stood, and unlike them every part can then be changed on its own.
+ *
+ * Only what the look needs is set: the text part carries colours, not the
+ * board's font or its per-line styling, so putting one on keeps those.
+ */
+const ALL: DesignPart[] = ["background", "frames", "text", "layout"];
+const text = (ink: string, dim: string, accent: string, onAccent = "#ffffff") => ({
+  "--tv-text": ink,
+  "--tv-text-dim": dim,
+  "--tv-accent": accent,
+  "--tv-accent-2": accent,
+  "--tv-on-accent": onAccent,
+});
+const background = (picture: string) => ({
+  backgroundGradient: null,
+  backgroundImage: picture,
+  backgroundDim: 0,
+  backgroundTune: { brightness: 1, saturation: 1, hue: 0, blur: 0, tint: null, tintStrength: 0.35 },
+});
+const frames = (patch: Partial<TvConfig["frameStyle"]>) => ({
+  fill: null,
+  fillOpacity: 1,
+  line: null,
+  lineWidth: 2,
+  depth: 0,
+  image: null,
+  imageSlice: 30,
+  imageWidth: 2.5,
+  ...patch,
+});
+
+export const BUILTIN_DESIGNS: SavedDesign[] = [
+  {
+    id: "d_curtain",
+    name: "וילון כחול וזהב",
+    parts: ALL,
+    theme: "royal",
+    colours: { ...text("#1f2d5c", "#4a5578", "#8a5a12"), "--tv-panel": "#f5ecd7" },
+    values: {
+      ...background("backdrop:royal"),
+      skin: "plain",
+      frame: { shape: "auto", top: null, bottom: null },
+      frameStyle: frames({ image: "frame:gold-ornate", imageSlice: 32, imageWidth: 3 }),
+      // The medallion in blue with a white clock, as in the painting.
+      frameLooks: { clock: { bg: "#1b3494", text: "#ffffff", accent: "#ffffff", line: "#d8d8d8", lineWidth: 2 } },
+      screenLayout: "medallion",
+    },
+  },
+  {
+    id: "d_stone",
+    name: "לוחות הברית מאבן",
+    parts: ALL,
+    theme: "stone",
+    colours: { ...text("#3a2a12", "#6b5a3b", "#8a5d12"), "--tv-panel": "#f3e7cc" },
+    values: {
+      ...background("backdrop:wall"),
+      skin: "plain",
+      frame: { shape: "arch", top: null, bottom: null },
+      frameStyle: frames({ fill: "#f3e7cc", line: "#b08d3a", lineWidth: 2.5, depth: 0.6 }),
+      frameLooks: {},
+      screenLayout: "medallion",
+    },
+  },
+  {
+    id: "d_wood",
+    name: "מסגרת עץ מגולפת",
+    parts: ALL,
+    theme: "stone",
+    colours: { ...text("#2b1d0c", "#5a4630", "#7a3e10"), "--tv-panel": "#f3e4c4" },
+    values: {
+      ...background("backdrop:wood"),
+      skin: "plain",
+      frame: { shape: "auto", top: null, bottom: null },
+      frameStyle: frames({ image: "frame:carved-wood", imageSlice: 24, imageWidth: 3 }),
+      frameLooks: { clock: { bg: "#f3e4c4", line: "#7a4a1c", lineWidth: 3 } },
+      screenLayout: "medallion",
+    },
+  },
+  {
+    id: "d_modern",
+    name: "אולם מודרני",
+    parts: ALL,
+    theme: "navy",
+    colours: { ...text("#f3f5f8", "#c9cdd6", "#e6c27a", "#0b1628"), "--tv-panel": "rgba(255, 255, 255, 0.06)" },
+    values: {
+      ...background("backdrop:hall"),
+      skin: "plain",
+      frame: { shape: "round", top: 2.4, bottom: 2.4 },
+      frameStyle: frames({ fill: "#ffffff", fillOpacity: 0.07, line: "#c9a24a", lineWidth: 1.5, depth: 0.45 }),
+      frameLooks: {},
+      screenLayout: "medallion",
+    },
+  },
+];

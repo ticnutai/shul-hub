@@ -126,6 +126,36 @@ const courses = (w, h, colour, opacity) => `
   </pattern></defs>
   <rect width="100%" height="100%" fill="url(#blk)" opacity="${opacity}"/>`;
 
+/**
+ * Tall arches along the two sides of a hall, a star of David in the head of
+ * each, drawn as thin lines in `colour`. The middle stays empty for the
+ * frames. Coordinates are for the 960x540 bake and scale with it; they stay
+ * clear of the outer tenth, which the board's drifting background layer
+ * (.tv-bg, 12% larger than the screen) never shows.
+ */
+const arches = (colour, opacity) => {
+  const star = (cx, cy, r) => {
+    const tri = (rot) =>
+      [0, 1, 2]
+        .map((i) => {
+          const a = rot + (i * 2 * Math.PI) / 3;
+          return `${(cx + r * Math.sin(a)).toFixed(1)},${(cy - r * Math.cos(a)).toFixed(1)}`;
+        })
+        .join(" ");
+    return `<polygon points="${tri(0)}"/><polygon points="${tri(Math.PI)}"/>`;
+  };
+  const arch = (x0, x1) => {
+    const r = (x1 - x0) / 2;
+    const cx = x0 + r;
+    return `<path d="M${x0} 540 V${150 + r} A${r} ${r} 0 0 1 ${x1} ${150 + r} V540"/>
+      <path d="M${x0 + 10} 540 V${156 + r} A${r - 10} ${r - 10} 0 0 1 ${x1 - 10} ${156 + r} V540"/>
+      ${star(cx, 150 + r * 0.9, r * 0.42)}`;
+  };
+  return `<g fill="none" stroke="${colour}" stroke-width="2" opacity="${opacity}">
+    ${arch(100, 220)}${arch(740, 860)}
+  </g>`;
+};
+
 const BACKDROPS = {
   /* ------------------------------------------------------------- sky --- */
   dawn: {
@@ -285,10 +315,11 @@ const BACKDROPS = {
   },
   hall: {
     name: "אולם כהה",
-    note: "כהה ושקט, עם אור חם למטה בצדדים",
+    note: "כהה ושקט, קשתות בצדדים ואור חם למטה",
     light: false,
     body: [
       sky([[0, "#0a0e18"], [0.6, "#121827"], [1, "#07090f"]]),
+      arches("#c9a45a", 0.35),
       glow("8%", "100%", "34%", "#ffb45a", 0.5),
       glow("92%", "100%", "34%", "#ffb45a", 0.5),
       glow("50%", "0%", "60%", "#c9a45a", 0.12),
