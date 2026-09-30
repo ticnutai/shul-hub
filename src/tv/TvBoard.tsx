@@ -164,6 +164,16 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const composed = slide?.kind === "composed" ? slide : null;
   // An occasion's screen with blocks beside its card is drawn as a composed screen.
   const occasionScreen = Boolean(composed?.parts.some((p) => p.slide?.kind === "occasion"));
+  /**
+   * The bars of the screen up now: the composer's "שם בית הכנסת", "שעון" and
+   * "שורת הפרשה והנרות" switches. Saved on every screen from the start and
+   * read by nothing, so turning them off changed nothing anywhere. A board
+   * with no screens, and an occasion's own screens, keep all three.
+   */
+  const bars = useMemo(() => {
+    const on = (b: string) => !composed || occasionScreen || composed.screen.blocks.some((x) => x.block === b);
+    return { header: on("header"), clock: on("clock"), footer: on("footer") };
+  }, [composed, occasionScreen]);
   const screenSlides = composed
     ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
     : slides;
@@ -212,7 +222,9 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           )}
         </div>
         <TvShapes />
-        {!ownHeader && <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard} />}
+        {!ownHeader && (bars.header || bars.clock) && (
+          <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard && bars.clock} brand={bars.header} />
+        )}
 
         <main className="tv-stage">
           {!data.anyLoaded ? (
@@ -246,6 +258,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               settings={data.settings}
               shabbatEndMinutes={holyEndMinutes}
               rowsPerFrame={config.illustratedStyle.rows}
+              bars={bars}
             />
           ) : dashboard ? (
             <ClockContext.Provider value={now}>
@@ -279,7 +292,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         )}
 
         <footer className="tv-footer">
-          {edit.hidden("footer.dots") || occasionStage || dashboard || ownHeader ? (
+          {edit.hidden("footer.dots") || !bars.footer || occasionStage || dashboard || ownHeader ? (
             <span />
           ) : (
             <div className="tv-footer-slides" {...edit.attr("footer.dots")}>
@@ -301,7 +314,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             </div>
           )}
 
-          {!edit.hidden("footer.status") && <SyncStatus data={data} now={now} />}
+          {!edit.hidden("footer.status") && bars.footer && <SyncStatus data={data} now={now} />}
         </footer>
 
         {alert?.popup && (
@@ -381,7 +394,20 @@ function usePauseChip(paused: boolean): "paused" | "resumed" | null {
   return chip;
 }
 
-function TvHeader({ settings, now, config, clock = true }: { settings: Settings | null; now: Date; config: TvConfig; clock?: boolean }) {
+function TvHeader({
+  settings,
+  now,
+  config,
+  clock = true,
+  brand = true,
+}: {
+  settings: Settings | null;
+  now: Date;
+  config: TvConfig;
+  clock?: boolean;
+  /** The name, the logos, the date and the ribbon; off leaves only the clock. */
+  brand?: boolean;
+}) {
   // Which cut of a sponsor's mark to use. A board can be parchment or navy,
   // and a wordmark that reads on one is invisible on the other.
   const light = getTheme(config.theme, config.customThemes).light;
@@ -411,6 +437,7 @@ function TvHeader({ settings, now, config, clock = true }: { settings: Settings 
 
   return (
     <header className={`tv-header${edit.flipped("header") ? " is-flipped" : ""}`}>
+      {brand && (
       <div className="tv-header-brand">
         {!edit.hidden("header.sponsor") && (
           <img
@@ -461,6 +488,7 @@ function TvHeader({ settings, now, config, clock = true }: { settings: Settings 
           )}
         </div>
       </div>
+      )}
       {clock && !edit.hidden("header.clock") && (
         <div className="tv-clock" {...edit.attr("header.clock")}>
           <ClockFace now={now} style={config.clockStyle} />

@@ -30,6 +30,7 @@ export function MedallionStage({
   settings,
   shabbatEndMinutes,
   rowsPerFrame,
+  bars = { header: true, clock: true, footer: true },
 }: {
   slides: BoardSlide[];
   /**
@@ -49,6 +50,8 @@ export function MedallionStage({
   shabbatEndMinutes: number;
   /** How many minyanim a frame shows before it scrolls to the current ones. */
   rowsPerFrame: number;
+  /** The screen's bars: the day and date plaques, the clock, the strip below. */
+  bars?: { header: boolean; clock: boolean; footer: boolean };
 }) {
   const edit = useBoardEdit();
   const day = useBoardDay(now, settings, shabbatEndMinutes);
@@ -62,23 +65,25 @@ export function MedallionStage({
 
   return (
     <section className="tv-slide tv-med" aria-label={title}>
+      {(bars.header || bars.clock) && (
       <div className="tv-med-top">
-        {!edit.hidden("header.weekday") && (
+        {bars.header && !edit.hidden("header.weekday") && (
           <div className="tv-panel tv-med-plaque is-weekday" {...edit.frame("date", "header.weekday")}>
             <span>{day.weekday}</span>
           </div>
         )}
-        {!edit.hidden("header.clock") && (
+        {bars.clock && !edit.hidden("header.clock") && (
           <div className="tv-panel tv-med-clock" {...edit.frame("clock", "header.clock")}>
             <span>{formatTime(now)}</span>
           </div>
         )}
-        {!edit.hidden("header.date") && (
+        {bars.header && !edit.hidden("header.date") && (
           <div className="tv-panel tv-med-plaque is-date" {...edit.frame("date", "header.date")}>
             <span>{day.hebrew}</span>
           </div>
         )}
       </div>
+      )}
       {parts ? (
         <ScreenFrames parts={parts} prayers={prayers} zmanim={zmanimFrame} now={now} dayZmanim={zmanim} />
       ) : (
@@ -87,7 +92,7 @@ export function MedallionStage({
           {flipped ? prayers : zmanimFrame}
         </div>
       )}
-      {(titleShown || rest.length > 0) && (
+      {bars.footer && (titleShown || rest.length > 0) && (
         <div className="tv-panel tv-med-strip" {...edit.frame("strip")}>
           <p>
             {titleShown && <span {...edit.attr("header.title")}>{title}</span>}

@@ -5667,3 +5667,17 @@
 .tv-root {
   --u-board: 1cqh;
 }
+
+/*
+ * A column rather than three fixed rows: a screen may switch off the plaques
+ * and the clock, or the strip, and the frames take whatever room is left.
+ */
+.tv-slide.tv-med {
+  display: flex;
+  flex-direction: column;
+}
+.tv-med > .tv-med-main,
+.tv-med > .tv-med-rows {
+  flex: 1 1 auto;
+  min-height: 0;
+}

@@ -184,3 +184,39 @@ describe("the medallion, on a board built of screens", () => {
     expect(zmanimOnly.querySelector('[data-frame="zmanim"]')).toBeTruthy();
   });
 });
+
+describe("a screen's bars", () => {
+  const at = new Date("2026-10-14T10:00:00+03:00");
+  const draw = (layout: TvConfig["screenLayout"], blocks: Screen["blocks"]) => {
+    const config: TvConfig = {
+      ...structuredClone(DEFAULT_TV_CONFIG),
+      screenLayout: layout,
+      screens: [{ id: "s", name: "מסך", seconds: 20, blocks }],
+    };
+    const zm = zmanimFor(at, null);
+    return render(
+      <TvBoard data={data} config={config} now={at} zmanim={zm} slides={buildSlides(data, config, at, zm)} index={0} cycle={0} progress={0} paused={false} />,
+    ).container;
+  };
+
+  it("on the medallion: the plaques, the clock and the strip each follow their switch", () => {
+    const all = draw("medallion", [{ block: "header" }, { block: "clock" }, { block: "footer" }, { block: "prayers" }]);
+    expect(all.querySelector(".tv-med-plaque")).toBeTruthy();
+    expect(all.querySelector(".tv-med-clock")).toBeTruthy();
+    expect(all.querySelector(".tv-med-strip")).toBeTruthy();
+    cleanup();
+    const bare = draw("medallion", [{ block: "clock" }, { block: "prayers" }]);
+    expect(bare.querySelector(".tv-med-plaque")).toBeNull();
+    expect(bare.querySelector(".tv-med-clock")).toBeTruthy();
+    expect(bare.querySelector(".tv-med-strip")).toBeNull();
+  });
+
+  it("on the other layouts: the name at the top, and the clock, each follow their switch", () => {
+    const noName = draw("rotate", [{ block: "clock" }, { block: "prayers" }]);
+    expect(noName.querySelector(".tv-title")).toBeNull();
+    expect(noName.querySelector(".tv-clock")).toBeTruthy();
+    cleanup();
+    const nothing = draw("rotate", [{ block: "prayers" }]);
+    expect(nothing.querySelector(".tv-header")).toBeNull();
+  });
+});
