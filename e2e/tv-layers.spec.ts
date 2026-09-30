@@ -28,7 +28,7 @@ test.describe("TV editor, by layer", () => {
   const bg = (el: import("@playwright/test").Locator) => el.evaluate((e) => getComputedStyle(e).backgroundColor);
 
   test("the design tab is backgrounds, frames and text; the layout tab is where things stand", async ({ page }) => {
-    for (const name of ["ערכת נושא", "רקעים", "מסגרות", "טקסט"]) await expect(heading(page, name)).toBeVisible();
+    for (const name of ["ערכות נושא ועיצובים", "רקעים", "מסגרות", "טקסט"]) await expect(heading(page, name)).toBeVisible();
     await expect(page.getByTestId("layer-background")).toBeVisible();
     await expect(page.getByTestId("layer-frames")).toBeVisible();
     await expect(page.getByTestId("layer-text")).toBeVisible();

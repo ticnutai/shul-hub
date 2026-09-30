@@ -52,7 +52,6 @@ import {
 } from "@/tv/config";
 import {
   allThemes,
-  duplicateTheme,
   getTheme,
   isLightColor,
   isSafeCssValue,
@@ -149,6 +148,8 @@ import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { FrameSpacing } from "./BoardLook";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
 import { uploadImages } from "./uploadImages";
+import { DesignLibrary } from "./DesignLibrary";
+import { captureDesign, MAX_DESIGNS } from "@/tv/designs";
 import { ScreenComposer } from "./ScreenComposer";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
@@ -814,11 +815,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       ThemeVar,
       string
     >);
-  const [naming, setNaming] = useState<{
-    mode: "new" | "rename";
-    id?: string;
-    value: string;
-  } | null>(null);
+  const [naming, setNaming] = useState<{ id: string; value: string } | null>(null);
   // Switching themes drops the colour tweaks made on top of the current one.
   // Losing work in silence is how a design gets messy, so ask first.
   const [themeSwitch, setThemeSwitch] = useState<string | null>(null);
@@ -833,16 +830,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     if (!naming) return;
     const name = naming.value.trim().slice(0, 40);
     if (!name) return toast.error("צריך לתת שם לערכה");
-    if (naming.mode === "new") {
-      // The same copy the inspector makes, so the two cannot drift apart.
-      edit("theme-new", (c) => duplicateTheme(c, name).config);
-      toast.success(`הערכה "${name}" נשמרה ונבחרה. היא תגיע למסכים ב"שמור ושדר".`);
-    } else {
-      edit("theme-rename", (c) => ({
-        ...c,
-        customThemes: c.customThemes.map((t) => (t.id === naming.id ? { ...t, name } : t)),
-      }));
-    }
+    edit("theme-rename", (c) => ({
+      ...c,
+      customThemes: c.customThemes.map((t) => (t.id === naming.id ? { ...t, name } : t)),
+    }));
     setNaming(null);
   };
   const updateTheme = () => {
@@ -1115,8 +1106,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
           <Section
-            title="ערכת נושא"
-            hint="בסיס הצבעים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה (מונע צריבה). ערכות ששמרתם מגיעות גם לשלט של הטלוויזיה."
+            title="ערכות נושא ועיצובים"
+            hint="ערכה היא בסיס הצבעים; עיצוב הוא מראה שבניתם ושמרתם - כולו או רק חלקים ממנו (רקע, מסגרות, טקסט, פריסה). ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה."
           >
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {themes.map((t) => {
@@ -1176,7 +1167,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                           variant="ghost"
                           size="sm"
                           className="h-6 px-1.5 text-[11px]"
-                          onClick={() => setNaming({ mode: "rename", id: t.id, value: t.name })}
+                          onClick={() => setNaming({ id: t.id, value: t.name })}
                         >
                           שינוי שם
                         </Button>
@@ -1221,6 +1212,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 );
               })}
             </div>
+            <DesignLibrary config={view} onEdit={edit} />
             <AlertDialog
               open={Boolean(themeSwitch)}
               onOpenChange={(open) => !open && setThemeSwitch(null)}
@@ -1230,7 +1222,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   <AlertDialogTitle>יש שינויי צבע שלא נשמרו בערכה</AlertDialogTitle>
                   <AlertDialogDescription>
                     מעבר לערכה אחרת יבטל את שינויי הצבע שעשיתם על ״{theme.name}״. אפשר לשמור אותם
-                    קודם כערכה חדשה, וכך הם יישארו זמינים תמיד.
+                    קודם כעיצוב חדש, וכך הם יישארו זמינים תמיד.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -1239,11 +1231,16 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      setNaming({ mode: "new", value: `${theme.name} (מותאם)` });
+                      const name = `${theme.name} (מותאם)`;
+                      edit("design-new", (c) => ({
+                        ...c,
+                        designs: [...c.designs, captureDesign(c, name, ["background", "frames", "text"])].slice(0, MAX_DESIGNS),
+                      }));
+                      toast.success(`הצבעים נשמרו כעיצוב "${name}".`);
                       setThemeSwitch(null);
                     }}
                   >
-                    שמירה כערכה חדשה
+                    שמירה כעיצוב חדש
                   </Button>
                   <AlertDialogAction
                     onClick={() => {
@@ -1269,12 +1266,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   aria-label="שם הערכה"
                   value={naming.value}
                   maxLength={40}
-                  placeholder={naming.mode === "new" ? "שם לערכה החדשה, למשל: חגים" : "שם חדש"}
+                  placeholder="שם חדש"
                   className="h-9 w-56"
                   onChange={(e) => setNaming({ ...naming, value: e.target.value })}
                 />
                 <Button type="submit" size="sm">
-                  {naming.mode === "new" ? "שמירת הערכה" : "שינוי השם"}
+                  שינוי השם
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(null)}>
                   ביטול
@@ -1282,16 +1279,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               </form>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setNaming({ mode: "new", value: hasOverrides ? `${theme.name} (מותאם)` : "" })
-                  }
-                >
-                  <Plus className="size-4" /> שמירה כערכה חדשה
-                </Button>
                 {isCustom && (
                   <Button
                     type="button"
@@ -1311,7 +1298,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 <span className="text-xs text-muted-foreground">
                   {isCustom
                     ? 'ערכה שלכם: שנו צבעים למטה ולחצו "עדכון הערכה".'
-                    : "ערכה מובנית: שנו צבעים למטה ושמרו כערכה חדשה כדי לערוך אותה."}
+                    : 'ערכה מובנית: שנו צבעים (ב"רקעים", "מסגרות" ו"טקסט") ושמרו כעיצוב חדש.'}
                   {draft.customThemes.length >= 24 ? " הגעתם למספר הערכות המרבי (24)." : ""}
                 </span>
               </div>

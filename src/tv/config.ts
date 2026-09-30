@@ -1,4 +1,5 @@
 import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
+import { normalizeDesigns, type SavedDesign } from "./designs";
 import {
   DEFAULT_BACKGROUND_TUNE,
   DEFAULT_FRAME_STYLE,
@@ -443,6 +444,12 @@ export interface TvConfig {
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
   customThemes: TvTheme[];
+  /**
+   * Designs the admin saved: the look, or chosen parts of it - background,
+   * frames, text, layout - under a name (designs.ts). The shul's library,
+   * like the themes and gradients, so not something one screen may differ in.
+   */
+  designs: SavedDesign[];
   /** Gradients the admin saved, offered anywhere a background is chosen. */
   gradients: TvGradient[];
   /** A gradient behind the whole board; null = the theme's own background. */
@@ -602,6 +609,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   hidden: [],
   flipped: [],
   customThemes: [],
+  designs: [],
   gradients: [],
   backgroundGradient: null,
   styles: {},
@@ -987,6 +995,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
     customThemes,
+    designs: normalizeDesigns(raw.designs, normalizeTvConfig),
     gradients: normalizeGradients(raw.gradients),
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),

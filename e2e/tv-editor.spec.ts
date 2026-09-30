@@ -182,10 +182,12 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "backdrop applied");
   });
 
-  test("a theme can be saved as a new one, and the board can be broadcast", async ({ page }) => {
+  test("a look can be saved as a design, and the board can be broadcast", async ({ page }) => {
     await page.getByRole("button", { name: /^זהב מלכותי/ }).click();
-    await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
-    await expectNotFrozen(page, "save as new theme");
+    await page.getByRole("button", { name: "שמירה כעיצוב חדש" }).click();
+    await page.getByLabel("שם העיצוב").fill("זהב שלי");
+    await page.getByRole("button", { name: "שמירת העיצוב" }).click();
+    await expectNotFrozen(page, "save as a design");
 
     // The bar at the top; the same button also stands under the preview while
     // there is something to save.
@@ -224,28 +226,41 @@ test.describe("TV editor", () => {
     await expect.poll(() => cssVar(page, "--tv-accent")).toBe("#ffb454");
     await expectNotFrozen(page, "figma import");
   });
-  test("saving, renaming and deleting a theme all leave the page working", async ({ page }) => {
-    // Save the current look as a theme of its own.
-    await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
-    await page.getByPlaceholder(/שם לערכה החדשה/).fill("ערכת בדיקה");
-    await page.getByRole("button", { name: "שמירת הערכה" }).click();
-    await expect(page.getByRole("button", { name: /^ערכת בדיקה/ })).toBeVisible();
-    await expectNotFrozen(page, "theme saved");
+  test("saving a design with chosen parts, applying, renaming and deleting it", async ({ page }) => {
+    const root = page.locator(".tv-frame .tv-root").first();
+    const library = page.getByTestId("design-library");
+    // A background only.
+    await page.getByRole("button", { name: /^ירוק שבת/ }).click();
+    const green = await cssVar(page, "--tv-bg-a");
+    await library.getByRole("button", { name: "שמירה כעיצוב חדש" }).click();
+    await library.getByLabel("שם העיצוב").fill("רקע ירוק");
+    await library.getByRole("checkbox", { name: "מסגרות" }).uncheck();
+    await library.getByRole("checkbox", { name: "טקסט" }).uncheck();
+    await library.getByRole("button", { name: "שמירת העיצוב" }).click();
+    await expect(library.getByRole("button", { name: /^רקע ירוק/ })).toBeVisible();
+    await expect(library.getByText("רקע", { exact: true })).toBeVisible();
+    await expectNotFrozen(page, "design saved");
 
-    // Renaming it, from the same row.
-    await page.getByRole("button", { name: "שינוי שם" }).first().click();
-    await page.getByPlaceholder("שם חדש").fill("ערכה אחרת");
-    await page.getByRole("button", { name: "שינוי השם" }).click();
-    await expect(page.getByRole("button", { name: /^ערכה אחרת/ })).toBeVisible();
-    await expectNotFrozen(page, "theme renamed");
+    // Another theme, and the design brings its background back - only that.
+    await page.getByRole("button", { name: /^זהב מלכותי/ }).click();
+    const accent = await cssVar(page, "--tv-accent");
+    await library.getByRole("button", { name: /^רקע ירוק/ }).click();
+    await expect.poll(() => cssVar(page, "--tv-bg-a")).toBe(green);
+    expect(await cssVar(page, "--tv-accent")).toBe(accent);
+    await expect(root).toBeVisible();
+    await expectNotFrozen(page, "design applied");
 
-    const mine = page.getByRole("button", { name: "מחיקה" });
-    if (await mine.count()) {
-      await mine.first().click();
-      await expectNotFrozen(page, "delete asked");
-      await page.getByRole("button", { name: /^למחוק?/ }).first().click();
-      await expectNotFrozen(page, "theme deleted");
-    }
+    // Renaming it, from its own card.
+    await library.getByRole("button", { name: "שינוי שם" }).click();
+    await library.getByLabel("שם העיצוב").fill("רקע אחר");
+    await library.getByRole("button", { name: "שינוי השם" }).click();
+    await expect(library.getByRole("button", { name: /^רקע אחר/ })).toBeVisible();
+    await expectNotFrozen(page, "design renamed");
+
+    await library.getByRole("button", { name: "מחיקה" }).click();
+    await library.getByRole("button", { name: "למחוק?" }).click();
+    await expect(library.getByRole("button", { name: /^רקע אחר/ })).toHaveCount(0);
+    await expectNotFrozen(page, "design deleted");
   });
 
   test("the reset dialog opens, cancels and confirms without sticking", async ({ page }) => {
