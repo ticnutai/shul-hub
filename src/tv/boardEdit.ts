@@ -1,3 +1,4 @@
+import { frameLookCss, type FrameId, type FrameLook } from "./frameLooks";
 import { createContext, useContext, type CSSProperties } from "react";
 import { ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import type { ElementStyle, FlipArea, TvConfig } from "./config";
@@ -317,11 +318,33 @@ export interface BoardEditApi {
    * data-edit marker for click-to-edit (only while the admin is editing).
    */
   attr: (key: string) => { "data-edit"?: string; style?: CSSProperties };
+  /**
+   * Props for a frame: its own look (frameLooks.ts) under whatever the
+   * element inside it was given, plus that element's click-to-edit marker
+   * when it has one. `key` is the element the frame also is, if any.
+   */
+  frame: (id: FrameId, key?: string) => { "data-frame": FrameId; "data-edit"?: string; style?: CSSProperties };
+  /** The frame's own look, for boards that draw their frames themselves (the painted one). */
+  frameLook: (id: FrameId) => FrameLook | undefined;
 }
 
 const NO_ATTR = {};
 
+function frameProps(
+  id: FrameId,
+  look: CSSProperties | undefined,
+  inner: { "data-edit"?: string; style?: CSSProperties },
+): { "data-frame": FrameId; "data-edit"?: string; style?: CSSProperties } {
+  const style = look || inner.style ? { ...look, ...inner.style } : undefined;
+  return { "data-frame": id, ...inner, ...(style ? { style } : {}) };
+}
+
 export function makeBoardEdit(config: TvConfig, editing: boolean): BoardEditApi {
+  const attr = (key: string) => {
+    const style = elementStyleCss(resolveElementStyle(config, key));
+    if (!editing) return style ? { style } : NO_ATTR;
+    return style ? { "data-edit": key, style } : { "data-edit": key };
+  };
   return {
     text: (key, fallback) => {
       const v = config.texts[key];
@@ -329,11 +352,9 @@ export function makeBoardEdit(config: TvConfig, editing: boolean): BoardEditApi 
     },
     hidden: (key) => isHidden(config, key),
     flipped: (area) => config.flipped.includes(area),
-    attr: (key) => {
-      const style = elementStyleCss(resolveElementStyle(config, key));
-      if (!editing) return style ? { style } : NO_ATTR;
-      return style ? { "data-edit": key, style } : { "data-edit": key };
-    },
+    attr,
+    frame: (id, key) => frameProps(id, frameLookCss(config.frameLooks?.[id]), key ? attr(key) : NO_ATTR),
+    frameLook: (id) => config.frameLooks?.[id],
   };
 }
 
@@ -342,6 +363,8 @@ export const BoardEditContext = createContext<BoardEditApi>({
   hidden: () => false,
   flipped: () => false,
   attr: () => NO_ATTR,
+  frame: (id) => ({ "data-frame": id }),
+  frameLook: () => undefined,
 });
 
 export function useBoardEdit(): BoardEditApi {

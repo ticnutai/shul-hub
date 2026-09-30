@@ -45,6 +45,18 @@ export const THEME_VAR_LABELS: Record<ThemeVar, string> = {
   "--tv-pinned": "מודעה נעוצה",
 };
 
+/**
+ * The same colours, each under the layer of the board it paints, so the
+ * editor shows the background's colours with the background, the frames'
+ * with the frames and the text's with the text. Every one of THEME_VARS is
+ * in exactly one list (themeLayers.test.ts).
+ */
+export const THEME_VAR_LAYERS: Record<"background" | "frames" | "text", ThemeVar[]> = {
+  background: ["--tv-bg-a", "--tv-bg-b", "--tv-bg-c"],
+  frames: ["--tv-panel", "--tv-pinned"],
+  text: ["--tv-text", "--tv-text-dim", "--tv-accent", "--tv-accent-2", "--tv-on-accent"],
+};
+
 export interface TvTheme {
   /** A built-in id, or "c_<random>" for a theme the admin saved (tv_config.customThemes). */
   id: string;

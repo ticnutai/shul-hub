@@ -51,7 +51,7 @@ test.describe("TV editor", () => {
   });
 
   test("every style in the picker applies, and they are all the board's own", async ({ page }) => {
-    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("tab", { name: "עיצוב" }).click();
     const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
     const count = await skins.count();
     expect(count).toBe(BOARD_SKINS.length);
@@ -69,7 +69,7 @@ test.describe("TV editor", () => {
   });
 
   test("every frame shape applies, and the roundness sliders work", async ({ page }) => {
-    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("tab", { name: "עיצוב" }).click();
     const shapes = ["לפי הסגנון", "מעוגל", "רך", "קטום", "מגורע", "מדורג"];
     const frames = page.getByTestId("frame-shapes");
     for (const shape of shapes) {
@@ -91,7 +91,7 @@ test.describe("TV editor", () => {
   });
 
   test("a gradient reaches the board and can be kept in the library", async ({ page }) => {
-    await page.getByRole("button", { name: "בורדו מלכותי" }).click();
+    await page.getByRole("button", { name: "בורדו מלכותי", exact: true }).click();
     await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
     await expect.poll(() => cssVar(page, "--tv-bg-gradient")).toContain("gradient");
@@ -117,7 +117,7 @@ test.describe("TV editor", () => {
     const before = await gradient();
 
     // Turning a dial reaches the board immediately.
-    await page.getByRole("button", { name: "בורדו מלכותי" }).click();
+    await page.getByRole("button", { name: "בורדו מלכותי", exact: true }).click();
     await expect.poll(gradient).not.toBe(before);
     const shown = await gradient();
     expect(shown).toContain("gradient");
@@ -133,7 +133,7 @@ test.describe("TV editor", () => {
 
     // Now the same thing, kept this time.
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    await page.getByRole("button", { name: "בורדו מלכותי" }).click();
+    await page.getByRole("button", { name: "בורדו מלכותי", exact: true }).click();
     await expect.poll(gradient).not.toBe(before);
     await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
@@ -263,14 +263,14 @@ test.describe("TV editor", () => {
     await page.getByRole("button", { name: /^אבן ירושלים / }).click();
     await expectNotFrozen(page, "theme");
 
-    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("skin-picker").getByRole("button").nth(12).click();
     await expectNotFrozen(page, "style");
     await page.getByTestId("frame-shapes").getByRole("button", { name: "קטום" }).click();
     await expectNotFrozen(page, "frame");
 
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    await page.getByRole("button", { name: "זרקור זהב" }).click();
+    await page.getByRole("button", { name: "זרקור זהב", exact: true }).click();
     await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
     await expectNotFrozen(page, "gradient");
 
@@ -326,7 +326,7 @@ test.describe("TV editor", () => {
     // top - is paid for out of the panels below it. Four styles were caught
     // cutting the last line of the day-times panel this way, so every style
     // is now measured: content taller than its panel means a lost row.
-    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("tab", { name: "עיצוב" }).click();
     const skins = page.getByTestId("skin-picker").getByRole("button");
     const count = await skins.count();
     const clipped: string[] = [];
@@ -527,7 +527,7 @@ test.describe("TV editor", () => {
     await expect(banner).toHaveAttribute("data-scope", "all");
     await expect(banner).toContainText("כל התצוגות");
 
-    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("tab", { name: "עיצוב" }).click();
     const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
     await skins.nth(1).click();
     await page.waitForTimeout(300);
@@ -538,7 +538,7 @@ test.describe("TV editor", () => {
     await expect(banner).toContainText("עורך עכשיו: מובייל");
     const shared = await skinOf();
 
-    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("tab", { name: "עיצוב" }).click();
     await skins.nth(4).click();
     await page.waitForTimeout(400);
     const phone = await skinOf();
@@ -573,7 +573,7 @@ test.describe("TV editor", () => {
     // The answer to "which screens disagree with each other": look at them.
     await chooseDevice(page, "מובייל");
     await page.waitForTimeout(350);
-    await page.getByRole("tab", { name: "פריסה" }).click();
+    await page.getByRole("tab", { name: "עיצוב" }).click();
     const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
     await skins.nth(5).click();
     await page.waitForTimeout(400);

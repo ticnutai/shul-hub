@@ -60,7 +60,7 @@ import {
   newCustomThemeId,
   newGradientId,
   THEME_VAR_LABELS,
-  THEME_VARS,
+  THEME_VAR_LAYERS,
   TV_FONTS,
   TV_THEMES,
   type ThemeVar,
@@ -146,12 +146,13 @@ const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
 const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600];
 const intervalLabel = (s: number) =>
   s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
-import { FRAME_RADIUS_MAX, type FrameShape } from "@/tv/config";
 import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
 import type { DeviceMode } from "./devices";
 import { BackdropPicker } from "./BackdropPicker";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
-import { FrameAndSpacing, StylePicker } from "./BoardLook";
+import { FrameCorners, FrameSpacing, PaintedBoardsPicker, StylePicker } from "./BoardLook";
+import { FrameLooksEditor } from "./FrameLooksEditor";
+import { TextAreaStyles } from "./TextAreaStyles";
 import { ScreenComposer } from "./ScreenComposer";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
@@ -159,15 +160,13 @@ import { StudioPanel } from "./StudioPanel";
 import { FigmaImport } from "./FigmaImport";
 import { GradientStudio, TransferPanel } from "./GradientStudio";
 import {
-  ILLUSTRATION_DEFS,
   dataUrlToFile,
   toPortableIllustration,
   urlToDataUrl,
   type CustomIllustration,
   type PortableIllustration,
 } from "@/tv/illustrated";
-import { ILLUSTRATION_PICTURES } from "@/tv/illustrationPictures";
-import { IllustratedLookEditor } from "./IllustratedLookEditor";
+import { PaintedFrameLook, PaintedPresets, PaintedRows, PaintedText, PaintedWall } from "./IllustratedLookEditor";
 import { DayLooksEditor } from "./DayLooksEditor";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
@@ -788,6 +787,34 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const theme = getTheme(draft.theme, draft.customThemes);
   const isCustom = draft.customThemes.some((t) => t.id === draft.theme);
   const hasOverrides = Object.keys(draft.themeOverrides).length > 0;
+  const painted = draft.screenLayout === "illustrated";
+  /** The theme's colours for one layer; ↺ puts one back to the theme's. */
+  const colourFields = (vars: ThemeVar[]) => (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {vars.map((v) => (
+        <ColorField
+          key={v}
+          label={THEME_VAR_LABELS[v]}
+          value={draft.themeOverrides[v] ?? theme.vars[v]}
+          themeValue={theme.vars[v]}
+          overridden={v in draft.themeOverrides}
+          onChange={(value) =>
+            edit(`color:${v}`, (c) => ({
+              ...c,
+              themeOverrides: { ...c.themeOverrides, [v]: value },
+            }))
+          }
+          onReset={() =>
+            edit(`reset:${v}`, (c) => {
+              const next = { ...c.themeOverrides };
+              delete next[v];
+              return { ...c, themeOverrides: next };
+            })
+          }
+        />
+      ))}
+    </div>
+  );
   /** The colours on screen now: the theme plus the live edits below. */
   const currentVars = () =>
     ({ ...theme.vars, ...(draft.themeOverrides as Partial<Record<ThemeVar, string>>) } as Record<
@@ -1312,42 +1339,25 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.
               </p>
             )}
+            {painted && <PaintedPresets onEdit={edit} />}
           </Section>
 
           <Section
-            title="צבעים (עריכה חיה)"
-            hint={`מתחיל מ"${theme.name}". כל שינוי מופיע מיד בתצוגה; ↺ מחזיר לערך הערכה.`}
+            title="רקע"
+            hint="מה שמאחורי המסגרות: צבע, גרדיאנט, שמיים ועננים, או תמונה משלכם."
           >
-            <div className="grid gap-3 sm:grid-cols-2">
-              {THEME_VARS.map((v: ThemeVar) => (
-                <ColorField
-                  key={v}
-                  label={THEME_VAR_LABELS[v]}
-                  value={draft.themeOverrides[v] ?? theme.vars[v]}
-                  themeValue={theme.vars[v]}
-                  overridden={v in draft.themeOverrides}
-                  onChange={(value) =>
-                    edit(`color:${v}`, (c) => ({
-                      ...c,
-                      themeOverrides: { ...c.themeOverrides, [v]: value },
-                    }))
-                  }
-                  onReset={() =>
-                    edit(`reset:${v}`, (c) => {
-                      const next = { ...c.themeOverrides };
-                      delete next[v];
-                      return { ...c, themeOverrides: next };
-                    })
-                  }
-                />
-              ))}
-            </div>
-          </Section>
-
-          <Section
-            title="רקע הלוח"
-            hint="גרדיאנט או תמונה מאחורי כל הלוח. גרדיאנט נשאר חד בכל גודל מסך ואינו עולה דבר בביצועים."
-          >
+            {painted && (
+              <>
+                <PaintedWall config={draft} onEdit={edit} />
+                <p className="text-xs text-muted-foreground">
+                  בלוח מצויר הקיר הוא חלק מהציור. הבחירות שלמטה חלות על הלוחות הרגילים - למשל ביום
+                  שיש לו מראה אחר, או במסך שמוגדר אחרת.
+                </p>
+              </>
+            )}
+            <div className="text-xs font-medium text-muted-foreground">צבעי הרקע</div>
+            {colourFields(THEME_VAR_LAYERS.background)}
+            <div className="h-px bg-border" />
             <GradientStudio
               config={view}
               onEdit={edit}
@@ -1422,7 +1432,28 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             )}
           </Section>
 
-          <Section title="גופן וגודל טקסט">
+          <Section
+            title="מסגרות"
+            hint="איך נראות המסגרות שהזמנים כתובים בהן: סגנון, צורה, צבע, קו. איפה הן עומדות ומה המרווחים ביניהן - בלשונית פריסה."
+          >
+            <StylePicker config={view} onEdit={edit} />
+            <div className="h-px bg-border" />
+            <PaintedBoardsPicker config={draft} onEdit={edit} />
+            <div className="h-px bg-border" />
+            {painted ? (
+              <PaintedFrameLook config={draft} onEdit={edit} />
+            ) : (
+              <>
+                <FrameCorners config={view} onEdit={edit} />
+                <div className="text-xs font-medium text-muted-foreground">צבעי המסגרות</div>
+                {colourFields(THEME_VAR_LAYERS.frames)}
+              </>
+            )}
+            <FrameLooksEditor config={view} onEdit={edit} />
+          </Section>
+
+          <Section title="טקסט" hint="גופן, גודל וצבעים לכל הלוח, ואחר כך לכל אזור בנפרד.">
+            {painted && <PaintedText config={draft} onEdit={edit} />}
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-1">
                 <Label htmlFor="tv-font">גופן</Label>
@@ -1442,7 +1473,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </select>
               </div>
               <div className="space-y-1">
-                <Label>גודל טקסט</Label>
+                <Label>{painted ? "גודל טקסט (לוחות רגילים)" : "גודל טקסט"}</Label>
                 <Stepper
                   label="גודל טקסט"
                   value={Math.round(draft.textScale * 100)}
@@ -1474,6 +1505,11 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </p>
               </div>
             </div>
+            <div className="text-xs font-medium text-muted-foreground">
+              {painted ? "צבעי הטקסט בלוחות הרגילים" : "צבעי הטקסט"}
+            </div>
+            {colourFields(THEME_VAR_LAYERS.text)}
+            <TextAreaStyles config={view} onEdit={edit} painted={painted} />
           </Section>
         </TabsContent>
         <TabsContent
@@ -1522,6 +1558,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 במעבר בין תפילות — שחרית לא תיחתך באמצע.
               </p>
             </div>
+            {painted && <PaintedRows config={draft} onEdit={edit} />}
           </Section>
 
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים — המסכים שלו קובעים, גם בשבת.">
@@ -1551,65 +1588,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </button>
               ))}
             </div>
-            {draft.screenLayout === "illustrated" && (
-              <div className="mt-3">
-                <div className="mb-1.5 text-xs font-medium text-muted-foreground">
-                  איזה לוח מצויר · הזמנים, התאריך והפרשה נכתבים בתוך המסגרות
-                </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {[
-                    ...ILLUSTRATION_DEFS.map((d) => ({ ...d, picture: ILLUSTRATION_PICTURES[d.id as keyof typeof ILLUSTRATION_PICTURES], custom: false })),
-                    ...draft.customIllustrations.map((d) => ({ ...d, picture: d.image, custom: true })),
-                  ].map((d) => (
-                    <div key={d.id} className="relative">
-                      <button
-                        type="button"
-                        aria-pressed={draft.illustration === d.id}
-                        onClick={() => edit("illustration", (c) => ({ ...c, illustration: d.id }))}
-                        className={`w-full overflow-hidden rounded-lg border text-right transition ${
-                          draft.illustration === d.id
-                            ? "ring-2 ring-primary ring-offset-2"
-                            : "hover:border-primary/50"
-                        }`}
-                      >
-                        <img src={d.picture} alt="" className="aspect-video w-full object-cover" loading="lazy" />
-                        <span className="block px-2 pt-1 text-sm font-medium">{d.name}</span>
-                        <span className="block px-2 pb-1.5 text-[11px] leading-tight text-muted-foreground">
-                          {d.custom ? d.hint || "יובאה מקובץ" : d.hint}
-                        </span>
-                      </button>
-                      {d.custom && (
-                        <button
-                          type="button"
-                          aria-label={`מחיקת ${d.name}`}
-                          title="מחיקה"
-                          onClick={() =>
-                            edit("illustration-delete", (c) => ({
-                              ...c,
-                              customIllustrations: c.customIllustrations.filter((i) => i.id !== d.id),
-                              ...(c.illustration === d.id ? { illustration: "curtain" } : {}),
-                            }))
-                          }
-                          className="absolute left-1 top-1 rounded-md bg-background/90 px-1.5 text-xs shadow hover:text-destructive"
-                        >
-                          ✕
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <IllustratedLookEditor config={draft} onEdit={edit} />
-              </div>
+            {painted && (
+              <p className="text-xs text-muted-foreground">
+                איזה ציור, והקיר, המסגרות והטקסט שלו - בלשונית עיצוב.
+              </p>
             )}
             <DayLooksEditor config={draft} onEdit={edit} />
-            {/* A painted board brings its own frames; the style and corners apply to the others. */}
-            {draft.screenLayout !== "illustrated" && (
-              <>
-                <StylePicker config={view} onEdit={edit} />
-
-                <FrameAndSpacing config={view} onEdit={edit} />
-              </>
-            )}
+            {/* A painted board brings its own frames and their places. */}
+            {!painted && <FrameSpacing config={view} onEdit={edit} />}
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
               שעון:

@@ -179,7 +179,7 @@ function PrayerPanel({
   const title = titleKey ? edit.text(titleKey, "זמני התפילות") : schedule.title;
   const listRef = useFitRows<HTMLUListElement>(schedule.rows.length);
   return (
-    <div className="tv-panel tv-dash-prayers" {...edit.attr(categoryKey(schedule.id))}>
+    <div className="tv-panel tv-dash-prayers" {...edit.frame("prayers", categoryKey(schedule.id))}>
       <h3 className="tv-panel-title" {...(titleKey ? edit.attr(titleKey) : {})}>
         {title}
         {titleKey && schedule.title && <small> · {schedule.title}</small>}
@@ -243,7 +243,7 @@ function ShiurimPanel({ items, now }: { items: Shiur[]; now: Date }) {
   const dayKey = now.toDateString();
   const amud = useMemo(() => amudYomi(new Date(dayKey)), [dayKey]);
   return (
-    <div className="tv-panel tv-dash-shiurim">
+    <div className="tv-panel tv-dash-shiurim" {...edit.frame("shiurim")}>
       <h3 className="tv-panel-title" {...edit.attr("dash.shiurim")}>
         {edit.text("dash.shiurim", "שיעורים")}
       </h3>
@@ -322,7 +322,7 @@ export function DashboardStage({
   // the board: hiding the last panel of a column must not leave a hole.
   const columns = [
     prayers.length === 0 ? (
-      <div className="tv-panel tv-empty">לא הוגדרו מניינים להיום</div>
+      <div className="tv-panel tv-empty" {...edit.frame("prayers")}>לא הוגדרו מניינים להיום</div>
     ) : (
       prayers.map((p, i) => (
         <PrayerPanel
@@ -347,7 +347,7 @@ export function DashboardStage({
 
       {columns[1] && <div className="tv-dash-col tv-dash-center">
         {!edit.hidden("dash.clock") && (
-          <div className="tv-panel tv-dash-clock" {...edit.attr("dash.clock")}>
+          <div className="tv-panel tv-dash-clock" {...edit.frame("clock", "dash.clock")}>
             <LiveClockFace style={clockStyle} />
             <div className="tv-clock-date">
               {hebrew} · {gregorian}
@@ -355,7 +355,7 @@ export function DashboardStage({
           </div>
         )}
         {!edit.hidden("dash.announcement") && (
-          <div className="tv-panel tv-dash-ann">
+          <div className="tv-panel tv-dash-ann" {...edit.frame("announcements")}>
             <h3 className="tv-panel-title" {...edit.attr("dash.announcement")}>
               {edit.text("dash.announcement", "הודעות")}
               {announcements.length > 1 && (
@@ -436,7 +436,7 @@ export function SplitSide({
   return (
     <aside className="tv-split-side">
       {!edit.hidden("split.next") && (
-        <div className="tv-panel tv-split-next" {...edit.attr("split.next")}>
+        <div className="tv-panel tv-split-next" {...edit.frame("next", "split.next")}>
           <div className="tv-hero-kicker">{edit.text("split.next", "המניין הבא")}</div>
           {next ? (
             <>

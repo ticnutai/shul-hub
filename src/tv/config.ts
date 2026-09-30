@@ -1,3 +1,4 @@
+import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
 import { normalizeCustomIllustrations, type CustomIllustration } from "./illustrated";
 import type { SolarEvent } from "@community/lib/zmanim";
 import type { EventAutoMode } from "@community/lib/specialDays";
@@ -297,6 +298,8 @@ export interface DeviceOverlay {
   illustratedStyle?: IllustratedStyle;
   frame?: TvConfig["frame"];
   spacing?: TvConfig["spacing"];
+  /** A frame dressed apart from the others (frameLooks.ts). */
+  frameLooks?: FrameLooks;
   theme?: string;
   themeOverrides?: Record<string, string>;
   backgroundGradient?: string | null;
@@ -407,6 +410,11 @@ export interface TvConfig {
    * as the layout and the style draw it.
    */
   spacing: Record<SpacingEdge, number | null>;
+  /**
+   * Frames dressed apart from the rest: their own background, text, titles
+   * and line (frameLooks.ts). Empty on every board until somebody sets one.
+   */
+  frameLooks: FrameLooks;
   /** A built-in theme id, or the id of one of `customThemes`. */
   theme: string;
   /** Themes the admin saved (from a built-in plus colour edits). */
@@ -591,6 +599,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
   spacing: { top: null, sides: null, gap: null },
+  frameLooks: {},
   skin: "plain",
 };
 
@@ -959,6 +968,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     screens: normalizeScreens(raw.screens),
     customIllustrations,
     illustratedStyle: normalizeIllustratedStyle(raw.illustratedStyle),
+    frameLooks: normalizeFrameLooks(raw.frameLooks),
     dayLooks: normalizeDayLooks(raw.dayLooks, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)], [
       ...ILLUSTRATIONS,
       ...customIllustrations.map((i) => i.id),
@@ -1007,7 +1017,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
       // so a screen's copy is checked exactly as the board's is. Everything
       // else on this list is written by the editor and read straight back.
       (kept as Record<string, unknown>)[k] =
-        k === "illustratedStyle" ? normalizeIllustratedStyle(v) : v;
+        k === "illustratedStyle" ? normalizeIllustratedStyle(v) : k === "frameLooks" ? normalizeFrameLooks(v) : v;
     }
     if (Object.keys(kept).length > 0) out[device] = kept;
   }
@@ -1020,7 +1030,7 @@ const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,
-  illustration: true, illustratedStyle: true,
+  illustration: true, illustratedStyle: true, frameLooks: true,
 };
 
 /**

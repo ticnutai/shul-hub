@@ -181,7 +181,7 @@ function PrayerSlide({
     // them regardless, so a board with no minyanim today showed the day's
     // times twice next to each other.
     const grid = panelGrid(edit, "prayer", [
-      { key: "panel.minyanim-empty", width: 1.4, node: <div className="tv-panel tv-empty">לא הוגדרו מניינים להיום</div> },
+      { key: "panel.minyanim-empty", width: 1.4, node: <div className="tv-panel tv-empty" {...edit.frame("prayers")}>לא הוגדרו מניינים להיום</div> },
       ...(slide.layout === "timeline" ? [] : [zmanimPanel]),
     ]);
     return (
@@ -198,7 +198,7 @@ function PrayerSlide({
     const next = nextIndex >= 0 ? slide.rows[nextIndex] : null;
     const rest = slide.rows.filter((_, i) => i !== nextIndex && (nextIndex < 0 || i > nextIndex)).slice(0, 6);
     const hero = (
-      <div className="tv-panel tv-hero" {...edit.attr(next ? `minyan:${next.minyan.id}` : "hero.kicker")}>
+      <div className="tv-panel tv-hero" {...edit.frame("next", next ? `minyan:${next.minyan.id}` : "hero.kicker")}>
         {next ? (
           <>
             <div className="tv-hero-kicker" {...edit.attr("hero.kicker")}>
@@ -271,7 +271,7 @@ function PrayerSlide({
 
   // split
   const minyanim = (
-    <div className="tv-panel">
+    <div className="tv-panel" {...edit.frame("prayers")}>
       {!edit.hidden("panel.minyanim") && (
         <h3 className="tv-panel-title" {...edit.attr("panel.minyanim")}>
           {edit.text("panel.minyanim", "מניינים")}
@@ -317,7 +317,7 @@ export function ZmanimPanel({ zmanim, now, titleKey = "panel.zmanim" }: { zmanim
   // board was laid out with (see useShrinkToFit).
   const listRef = useShrinkToFit<HTMLDListElement>(`${special.length}:${shown.length}`);
   return (
-    <div className="tv-panel" {...edit.attr("panel.zmanim")}>
+    <div className="tv-panel" {...edit.frame("zmanim", "panel.zmanim")}>
       <h3 className="tv-panel-title" {...(titleKey !== "panel.zmanim" ? edit.attr(titleKey) : {})}>
         {edit.text(titleKey, "זמני היום")}
       </h3>
@@ -384,14 +384,14 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
         )}
         <div className="tv-learning-strip">
           {facts.daf && !edit.hidden("learning.daf") && (
-            <div className="tv-panel tv-mini" {...edit.attr("learning.daf")}>
+            <div className="tv-panel tv-mini" {...edit.frame("learning", "learning.daf")}>
               <span className="tv-mini-label">{dafLabel}</span>
               <span className="tv-mini-value">{facts.daf.label}</span>
             </div>
           )}
           {!edit.hidden("learning.upcoming") &&
             facts.upcoming.slice(0, 3).map((u) => (
-              <div key={u.title + u.inDays} className={`tv-panel tv-mini${u.major ? " is-major" : ""}`} {...edit.attr("learning.upcoming")}>
+              <div key={u.title + u.inDays} className={`tv-panel tv-mini${u.major ? " is-major" : ""}`} {...edit.frame("learning", "learning.upcoming")}>
                 <span className="tv-mini-label">{whenLabel(u.inDays, u.date)}</span>
                 <span className="tv-mini-value">{u.title}</span>
               </div>
@@ -406,7 +406,7 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
       key: "learning.parasha",
       width: 1,
       node: (
-        <div className="tv-panel tv-feature" {...edit.attr("learning.parasha")}>
+        <div className="tv-panel tv-feature" {...edit.frame("learning", "learning.parasha")}>
           <span className="tv-feature-label">{parashaLabel}</span>
           <span className="tv-feature-value">{parashaName}</span>
         </div>
@@ -416,7 +416,7 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
       key: "learning.daf",
       width: 1,
       node: (
-        <div className="tv-panel tv-feature" {...edit.attr("learning.daf")}>
+        <div className="tv-panel tv-feature" {...edit.frame("learning", "learning.daf")}>
           <span className="tv-feature-label">{dafLabel}</span>
           <span className="tv-feature-value">{facts.daf?.label ?? "—"}</span>
         </div>
@@ -426,7 +426,7 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
       key: "learning.upcoming",
       width: 1.25,
       node: (
-        <div className="tv-panel tv-upcoming" {...edit.attr("learning.upcoming")}>
+        <div className="tv-panel tv-upcoming" {...edit.frame("learning", "learning.upcoming")}>
           <h3 className="tv-panel-title">{edit.text("learning.upcoming", "בימים הקרובים")}</h3>
           {facts.upcoming.length === 0 ? (
             <p className="tv-empty">אין מועדים בשלושת השבועות הקרובים</p>
@@ -464,7 +464,7 @@ export function AnnouncementCard({ item, large }: { item: Announcement; large?: 
   return (
     <article
       className={`tv-card${item.pinned ? " is-pinned" : ""}${large ? " is-large" : ""}${item.image_url ? " has-image" : ""}`}
-      {...edit.attr(`ann:${item.id}`)}
+      {...edit.frame("announcements", `ann:${item.id}`)}
     >
       {item.image_url && <img className="tv-card-image" src={item.image_url} alt="" decoding="async" />}
       <div className="tv-card-text" ref={fit}>
@@ -526,7 +526,7 @@ function ShiurimSlide({ slide, now }: { slide: Extract<BoardSlide, { kind: "shiu
       {slide.layout === "cards" ? (
         <div className="tv-shiur-cards">
           {slide.items.map((s, i) => (
-            <article key={s.id} className={`tv-panel tv-shiur-card${state(s, i)}`} {...edit.attr(`shiur:${s.id}`)}>
+            <article key={s.id} className={`tv-panel tv-shiur-card${state(s, i)}`} {...edit.frame("shiurim", `shiur:${s.id}`)}>
               <span className="tv-shiur-time">{s.time_text}</span>
               <span className="tv-shiur-title">{title(s)}</span>
               {teacher(s)}

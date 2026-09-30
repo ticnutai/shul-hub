@@ -13,6 +13,7 @@ import { weeklyParasha } from "./learning";
 import { nextCandleLighting } from "./shabbat";
 import { jerusalemMinutes, type BoardSlide } from "./useBoardData";
 import { ILLUSTRATION_PICTURES } from "./illustrationPictures";
+import type { FrameId, FrameLook } from "./frameLooks";
 
 /**
  * The "illustrated" layout: a painted board - curtain and gold frames, stone
@@ -62,7 +63,7 @@ function PrayerFrame({ d, rows, now, max }: { d: Illustration; rows: ResolvedMin
   const next = rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
   const [from, to] = rowWindow(rows.length, next, max);
   return (
-    <At b={b}>
+    <At b={b} style={{ color: d.ink }}>
       <div className="tv-ill-list" style={{ "--ill-size": rowSize(b) } as CSSProperties}>
         <div className="tv-ill-title" style={{ color: d.accent }} {...mark("dash.prayers")}>
           {edit.text("dash.prayers", "תפילות היום")}
@@ -108,7 +109,7 @@ function ZmanimFrame({ d, zmanim, box, max, now }: { d: Illustration; zmanim: Zm
   }
   shown = shown.slice(0, room);
   return (
-    <At b={box}>
+    <At b={box} style={{ color: d.ink }}>
       <div className="tv-ill-list" style={{ "--ill-size": rowSize(box) } as CSSProperties}>
         <div className="tv-ill-title" style={{ color: d.accent }} {...mark("dash.zmanim")}>
           {edit.text("dash.zmanim", "זמני היום")}
@@ -171,6 +172,23 @@ export function IllustratedStage({
   const picture = "image" in def ? def.image : ILLUSTRATION_PICTURES[def.id as keyof typeof ILLUSTRATION_PICTURES];
   const b = d.boxes;
   const layers = useMemo(() => illustratedLayers(b, look), [b, look]);
+  // A frame dressed apart from the others (frameLooks.ts): its inks over the
+  // board's, and its own background and line drawn over the painting.
+  const inFrame = (id: FrameId) => {
+    const own = edit.frameLook(id);
+    return own ? { ...d, ink: own.text ?? d.ink, accent: own.accent ?? d.accent } : d;
+  };
+  const dressed: Array<{ id: FrameId; box: Box; look: FrameLook }> = (
+    [
+      ["prayers", b.panelR],
+      ["zmanim", b.panelL],
+      ["clock", b.clock],
+    ] as Array<[FrameId, Box]>
+  ).flatMap(([id, box]) => {
+    const own = edit.frameLook(id);
+    return own && (own.bg || own.line) ? [{ id, box, look: own }] : [];
+  });
+  const clockLook = edit.frameLook("clock");
   const dayKey = now.toDateString();
   const day = useMemo(() => {
     const date = new Date(dayKey);
@@ -210,8 +228,24 @@ export function IllustratedStage({
       {layers.frames.map((f) => (
         <div key={f.key} className="tv-ill-frame" style={f.style} />
       ))}
+      {dressed.map((f) => (
+        <div
+          key={`own-${f.id}`}
+          className="tv-ill-frame"
+          data-frame={f.id}
+          style={{
+            left: `${f.box[0]}%`,
+            top: `${f.box[1]}%`,
+            width: `${f.box[2] - f.box[0]}%`,
+            height: `${f.box[3] - f.box[1]}%`,
+            background: f.look.bg,
+            border: f.look.line ? `0.2cqw solid ${f.look.line}` : undefined,
+            borderRadius: "0.4cqw",
+          }}
+        />
+      ))}
       <At b={b.clock}>
-        <span className="tv-ill-clock" style={{ color: d.clockInk }}>
+        <span className="tv-ill-clock" style={{ color: clockLook?.text ?? d.clockInk }}>
           {formatTime(now)}
         </span>
       </At>
@@ -238,8 +272,8 @@ export function IllustratedStage({
               <div className="tv-ill-shabbat-bless" style={{ color: d.accent }}>שבת שלום ומבורך</div>
             </At>
           )}
-          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
-          <PrayerFrame d={d} rows={rows} now={now} max={look.rows} />
+          <ZmanimFrame d={inFrame("zmanim")} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
+          <PrayerFrame d={inFrame("prayers")} rows={rows} now={now} max={look.rows} />
         </>
       ) : (
         <>
@@ -249,8 +283,8 @@ export function IllustratedStage({
           <At b={b.plaqueL}>
             <span className="tv-ill-plaque">{day.hebrew}</span>
           </At>
-          <PrayerFrame d={d} rows={rows} now={now} max={look.rows} />
-          <ZmanimFrame d={d} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
+          <PrayerFrame d={inFrame("prayers")} rows={rows} now={now} max={look.rows} />
+          <ZmanimFrame d={inFrame("zmanim")} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
           {b.barR && (
             <At b={b.barR}>
               {titleShown && <span className="tv-ill-bar" {...mark("header.title")}>{title}</span>}
