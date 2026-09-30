@@ -5,7 +5,9 @@ import { useBoardEdit } from "./boardEdit";
 import { frameZmanim, useBoardDay } from "./boardDay";
 import { useHolyEndMinutes } from "./holyEnd";
 import { rowWindow, todaysRows } from "./illustrated";
-import { jerusalemMinutes, type BoardSlide } from "./useBoardData";
+import { composedRows, jerusalemMinutes, type BoardSlide, type ComposedPart } from "./useBoardData";
+import { SlideView } from "./TvSlides";
+import { Fragment, type ReactNode } from "react";
 import { useShrinkToFit } from "./useShrinkToFit";
 
 /**
@@ -22,6 +24,7 @@ import { useShrinkToFit } from "./useShrinkToFit";
  */
 export function MedallionStage({
   slides,
+  parts,
   now,
   zmanim,
   settings,
@@ -29,6 +32,16 @@ export function MedallionStage({
   rowsPerFrame,
 }: {
   slides: BoardSlide[];
+  /**
+   * The screen up now, on a board built of screens: exactly what is ticked
+   * on it. The prayers and the zmanim stand in the medallion's own frames;
+   * anything else ticked (announcements, shiurim, the daf...) gets a frame
+   * of its own beside them, in the same style. Without this the medallion
+   * drew the prayers and the zmanim whatever the screen said, so every
+   * screen of a board looked the same. Absent: a board with no screens,
+   * which shows both, as it always did.
+   */
+  parts?: ComposedPart[];
   /** Minute precision. */
   now: Date;
   zmanim: Zmanim;
@@ -66,10 +79,14 @@ export function MedallionStage({
           </div>
         )}
       </div>
-      <div className="tv-med-main">
-        {flipped ? zmanimFrame : prayers}
-        {flipped ? prayers : zmanimFrame}
-      </div>
+      {parts ? (
+        <ScreenFrames parts={parts} prayers={prayers} zmanim={zmanimFrame} now={now} dayZmanim={zmanim} />
+      ) : (
+        <div className="tv-med-main">
+          {flipped ? zmanimFrame : prayers}
+          {flipped ? prayers : zmanimFrame}
+        </div>
+      )}
       {(titleShown || rest.length > 0) && (
         <div className="tv-panel tv-med-strip" {...edit.frame("strip")}>
           <p>
@@ -79,6 +96,55 @@ export function MedallionStage({
         </div>
       )}
     </section>
+  );
+}
+
+/**
+ * The body of one screen, as the composer arranged it (the same `place()`
+ * rule as everywhere): the prayers and the zmanim in the medallion's frames,
+ * every other block in a frame of its own. A day split over several prayer
+ * pages is still one prayers frame here - it scrolls to the current minyanim.
+ */
+function ScreenFrames({
+  parts,
+  prayers,
+  zmanim,
+  now,
+  dayZmanim,
+}: {
+  parts: ComposedPart[];
+  prayers: ReactNode;
+  zmanim: ReactNode;
+  now: Date;
+  dayZmanim: Zmanim;
+}) {
+  let prayersShown = false;
+  const rows = composedRows(parts)
+    .map((row) =>
+      row.flatMap((part, i) => {
+        if (part.block === "prayers") {
+          if (prayersShown) return [];
+          prayersShown = true;
+          return [<Fragment key={`p${i}`}>{prayers}</Fragment>];
+        }
+        if (part.block === "zmanim") return [<Fragment key={`z${i}`}>{zmanim}</Fragment>];
+        if (!part.slide) return [];
+        return [
+          <div key={`${part.block}${i}`} className="tv-panel tv-med-cell" data-block={part.block}>
+            <SlideView slide={part.slide} now={now} zmanim={dayZmanim} paused={false} />
+          </div>,
+        ];
+      }),
+    )
+    .filter((row) => row.length > 0);
+  return (
+    <div className={`tv-med-rows${rows.length > 1 ? " is-many" : ""}`}>
+      {rows.map((row, i) => (
+        <div key={i} className="tv-med-row-of" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
+          {row}
+        </div>
+      ))}
+    </div>
   );
 }
 

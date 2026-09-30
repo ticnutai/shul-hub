@@ -156,3 +156,31 @@ describe("Shabbat on a board built of screens", () => {
     expect(container.querySelector(".tv-ill")).toBeNull();
   });
 });
+
+describe("the medallion, on a board built of screens", () => {
+  const at = new Date("2026-10-14T10:00:00+03:00");
+  const draw = (blocks: Screen["blocks"]) => {
+    const config: TvConfig = {
+      ...structuredClone(DEFAULT_TV_CONFIG),
+      screenLayout: "medallion",
+      screens: [{ id: "s", name: "מסך", seconds: 20, blocks }],
+    };
+    const zm = zmanimFor(at, null);
+    const slides = buildSlides(data, config, at, zm);
+    return render(
+      <TvBoard data={data} config={config} now={at} zmanim={zm} slides={slides} index={0} cycle={0} progress={0} paused={false} />,
+    ).container;
+  };
+
+  it("shows what is ticked on the screen, and only that", () => {
+    const withLearning = draw([{ block: "prayers" }, { block: "learning" }]);
+    expect(withLearning.querySelector(".tv-med")).toBeTruthy();
+    expect(withLearning.querySelector('.tv-med-cell[data-block="learning"]'), "the daf yomi gets a frame").toBeTruthy();
+    expect(withLearning.querySelector('[data-frame="zmanim"]'), "the zmanim were not ticked").toBeNull();
+    cleanup();
+    const zmanimOnly = draw([{ block: "zmanim" }]);
+    expect(zmanimOnly.querySelector(".tv-med")).toBeTruthy();
+    expect(zmanimOnly.querySelector('[data-frame="prayers"]')).toBeNull();
+    expect(zmanimOnly.querySelector('[data-frame="zmanim"]')).toBeTruthy();
+  });
+});

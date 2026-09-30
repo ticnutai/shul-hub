@@ -5584,3 +5584,86 @@
   font-size: calc(1.5cqw / var(--tv-text-boost, 1));
   line-height: 1.35;
 }
+
+/* A screen of the composer on the medallion: its blocks, row by row, as arranged. */
+.tv-med-rows {
+  display: grid;
+  grid-auto-rows: minmax(0, 1fr);
+  gap: calc(var(--u) * 2.4);
+  min-height: 0;
+}
+.tv-med-row-of {
+  display: grid;
+  gap: calc(var(--u) * 4);
+  min-height: 0;
+}
+.tv-med-cell {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  padding: calc(var(--u) * 1.6) calc(var(--u) * 2);
+}
+/* The block's own view sits inside the frame: no second entrance, no stage padding. */
+.tv-med-cell > .tv-slide {
+  animation: none;
+  padding: 0;
+  height: 100%;
+}
+
+/*
+ * More than one row of frames: smaller frames, so the arch and the large
+ * type of the two-frame medallion would cut them off. A plain frame, type
+ * for the size, and whatever still does not fit is cut at the frame's edge
+ * rather than running over the frame below it.
+ */
+.tv-med-rows .tv-med-list,
+.tv-med-rows .tv-med-cell {
+  overflow: hidden;
+}
+.tv-root .tv-med-rows.is-many .tv-panel {
+  border-radius: calc(var(--u) * 1.6) !important;
+  clip-path: none !important;
+  padding: calc(var(--u) * 1.2) calc(var(--u) * 2) !important;
+}
+.tv-root .tv-med-rows.is-many .tv-panel::before,
+.tv-root .tv-med-rows.is-many .tv-panel::after {
+  clip-path: none !important;
+  border-radius: inherit !important;
+}
+.tv-med-rows.is-many .tv-med-list .tv-panel-title {
+  font-size: calc(var(--fs) * 2.4);
+  margin-bottom: calc(var(--u) * 0.6);
+}
+.tv-med-rows.is-many .tv-med-row {
+  font-size: calc(var(--fs) * 2.5 * var(--fit, 1));
+}
+.tv-med-rows.is-many .tv-med-list ul {
+  justify-content: flex-start;
+  gap: calc(var(--u) * 0.3);
+}
+
+/*
+ * A block's own view inside a medallion frame is drawn at the frame's
+ * scale: its sizes are in --u, one hundredth of the board's height, laid out
+ * for the whole stage (about three quarters of that height). Inside a frame
+ * --u is taken from the frame instead - the same proportions, smaller - so a
+ * daf yomi card or a notice fits its frame rather than being cut by it.
+ */
+.tv-med-cell {
+  container-type: size;
+}
+.tv-med-cell > .tv-slide {
+  /* Never below 60% of the board's own size: read across a hall, smaller is not text any more. */
+  --u: max(1.33cqh, calc(var(--u-board) * 0.6));
+  --fs: calc(var(--u) * var(--tv-scale, 1) / var(--tv-text-boost, 1));
+}
+
+/* The board's unit as a length, so a frame inside it can still ask for a share of it. */
+@property --u-board {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 4px;
+}
+.tv-root {
+  --u-board: 1cqh;
+}

@@ -169,8 +169,13 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     : slides;
   const mergedLook =
     config.screenLayout === "illustrated" || config.screenLayout === "dashboard" || config.screenLayout === "medallion";
+  // The medallion draws any screen - what it has frames of its own for, and a
+  // frame for anything else ticked; the painted board and the full board only
+  // a screen with the prayers or the zmanim on it.
   const screenFitsLook =
-    !composed || (!occasionScreen && composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim"));
+    !composed ||
+    (!occasionScreen &&
+      (config.screenLayout === "medallion" || composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim")));
   // An occasion's screen always takes the whole stage, whatever the layout.
   const layout = occasionStage
     ? "rotate"
@@ -235,6 +240,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           ) : medallion ? (
             <MedallionStage
               slides={screenSlides}
+              parts={composed?.parts}
               now={minuteNow}
               zmanim={zmanim}
               settings={data.settings}
