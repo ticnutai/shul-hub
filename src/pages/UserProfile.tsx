@@ -1,4 +1,5 @@
 import { useAuth } from "@/contexts/AuthContext";
+import { bookmarkHref, bookmarkLabel } from "@/lib/bookmarkLinks";
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -57,9 +58,11 @@ export const UserProfile = () => {
 
   if (!user) return null;
 
+  // Chumash, Tehillim or a commentary: one reading of the id (bookmarkLinks.ts).
+  // It read every id as a commentary's, and sent a Chumash bookmark nowhere.
   const navigateToPasuk = (pasukId: string) => {
-    const [sefer, perek, pasuk] = pasukId.split(":");
-    navigate(`/commentaries/${sefer}/${perek}/${pasuk}`);
+    const href = bookmarkHref(pasukId);
+    if (href) navigate(href);
   };
 
   const handleSaveBookmark = async (id: string) => {
@@ -171,7 +174,7 @@ export const UserProfile = () => {
                             {bookmark.pasukText}
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            {bookmark.pasukId}
+                            {bookmarkLabel(bookmark.pasukId)}
                           </div>
                           
                           {editingBookmark === bookmark.id ? (

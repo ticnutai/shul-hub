@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef, createContext, useContext, useCallback, type CSSProperties, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { useBookmarks } from "@/contexts/BookmarksContext";
+import { parseTehillimBookmark, tehillimBookmarkId } from "@/lib/bookmarkLinks";
 import { TextDisplaySettings } from "@/components/TextDisplaySettings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +16,7 @@ import type { FlatPasuk } from "@/types/torah";
 import { TEHILLIM_COMMENTATORS } from "@/hooks/useCommentaries";
 import { ColorPicker } from "@/components/ColorPicker";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, ThemeAppearanceControls, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
-import { ArrowLeft, Search, CalendarDays, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
+import { Bookmark, BookmarkCheck, ArrowLeft, Search, CalendarDays, ChevronDown, ChevronUp, BookMarked, Loader2, BookOpen, ExternalLink, LayoutList, AlignJustify, ScrollText, Layers, Sunrise, Sun, Moon, Sparkles, Flame, Star, Leaf, Heart, Book, Columns2, PanelRightOpen, Palette, Save, CloudUpload, Pencil, Copy, SlidersHorizontal, type LucideProps } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -2334,6 +2336,7 @@ const TextFilterMenu = ({ scope, color }: { scope: "siddur" | "tehillim"; color:
 };
 
 /* ─── TehillimPane ───────────────────────────────────────── */
+const TEHILLIM_LAST_READ_KEY = "tehillim-last-read";
 const TEHILLIM_DAILY: Record<number, number>   = { 0: 24, 1: 48, 2: 82, 3: 94, 4: 81, 5: 93, 6: 92 };
 const TEHILLIM_DAY_HEB: Record<number, string> = { 0: "ראשון", 1: "שני", 2: "שלישי", 3: "רביעי", 4: "חמישי", 5: "שישי", 6: "שבת" };
 
@@ -2367,6 +2370,55 @@ const TehillimPane = () => {
   const handlePasukSelect = (idx: number) => {
     setPasuk(idx + 1);
     setTimeout(() => verseRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+  };
+
+  /*
+   * Coming back to the same place, two ways:
+   *   - a bookmark, in the same bookmarks as the Chumash (BookmarksContext,
+   *     kept per user in the cloud), on the chapter or on a chosen verse;
+   *   - "המשך מפרק …": the last chapter read, kept in this browser, for
+   *     whoever is not signed in too.
+   * A link to a chapter (?perek=&pasuk=, from a bookmark) opens it.
+   */
+  const { bookmarks, toggleBookmark, isBookmarked } = useBookmarks();
+  const [linkParams] = useSearchParams();
+  const [lastRead, setLastRead] = useState<{ chapter: number; pasuk: number | null } | null>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(TEHILLIM_LAST_READ_KEY) ?? "null");
+      return v && Number.isInteger(v.chapter) && v.chapter >= 1 && v.chapter <= 150 ? v : null;
+    } catch {
+      return null;
+    }
+  });
+  const openedFromLink = useRef(false);
+  useEffect(() => {
+    if (openedFromLink.current || !tehillim) return;
+    const ch = Number(linkParams.get("perek"));
+    if (!Number.isInteger(ch) || ch < 1 || ch > 150) return;
+    openedFromLink.current = true;
+    setMode("select");
+    handleChapterSelect(ch);
+    const v = Number(linkParams.get("pasuk"));
+    if (Number.isInteger(v) && v >= 1) setTimeout(() => handlePasukSelect(v - 1), 250);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tehillim, linkParams]);
+  useEffect(() => {
+    if (mode !== "select" || level !== "text") return;
+    const at = { chapter, pasuk };
+    setLastRead(at);
+    try {
+      localStorage.setItem(TEHILLIM_LAST_READ_KEY, JSON.stringify(at));
+    } catch {
+      /* private window: nothing remembered */
+    }
+  }, [mode, level, chapter, pasuk]);
+  const tehillimBookmarks = bookmarks
+    .map((b) => ({ b, at: parseTehillimBookmark(b.pasukId) }))
+    .filter((x): x is { b: typeof x.b; at: { chapter: number; verse: number | null } } => x.at !== null)
+    .sort((x, y) => x.at.chapter - y.at.chapter || (x.at.verse ?? 0) - (y.at.verse ?? 0));
+  const openAt = (ch: number, verse: number | null) => {
+    handleChapterSelect(ch);
+    if (verse) setTimeout(() => handlePasukSelect(verse - 1), 250);
   };
 
   useEffect(() => { setVisibleCount(5); }, [mode]);
@@ -2619,6 +2671,35 @@ const TehillimPane = () => {
         <>
           {level === "chapter" && (
             <>
+              {(lastRead || tehillimBookmarks.length > 0) && (
+                <div className="mb-3 flex flex-wrap items-center justify-center gap-2" data-testid="tehillim-return">
+                  {lastRead && (
+                    <button
+                      type="button"
+                      onClick={() => openAt(lastRead.chapter, lastRead.pasuk)}
+                      className="text-xs font-bold px-3 py-1 rounded-full transition-all"
+                      style={{ background: theme.accentColor, color: "hsl(var(--sidebar-background))" }}
+                    >
+                      המשך מפרק {heNum(lastRead.chapter)}
+                      {lastRead.pasuk ? `, פסוק ${heNum(lastRead.pasuk)}` : ""}
+                    </button>
+                  )}
+                  {tehillimBookmarks.map(({ b, at }) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => openAt(at.chapter, at.verse)}
+                      title={b.pasukText}
+                      className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full transition-all"
+                      style={{ background: `${theme.accentColor}22`, color: theme.accentColor, border: `1px solid ${theme.accentColor}55` }}
+                    >
+                      <BookmarkCheck className="size-3" aria-hidden />
+                      פרק {heNum(at.chapter)}
+                      {at.verse ? `, פסוק ${heNum(at.verse)}` : ""}
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="flex items-center justify-center gap-2 mb-3">
                 <span className="text-xs text-muted-foreground">מזמור היום:</span>
                 <button
@@ -2671,6 +2752,29 @@ const TehillimPane = () => {
                     <span className="font-semibold" style={{ color: theme.accentColor }}>פסוק {heNum(pasuk)}</span>
                   </>
                 )}
+                {(() => {
+                  // On the verse chosen, or on the chapter when none is.
+                  const id = tehillimBookmarkId(chapter, pasuk);
+                  const marked = isBookmarked(id);
+                  const text = (pasuk ? current.lines[pasuk - 1] : current.lines[0]) ?? "";
+                  return (
+                    <button
+                      type="button"
+                      data-testid="tehillim-bookmark"
+                      aria-pressed={marked}
+                      onClick={() => void toggleBookmark(id, `תהילים ${heNum(chapter)}${pasuk ? `:${heNum(pasuk)}` : ""} · ${stripText(cleanLine(text), false, false).slice(0, 80)}`)}
+                      className="ms-auto inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold transition-all"
+                      style={
+                        marked
+                          ? { background: theme.accentColor, color: "hsl(var(--sidebar-background))" }
+                          : { background: `${theme.accentColor}22`, color: theme.accentColor, border: `1px solid ${theme.accentColor}55` }
+                      }
+                    >
+                      {marked ? <BookmarkCheck className="size-3.5" aria-hidden /> : <Bookmark className="size-3.5" aria-hidden />}
+                      {marked ? "בסימניות" : pasuk ? "סימניה לפסוק" : "סימניה לפרק"}
+                    </button>
+                  );
+                })()}
               </div>
 
               {/* Verse picker row */}
@@ -3004,7 +3108,35 @@ export const Siddur = () => {
   const navigate                = useNavigate();
   const omerInSeason            = useOmerSeason();
   const [nusach, setNusach]    = useState("sefard");
-  const [catId, setCatId]      = useState("shacharit");
+  /*
+   * Tehillim has a door of its own in the top row (PrimaryDestinationNav):
+   * `?tab=tehillim` opens the Siddur on it, and the address follows the tab
+   * either way, so the top row marks the one that is open.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [catId, setCatId]      = useState(() => (tabParam === "tehillim" ? "tehillim" : "shacharit"));
+  const catIdRef = useRef(catId);
+  catIdRef.current = catId;
+  useEffect(() => {
+    if (tabParam === "tehillim") setCatId("tehillim");
+    // "סידור" from the top row, while Tehillim was open: back to the prayers.
+    else if (catIdRef.current === "tehillim") setCatId("shacharit");
+  }, [tabParam]);
+  useEffect(() => {
+    const onTehillim = catId === "tehillim";
+    if (onTehillim === (tabParam === "tehillim")) return;
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (onTehillim) next.set("tab", "tehillim");
+        else ["tab", "perek", "pasuk"].forEach((k) => next.delete(k));
+        return next;
+      },
+      { replace: true },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catId]);
   const { user } = useAuth();
   const initialSiddurViewSettings = useRef(loadLegacySiddurViewSettings()).current;
   const { data: syncedViewSettings, setData: setSyncedViewSettings } = useSyncedState<SiddurViewSettings>({
@@ -3292,6 +3424,8 @@ export const Siddur = () => {
   useEffect(() => {
     if (!calendarMode || openedForToday.current || !categories.length) return;
     openedForToday.current = true;
+    // Opened on Tehillim on purpose: the prayer of the hour does not take over.
+    if (catIdRef.current === "tehillim") return;
     const now = new Date();
     const id = prayerNow(now, todayProfile ?? dayProfile(now, zmanimFor(now, null).tzeit), categories.map((c) => c.id));
     if (id) setCatId(id);

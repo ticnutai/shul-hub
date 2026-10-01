@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { bookmarkHref, bookmarkLabel } from "@/lib/bookmarkLinks";
 import { Bookmark, BookmarkCheck, Trash2, Plus, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,14 +48,12 @@ export const BookmarksDialog = () => {
     setEditTags(tags?.join(", ") || "");
   };
 
+  // Chumash, Tehillim or a commentary: one reading of the id (bookmarkLinks.ts).
   const navigateToPasuk = (pasukId: string) => {
-    // פורמט: "bereishit-1-1"
-    const parts = pasukId.split("-");
-    if (parts.length === 3) {
-      const [sefer, perek, pasuk] = parts;
-      navigate(`/chumash?sefer=${sefer}&perek=${perek}&pasuk=${pasuk}`);
-      setOpen(false);
-    }
+    const href = bookmarkHref(pasukId);
+    if (!href) return;
+    navigate(href);
+    setOpen(false);
   };
 
   return (
@@ -142,7 +141,7 @@ export const BookmarksDialog = () => {
                         {bookmark.pasukText}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {bookmark.pasukId}
+                        {bookmarkLabel(bookmark.pasukId)}
                       </p>
                     </div>
 

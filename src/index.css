@@ -734,32 +734,36 @@ html.torah-luxury .community-secondary-nav .community-nav-item {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 5.6px;
   min-width: 0;
 }
 
 .primary-destination-item {
   display: inline-flex;
   min-width: 0;
-  min-height: 1.9rem;
+  min-height: 30.4px;
   align-items: center;
   justify-content: center;
-  gap: 0.28rem;
-  padding: 0.28rem 0.5rem;
+  gap: 4.5px;
+  padding: 4.5px 8px;
   border: 1px solid transparent;
   border-radius: 0.65rem;
   color: hsl(var(--sidebar-primary));
   background: transparent;
-  font-size: 0.68rem;
+  /* Pixels, not rem: the Siddur scales the page's type for reading, and the
+     row must be the same on every page - in rem it grew there and broke its
+     names in the middle of a word ("סיד/ור") on a narrow phone. */
+  font-size: 11px;
   font-weight: 650;
   line-height: 1.05;
+  white-space: nowrap;
   text-align: center;
   transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
 }
 
 .primary-destination-item svg {
-  width: 0.9rem;
-  height: 0.9rem;
+  width: 14.4px;
+  height: 14.4px;
   flex: none;
   color: currentColor;
 }
@@ -780,7 +784,7 @@ html.torah-luxury .community-secondary-nav .community-nav-item {
    ivory card. Keep a single precise gold border; an extra outer outline made
    the compact mobile navigation look doubled and visually crowded. */
 html.torah-luxury .primary-destination-nav {
-  gap: 0.75rem;
+  gap: 12px;
   background: transparent;
 }
 
@@ -803,15 +807,15 @@ html.torah-luxury .primary-destination-item-active {
 }
 
 @media (min-width: 640px) {
-  .primary-destination-nav { gap: 0.5rem; }
+  .primary-destination-nav { gap: 8px; }
   .primary-destination-item {
-    min-height: 2.1rem;
-    padding: 0.34rem 0.7rem;
-    font-size: 0.78rem;
+    min-height: 33.6px;
+    padding: 5.4px 11.2px;
+    font-size: 12.5px;
   }
-  .primary-destination-item svg { width: 1rem; height: 1rem; }
+  .primary-destination-item svg { width: 16px; height: 16px; }
 
-  html.torah-luxury .primary-destination-nav { gap: 0.9rem; }
+  html.torah-luxury .primary-destination-nav { gap: 14.4px; }
 }
 
 html.torah-luxury .card-elev {

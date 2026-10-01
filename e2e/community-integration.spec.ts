@@ -73,16 +73,18 @@ test("fresh Siddur installs use the current continuous David Libre reading defau
   await expect(root).toHaveAttribute("data-siddur-show-taamim", "false");
 });
 
-test("all three main screens share compact, separate destination controls", async ({ page }) => {
+test("all main screens share compact, separate destination controls", async ({ page }) => {
+  // Tehillim is the Siddur opened on its Tehillim tab, with a door of its own.
   for (const [route, activeLabel] of [
     ["/community", "בית הכנסת"],
     ["/siddur", "סידור"],
+    ["/siddur?tab=tehillim", "תהילים"],
     ["/chumash", "חומש ומפרשים"],
   ] as const) {
     await page.goto(route);
     const nav = page.getByRole("navigation", { name: "מדורים ראשיים" });
     const links = nav.getByRole("link");
-    await expect(links).toHaveCount(3);
+    await expect(links).toHaveCount(4, { timeout: 20_000 });
     await expect(nav.locator('[aria-current="page"]')).toHaveText(activeLabel);
 
     const dividerSpacing = await nav.evaluate(element => {
