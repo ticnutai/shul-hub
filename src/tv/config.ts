@@ -50,6 +50,7 @@ export type SlideKind = "prayer" | "learning" | "announcements" | "shiurim" | "s
  */
 export type BlockId =
   | "header"
+  | "logo"
   | "clock"
   | "prayers"
   | "zmanim"
@@ -63,7 +64,7 @@ export type BlockId =
   | "footer";
 
 export const BLOCK_IDS: readonly BlockId[] = [
-  "header", "clock", "prayers", "zmanim", "announcements",
+  "header", "logo", "clock", "prayers", "zmanim", "announcements",
   "shiurim", "learning", "slideshow", "festival", "shabbat", "ticker", "footer",
 ];
 
@@ -340,6 +341,16 @@ export interface DeviceOverlay {
   ticker?: TvConfig["ticker"];
 }
 
+/** One logo on a board: a copy of its entry in the shared library. */
+export interface BoardLogo {
+  id: string;
+  name: string;
+  /** As drawn on a light board. */
+  url: string;
+  /** The same mark cut for a dark board, when it has one. */
+  urlDark?: string;
+}
+
 export interface TvConfig {
   screenLayout: ScreenLayout;
   /**
@@ -500,6 +511,13 @@ export interface TvConfig {
   screens?: Screen[];
   /** Header extras. `logo`: the קרובים logo beside the synagogue name. */
   header: { parasha: boolean; dafYomi: boolean; logo: boolean };
+  /**
+   * The logos this board shows, chosen from the shared library (the
+   * logo_library table) - the synagogue's own, a sponsor's. A copy of the
+   * chosen entries rather than their ids, so a TV that is offline still has
+   * them. Shown on every screen whose "לוגואים" switch is on.
+   */
+  logos: BoardLogo[];
   alerts: {
     enabled: boolean;
     events: AlertEvent[];
@@ -611,6 +629,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
     { kind: "slideshow", enabled: false, seconds: 30, layout: "kenburns" },
   ],
   header: { parasha: true, dafYomi: true, logo: true },
+  logos: [],
   alerts: {
     enabled: true,
     events: ["sof_zman_shma", "sof_zman_tefila", "sunset", "candle"],
@@ -736,6 +755,36 @@ function normalizeScreens(raw: unknown): Screen[] | undefined {
     });
   }
   return screens.length ? screens : undefined;
+}
+
+const HTTPS_URL = /^https:\/\/[^\s"'()<>]+$/i;
+
+export function normalizeLogos(raw: unknown): BoardLogo[] {
+  const out: BoardLogo[] = [];
+  for (const l of Array.isArray(raw) ? raw : []) {
+    if (!isObj(l) || typeof l.id !== "string" || typeof l.url !== "string" || !HTTPS_URL.test(l.url)) continue;
+    if (out.some((o) => o.id === l.id)) continue;
+    const logo: BoardLogo = { id: l.id.slice(0, 60), name: str(l.name, "לוגו", 60), url: l.url.slice(0, 600) };
+    if (typeof l.urlDark === "string" && HTTPS_URL.test(l.urlDark)) logo.urlDark = l.urlDark.slice(0, 600);
+    out.push(logo);
+    if (out.length >= 6) break;
+  }
+  return out;
+}
+
+/**
+ * The "לוגואים" switch arrived after boards had screens. A board saved before
+ * it (no `logos` field yet) gets the switch on wherever the name is on, which
+ * is where the one logo the board could show used to stand. From the first
+ * save on, the switch is whatever the gabbai left it.
+ */
+function withLogoSwitch(screens: Screen[] | undefined, rawLogos: unknown): Screen[] | undefined {
+  if (!screens || Array.isArray(rawLogos)) return screens;
+  return screens.map((s) =>
+    s.blocks.some((b) => b.block === "header") && !s.blocks.some((b) => b.block === "logo")
+      ? { ...s, blocks: [...s.blocks, { block: "logo" as const }] }
+      : s,
+  );
 }
 
 function normalizeShabbatScenes(raw: unknown): string[] {
@@ -1024,7 +1073,8 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
-    screens: normalizeScreens(raw.screens),
+    screens: withLogoSwitch(normalizeScreens(raw.screens), raw.logos),
+    logos: normalizeLogos(raw.logos),
     customIllustrations,
     illustratedStyle: normalizeIllustratedStyle(raw.illustratedStyle),
     frameLooks: normalizeFrameLooks(raw.frameLooks),
@@ -1219,4 +1269,12 @@ function differingKeys<T>(
     if (!(k in after)) out[k] = cleared();
   }
   return Object.keys(out).length > 0 ? out : undefined;
+}
+
+/**
+ * Which cut of a logo to draw: a mark cut for light boards disappears on a
+ * navy one, so a logo with a dark-board cut uses it there.
+ */
+export function logoCut(logo: BoardLogo, lightBoard: boolean): string {
+  return lightBoard || !logo.urlDark ? logo.url : logo.urlDark;
 }

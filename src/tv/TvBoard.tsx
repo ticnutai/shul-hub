@@ -7,7 +7,7 @@ import { DAYS_HE } from "@community/lib/data";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { Settings } from "@community/lib/data";
-import { CORNER_SHAPE, type TvConfig } from "./config";
+import { CORNER_SHAPE, logoCut, type TvConfig } from "./config";
 import { layerVars } from "./layerCss";
 import { MedallionStage } from "./TvMedallion";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
@@ -25,8 +25,6 @@ import { occasionPagesNow } from "./occasions";
 import { zmanimFor } from "@community/lib/minyan-time";
 import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
 import karovimLogo from "./assets/karovim-logo.png";
-import effiLogo from "./assets/effi-capital-logo.png";
-import effiLogoLight from "./assets/effi-capital-logo-light.png";
 import "./tv.css";
 
 /**
@@ -172,7 +170,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
    */
   const bars = useMemo(() => {
     const on = (b: string) => !composed || occasionScreen || composed.screen.blocks.some((x) => x.block === b);
-    return { header: on("header"), clock: on("clock"), footer: on("footer") };
+    return { header: on("header"), clock: on("clock"), footer: on("footer"), logo: on("logo") };
   }, [composed, occasionScreen]);
   const screenSlides = composed
     ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
@@ -222,8 +220,15 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           )}
         </div>
         <TvShapes />
-        {!ownHeader && (bars.header || bars.clock) && (
-          <TvHeader settings={data.settings} now={now} config={config} clock={!dashboard && bars.clock} brand={bars.header} />
+        {!ownHeader && (bars.header || bars.clock || (bars.logo && config.logos.length > 0)) && (
+          <TvHeader
+            settings={data.settings}
+            now={now}
+            config={config}
+            clock={!dashboard && bars.clock}
+            brand={bars.header}
+            logos={bars.logo}
+          />
         )}
 
         <main className="tv-stage">
@@ -259,6 +264,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               shabbatEndMinutes={holyEndMinutes}
               rowsPerFrame={config.illustratedStyle.rows}
               bars={bars}
+              logos={bars.logo ? config.logos.map((l) => ({ id: l.id, name: l.name, src: logoCut(l, getTheme(config.theme, config.customThemes).light) })) : []}
             />
           ) : dashboard ? (
             <ClockContext.Provider value={now}>
@@ -400,6 +406,7 @@ function TvHeader({
   config,
   clock = true,
   brand = true,
+  logos = true,
 }: {
   settings: Settings | null;
   now: Date;
@@ -407,8 +414,10 @@ function TvHeader({
   clock?: boolean;
   /** The name, the logos, the date and the ribbon; off leaves only the clock. */
   brand?: boolean;
+  /** The board's own logos (config.logos), by the screen's "לוגואים" switch. */
+  logos?: boolean;
 }) {
-  // Which cut of a sponsor's mark to use. A board can be parchment or navy,
+  // Which cut of a logo to use. A board can be parchment or navy,
   // and a wordmark that reads on one is invisible on the other.
   const light = getTheme(config.theme, config.customThemes).light;
   const dayKey = now.toDateString();
@@ -437,22 +446,16 @@ function TvHeader({
 
   return (
     <header className={`tv-header${edit.flipped("header") ? " is-flipped" : ""}`}>
-      {brand && (
+      {(brand || logos) && (
       <div className="tv-header-brand">
-        {!edit.hidden("header.sponsor") && (
-          <img
-            className="tv-sponsor"
-            /* Two cuts of the same mark: the wordmark is dark grey, which
-               disappears on a navy board and is right on a parchment one.
-               The coloured fan is identical in both - it is the part people
-               recognise, and it is not ours to reinterpret. */
-            src={light ? effiLogo : effiLogoLight}
-            alt="אפי קפיטל נדל״ן"
-            decoding="async"
-            {...edit.attr("header.sponsor")}
-          />
+        {logos && !edit.hidden("header.sponsor") && config.logos.length > 0 && (
+          <span className="tv-logos" {...edit.attr("header.sponsor")}>
+            {config.logos.map((l) => (
+              <img key={l.id} className="tv-sponsor" src={logoCut(l, light)} alt={l.name} decoding="async" />
+            ))}
+          </span>
         )}
-        {!edit.hidden("header.logo") && (
+        {brand && !edit.hidden("header.logo") && (
           <img
             className="tv-logo"
             src={karovimLogo}
@@ -461,6 +464,7 @@ function TvHeader({
             {...edit.attr("header.logo")}
           />
         )}
+        {brand && (
         <div className="tv-header-main">
           {!edit.hidden("header.title") && (
             <h1 className="tv-title" {...edit.attr("header.title")}>
@@ -487,6 +491,7 @@ function TvHeader({
             </div>
           )}
         </div>
+        )}
       </div>
       )}
       {clock && !edit.hidden("header.clock") && (
@@ -531,3 +536,4 @@ function describeAge(ms: number): string {
   if (hours < 24) return `לפני ${hours} שע׳`;
   return `לפני ${Math.floor(hours / 24)} ימים`;
 }
+

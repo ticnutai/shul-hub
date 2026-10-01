@@ -5681,3 +5681,32 @@
   flex: 1 1 auto;
   min-height: 0;
 }
+
+/* The board's logos (config.logos), side by side where the one sponsor mark stood. */
+.tv-logos {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: calc(var(--u) * 1.6);
+}
+
+/* On the medallion: in the top corner, over the day plaque, clear of the frames. */
+.tv-med {
+  position: relative;
+}
+.tv-med-logos {
+  position: absolute;
+  top: calc(var(--u) * 1.2);
+  inset-inline-start: calc(var(--u) * 3);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 1.4);
+  height: calc(var(--u) * 9 * var(--es, 1));
+}
+.tv-med-logos img {
+  height: 100%;
+  width: auto;
+  max-width: calc(var(--u) * 30);
+  object-fit: contain;
+}

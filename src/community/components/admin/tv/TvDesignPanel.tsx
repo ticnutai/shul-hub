@@ -181,6 +181,7 @@ import {
 } from "@/tv/illustrated";
 import { PaintedPresets, PaintedRows } from "./IllustratedLookEditor";
 import { OccasionsEditor } from "./OccasionsEditor";
+import { LogoLibrary } from "./LogoLibrary";
 import { readOccasions } from "@/tv/occasions";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
@@ -1415,6 +1416,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </Button>
               ))}
             </div>
+          </Section>
+
+          <Section title="לוגואים" hint="הלוגו של בית הכנסת, של תורמים - מספרייה משותפת לכל בתי הכנסת">
+            <LogoLibrary chosen={draft.logos} onChange={(logos) => edit("logos", (c) => ({ ...c, logos }))} />
           </Section>
 
           <Section title="ראש המסך">

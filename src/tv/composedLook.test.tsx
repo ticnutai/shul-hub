@@ -220,3 +220,42 @@ describe("a screen's bars", () => {
     expect(nothing.querySelector(".tv-header")).toBeNull();
   });
 });
+
+describe("the board's logos", () => {
+  const at = new Date("2026-10-14T10:00:00+03:00");
+  const effi = { id: "effi", name: "אפי קפיטל", url: "https://x/light.png", urlDark: "https://x/dark.png" };
+  const draw = (layout: TvConfig["screenLayout"], blocks: Screen["blocks"], logos = [effi], theme?: string) => {
+    const config: TvConfig = {
+      ...structuredClone(DEFAULT_TV_CONFIG),
+      ...(theme ? { theme } : {}),
+      screenLayout: layout,
+      logos,
+      screens: [{ id: "s", name: "מסך", seconds: 20, blocks }],
+    };
+    const zm = zmanimFor(at, null);
+    return render(
+      <TvBoard data={data} config={config} now={at} zmanim={zm} slides={buildSlides(data, config, at, zm)} index={0} cycle={0} progress={0} paused={false} />,
+    ).container;
+  };
+  const srcs = (c: HTMLElement) => [...c.querySelectorAll(".tv-logos img, .tv-med-logos img")].map((i) => i.getAttribute("src"));
+
+  it("shows the chosen logos where the screen's switch is on, and nothing that is not chosen", () => {
+    expect(srcs(draw("rotate", [{ block: "header" }, { block: "logo" }, { block: "prayers" }])).length).toBe(1);
+    cleanup();
+    expect(srcs(draw("rotate", [{ block: "header" }, { block: "prayers" }]))).toEqual([]);
+    cleanup();
+    expect(srcs(draw("rotate", [{ block: "header" }, { block: "logo" }, { block: "prayers" }], []))).toEqual([]);
+    cleanup();
+    expect(srcs(draw("medallion", [{ block: "logo" }, { block: "prayers" }])).length).toBe(1);
+  });
+
+  it("draws the dark cut on a dark board and the light one on a light board", () => {
+    expect(srcs(draw("medallion", [{ block: "logo" }, { block: "prayers" }], [effi], "navy"))).toEqual(["https://x/dark.png"]);
+    cleanup();
+    expect(srcs(draw("medallion", [{ block: "logo" }, { block: "prayers" }], [effi], "stone"))).toEqual(["https://x/light.png"]);
+  });
+
+  it("no logo of anybody's is built into the board any more", () => {
+    expect(srcs(draw("rotate", [{ block: "header" }, { block: "logo" }, { block: "prayers" }], []))).toEqual([]);
+  });
+});

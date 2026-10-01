@@ -31,6 +31,7 @@ export function MedallionStage({
   shabbatEndMinutes,
   rowsPerFrame,
   bars = { header: true, clock: true, footer: true },
+  logos = [],
 }: {
   slides: BoardSlide[];
   /**
@@ -52,6 +53,8 @@ export function MedallionStage({
   rowsPerFrame: number;
   /** The screen's bars: the day and date plaques, the clock, the strip below. */
   bars?: { header: boolean; clock: boolean; footer: boolean };
+  /** The board's logos, each in the cut for this board, when the screen shows them. */
+  logos?: { id: string; name: string; src: string }[];
 }) {
   const edit = useBoardEdit();
   const day = useBoardDay(now, settings, shabbatEndMinutes);
@@ -65,6 +68,13 @@ export function MedallionStage({
 
   return (
     <section className="tv-slide tv-med" aria-label={title}>
+      {logos.length > 0 && !edit.hidden("header.sponsor") && (
+        <div className="tv-med-logos" {...edit.attr("header.sponsor")}>
+          {logos.map((l) => (
+            <img key={l.id} src={l.src} alt={l.name} decoding="async" />
+          ))}
+        </div>
+      )}
       {(bars.header || bars.clock) && (
       <div className="tv-med-top">
         {bars.header && !edit.hidden("header.weekday") && (

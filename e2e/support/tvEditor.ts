@@ -110,6 +110,14 @@ export async function serveEditor(page: Page, config: Record<string, unknown> = 
   const json = (route: Route, body: unknown, status = 200) =>
     route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 
+  // The library's logos are served here, so the board draws real images.
+  await page.route("https://logos.test/**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "image/svg+xml",
+      body: `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="80"><rect width="240" height="80" rx="12" fill="${route.request().url().includes("dark") ? "#f5d77a" : "#1d2b55"}"/><text x="120" y="52" font-size="34" text-anchor="middle" fill="${route.request().url().includes("dark") ? "#1d2b55" : "#fff"}">LOGO</text></svg>`,
+    }),
+  );
   await page.route("**/auth/v1/**", (route) =>
     json(route, { id: "00000000-0000-0000-0000-000000000001", email: "qa@example.com" }),
   );
@@ -147,6 +155,8 @@ export async function serveEditor(page: Page, config: Record<string, unknown> = 
         return json(route, ANNOUNCEMENTS);
       case "shiurim":
         return json(route, SHIURIM);
+      case "logo_library":
+        return json(route, LOGO_LIBRARY);
       default:
         return json(route, []);
     }
@@ -154,6 +164,18 @@ export async function serveEditor(page: Page, config: Record<string, unknown> = 
 
   return { saved: () => saved, writes: () => writes };
 }
+
+/** The shared logo library, as the logo_library table returns it. */
+export const LOGO_LIBRARY = [
+  {
+    id: "lib-1",
+    name: "לוגו בדיקה",
+    url: "https://logos.test/light.svg",
+    path: null,
+    url_dark: "https://logos.test/dark.svg",
+    path_dark: null,
+  },
+];
 
 /**
  * Nothing on the page has been left unclickable.

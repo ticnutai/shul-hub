@@ -82,7 +82,6 @@ export const BLOCKS: readonly BlockSpec[] = [
     chrome: true,
     elements: [
       "header.logo",
-      "header.sponsor",
       "header.title",
       "header.address",
       "header.weekday",
@@ -90,6 +89,15 @@ export const BLOCKS: readonly BlockSpec[] = [
       "header.parasha",
       "header.daf",
     ],
+  },
+  {
+    id: "logo",
+    name: "לוגואים",
+    note: "של בית הכנסת ושל התורמים - נבחרים בעיצוב",
+    zone: "top",
+    weight: 0,
+    chrome: true,
+    elements: ["header.sponsor"],
   },
   {
     id: "clock",
