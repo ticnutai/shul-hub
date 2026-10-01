@@ -25,8 +25,9 @@ const NO_DAY: BoardPrayerDay = { key: "today", title: "", isToday: true, rows: [
  * and then each following day in turn, for as long as the prayer slide's
  * seconds.
  */
-export function useShownPrayerDay(slides: BoardSlide[]): BoardPrayerDay {
+export function useShownPrayerDay(slides: BoardSlide[]): { day: BoardPrayerDay; days: BoardPrayerDay[]; index: number } {
   const days = useMemo(() => prayerDaysOf(slides), [slides]);
   const seconds = slides.find((s) => s.kind === "prayer")?.seconds ?? 20;
-  return days[useDayCycle(days.length, seconds)] ?? NO_DAY;
+  const index = useDayCycle(days.length, seconds);
+  return { day: days[index] ?? NO_DAY, days, index };
 }

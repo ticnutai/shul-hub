@@ -5,8 +5,9 @@ import { useBoardEdit } from "./boardEdit";
 import { frameZmanim, useBoardDay } from "./boardDay";
 import { useHolyEndMinutes } from "./holyEnd";
 import { rowWindow } from "./illustrated";
-import { composedLayout, minyanNow, type BoardPrayerDay, type BoardSlide, type ComposedPart } from "./useBoardData";
+import { composedLayout, minyanNow, type BoardSlide, type ComposedPart } from "./useBoardData";
 import { useShownPrayerDay } from "./useDayCycle";
+import { PrayerDaysLine } from "./PrayerDaysLine";
 import { tracks } from "./grid";
 import type { ScreenRow } from "./config";
 import { SlideView } from "./TvSlides";
@@ -71,7 +72,7 @@ export function MedallionStage({
   const rest = [day.parasha, day.candle ? `הדלקת נרות ${formatTime(day.candle)}` : null].filter(Boolean);
 
   const prayerDay = useShownPrayerDay(slides);
-  const prayers = <PrayersFrame day={prayerDay} now={now} max={rowsPerFrame} />;
+  const prayers = <PrayersFrame shown={prayerDay} now={now} max={rowsPerFrame} />;
   const zmanimFrame = <ZmanimFrame zmanim={zmanim} now={now} max={rowsPerFrame} />;
   const flipped = edit.flipped("prayer");
 
@@ -191,8 +192,9 @@ function ScreenFrames({
   );
 }
 
-function PrayersFrame({ day, now, max }: { day: BoardPrayerDay; now: Date; max: number }) {
+function PrayersFrame({ shown, now, max }: { shown: ReturnType<typeof useShownPrayerDay>; now: Date; max: number }) {
   const edit = useBoardEdit();
+  const { day } = shown;
   const { rows } = day;
   const { next } = minyanNow(rows, now, day.isToday);
   // Scrolling, every minyan of the day passes; otherwise a window around the next.
@@ -204,6 +206,7 @@ function PrayersFrame({ day, now, max }: { day: BoardPrayerDay; now: Date; max: 
       <h3 className="tv-panel-title" {...edit.attr("dash.prayers")}>
         {day.isToday ? edit.text("dash.prayers", "תפילות היום") : `תפילות ${day.title}`}
       </h3>
+      <PrayerDaysLine days={shown.days} index={shown.index} />
       {rows.length === 0 ? (
         <p className="tv-med-empty">לא הוגדרו מניינים להיום</p>
       ) : (

@@ -5458,6 +5458,27 @@
   font-weight: 700;
 }
 
+/* The week's days under a prayer frame's title, the one on now marked (PrayerDaysLine). */
+.tv-days-line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.2em 0.8em;
+  margin-top: calc(var(--u) * 0.3);
+  font-size: calc(var(--fs) * 2.1);
+  color: var(--tv-text-dim);
+}
+.tv-days-line .is-on {
+  color: var(--tv-accent);
+  font-weight: 700;
+}
+.tv-ill-list .tv-days-line {
+  margin: -2% 0 3%;
+  font-size: 0.72em;
+  color: inherit;
+  opacity: 0.8;
+}
+
 .tv-med-empty {
   margin: auto;
   color: var(--tv-text-dim);

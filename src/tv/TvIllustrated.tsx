@@ -8,8 +8,9 @@ import { frameZmanim, useBoardDay } from "./boardDay";
 import { illustratedLayers } from "./illustratedAdjust";
 import type { IllustratedStyle } from "./config";
 import { illustrationDef, rowWindow, type Box, type CustomIllustration, type Illustration } from "./illustrated";
-import { minyanNow, type BoardPrayerDay, type BoardSlide } from "./useBoardData";
+import { minyanNow, type BoardSlide } from "./useBoardData";
 import { useShownPrayerDay } from "./useDayCycle";
+import { PrayerDaysLine } from "./PrayerDaysLine";
 import { ILLUSTRATION_PICTURES } from "./illustrationPictures";
 import type { FrameId, FrameLook } from "./frameLooks";
 import { fillCss } from "./layerCss";
@@ -50,8 +51,9 @@ function useMark() {
 /** Row type size: a narrow frame (the carved wood's side panels) gets smaller type, not clipped names. */
 const rowSize = (b: Box) => `calc(${b[2] - b[0] < 25 ? 1.55 : 1.95}cqw * var(--ill-k, 1))`;
 
-function PrayerFrame({ d, day, now, max }: { d: Illustration; day: BoardPrayerDay; now: Date; max: number }) {
+function PrayerFrame({ d, shown, now, max }: { d: Illustration; shown: ReturnType<typeof useShownPrayerDay>; now: Date; max: number }) {
   const edit = useBoardEdit();
+  const { day } = shown;
   const mark = useMark();
   const b = d.boxes.panelR;
   const { rows } = day;
@@ -63,6 +65,7 @@ function PrayerFrame({ d, day, now, max }: { d: Illustration; day: BoardPrayerDa
         <div className="tv-ill-title" style={{ color: d.accent }} {...mark("dash.prayers")}>
           {day.isToday ? edit.text("dash.prayers", "תפילות היום") : `תפילות ${day.title}`}
         </div>
+        <PrayerDaysLine days={shown.days} index={shown.index} />
         {rows.length === 0 ? (
           <p className="tv-ill-empty">לא הוגדרו מניינים להיום</p>
         ) : (
@@ -249,7 +252,7 @@ export function IllustratedStage({
             </At>
           )}
           <ZmanimFrame d={inFrame("zmanim")} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
-          <PrayerFrame d={inFrame("prayers")} day={prayerDay} now={now} max={look.rows} />
+          <PrayerFrame d={inFrame("prayers")} shown={prayerDay} now={now} max={look.rows} />
         </>
       ) : (
         <>
@@ -259,7 +262,7 @@ export function IllustratedStage({
           <At b={b.plaqueL}>
             <span className="tv-ill-plaque">{day.hebrew}</span>
           </At>
-          <PrayerFrame d={inFrame("prayers")} day={prayerDay} now={now} max={look.rows} />
+          <PrayerFrame d={inFrame("prayers")} shown={prayerDay} now={now} max={look.rows} />
           <ZmanimFrame d={inFrame("zmanim")} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
           {b.barR && (
             <At b={b.barR}>
