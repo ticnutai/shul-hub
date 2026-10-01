@@ -128,6 +128,9 @@ test("the global synagogue strip persists unchanged while only page content chan
   // Wait for the account chip too: it is part of the strip, and the strip is
   // measured once it is all there.
   await expect(header.getByTestId("account-entry")).toBeVisible();
+  // Measured in the fonts it is drawn in: until they arrive a wider fallback
+  // can wrap a line for a moment, and the strip is a line taller.
+  await page.evaluate(() => document.fonts.ready);
 
   const initialGeometry = await header.evaluate(element => {
     const rect = element.getBoundingClientRect();
@@ -152,6 +155,7 @@ test("the global synagogue strip persists unchanged while only page content chan
     await expect(page).toHaveURL(route);
     await expect(page.getByTestId("global-app-header")).toHaveCount(1);
     await expect(header).toHaveAttribute("data-persistence-probe", "same-shell");
+    await page.evaluate(() => document.fonts.ready);
     const geometry = await header.evaluate(element => {
       const rect = element.getBoundingClientRect();
       const nav = element.querySelector('[aria-label="מדורים ראשיים"]')!.getBoundingClientRect();

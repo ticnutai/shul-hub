@@ -18,6 +18,8 @@ test("instructions are gold, and the dot hides and shows them - and remembers", 
   const dot = page.getByTestId("instructions-toggle").first();
   await expect(dot).toBeVisible({ timeout: 20_000 });
   await expect(instructions(page).first()).toHaveCSS("color", "rgb(161, 122, 40)");
+  // Bold, unless a theme says otherwise.
+  await expect(instructions(page).first()).toHaveCSS("font-weight", "700");
   await expect(dot).toHaveAttribute("aria-pressed", "true");
 
   await dot.click();
@@ -48,6 +50,12 @@ test("on a phone the theme editor starts from the theme in use, shows a change, 
   const instructionField = panel.locator("div").filter({ hasText: /^הוראות \/ רוביקה/ }).locator("input[type='text']").last();
   await instructionField.fill("#cc0000");
   await expect(sample).toHaveCSS("color", "rgb(204, 0, 0)");
+
+  // Bold by default; the theme can make them regular.
+  await expect(sample).toHaveCSS("font-weight", "700");
+  await panel.getByTestId("theme-instruction-bold").uncheck();
+  await expect(sample).toHaveCSS("font-weight", "400");
+  await expect(instructions(page).first()).toHaveCSS("font-weight", "400");
 
   await page.getByTestId("theme-panel-minimize").click();
   await expect(preview).toBeHidden();

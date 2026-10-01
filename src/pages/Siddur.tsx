@@ -81,6 +81,8 @@ export interface SiddurTheme extends Partial<ThemeAppearanceSettings> {
   textColor: string;            // prayer text color
   headingColor?: string;        // section headings (defaults to accentColor)
   instructionColor?: string;    // rubric / instruction lines (defaults to textColor)
+  /** Instruction lines in bold - the default; a theme may set false for regular weight. */
+  instructionBold?: boolean;
   accentColor: string;          // accent / gold
   cardBg: string;               // section card bg
   cardBorder: string;           // section card border
@@ -1064,6 +1066,7 @@ const SiddurPagePreview = ({ theme, label = "תצוגה מקדימה" }: { theme
             fontSize: `${Math.max(size * 0.78, 9)}px`,
             fontFamily: font,
             fontStyle: "italic",
+            fontWeight: theme.instructionBold === false ? 400 : 700,
             opacity: 0.85,
             lineHeight: 1.4,
             direction: "rtl",
@@ -1432,7 +1435,14 @@ const ThemePicker = () => {
                 <p className="m-0 text-[15px] leading-snug" style={{ color: previewedTheme.textColor }}>
                   {PREVIEW_PRAYER[0]}
                 </p>
-                <p className="m-0 text-[12px] italic leading-snug" style={{ color: previewedTheme.instructionColor ?? previewedTheme.textColor, opacity: 0.82 }}>
+                <p
+                  className="m-0 text-[12px] italic leading-snug"
+                  style={{
+                    color: previewedTheme.instructionColor ?? previewedTheme.textColor,
+                    opacity: 0.82,
+                    fontWeight: previewedTheme.instructionBold === false ? 400 : 700,
+                  }}
+                >
                   {PREVIEW_INSTRUCTION}
                 </p>
               </div>
@@ -1547,6 +1557,25 @@ const ThemePicker = () => {
                       </div>
                     </div>
                   ))}
+
+                  {/* The instructions' weight: bold by default, regular for a theme that wants it. */}
+                  <label
+                    className="flex items-center justify-between gap-3 rounded-lg p-2 text-xs"
+                    style={{ background: editor.surfaceSoft, border: `1px solid ${editor.border}` }}
+                  >
+                    <span style={{ color: editor.text }}>הוראות מודגשות</span>
+                    <input
+                      type="checkbox"
+                      data-testid="theme-instruction-bold"
+                      checked={draft.instructionBold !== false}
+                      onChange={(e) => {
+                        const next = { ...draft, instructionBold: e.target.checked, isCustom: true };
+                        setDraft(next);
+                        previewTheme(next);
+                      }}
+                      className="size-4 accent-[#d5aa45]"
+                    />
+                  </label>
 
                   <ThemeAppearanceControls
                     value={{
@@ -1702,6 +1731,8 @@ const SiddurLine = ({ html, s }: { html: string; s: SiddurLineSettings }) => {
         ...nikudStyle,
         fontSize: `${Math.max(Math.round(s.siddurSize * 0.78), 12)}px`,
         fontStyle: "italic",
+        // Bold unless the theme says otherwise (SiddurTheme.instructionBold).
+        fontWeight: theme.instructionBold === false ? 400 : 700,
         textAlign: s.textAlignment as React.CSSProperties["textAlign"],
         ...(s.textAlignment === "justify" ? { textAlignLast: "right" as React.CSSProperties["textAlignLast"], textJustify: "inter-word" as React.CSSProperties["textJustify"], hyphens: "none" as React.CSSProperties["hyphens"] } : {}),
         direction: "rtl",

@@ -37,8 +37,13 @@ import {
   PrayerLayoutPicker,
 } from "@community/components/PrayerLayoutPicker";
 import { CardsLayout, TimelineLayout } from "@community/components/PrayerScheduleLayouts";
+import { WeekSchedule } from "@community/components/WeekSchedule";
+import { weekSchedule } from "@community/lib/week-schedule";
 import { useAuth } from "@community/lib/use-auth";
 import { useSaveRow } from "@community/lib/admin";
+
+/** "כל השבוע" in the prayer times, remembered in this browser. */
+const WEEK_VIEW_KEY = "minyanim-week-view";
 
 const SHOWN_ZMANIM: SolarEvent[] = [
   "alot",
@@ -153,6 +158,25 @@ export function CommunityHome() {
 
   const today = useMemo(() => new Date(), []);
   const [categoryId, setCategoryId] = useState<string | null>(null);
+  /**
+   * "כל השבוע": every day tab at once (week-schedule.ts) instead of one.
+   * Remembered in this browser, so whoever prefers it finds it again.
+   */
+  const [weekView, setWeekViewState] = useState(() => {
+    try {
+      return localStorage.getItem(WEEK_VIEW_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const setWeekView = (on: boolean) => {
+    setWeekViewState(on);
+    try {
+      localStorage.setItem(WEEK_VIEW_KEY, on ? "1" : "0");
+    } catch {
+      /* private window: not remembered */
+    }
+  };
   const [prayer, setPrayer] = useState("shacharit");
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
@@ -190,6 +214,10 @@ export function CommunityHome() {
         .filter((row): row is NonNullable<typeof row> => row !== null)
         .sort((a, b) => a.minutes - b.minutes),
     [minyanim, selectedCategory, zmanim, todayOverrides, today],
+  );
+  const week = useMemo(
+    () => (weekView ? weekSchedule({ categories: minyanCategories, minyanim, settings, today }) : []),
+    [weekView, minyanCategories, minyanim, settings, today],
   );
   const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
   const hasSubcategories = prayerTabs.length > 0;
@@ -289,7 +317,7 @@ export function CommunityHome() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-semibold">זמני התפילות</h2>
-                    {isAdmin && selectedCategory && (
+                    {isAdmin && selectedCategory && !weekView && (
                       <PrayerLayoutPicker
                         value={prayerLayout}
                         disabled={saveCategoryLayout.isPending}
@@ -308,13 +336,15 @@ export function CommunityHome() {
                       <button
                         key={category.id}
                         onClick={() => {
+                          setWeekView(false);
                           setCategoryId(category.id);
                           const first = minyanSubcategories(category)[0];
                           if (first) setPrayer(first.id);
                         }}
+                        aria-pressed={!weekView && selectedCategory?.id === category.id}
                         className={
                           "rounded-md px-3 py-1.5 text-sm transition-colors " +
-                          (selectedCategory?.id === category.id
+                          (!weekView && selectedCategory?.id === category.id
                             ? "bg-card font-medium text-foreground shadow-soft"
                             : "text-muted-foreground hover:text-foreground")
                         }
@@ -322,10 +352,25 @@ export function CommunityHome() {
                         {category.name}
                       </button>
                     ))}
+                    <button
+                      type="button"
+                      data-testid="minyanim-week"
+                      aria-pressed={weekView}
+                      onClick={() => setWeekView(true)}
+                      title="כל ימי השבוע במבט אחד: ימות החול, שישי ושבת"
+                      className={
+                        "rounded-md px-3 py-1.5 text-sm transition-colors " +
+                        (weekView
+                          ? "bg-card font-medium text-foreground shadow-soft"
+                          : "text-muted-foreground hover:text-foreground")
+                      }
+                    >
+                      כל השבוע
+                    </button>
                   </div>
                 </div>
 
-                {prayerLayout === "tabs" && hasSubcategories && (
+                {!weekView && prayerLayout === "tabs" && hasSubcategories && (
                   <div
                     role="group"
                     className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
@@ -350,8 +395,12 @@ export function CommunityHome() {
 
                 <div
                   className="card-elev mt-4 divide-y divide-border overflow-hidden"
-                  data-minyan-display-mode={prayerLayout}
+                  data-minyan-display-mode={weekView ? "week" : prayerLayout}
                 >
+                  {weekView ? (
+                    <WeekSchedule days={week} />
+                  ) : (
+                  <>
                   {(isLoading || categoriesLoading) && (
                     <p className="p-6 text-center text-muted-foreground">טוען…</p>
                   )}
@@ -472,7 +521,9 @@ export function CommunityHome() {
                       </div>
                     </div>
                   ))}
-                </div>
+                                  </>
+                  )}
+</div>
               </section>
             );
           }

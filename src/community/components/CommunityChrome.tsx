@@ -91,8 +91,12 @@ export function GlobalAppHeader() {
             />
           ) : (
             <>
-              <strong data-testid="community-site-title" className="block whitespace-normal text-base font-bold leading-tight sm:text-xl">{settings?.name ?? "בית הכנסת אושר של יהודי"}</strong>
-              <span data-testid="community-site-address" className="block truncate text-xs text-sidebar-foreground/65 sm:text-sm">{settings?.address ?? "מצדה 9, בסר 3, קומה 34, בני ברק"}</span>
+              {/* Until the settings arrive: a neutral name and an empty address line
+                  that keeps its height. The defaults were one synagogue's own name
+                  and address - shown for a moment on every synagogue's site, and
+                  long enough to wrap on a narrow phone, so the bar jumped. */}
+              <strong data-testid="community-site-title" className="block whitespace-normal text-base font-bold leading-tight sm:text-xl">{settings?.name ?? "בית הכנסת"}</strong>
+              <span data-testid="community-site-address" className="block truncate text-xs text-sidebar-foreground/65 sm:text-sm">{settings ? (settings.address ?? "") || " " : " "}</span>
             </>
           )}
         </Link>
