@@ -82,6 +82,22 @@ export interface Screen {
   /** How long it holds when there is more than one screen. */
   seconds: number;
   blocks: BlockEntry[];
+  /**
+   * The screen arranged by hand in the composer's sketch (screens.arrange):
+   * its rows top to bottom, each with its blocks right to left, their widths
+   * and the row's height. Absent: arranged by the blocks' areas, as before.
+   */
+  grid?: ScreenRow[];
+}
+
+/** One row of a hand-arranged screen. */
+export interface ScreenRow {
+  /** Right to left, as on the wall; at most three. */
+  blocks: BlockId[];
+  /** One per block: its share of the row's width, as a fraction of the row's total. */
+  widths: number[];
+  /** Its share of the height, against the other rows (1 = as much as any other). */
+  height: number;
 }
 
 export const SLIDE_KIND_LABELS: Record<SlideKind, string> = {
@@ -736,6 +752,27 @@ export const SHABBAT_ART_IDS = ["classic", "kiddush", "jerusalem", "candles"] as
  * future version, or a screen with nothing left on it after filtering, is
  * better absent than half-drawn on a wall.
  */
+/** A hand arrangement, as stored: rows of known blocks, each block once, widths and heights in range. */
+function normalizeGrid(raw: unknown): ScreenRow[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const seen = new Set<BlockId>();
+  const rows: ScreenRow[] = [];
+  for (const r of raw.slice(0, 8)) {
+    if (!isObj(r) || !Array.isArray(r.blocks)) continue;
+    const blocks: BlockId[] = [];
+    const widths: number[] = [];
+    r.blocks.forEach((b, i) => {
+      const id = b as BlockId;
+      if (blocks.length >= 3 || !BLOCK_IDS.includes(id) || seen.has(id)) return;
+      seen.add(id);
+      blocks.push(id);
+      widths.push(num(Array.isArray(r.widths) ? r.widths[i] : undefined, 1, 0.1, 10));
+    });
+    if (blocks.length) rows.push({ blocks, widths, height: num(r.height, 1, 0.3, 4) });
+  }
+  return rows.length ? rows : undefined;
+}
+
 function normalizeScreens(raw: unknown): Screen[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const areas: BlockArea[] = ["right", "left", "wide"];
@@ -755,11 +792,13 @@ function normalizeScreens(raw: unknown): Screen[] | undefined {
       blocks.push(area ? { block: id, area } : { block: id });
     }
     if (!blocks.length) continue;
+    const grid = normalizeGrid(s.grid);
     screens.push({
       id: typeof s.id === "string" && KEY_RE.test(s.id) ? s.id.slice(0, 40) : `screen${screens.length + 1}`,
       name: typeof s.name === "string" && s.name.trim() ? s.name.trim().slice(0, 60) : `מסך ${screens.length + 1}`,
       seconds: num(s.seconds, 15, 0, 600),
       blocks,
+      ...(grid ? { grid } : {}),
     });
   }
   return screens.length ? screens : undefined;

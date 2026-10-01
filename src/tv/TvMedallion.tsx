@@ -5,7 +5,9 @@ import { useBoardEdit } from "./boardEdit";
 import { frameZmanim, useBoardDay } from "./boardDay";
 import { useHolyEndMinutes } from "./holyEnd";
 import { rowWindow, todaysRows } from "./illustrated";
-import { composedRows, jerusalemMinutes, type BoardSlide, type ComposedPart } from "./useBoardData";
+import { composedLayout, jerusalemMinutes, type BoardSlide, type ComposedPart } from "./useBoardData";
+import { tracks } from "./grid";
+import type { ScreenRow } from "./config";
 import { SlideView } from "./TvSlides";
 import { AutoScroll } from "./AutoScroll";
 import { SCROLLING_BLOCKS, useScrolls } from "./overflowContext";
@@ -27,6 +29,7 @@ import { useShrinkToFit } from "./useShrinkToFit";
 export function MedallionStage({
   slides,
   parts,
+  grid,
   now,
   zmanim,
   settings,
@@ -46,6 +49,8 @@ export function MedallionStage({
    * which shows both, as it always did.
    */
   parts?: ComposedPart[];
+  /** The screen's hand arrangement, when the composer has one (grid.ts). */
+  grid?: ScreenRow[];
   /** Minute precision. */
   now: Date;
   zmanim: Zmanim;
@@ -97,7 +102,7 @@ export function MedallionStage({
       </div>
       )}
       {parts ? (
-        <ScreenFrames parts={parts} prayers={prayers} zmanim={zmanimFrame} now={now} dayZmanim={zmanim} />
+        <ScreenFrames parts={parts} grid={grid} prayers={prayers} zmanim={zmanimFrame} now={now} dayZmanim={zmanim} />
       ) : (
         <div className="tv-med-main">
           {flipped ? zmanimFrame : prayers}
@@ -124,43 +129,58 @@ export function MedallionStage({
  */
 function ScreenFrames({
   parts,
+  grid,
   prayers,
   zmanim,
   now,
   dayZmanim,
 }: {
   parts: ComposedPart[];
+  grid?: ScreenRow[];
   prayers: ReactNode;
   zmanim: ReactNode;
   now: Date;
   dayZmanim: Zmanim;
 }) {
   let prayersShown = false;
-  const rows = composedRows(parts)
-    .map((row) =>
-      row.flatMap((part, i) => {
+  const rows = composedLayout(parts, grid)
+    .map((row) => {
+      const cells: { node: ReactNode; width: number }[] = [];
+      row.parts.forEach((part, i) => {
+        const width = row.widths[i] ?? 1;
         if (part.block === "prayers") {
-          if (prayersShown) return [];
+          if (prayersShown) return;
           prayersShown = true;
-          return [<Fragment key={`p${i}`}>{prayers}</Fragment>];
+          cells.push({ node: <Fragment key={`p${i}`}>{prayers}</Fragment>, width });
+          return;
         }
-        if (part.block === "zmanim") return [<Fragment key={`z${i}`}>{zmanim}</Fragment>];
-        if (!part.slide) return [];
-        return [
-          <div key={`${part.block}${i}`} className="tv-panel tv-med-cell" data-block={part.block}>
-            <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
-              <SlideView slide={part.slide} now={now} zmanim={dayZmanim} paused={false} />
-            </AutoScroll>
-          </div>,
-        ];
-      }),
-    )
-    .filter((row) => row.length > 0);
+        if (part.block === "zmanim") {
+          cells.push({ node: <Fragment key={`z${i}`}>{zmanim}</Fragment>, width });
+          return;
+        }
+        if (!part.slide) return;
+        cells.push({
+          width,
+          node: (
+            <div key={`${part.block}${i}`} className="tv-panel tv-med-cell" data-block={part.block}>
+              <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
+                <SlideView slide={part.slide} now={now} zmanim={dayZmanim} paused={false} />
+              </AutoScroll>
+            </div>
+          ),
+        });
+      });
+      return { cells, height: row.height };
+    })
+    .filter((row) => row.cells.length > 0);
   return (
-    <div className={`tv-med-rows${rows.length > 1 ? " is-many" : ""}`}>
+    <div
+      className={`tv-med-rows${rows.length > 1 ? " is-many" : ""}`}
+      style={{ gridTemplateRows: tracks(rows.map((r) => r.height)) }}
+    >
       {rows.map((row, i) => (
-        <div key={i} className="tv-med-row-of" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}>
-          {row}
+        <div key={i} className="tv-med-row-of" style={{ gridTemplateColumns: tracks(row.cells.map((c) => c.width)) }}>
+          {row.cells.map((c) => c.node)}
         </div>
       ))}
     </div>

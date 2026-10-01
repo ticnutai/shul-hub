@@ -9,7 +9,8 @@ import { SHOWN_ZMANIM, useBoardEdit, type BoardEditApi } from "./boardEdit";
 import { specialZmanim } from "@community/lib/specialDays";
 import type { FlipArea } from "./config";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
-import { composedRows, jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
+import { composedLayout, jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
+import { tracks } from "./grid";
 import { useFitText } from "./useFitText";
 import { useShrinkToFit } from "./useShrinkToFit";
 
@@ -120,16 +121,16 @@ function ComposedSlide({
   zmanim: Zmanim;
   paused: boolean;
 }) {
-  const rows = composedRows(slide.parts);
+  const rows = composedLayout(slide.parts, slide.screen.grid);
   return (
-    <section className="tv-slide tv-composed" data-screen={slide.screen.id}>
+    <section
+      className="tv-slide tv-composed"
+      data-screen={slide.screen.id}
+      style={{ gridTemplateRows: tracks(rows.map((r) => r.height)) }}
+    >
       {rows.map((row, i) => (
-        <div
-          key={i}
-          className="tv-composed-row"
-          style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0, 1fr))` }}
-        >
-          {row.map((part, j) => (
+        <div key={i} className="tv-composed-row" style={{ gridTemplateColumns: tracks(row.widths) }}>
+          {row.parts.map((part, j) => (
             <div key={`${part.block}-${j}`} className="tv-composed-cell">
               <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
                 {part.block === "zmanim" ? (

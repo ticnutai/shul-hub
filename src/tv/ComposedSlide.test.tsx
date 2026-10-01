@@ -82,7 +82,7 @@ describe("drawing a composed screen", () => {
     const rows = container.querySelectorAll(".tv-composed-row");
     expect(rows.length).toBe(1);
     expect(within(rows[0] as HTMLElement).getAllByText(/./).length).toBeGreaterThan(0);
-    expect((rows[0] as HTMLElement).style.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
+    expect((rows[0] as HTMLElement).style.gridTemplateColumns).toBe("minmax(0, 1fr) minmax(0, 1fr)");
   });
 
   it("gives a pinned block its own side", () => {
@@ -95,14 +95,14 @@ describe("drawing a composed screen", () => {
       },
     ]);
     const row = container.querySelector(".tv-composed-row") as HTMLElement;
-    expect(row.style.gridTemplateColumns).toBe("repeat(2, minmax(0, 1fr))");
+    expect(row.style.gridTemplateColumns).toBe("minmax(0, 1fr) minmax(0, 1fr)");
     expect(container.querySelectorAll(".tv-composed-cell").length).toBe(2);
   });
 
   it("one block takes the screen on its own", () => {
     const { container } = draw([{ id: "a", name: "הלוח", seconds: 0, blocks: [{ block: "learning" }] }]);
     const row = container.querySelector(".tv-composed-row") as HTMLElement;
-    expect(row.style.gridTemplateColumns).toBe("repeat(1, minmax(0, 1fr))");
+    expect(row.style.gridTemplateColumns).toBe("minmax(0, 1fr)");
   });
 });
 
@@ -136,5 +136,34 @@ describe("a day that needed more than one screen", () => {
 
     render(<SlideView slide={prayer} now={now} zmanim={z} paused={false} />);
     expect(screen.getByText(/מתוך/)).toBeTruthy();
+  });
+});
+
+describe("a screen arranged by hand", () => {
+  it("draws its rows with the widths and heights the sketch gave them", () => {
+    const { container } = render(
+      <SlideView
+        slide={{
+          id: "screen:a",
+          kind: "composed",
+          seconds: 20,
+          layout: "composed",
+          screen: {
+            id: "a",
+            name: "הלוח",
+            seconds: 20,
+            blocks: [{ block: "prayers" }, { block: "zmanim" }],
+            grid: [{ blocks: ["zmanim", "prayers"], widths: [2, 1], height: 1.5 }],
+          },
+          parts: [{ block: "prayers" }, { block: "zmanim" }],
+        }}
+        now={new Date("2026-10-14T10:00:00+03:00")}
+        zmanim={zmanimFor(new Date("2026-10-14T12:00:00+03:00"), null)}
+        paused={false}
+      />,
+    );
+    const section = container.querySelector<HTMLElement>(".tv-composed")!;
+    expect(section.style.gridTemplateRows).toBe("minmax(0, 1.5fr)");
+    expect(container.querySelector<HTMLElement>(".tv-composed-row")!.style.gridTemplateColumns).toBe("minmax(0, 2fr) minmax(0, 1fr)");
   });
 });

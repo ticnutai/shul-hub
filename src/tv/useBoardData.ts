@@ -19,7 +19,8 @@ import { dayTypeFor, heldOn, jerusalemDateKey, jerusalemWeekday, overridesFor, r
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { specialDayFor, todaysCategories } from "@community/lib/specialDays";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
-import type { BlockArea, BlockId, Screen, TvConfig } from "./config";
+import type { BlockArea, BlockId, Screen, ScreenRow, TvConfig } from "./config";
+import { arrange } from "./grid";
 import { dayScreen, place, readScreens } from "./screens";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
 import { checkClock } from "./clock";
@@ -474,12 +475,25 @@ const SLIDE_KIND_BLOCK: Partial<Record<BoardSlide["kind"], BlockId>> = {
 };
 
 /** The rows a composed screen lays its parts out in. */
-export function composedRows(parts: ComposedPart[]): ComposedPart[][] {
+export function composedRows(parts: ComposedPart[], grid?: ScreenRow[]): ComposedPart[][] {
+  return composedLayout(parts, grid).map((r) => r.parts);
+}
+
+/**
+ * The parts of a composed screen as rows, with each part's width in its row
+ * and each row's height (grid.ts) - the hand arrangement when the screen
+ * has one, the areas otherwise.
+ */
+export function composedLayout(
+  parts: ComposedPart[],
+  grid?: ScreenRow[],
+): { parts: ComposedPart[]; widths: number[]; height: number }[] {
   const entries = parts.map((p) => ({ block: p.block, area: p.area }));
-  const rows = place(entries);
   const taken = new Set<ComposedPart>();
-  return rows.map((row) =>
-    row.map((e) => {
+  return arrange(entries, grid).map((row) => ({
+    widths: row.widths,
+    height: row.height,
+    parts: row.entries.map((e) => {
       // Several parts can share a block (two prayer schedules, paged
       // announcements); each row slot takes the next one not yet placed.
       const found = parts.find((p) => p.block === e.block && p.area === e.area && !taken.has(p));
@@ -487,7 +501,7 @@ export function composedRows(parts: ComposedPart[]): ComposedPart[][] {
       taken.add(part);
       return part;
     }),
-  );
+  }));
 }
 
 /** Zmanim for the calendar day of `now`, recomputed once a day, not every second. */

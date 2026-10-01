@@ -264,6 +264,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             <MedallionStage
               slides={screenSlides}
               parts={composed?.parts}
+              grid={composed?.screen.grid}
               now={minuteNow}
               zmanim={zmanim}
               settings={data.settings}

@@ -20,15 +20,17 @@
  * fall out of step with the first, because pinned and automatic are the same
  * field present or absent.
  */
-import { Fragment } from "react";
-import { Plus, X } from "lucide-react";
+import { Fragment, useState } from "react";
+import { Plus, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { BLOCKS, BLOCK_BY_ID } from "@/tv/blocks";
 import type { BlockArea, BlockId, Screen, TvConfig } from "@/tv/config";
-import { DAY_BLOCKS, dayScreen, place, readScreens } from "@/tv/screens";
+import { DAY_BLOCKS, dayScreen, readScreens } from "@/tv/screens";
+import { arrange } from "@/tv/grid";
+import { SketchEditor, SKETCH_HINT } from "./SketchEditor";
 
 const AREA_LABELS: Record<"auto" | BlockArea, string> = {
   auto: "אוטומטי",
@@ -91,12 +93,15 @@ export function ScreenComposer({
         : screen.blocks.filter((b) => b.block !== id),
     });
 
+  // A "מיקום" chosen in the list is the automatic arrangement again: a hand one would ignore it.
   const setArea = (id: BlockId, area: string) =>
     editScreen({
       blocks: screen.blocks.map((b) =>
         b.block !== id ? b : area === "auto" ? { block: id } : { block: id, area: area as BlockArea },
       ),
+      grid: undefined,
     });
+  const [sketchMessage, setSketchMessage] = useState(SKETCH_HINT);
 
   const addScreen = () => {
     const n = screens.length + 1;
@@ -115,7 +120,7 @@ export function ScreenComposer({
     );
   };
 
-  const rows = place(screen.blocks);
+  const rows = arrange(screen.blocks, screen.grid);
   /**
    * A screen of only the bars has nothing between them, and the board skips
    * it rather than show an empty frame for its seconds. It used to skip it
@@ -221,29 +226,43 @@ export function ScreenComposer({
             style={{ gridTemplateRows: "auto minmax(0,1fr) auto" }}
           >
             <Sketch ids={screen.blocks.filter((b) => BLOCK_BY_ID[b.block].zone === "top").map((b) => b.block)} />
-            <div className="grid min-h-0 gap-1.5" style={{ gridAutoRows: "minmax(0,1fr)" }}>
-              {rows.length === 0 ? (
-                <div className="grid place-items-center rounded border border-dashed border-[#f0c35c]/30 text-[11px] opacity-60">
-                  אין עדיין תוכן במסך הזה, ולכן הוא לא יוצג בלוח. סמנו תוכן מהרשימה.
-                </div>
-              ) : (
-                rows.map((row, i) => (
-                  <div key={i} className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${row.length}, minmax(0,1fr))` }}>
-                    {row.map((b) => (
-                      <div
-                        key={b.block}
-                        className="min-w-0 truncate rounded border border-[#f0c35c]/35 bg-white/5 px-2 py-1 text-[11px]"
-                      >
-                        {BLOCK_BY_ID[b.block].name}
-                        {b.area && <span className="opacity-60"> · נעוץ</span>}
-                      </div>
-                    ))}
-                  </div>
-                ))
-              )}
-            </div>
+            {rows.length === 0 ? (
+              <div className="grid place-items-center rounded border border-dashed border-[#f0c35c]/30 text-[11px] opacity-60">
+                אין עדיין תוכן במסך הזה, ולכן הוא לא יוצג בלוח. סמנו תוכן מהרשימה.
+              </div>
+            ) : (
+              <SketchEditor
+                key={screen.id}
+                rows={rows}
+                manual={Boolean(screen.grid)}
+                onChange={(grid) => editScreen({ grid })}
+                onMessage={setSketchMessage}
+              />
+            )}
             <Sketch ids={screen.blocks.filter((b) => BLOCK_BY_ID[b.block].zone === "bottom").map((b) => b.block)} />
           </div>
+          {rows.length > 0 && (
+            <div className="mt-1.5 flex items-start gap-2">
+              <p role="status" aria-live="polite" data-testid="sketch-status" className="min-h-[2.4em] flex-1 text-[11px] leading-snug text-muted-foreground">
+                {sketchMessage}
+              </p>
+              {screen.grid && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 shrink-0 px-2 text-[11px]"
+                  title="מבטל את הסידור הידני של המסך הזה; המסגרות יסודרו לפי ה'מיקום' שברשימה"
+                  onClick={() => {
+                    editScreen({ grid: undefined });
+                    setSketchMessage("חזרה לסידור האוטומטי: המסגרות מסודרות לפי ה'מיקום' שברשימה.");
+                  }}
+                >
+                  <RotateCcw className="size-3" /> סידור אוטומטי
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -297,6 +316,7 @@ export function ScreenComposer({
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
           בלי מיקום — הפריסה מסדרת לבד לפי מה שסומן. עם מיקום — נעוץ שם, והשאר מסתדרים סביבו.
+          {screen.grid && " המסך הזה מסודר ביד בשרטוט; בחירת מיקום כאן מחזירה אותו לסידור האוטומטי."}
         </p>
       </div>
     </div>
