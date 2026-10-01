@@ -518,6 +518,13 @@ export interface TvConfig {
    * them. Shown on every screen whose "לוגואים" switch is on.
    */
   logos: BoardLogo[];
+  /**
+   * What a frame does with content taller than itself (AutoScroll.tsx):
+   * "off" keeps it as it was (a window of rows, cut at the edge); "pause"
+   * scrolls it down and back with a stop at each end; "loop" runs it up as
+   * an endless curtain. A frame whose content fits never moves.
+   */
+  overflow: { mode: "off" | "pause" | "loop"; speed: "slow" | "normal" };
   alerts: {
     enabled: boolean;
     events: AlertEvent[];
@@ -630,6 +637,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   ],
   header: { parasha: true, dafYomi: true, logo: true },
   logos: [],
+  overflow: { mode: "off", speed: "slow" },
   alerts: {
     enabled: true,
     events: ["sof_zman_shma", "sof_zman_tefila", "sunset", "candle"],
@@ -1075,6 +1083,10 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     screens: withLogoSwitch(normalizeScreens(raw.screens), raw.logos),
     logos: normalizeLogos(raw.logos),
+    overflow: {
+      mode: isObj(raw.overflow) && ["pause", "loop"].includes(raw.overflow.mode as string) ? (raw.overflow.mode as "pause" | "loop") : "off",
+      speed: isObj(raw.overflow) && raw.overflow.speed === "normal" ? "normal" : "slow",
+    },
     customIllustrations,
     illustratedStyle: normalizeIllustratedStyle(raw.illustratedStyle),
     frameLooks: normalizeFrameLooks(raw.frameLooks),

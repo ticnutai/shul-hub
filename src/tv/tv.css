@@ -5604,7 +5604,8 @@
   padding: calc(var(--u) * 1.6) calc(var(--u) * 2);
 }
 /* The block's own view sits inside the frame: no second entrance, no stage padding. */
-.tv-med-cell > .tv-slide {
+.tv-med-cell > .tv-slide,
+.tv-med-cell .tv-autoscroll-copy > .tv-slide {
   animation: none;
   padding: 0;
   height: 100%;
@@ -5652,7 +5653,8 @@
 .tv-med-cell {
   container-type: size;
 }
-.tv-med-cell > .tv-slide {
+.tv-med-cell > .tv-slide,
+.tv-med-cell > .tv-autoscroll > .tv-autoscroll-track > .tv-autoscroll-copy > .tv-slide {
   /* Never below 60% of the board's own size: read across a hall, smaller is not text any more. */
   --u: max(1.33cqh, calc(var(--u-board) * 0.6));
   --fs: calc(var(--u) * var(--tv-scale, 1) / var(--tv-text-boost, 1));
@@ -5709,4 +5711,94 @@
   width: auto;
   max-width: calc(var(--u) * 30);
   object-fit: contain;
+}
+
+/* ------------------------------------------------------------ autoscroll -- */
+/*
+ * Content taller than its frame, moved rather than cut (AutoScroll.tsx). The
+ * track is at least the frame's height and its copy grows to fill it, so a
+ * list that fits keeps the layout it had; only a list that does not fit is
+ * given its natural height and set moving.
+ */
+.tv-autoscroll {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+.tv-autoscroll-track {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+  min-height: 100%;
+}
+.tv-autoscroll-copy {
+  display: flex;
+  flex-direction: column;
+  flex: 1 0 auto;
+}
+.tv-autoscroll-copy > * {
+  flex: 1 0 auto;
+}
+.tv-autoscroll-track.is-pause,
+.tv-autoscroll-track.is-loop {
+  will-change: transform;
+}
+.tv-autoscroll-track.is-pause .tv-autoscroll-copy,
+.tv-autoscroll-track.is-loop .tv-autoscroll-copy {
+  flex: 0 0 auto;
+}
+.tv-autoscroll-track.is-pause {
+  animation: tv-as-pause var(--as-dur) ease-in-out infinite;
+}
+.tv-autoscroll-track.is-loop {
+  animation: tv-as-loop var(--as-dur) linear infinite;
+}
+.tv-autoscroll-copy.is-echo {
+  margin-top: var(--as-gap);
+}
+/* In the editor, while editing: still, so a row can be clicked. */
+.tv-autoscroll-track.is-still {
+  animation-play-state: paused;
+}
+@keyframes tv-as-pause {
+  0%,
+  18% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  82%,
+  93% {
+    transform: translateY(calc(-1 * var(--as-dist)));
+    opacity: 1;
+  }
+  96% {
+    transform: translateY(calc(-1 * var(--as-dist)));
+    opacity: 0;
+  }
+  96.5% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes tv-as-loop {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(calc(-1 * var(--as-dist)));
+  }
+}
+
+/* The plaques and the strip keep their height; the frames between them take what is left. */
+.tv-med > .tv-med-top,
+.tv-med > .tv-med-strip {
+  flex: 0 0 auto;
 }

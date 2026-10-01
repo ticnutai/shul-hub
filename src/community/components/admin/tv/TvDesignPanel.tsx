@@ -1418,6 +1418,55 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </div>
           </Section>
 
+          <Section
+            title="כשהתוכן לא נכנס למסגרת"
+            hint="יום עם הרבה מניינים, שבוע של שיעורים, הודעה ארוכה: מסגרת שאין בה מקום לכל - זזה לאט, כך שהכול עובר מול הקהל. מסגרת שהכול נכנס בה לא זזה."
+          >
+            <div className="flex flex-wrap gap-2" role="group" aria-label="כשהתוכן לא נכנס">
+              {(
+                [
+                  ["off", "בלי גלילה", "כמו היום: חלון סביב המניין הבא, והשאר נחתך"],
+                  ["pause", "גלילה עם עצירות", "עומד למעלה, גולל לאט, עומד למטה וחוזר"],
+                  ["loop", "וילון רציף", "רץ בלי הפסקה; ההתחלה באה אחרי הסוף"],
+                ] as const
+              ).map(([id, name, note]) => (
+                <Button
+                  key={id}
+                  type="button"
+                  size="sm"
+                  title={note}
+                  variant={draft.overflow.mode === id ? "default" : "outline"}
+                  aria-pressed={draft.overflow.mode === id}
+                  onClick={() => edit("overflow", (c) => ({ ...c, overflow: { ...c.overflow, mode: id } }))}
+                >
+                  {name}
+                </Button>
+              ))}
+            </div>
+            {draft.overflow.mode !== "off" && (
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="מהירות הגלילה">
+                <span className="text-muted-foreground">מהירות:</span>
+                {(
+                  [
+                    ["slow", "איטית"],
+                    ["normal", "רגילה"],
+                  ] as const
+                ).map(([id, name]) => (
+                  <Button
+                    key={id}
+                    type="button"
+                    size="sm"
+                    variant={draft.overflow.speed === id ? "default" : "outline"}
+                    aria-pressed={draft.overflow.speed === id}
+                    onClick={() => edit("overflow-speed", (c) => ({ ...c, overflow: { ...c.overflow, speed: id } }))}
+                  >
+                    {name}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </Section>
+
           <Section title="לוגואים" hint="הלוגו של בית הכנסת, של תורמים - מספרייה משותפת לכל בתי הכנסת">
             <LogoLibrary chosen={draft.logos} onChange={(logos) => edit("logos", (c) => ({ ...c, logos }))} />
           </Section>

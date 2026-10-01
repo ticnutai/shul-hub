@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { AutoScroll } from "./AutoScroll";
+import { SCROLLING_BLOCKS } from "./overflowContext";
 import { useHolyEndMinutes } from "./holyEnd";
 import { prayerLabel, type Announcement, type Shiur } from "@community/lib/data";
 import type { ResolvedMinyan } from "@community/lib/minyan-time";
@@ -129,11 +131,13 @@ function ComposedSlide({
         >
           {row.map((part, j) => (
             <div key={`${part.block}-${j}`} className="tv-composed-cell">
-              {part.block === "zmanim" ? (
-                <ZmanimPanel zmanim={zmanim} now={now} />
-              ) : part.slide ? (
-                <SlideView slide={part.slide} now={now} zmanim={zmanim} paused={paused} />
-              ) : null}
+              <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
+                {part.block === "zmanim" ? (
+                  <ZmanimPanel zmanim={zmanim} now={now} />
+                ) : part.slide ? (
+                  <SlideView slide={part.slide} now={now} zmanim={zmanim} paused={paused} />
+                ) : null}
+              </AutoScroll>
             </div>
           ))}
         </div>

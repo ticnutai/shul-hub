@@ -7,6 +7,8 @@ import { useHolyEndMinutes } from "./holyEnd";
 import { rowWindow, todaysRows } from "./illustrated";
 import { composedRows, jerusalemMinutes, type BoardSlide, type ComposedPart } from "./useBoardData";
 import { SlideView } from "./TvSlides";
+import { AutoScroll } from "./AutoScroll";
+import { SCROLLING_BLOCKS, useScrolls } from "./overflowContext";
 import { Fragment, type ReactNode } from "react";
 import { useShrinkToFit } from "./useShrinkToFit";
 
@@ -146,7 +148,9 @@ function ScreenFrames({
         if (!part.slide) return [];
         return [
           <div key={`${part.block}${i}`} className="tv-panel tv-med-cell" data-block={part.block}>
-            <SlideView slide={part.slide} now={now} zmanim={dayZmanim} paused={false} />
+            <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
+              <SlideView slide={part.slide} now={now} zmanim={dayZmanim} paused={false} />
+            </AutoScroll>
           </div>,
         ];
       }),
@@ -167,7 +171,9 @@ function PrayersFrame({ rows, now, max }: { rows: ResolvedMinyan[]; now: Date; m
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
   const next = rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
-  const [from, to] = rowWindow(rows.length, next, max);
+  // Scrolling, every minyan of the day passes; otherwise a window around the next.
+  const scrolls = useScrolls();
+  const [from, to] = scrolls ? [0, rows.length] : rowWindow(rows.length, next, max);
   const fit = useShrinkToFit<HTMLUListElement>(`${from}:${to}:${rows.length}`);
   return (
     <div className="tv-panel tv-med-list" {...edit.frame("prayers")}>
@@ -177,6 +183,7 @@ function PrayersFrame({ rows, now, max }: { rows: ResolvedMinyan[]; now: Date; m
       {rows.length === 0 ? (
         <p className="tv-med-empty">לא הוגדרו מניינים להיום</p>
       ) : (
+        <AutoScroll>
         <ul ref={fit}>
           {rows.slice(from, to).map((r, i) => (
             <li
@@ -193,6 +200,7 @@ function PrayersFrame({ rows, now, max }: { rows: ResolvedMinyan[]; now: Date; m
             </li>
           ))}
         </ul>
+        </AutoScroll>
       )}
     </div>
   );
@@ -200,13 +208,15 @@ function PrayersFrame({ rows, now, max }: { rows: ResolvedMinyan[]; now: Date; m
 
 function ZmanimFrame({ zmanim, now, max }: { zmanim: Zmanim; now: Date; max: number }) {
   const edit = useBoardEdit();
-  const { special, shown } = frameZmanim(now, zmanim, useHolyEndMinutes(), edit.hidden, max);
+  const scrolls = useScrolls();
+  const { special, shown } = frameZmanim(now, zmanim, useHolyEndMinutes(), edit.hidden, scrolls ? 99 : max);
   const fit = useShrinkToFit<HTMLUListElement>(`${special.length}:${shown.join()}`);
   return (
     <div className="tv-panel tv-med-list" {...edit.frame("zmanim", "panel.zmanim")}>
       <h3 className="tv-panel-title" {...edit.attr("dash.zmanim")}>
         {edit.text("dash.zmanim", "זמני היום")}
       </h3>
+      <AutoScroll>
       <ul ref={fit}>
         {special.map((r) => (
           <li key={`special-${r.key}`} className="tv-med-row is-special">
@@ -221,6 +231,7 @@ function ZmanimFrame({ zmanim, now, max }: { zmanim: Zmanim; now: Date; max: num
           </li>
         ))}
       </ul>
+      </AutoScroll>
     </div>
   );
 }

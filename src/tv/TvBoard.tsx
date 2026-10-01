@@ -15,6 +15,7 @@ import { dafYomi, weeklyParasha } from "./learning";
 import { backdropUrl } from "./backdrops";
 import { getTheme, themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
+import { OverflowContext } from "./overflowContext";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
 import { ClockContext } from "./clockContext";
 import { TvShapes } from "./TvShapes";
@@ -64,6 +65,10 @@ const DRIFT = [
 
 export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className, editing = false }: TvBoardProps) {
   const edit = useMemo(() => makeBoardEdit(config, editing), [config, editing]);
+  const overflow = useMemo(
+    () => ({ mode: config.overflow.mode, speed: config.overflow.speed, still: editing }),
+    [config.overflow.mode, config.overflow.speed, editing],
+  );
   // The synagogue's setting, shared with the website; the board's own copy only as a fallback.
   const holyEndMinutes = data.settings?.shabbat_end_minutes ?? config.shabbat.endMinutesAfterSunset;
   const pauseChip = usePauseChip(paused);
@@ -201,6 +206,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   return (
     <HolyEndMinutesContext.Provider value={holyEndMinutes}>
     <BoardEditContext.Provider value={edit}>
+      <OverflowContext.Provider value={overflow}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
       <div
         className={`tv-root is-layout-${layout} is-skin-${config.skin}${
@@ -369,6 +375,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         {overlay}
       </div>
     </div>
+      </OverflowContext.Provider>
     </BoardEditContext.Provider>
     </HolyEndMinutesContext.Provider>
   );
