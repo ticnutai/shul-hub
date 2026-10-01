@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { ChevronDown, Columns2, LayoutGrid, Maximize2, RotateCw } from "lucide-react";
 import { DEVICE_ORDER, DEVICES, viewportOf, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { Button } from "@/components/ui/button";
@@ -49,15 +49,29 @@ export function DeviceFrame({
   view,
   maxHeight,
   actualSize = false,
+  bare = false,
+  onResize,
+  onResizeReset,
   children,
 }: {
   view: DeviceView;
   maxHeight: number;
   actualSize?: boolean;
+  /** The screen alone: no bezel, no stand - the room they took goes to the board. */
+  bare?: boolean;
+  /**
+   * Handles on every side and corner of the device. Dragging one asks for
+   * the device at a new size, on screen; the board keeps its proportions, so
+   * the caller gets the width and the height that go together and decides
+   * how much room to give. Without it there are no handles.
+   */
+  onResize?: (size: { width: number; height: number }) => void;
+  /** A double click on a handle: back to the size it started at. */
+  onResizeReset?: () => void;
   children: ReactNode;
 }) {
   const vp = viewportOf(view);
-  const chrome = chromeOf(view.device, vp.turned);
+  const chrome = bare ? BARE : chromeOf(view.device, vp.turned);
   const [bt, bs, bb] = chrome.bezel;
   const bodyW = vp.width + bs * 2;
   const bodyH = vp.screenHeight + bt + bb;
@@ -82,7 +96,16 @@ export function DeviceFrame({
   return (
     <div ref={outerRef} className={actualSize ? "w-full overflow-auto" : "w-full"} style={actualSize ? { maxHeight: "80vh" } : undefined}>
       {scale > 0 && (
-        <div className="mx-auto" style={{ width: totalW * scale, height: totalH * scale }} dir="ltr">
+        <div className="relative mx-auto" style={{ width: totalW * scale, height: totalH * scale }} dir="ltr">
+          {onResize && !actualSize && (
+            <ResizeHandles
+              width={totalW * scale}
+              height={totalH * scale}
+              ratio={totalH / totalW}
+              onResize={onResize}
+              onReset={onResizeReset}
+            />
+          )}
           <div
             style={
               {
@@ -130,11 +153,92 @@ export function DeviceFrame({
                 {view.device === "mobile" && view.fullscreen && <Island turned={vp.turned} />}
               </div>
             </div>
-            <Below device={view.device} bodyW={bodyW} bodyH={bodyH} totalW={totalW} chrome={chrome} />
+            {!bare && <Below device={view.device} bodyW={bodyW} bodyH={bodyH} totalW={totalW} chrome={chrome} />}
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+const BARE: Chrome = { bezel: [0, 0, 0], radius: 0, below: 0, overhang: 0 };
+
+type Edge = "n" | "s" | "e" | "w" | "ne" | "nw" | "se" | "sw";
+const EDGES: { edge: Edge; label: string; style: CSSProperties; cursor: string }[] = [
+  { edge: "n", label: "גובה התצוגה, מלמעלה", style: { top: -6, left: 18, right: 18, height: 12 }, cursor: "ns-resize" },
+  { edge: "s", label: "גובה התצוגה, מלמטה", style: { bottom: -6, left: 18, right: 18, height: 12 }, cursor: "ns-resize" },
+  { edge: "e", label: "רוחב התצוגה, מימין", style: { right: -6, top: 18, bottom: 18, width: 12 }, cursor: "ew-resize" },
+  { edge: "w", label: "רוחב התצוגה, משמאל", style: { left: -6, top: 18, bottom: 18, width: 12 }, cursor: "ew-resize" },
+  { edge: "ne", label: "גודל התצוגה, פינה ימנית עליונה", style: { top: -8, right: -8, width: 18, height: 18 }, cursor: "nesw-resize" },
+  { edge: "sw", label: "גודל התצוגה, פינה שמאלית תחתונה", style: { bottom: -8, left: -8, width: 18, height: 18 }, cursor: "nesw-resize" },
+  { edge: "nw", label: "גודל התצוגה, פינה שמאלית עליונה", style: { top: -8, left: -8, width: 18, height: 18 }, cursor: "nwse-resize" },
+  { edge: "se", label: "גודל התצוגה, פינה ימנית תחתונה", style: { bottom: -8, right: -8, width: 18, height: 18 }, cursor: "nwse-resize" },
+];
+
+/**
+ * Handles around the device. The device stands centred, so a side handle
+ * moves both sides (the width grows by twice the drag, and the edge stays
+ * under the pointer); the top stays put, so a top or bottom handle changes
+ * the height by the drag. The proportions are the board's: what was asked
+ * along one axis decides the other.
+ */
+function ResizeHandles({
+  width,
+  height,
+  ratio,
+  onResize,
+  onReset,
+}: {
+  width: number;
+  height: number;
+  /** Height over width. */
+  ratio: number;
+  onResize: (size: { width: number; height: number }) => void;
+  onReset?: () => void;
+}) {
+  const start = useRef<{ edge: Edge; x: number; y: number; w: number; h: number } | null>(null);
+  const down = (edge: Edge) => (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    start.current = { edge, x: e.clientX, y: e.clientY, w: width, h: height };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    document.body.style.userSelect = "none";
+  };
+  const move = (e: PointerEvent<HTMLDivElement>) => {
+    const s = start.current;
+    if (!s) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    const byWidth = s.edge.includes("e") ? s.w + dx * 2 : s.edge.includes("w") ? s.w - dx * 2 : null;
+    const byHeight = s.edge.includes("s") ? s.h + dy : s.edge.includes("n") ? s.h - dy : null;
+    const h = Math.max(120, Math.max(byHeight ?? 0, byWidth !== null ? byWidth * ratio : 0));
+    onResize({ width: h / ratio, height: h });
+  };
+  const up = (e: PointerEvent<HTMLDivElement>) => {
+    start.current = null;
+    document.body.style.userSelect = "";
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+  return (
+    <>
+      {EDGES.map((h) => (
+        <div
+          key={h.edge}
+          role="separator"
+          aria-label={h.label}
+          title="גררו כדי להגדיל או להקטין את התצוגה; לחיצה כפולה - לגודל הרגיל"
+          data-resize={h.edge}
+          className="tv-resize-handle"
+          style={{ position: "absolute", zIndex: 5, cursor: h.cursor, touchAction: "none", ...h.style }}
+          onPointerDown={down(h.edge)}
+          onPointerMove={move}
+          onPointerUp={up}
+          onPointerCancel={up}
+          onDoubleClick={onReset}
+        />
+      ))}
+    </>
   );
 }
 

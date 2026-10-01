@@ -82,8 +82,10 @@ export function AdminPage() {
       <main
         dir="rtl"
         className={`mx-auto px-3 py-5 text-right sm:px-4 sm:py-8 ${activeTab === "tv" ? "max-w-[1800px]" : "max-w-5xl"}`}
+        data-focus-tight
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* data-focus-hide: hidden while the TV editor is in its work mode (tvEdit.css). */}
+        <div className="flex flex-wrap items-center justify-between gap-3" data-focus-hide>
           <div>
             <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
             <ShulNow />
@@ -128,10 +130,12 @@ export function AdminPage() {
             value={activeTab}
             onValueChange={openTab}
             className="mt-5 min-w-0 text-right sm:mt-6"
+            data-focus-tight
           >
             <TabsList
               dir="rtl"
               aria-label="מדורי ניהול"
+              data-focus-hide
               className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
             >
               <TabsTrigger value="ai">✨ עוזר חכם</TabsTrigger>

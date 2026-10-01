@@ -10,3 +10,33 @@
   outline: calc(1.5px / var(--ps, 1)) dashed rgb(59 130 246 / 0.35);
   outline-offset: calc(1px / var(--ps, 1));
 }
+
+/* The TV editor's preview handles (DevicePreview.tsx): a line that shows on hover. */
+.tv-resize-handle {
+  border-radius: 6px;
+  transition: background-color 120ms;
+}
+.tv-resize-handle:hover,
+.tv-resize-handle:active {
+  background-color: rgb(37 99 235 / 0.45);
+}
+.tv-resize-handle[data-resize="ne"],
+.tv-resize-handle[data-resize="nw"],
+.tv-resize-handle[data-resize="se"],
+.tv-resize-handle[data-resize="sw"] {
+  background-color: rgb(37 99 235 / 0.25);
+  border: 2px solid rgb(255 255 255 / 0.9);
+}
+
+/*
+ * The TV editor's work mode (TvDesignPanel): the site's header, the admin's
+ * heading and its rows of tabs give their room to the board and its controls.
+ */
+body.tv-focus [data-testid="global-app-header"],
+body.tv-focus [data-focus-hide] {
+  display: none !important;
+}
+body.tv-focus [data-focus-tight] {
+  margin-top: 0 !important;
+  padding-top: 0.5rem !important;
+}

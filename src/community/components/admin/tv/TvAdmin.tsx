@@ -32,7 +32,7 @@ export default function TvAdmin() {
       {offline.map((d) => {
         const h = deviceHealth(d, now);
         return (
-          <div key={d.id} role="alert" className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
+          <div key={d.id} role="alert" data-focus-hide className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
             <AlertTriangle className="size-5 shrink-0" />
             <span>
               <b>{d.name}</b> מנותק{h.silentMs ? ` כבר ${formatDuration(h.silentMs)}` : ""}. הסיבה תופיע ביומן כשהמסך יחזור (הוא שומר
@@ -52,6 +52,7 @@ export default function TvAdmin() {
         }}
       >
         <TabsList
+          data-focus-hide
           className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
         >
           <TabsTrigger value="design">התצוגות והעיצוב</TabsTrigger>
@@ -62,7 +63,7 @@ export default function TvAdmin() {
         <TabsContent value="screens" className="mt-5">
           <TvDevicesPanel />
         </TabsContent>
-        <TabsContent value="design" className="mt-5">
+        <TabsContent value="design" className="mt-5" data-focus-tight>
           <TvDesignPanel />
         </TabsContent>
         <TabsContent value="events" className="mt-5">

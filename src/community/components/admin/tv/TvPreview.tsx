@@ -137,8 +137,16 @@ export function TvDeviceStudio({
   preview,
   fitHeight,
   toolbarExtra,
+  bare = false,
+  onResize,
+  onResizeReset,
   ...props
 }: BoardProps & {
+  /** The board without the drawn TV around it (DevicePreview's `bare`). */
+  bare?: boolean;
+  /** Handles around the board, and what a drag on them asks for (DevicePreview's `onResize`). */
+  onResize?: (size: { width: number; height: number }) => void;
+  onResizeReset?: () => void;
   /**
    * The whole studio - its toolbar and the framed board - fits this many
    * pixels of height. The editor's "תצוגה למעלה" gives it the height its bar
@@ -330,7 +338,14 @@ export function TvDeviceStudio({
         </div>
       ) : (
         <div className="rounded-xl bg-muted/30 p-3">
-          <DeviceFrame view={choice.view as DeviceView} maxHeight={maxH ?? (choice.view.device === "tv" ? 520 : 620)} actualSize={actualSize}>
+          <DeviceFrame
+            view={choice.view as DeviceView}
+            maxHeight={maxH ?? (choice.view.device === "tv" ? 520 : 620)}
+            actualSize={actualSize}
+            bare={bare}
+            onResize={onResize}
+            onResizeReset={onResizeReset}
+          >
             <BoardInFrame
               {...props}
               config={boardFor(choice.mode === "all" ? "tv" : (choice.mode as DeviceId))}

@@ -20,6 +20,9 @@ import {
   Save,
   Trash2,
   Undo2,
+  Maximize,
+  PanelTopClose,
+  Square,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -566,6 +569,35 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     setTopHeightState(next);
     writeStored(TOP_KEY, String(Math.round(next)));
   };
+  /** Side by side: how tall the board may be (it used to stop at a fixed 520 px). */
+  const [sideHeight, setSideHeightState] = useState(() => clampSideHeight(Number(readStored(SIDE_H_KEY)) || SIDE_HEIGHT_DEFAULT));
+  const setSideHeight = (v: number) => {
+    const next = clampSideHeight(v);
+    setSideHeightState(next);
+    writeStored(SIDE_H_KEY, String(Math.round(next)));
+  };
+  /**
+   * Work mode: the site's header, the admin's heading and the rows of tabs
+   * above the editor are hidden (tvEdit.css), and their room goes to the
+   * board and its controls. Remembered in this browser.
+   */
+  const [focus, setFocusState] = useState(() => readStored(FOCUS_KEY) === "1");
+  const setFocus = (on: boolean) => {
+    setFocusState(on);
+    writeStored(FOCUS_KEY, on ? "1" : "0");
+  };
+  useEffect(() => {
+    document.body.classList.toggle("tv-focus", focus);
+    return () => document.body.classList.remove("tv-focus");
+  }, [focus]);
+  /** The board without the drawn TV around it: the bezel and the stand go to the board. */
+  const [bare, setBareState] = useState(() => readStored(BARE_KEY) === "1");
+  const setBare = (on: boolean) => {
+    setBareState(on);
+    writeStored(BARE_KEY, on ? "1" : "0");
+  };
+  /** The sizes before "מקסימום", for the way back. */
+  const [beforeMax, setBeforeMax] = useState<{ topHeight: number; sideShare: number; sideHeight: number } | null>(null);
   const splitBox = useRef<HTMLDivElement>(null);
   /** Side by side needs a desktop; below it the two stack, as they always did. */
   const [isLarge, setIsLarge] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
@@ -580,7 +612,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, []);
+    // Work mode hides the header: it is measured again, at nothing.
+  }, [focus]);
   /**
    * A palette sent by the Figma plugin: it arrives in the URL fragment, is
    * read once, and the address is cleaned so a refresh does not import it
@@ -1926,8 +1959,78 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       >
         <Expand className="size-4" /> {fullscreen ? "יציאה ממסך מלא" : "מסך מלא לעריכה"}
       </Button>
+      <Button
+        type="button"
+        variant={focus ? "default" : "outline"}
+        size="sm"
+        aria-pressed={focus}
+        onClick={() => setFocus(!focus)}
+        title="מסתיר את הסרגל של האתר ואת שורות הלשוניות שמעל העורך, כדי שכל המסך יהיה ללוח ולבקרות"
+      >
+        <PanelTopClose className="size-4" /> {focus ? "יציאה ממצב עבודה" : "מצב עבודה"}
+      </Button>
+      <Button
+        type="button"
+        variant={beforeMax ? "default" : "outline"}
+        size="sm"
+        aria-pressed={Boolean(beforeMax)}
+        onClick={toggleMax}
+        title="הלוח בגודל הגדול ביותר שנכנס; לחיצה נוספת מחזירה לגודל הקודם"
+      >
+        <Maximize className="size-4" /> {beforeMax ? "גודל קודם" : "מקסימום"}
+      </Button>
+      <Button
+        type="button"
+        variant={bare ? "default" : "outline"}
+        size="sm"
+        aria-pressed={bare}
+        onClick={() => setBare(!bare)}
+        title="מסתיר את הטלוויזיה המצוירת (השוליים והמעמד), והמקום שלה הולך ללוח"
+      >
+        <Square className="size-4" /> בלי מסגרת טלוויזיה
+      </Button>
     </>
   );
+
+  /**
+   * A handle around the board was dragged: the board asks for a size, and
+   * the layout gives it room - in "top", the height of the band it stands in;
+   * side by side, the height it may take and, when it needs it, a wider column.
+   */
+  const resizeBoard = ({ width, height }: { width: number; height: number }) => {
+    setBeforeMax(null);
+    if (layout === "top") {
+      setTopHeight(height + STUDIO_CHROME);
+      return;
+    }
+    setSideHeight(height + STUDIO_CHROME);
+    const box = splitBox.current?.getBoundingClientRect();
+    const column = previewColumn.current?.getBoundingClientRect();
+    if (box && column && width + 32 > column.width) setSideShare((width + 32) / box.width);
+  };
+  const resetBoardSize = () => {
+    setBeforeMax(null);
+    if (layout === "top") setTopHeight(TOP_HEIGHT_DEFAULT);
+    else {
+      setSideHeight(SIDE_HEIGHT_DEFAULT);
+      setSideShare(SIDE_SHARE_DEFAULT);
+    }
+  };
+  function toggleMax() {
+    if (beforeMax) {
+      setTopHeight(beforeMax.topHeight);
+      setSideShare(beforeMax.sideShare);
+      setSideHeight(beforeMax.sideHeight);
+      setBeforeMax(null);
+      return;
+    }
+    setBeforeMax({ topHeight, sideShare, sideHeight });
+    if (layout === "top") setTopHeight(Number.MAX_SAFE_INTEGER);
+    else {
+      setSideShare(1);
+      setSideHeight(Number.MAX_SAFE_INTEGER);
+    }
+  }
 
   const studioView = (
     <div className="w-full">
@@ -1945,8 +2048,11 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         onSelect={setSelected}
         onEdit={edit}
         large={top || fullscreen}
-        fitHeight={top ? topHeight : undefined}
+        fitHeight={top ? topHeight : side && isLarge ? sideHeight : undefined}
         toolbarExtra={layoutButtons}
+        bare={bare}
+        onResize={fullscreen ? undefined : resizeBoard}
+        onResizeReset={resetBoardSize}
       />
     </div>
   );
@@ -2070,6 +2176,20 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             height and scrolls inside itself, because a sticky block taller
             than the window simply scrolls away - which left the whole left
             side of a wide screen empty. */}
+        {fullscreen && layout === "side" && isLarge ? (
+          // Full screen, side by side: the controls on one side, the board on
+          // the other, each scrolling on its own - editing while looking.
+          <div
+            className="grid h-full gap-4"
+            style={{ gridTemplateColumns: `minmax(0, ${1 - sideShare}fr) minmax(0, ${sideShare}fr)` }}
+          >
+            <div className="min-h-0 space-y-4 overflow-y-auto pe-1">{controls}</div>
+            <div className="min-h-0 space-y-3 overflow-y-auto">
+              {studioView}
+              {underPreview}
+            </div>
+          </div>
+        ) : (
         <div
           className={fullscreen ? "space-y-3" : "lg:sticky lg:space-y-3 lg:overflow-y-auto lg:pe-1"}
           style={
@@ -2088,6 +2208,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               copies would be two of every control. */}
           {fullscreen && <div className="mt-4">{controls}</div>}
         </div>
+        )}
       </div>
 
       {/* --------------------------------------------- the bar between -- */}
@@ -2175,6 +2296,19 @@ const TOP_KEY = "shul-hub.tv-editor.top-height";
 /** The board's share of the width, side by side - what the page gave it before. */
 const SIDE_SHARE_DEFAULT = 0.52;
 const TOP_HEIGHT_DEFAULT = 440;
+const SIDE_H_KEY = "shul-hub.tv-editor.side-height";
+const FOCUS_KEY = "shul-hub.tv-editor.focus";
+const BARE_KEY = "shul-hub.tv-editor.bare";
+/** Side by side, the board stopped at 520 px (with the studio's 72 around it): the same, until it is dragged. */
+const SIDE_HEIGHT_DEFAULT = 592;
+/** The studio's toolbar row and padding around the frame (TvDeviceStudio's fitHeight). */
+const STUDIO_CHROME = 72;
+
+/** Side by side: never under 260 px, never past the window. */
+function clampSideHeight(v: number): number {
+  const max = typeof window === "undefined" ? 1000 : Math.max(300, window.innerHeight - 24);
+  return Math.min(max, Math.max(260, v));
+}
 
 /** Neither side so narrow it is useless: a board under 30%, controls under 25%. */
 function clampShare(v: number): number {
