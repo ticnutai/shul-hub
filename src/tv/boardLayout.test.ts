@@ -25,7 +25,7 @@ describe("a file from the tablets editor", () => {
       skin: "tablets",
       frame: { shape: "auto", top: null, bottom: null },
       // the editor's default spacing leaves this board's own alone
-      spacing: { top: null, sides: null, gap: null },
+      spacing: { top: null, bottom: null, sides: null, gap: null },
       textScale: 1,
       title: "בית הכנסת אוהל יצחק",
     });
@@ -35,7 +35,7 @@ describe("a file from the tablets editor", () => {
     const r = parseImport(text, newCustomThemeId, newGradientId);
     const next = applyImport(DEFAULT_TV_CONFIG, r);
     expect(next.skin).toBe("tablets");
-    expect(next.spacing).toEqual({ top: null, sides: null, gap: null });
+    expect(next.spacing).toEqual({ top: null, bottom: null, sides: null, gap: null });
     expect(next.texts["header.title"]).toBe("בית הכנסת אוהל יצחק");
     expect(next.customThemes.map((t) => t.name)).toEqual(["אבן ירושלים (2)"]);
     expect(normalizeTvConfig(next)).toEqual(next);
@@ -58,7 +58,7 @@ describe("a file from the tablets editor", () => {
     );
     expect(r.themes).toHaveLength(0);
     // half the editor's default gap is half this board's (2u)
-    expect(r.board?.spacing).toEqual({ top: null, sides: 8.5, gap: 1 });
+    expect(r.board?.spacing).toEqual({ top: null, bottom: null, sides: 8.5, gap: 1 });
   });
 });
 
@@ -70,7 +70,7 @@ describe("the translation table", () => {
     })!;
     expect(b.skin).toBe("wood");
     expect(b.frame).toEqual({ shape: "round", top: 7, bottom: 1 });
-    expect(b.spacing).toEqual({ top: 2.2, sides: 9, gap: 0.7 });
+    expect(b.spacing).toEqual({ top: 2.2, bottom: null, sides: 9, gap: 0.7 });
     expect(b.textScale).toBe(1.2);
   });
 

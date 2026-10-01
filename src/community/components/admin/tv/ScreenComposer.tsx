@@ -20,7 +20,7 @@
  * fall out of step with the first, because pinned and automatic are the same
  * field present or absent.
  */
-import { Fragment, useState } from "react";
+import { Fragment, useRef, useState } from "react";
 import { BookmarkPlus, Plus, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ import { BLOCKS, BLOCK_BY_ID } from "@/tv/blocks";
 import type { BlockArea, BlockId, SavedLayout, Screen, TvConfig } from "@/tv/config";
 import { DAY_BLOCKS, dayScreen, readScreens } from "@/tv/screens";
 import { arrange, gridOf, tracks } from "@/tv/grid";
+import { resolveElementStyle, setElementStyle, styleTargetKey } from "@/tv/boardEdit";
 import { SketchEditor, SKETCH_HINT } from "./SketchEditor";
 
 const AREA_LABELS: Record<"auto" | BlockArea, string> = {
@@ -66,6 +67,7 @@ export function ScreenComposer({
   onChange,
   onSelect,
   onLayouts,
+  onEdit,
 }: {
   config: TvConfig;
   /** Which screen is open for editing; the composer keeps this in the parent. */
@@ -79,6 +81,12 @@ export function ScreenComposer({
   onSelect: (current: number, screen: Screen) => void;
   /** The board's saved arrangements changed (a kit saved or removed). */
   onLayouts: (layouts: SavedLayout[]) => void;
+  /**
+   * An edit to the board itself, from the sketch: its air above and below the
+   * panels, and the strip's size - the same settings, and the same undo
+   * steps, as the sliders and the board's own editor.
+   */
+  onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void;
 }) {
   // A board that never opened the composer is read from its old fields, so
   // the first thing shown is the board as it is now, not an empty sheet.
@@ -279,7 +287,8 @@ export function ScreenComposer({
           <div
             dir="rtl"
             data-testid="composer-sketch"
-            className="grid aspect-video gap-1.5 rounded-lg border bg-[#0b1628] p-2 text-[#f0c35c]"
+            // A size container: the air drawn inside it is in cqh, a share of the board's height.
+            className="grid aspect-video gap-1.5 rounded-lg border bg-[#0b1628] p-2 text-[#f0c35c] [container-type:size]"
             style={{ gridTemplateRows: "auto minmax(0,1fr) auto" }}
           >
             <Sketch
@@ -298,12 +307,46 @@ export function ScreenComposer({
                 manual={Boolean(screen.grid)}
                 onChange={(grid) => editScreen({ grid })}
                 onMessage={setSketchMessage}
+                spacing={{
+                  top: config.spacing.top,
+                  bottom: config.spacing.bottom,
+                  // What the board leaves when nothing is set (tv.css).
+                  fallback:
+                    config.screenLayout === "medallion"
+                      ? { top: 2.4, bottom: 2.4 }
+                      : { top: 2.6, bottom: 1.6 },
+                }}
+                onSpacing={(edge, value) =>
+                  onEdit(`spacing.${edge}`, (c) => ({
+                    ...c,
+                    spacing: { ...c.spacing, [edge]: value },
+                  }))
+                }
               />
             )}
             <Sketch
               ids={screen.blocks
                 .filter((b) => BLOCK_BY_ID[b.block].zone === "bottom")
                 .map((b) => b.block)}
+              // The strip is a strip of its own on the medallion and the full board;
+              // elsewhere this bar is the row of dots, and its size would change nothing.
+              strip={
+                config.screenLayout !== "medallion" && config.screenLayout !== "dashboard"
+                  ? undefined
+                  : {
+                      scale: resolveElementStyle(config, "dash.strip")?.scale ?? 1,
+                      onScale: (scale) => {
+                        onEdit("style:scale:dash.strip", (c) =>
+                          setElementStyle(c, styleTargetKey(c, "dash.strip"), { scale }),
+                        );
+                        setSketchMessage(
+                          `גובה שורת הפרשה והנרות: ${
+                            scale === 1 ? "רגיל" : `פי ${scale}`
+                          }. להזזתה למקום אחר - "עריכה ישירה בלוח".`,
+                        );
+                      },
+                    }
+              }
             />
           </div>
           {rows.length > 0 && (
@@ -470,22 +513,77 @@ export function ScreenComposer({
   );
 }
 
-/** The thin bars above and below; they carry a name and nothing else. */
-function Sketch({ ids }: { ids: BlockId[] }) {
+/**
+ * The thin bars above and below; they carry a name. The strip below
+ * ("שורת הפרשה והנרות") can be made taller or shorter by dragging its upper
+ * edge - its size on the board, the same setting as the board's own editor;
+ * where it stands is moved there, on the board.
+ */
+function Sketch({
+  ids,
+  strip,
+}: {
+  ids: BlockId[];
+  strip?: { scale: number; onScale: (scale: number) => void };
+}) {
+  const start = useRef<{ y: number; scale: number } | null>(null);
   if (!ids.length) return <div aria-hidden className="h-1" />;
   return (
     <div
       className="grid gap-1.5"
       style={{ gridTemplateColumns: `repeat(${ids.length}, minmax(0,1fr))` }}
     >
-      {ids.map((id) => (
-        <div
-          key={id}
-          className="truncate rounded border border-[#f0c35c]/25 px-2 py-0.5 text-[10px] opacity-80"
-        >
-          {BLOCK_BY_ID[id].name}
-        </div>
-      ))}
+      {ids.map((id) => {
+        const sized = strip && id === "footer";
+        return (
+          <div
+            key={id}
+            data-sketch-bar={id}
+            className="relative min-w-0 rounded border border-[#f0c35c]/25 px-2 text-[10px] opacity-80"
+            style={{ paddingBlock: sized ? `${Math.round(2 * strip.scale * 10) / 10}px` : "2px" }}
+          >
+            {/* The name is cut, not the bar: the handle on its edge stands half outside it. */}
+            <span className="block truncate">
+              {BLOCK_BY_ID[id].name}
+              {sized && strip.scale !== 1 && <span className="ms-1 opacity-60">×{strip.scale}</span>}
+            </span>
+            {sized && (
+              <div
+                data-sketch-handle="strip"
+                role="separator"
+                aria-orientation="horizontal"
+                aria-label="גובה שורת הפרשה והנרות"
+                title="גררו למעלה כדי להגדיל את השורה, למטה כדי להקטין; לחיצה כפולה - רגיל"
+                className="absolute left-[12%] right-[12%] -top-[6px] z-10 h-2.5 cursor-ns-resize rounded bg-[#f0c35c]/0 hover:bg-[#f0c35c]/70"
+                onPointerDown={(e) => {
+                  if (e.button !== 0) return;
+                  e.preventDefault();
+                  start.current = { y: e.clientY, scale: strip.scale };
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  const s = start.current;
+                  if (!s) return;
+                  // 40 px of drag is the strip's whole size again; up is bigger.
+                  const next =
+                    Math.round(Math.min(2, Math.max(0.5, s.scale + (s.y - e.clientY) / 40)) * 20) /
+                    20;
+                  if (next !== strip.scale) strip.onScale(next);
+                }}
+                onPointerUp={(e) => {
+                  start.current = null;
+                  if (e.currentTarget.hasPointerCapture(e.pointerId))
+                    e.currentTarget.releasePointerCapture(e.pointerId);
+                }}
+                onPointerCancel={() => {
+                  start.current = null;
+                }}
+                onDoubleClick={() => strip.onScale(1)}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

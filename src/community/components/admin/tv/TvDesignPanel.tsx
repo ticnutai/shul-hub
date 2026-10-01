@@ -529,6 +529,21 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   // The live window opens ready to click on the board.
   const [editing, setEditing] = useState(studio);
   const [selected, setSelected] = useState<string | null>(null);
+  /**
+   * A double click on the board: editing opens, and the part under the
+   * pointer is selected - once the board has drawn itself in editing, when
+   * its parts carry their marks.
+   */
+  const editOnBoardAt = useCallback((x: number, y: number) => {
+    setEditing(true);
+    setAutoplay(false);
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        const key = document.elementFromPoint(x, y)?.closest<HTMLElement>("[data-edit]")?.dataset.edit;
+        if (key && key !== "board.background") setSelected(key);
+      }),
+    );
+  }, []);
   // Esc in the live window: drop the selection first; with nothing selected,
   // stop editing on the board (clicks then work on it normally).
   useEffect(() => {
@@ -1358,6 +1373,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 setPreviewScreen(s.id);
               }}
               onLayouts={(layouts) => edit("layouts", (c) => ({ ...c, layouts }))}
+              onEdit={edit}
               onChange={(screens, next) => {
                 setComposerScreen(next);
                 if (screens[next]) setPreviewScreen(screens[next].id);
@@ -2052,6 +2068,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         fitHeight={top ? topHeight : side && isLarge ? sideHeight : undefined}
         toolbarExtra={layoutButtons}
         bare={bare}
+        onRequestEdit={editOnBoardAt}
         onResize={fullscreen ? undefined : resizeBoard}
         onResizeReset={resetBoardSize}
       />

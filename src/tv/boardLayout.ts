@@ -161,10 +161,12 @@ export function boardFromTablets(entry: unknown): BoardLayoutPatch | null {
     spacing: L
       ? {
           top: scaled(top, EDITOR.top, BOARD.top),
+          // A layout file has no bottom edge; the board keeps its own.
+          bottom: null,
           sides: scaled(Math.max(0, 50 - gap / 2 - width), EDITOR.margin, BOARD.sides),
           gap: scaled(gap, EDITOR.gap, BOARD.gap),
         }
-      : { top: null, sides: null, gap: null },
+      : { top: null, bottom: null, sides: null, gap: null },
     textScale: Math.round(clamp(num(A?.rowSize, BASE_ROW_SIZE, 0.8, 5) / BASE_ROW_SIZE, 0.8, 1.3) * 100) / 100,
     title: title || null,
   };

@@ -13,7 +13,8 @@ test("guest account entry opens a complete login flow", async ({ page }) => {
   // their own name and "חבר רשום", a gabbai "גבאי" - the same link, decided
   // by who is signed in. It stands in the header, beside the bell.
   const header = page.getByTestId("global-app-header");
-  await expect(header.getByTestId("account-entry")).toHaveAttribute("data-role", "guest");
+  // The first page of a fresh dev server compiles as it loads.
+  await expect(header.getByTestId("account-entry")).toHaveAttribute("data-role", "guest", { timeout: 20_000 });
   await expect(header.getByTestId("account-entry")).toContainText("כניסה");
 
   const accountEntry = page.getByTestId("account-entry");

@@ -82,7 +82,7 @@ export const EDITABLE: Record<string, EditableSpec> = {
     hint: "הדף מתחלף לבד בכל יום. מה שתכתבו כאן יופיע לפניו - למשל ״כעת לומדים״. ריק = רק הדף.",
   },
   "dash.clock": { label: "לוח מלא: השעון", hideable: true },
-  "dash.strip": { label: "לוח מלא: שורת הפרשה והדף היומי", hideable: true },
+  "dash.strip": { label: "שורת הפרשה והנרות", hideable: true },
   "dash.seasonal": { label: "לדוד ה׳ אורי / משיב הרוח / ותן טל", hideable: true },
   "split.next": { label: "מפוצל: המניין הבא", text: "המניין הבא", hideable: true },
   "header.title": {

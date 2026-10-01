@@ -298,7 +298,7 @@ export const FRAME_RADIUS_MAX = 12;
  * every board had before this existed.
  */
 export const SPACING_MAX = 10;
-export const SPACING_EDGES = ["top", "sides", "gap"] as const;
+export const SPACING_EDGES = ["top", "bottom", "sides", "gap"] as const;
 export type SpacingEdge = (typeof SPACING_EDGES)[number];
 
 /**
@@ -703,7 +703,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   eventCombine: "one",
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
-  spacing: { top: null, sides: null, gap: null },
+  spacing: { top: null, bottom: null, sides: null, gap: null },
   frameLooks: {},
   backgroundTune: DEFAULT_BACKGROUND_TUNE,
   frameStyle: DEFAULT_FRAME_STYLE,
@@ -929,7 +929,7 @@ function normalizeSpacing(raw: unknown): TvConfig["spacing"] {
   const r = (raw ?? {}) as Record<string, unknown>;
   const size = (v: unknown): number | null =>
     typeof v === "number" && Number.isFinite(v) ? Math.min(Math.max(v, 0), SPACING_MAX) : null;
-  return { top: size(r.top), sides: size(r.sides), gap: size(r.gap) };
+  return { top: size(r.top), bottom: size(r.bottom), sides: size(r.sides), gap: size(r.gap) };
 }
 
 export interface IllustratedStyle {

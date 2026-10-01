@@ -26,8 +26,15 @@ type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
  * מסגרות"; the spacing is where they stand, and sits under "פריסה".
  */
 
+/**
+ * What each edge is when the board has not been told (tv.css): the slider
+ * starts from there, and so does a drag in the composer's sketch.
+ */
+export const SPACING_FALLBACK: Record<SpacingEdge, number> = { top: 2.6, bottom: 1.6, sides: 3, gap: 2 };
+
 const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
   top: { name: "מרווח עליון", hint: "בין שורת הכותרת לבין הלוחות. פחות מרווח = לוחות גבוהים יותר" },
+  bottom: { name: "מרווח תחתון", hint: "בין הלוחות לבין השורה התחתונה (הפרשה והנרות)" },
   sides: { name: "שוליים בצדדים", hint: "המרווח בין הלוחות לקצה המסך" },
   gap: { name: "מרווח בין הלוחות", hint: "המרווח בין לוח ללוח" },
 };
@@ -228,7 +235,7 @@ export function FrameSpacing({
           hint={SPACING_LABELS[edge].hint}
           value={config.spacing[edge]}
           max={SPACING_MAX}
-          fallback={edge === "gap" ? 2 : edge === "sides" ? 3 : 2.6}
+          fallback={SPACING_FALLBACK[edge]}
           compact={compact}
           onChange={(next) =>
             onEdit(`spacing.${edge}`, (c) => ({ ...c, spacing: { ...c.spacing, [edge]: next } }))

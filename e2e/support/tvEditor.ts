@@ -201,3 +201,21 @@ export async function expectNotFrozen(page: Page, step: string): Promise<void> {
   const after = await page.evaluate(() => (window as { __sentinel?: number }).__sentinel ?? 0);
   if (after !== before + 1) throw new Error(`a click did not reach the page after: ${step}`);
 }
+
+/**
+ * Waits for an element to stop moving: the fonts arrive after the first
+ * layout and every line above it can change height. A test that measures a
+ * place and then drags to it must measure it settled, or it aims at where
+ * the element was.
+ */
+export async function settled(locator: import("@playwright/test").Locator) {
+  await locator.page().evaluate(() => document.fonts?.ready);
+  let last = "";
+  for (let i = 0; i < 40; i += 1) {
+    const box = await locator.boundingBox();
+    const now = box ? `${Math.round(box.x)},${Math.round(box.y)},${Math.round(box.width)},${Math.round(box.height)}` : "";
+    if (now && now === last) return;
+    last = now;
+    await locator.page().waitForTimeout(100);
+  }
+}

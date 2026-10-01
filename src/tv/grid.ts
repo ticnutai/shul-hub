@@ -112,6 +112,20 @@ export function setShare(grid: ScreenRow[], row: number, i: number, share: numbe
   });
 }
 
+/**
+ * The line between row `row` and the row under it moved: `share` is how much
+ * of the two rows' height goes to the upper one. What one gains the other
+ * gives up, so the rest of the screen stays where it was. Neither goes under
+ * 15% of the two.
+ */
+export function setRowShare(grid: ScreenRow[], row: number, share: number): ScreenRow[] {
+  if (row < 0 || row + 1 >= grid.length) return grid;
+  const pair = grid[row].height + grid[row + 1].height;
+  const s = Math.min(1 - MIN_SHARE, Math.max(MIN_SHARE, share));
+  const upper = round(pair * s);
+  return grid.map((r, k) => (k === row ? { ...r, height: upper } : k === row + 1 ? { ...r, height: round(pair - upper) } : r));
+}
+
 /** A row's height against the others, between 0.4 and 3. */
 export function setHeight(grid: ScreenRow[], row: number, height: number): ScreenRow[] {
   return grid.map((r, k) => (k === row ? { ...r, height: round(Math.min(MAX_HEIGHT, Math.max(MIN_HEIGHT, height))) } : r));

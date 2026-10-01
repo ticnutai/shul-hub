@@ -109,8 +109,10 @@ export function MedallionStage({
           {flipped ? prayers : zmanimFrame}
         </div>
       )}
-      {bars.footer && (titleShown || rest.length > 0) && (
-        <div className="tv-panel tv-med-strip" {...edit.frame("strip")}>
+      {bars.footer && !edit.hidden("dash.strip") && (titleShown || rest.length > 0) && (
+        // An element like the others: selected, moved, sized and hidden in the
+        // editor. It carried only its frame's look, so it could be none of them.
+        <div className="tv-panel tv-med-strip" {...edit.frame("strip", "dash.strip")}>
           <p>
             {titleShown && <span {...edit.attr("header.title")}>{title}</span>}
             {rest.map((t, i) => `${titleShown || i > 0 ? " · " : ""}${t}`).join("")}

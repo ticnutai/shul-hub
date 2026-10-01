@@ -41,7 +41,7 @@ describe("spacing", () => {
   const spacingOf = (raw: unknown) => normalizeTvConfig({ spacing: raw }).spacing;
 
   it("defaults to what the layout draws", () => {
-    expect(spacingOf(undefined)).toEqual({ top: null, sides: null, gap: null });
+    expect(spacingOf(undefined)).toEqual({ top: null, bottom: null, sides: null, gap: null });
   });
 
   it("clamps each edge and refuses anything that is not a number", () => {

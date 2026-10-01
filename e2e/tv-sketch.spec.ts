@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNotFrozen, serveEditor } from "./support/tvEditor";
+import { expectNotFrozen, serveEditor, settled } from "./support/tvEditor";
 
 /**
  * The composer's sketch worked by hand: a block dragged to another place,
@@ -18,6 +18,8 @@ test("drag a block, split a row, make a row taller; the board follows", async ({
   await page.getByRole("tab", { name: "פריסה" }).click();
 
   const sketch = page.getByTestId("composer-sketch");
+
+  await settled(sketch);
   const status = page.getByTestId("sketch-status");
   const cell = (id: string) => sketch.locator(`[data-sketch-cell="${id}"]`);
   const rowOf = (id: string) => cell(id).evaluate((el) => Number(el.closest("[data-sketch-row]")!.getAttribute("data-sketch-row")));
@@ -48,15 +50,15 @@ test("drag a block, split a row, make a row taller; the board follows", async ({
   const widths = await sketch.locator('[data-sketch-row="0"] [data-sketch-cell]').evaluateAll((els) => els.map((e) => e.getBoundingClientRect().width));
   expect(widths[0]).toBeGreaterThan(widths[1]);
 
-  // The bottom of the first row: taller.
-  const rowHandle = sketch.locator('[data-sketch-row="0"] > [data-sketch-handle="height"]');
+  // The line under the first row, shared with the second: the first taller.
+  const rowHandle = sketch.locator('[data-sketch-row="0"] > [data-sketch-handle="rows"]');
   const before = (await sketch.locator('[data-sketch-row="0"]').boundingBox())!.height;
   const rh = (await rowHandle.boundingBox())!;
   await page.mouse.move(rh.x + rh.width / 2, rh.y + rh.height / 2);
   await page.mouse.down();
   await page.mouse.move(rh.x + rh.width / 2, rh.y + 40, { steps: 6 });
   await page.mouse.up();
-  await expect(status).toContainText("גובה שורה 1");
+  await expect(status).toContainText("גובה: שורה 1");
   expect((await sketch.locator('[data-sketch-row="0"]').boundingBox())!.height).toBeGreaterThan(before + 5);
 
   // Saved with the screen; and "סידור אוטומטי" gives the arrangement back.
@@ -75,6 +77,7 @@ test("the keyboard moves and sizes a block; an arrangement is kept as a kit and 
   await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
   await page.getByRole("tab", { name: "פריסה" }).click();
   const sketch = page.getByTestId("composer-sketch");
+  await settled(sketch);
   const status = page.getByTestId("sketch-status");
   const cell = (id: string) => sketch.locator(`[data-sketch-cell="${id}"]`);
   const rowOf = (id: string) => cell(id).evaluate((el) => Number(el.closest("[data-sketch-row]")!.getAttribute("data-sketch-row")));
@@ -87,7 +90,8 @@ test("the keyboard moves and sizes a block; an arrangement is kept as a kit and 
   await expect(cell("shiurim")).toBeFocused();
   // Shift + arrow: its row taller.
   await page.keyboard.press("Shift+ArrowDown");
-  await expect(status).toContainText("גובה שורה 2: פי 1.1");
+  // The last row grows by what the row above it gives.
+  await expect(status).toContainText("שורה 2 - 55%");
 
   // Kept as a kit, the arrangement given up, then put back by the kit.
   await page.getByRole("button", { name: "שמירה כערכה" }).click();

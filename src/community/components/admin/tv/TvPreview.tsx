@@ -140,8 +140,15 @@ export function TvDeviceStudio({
   bare = false,
   onResize,
   onResizeReset,
+  onRequestEdit,
   ...props
 }: BoardProps & {
+  /**
+   * A double click on the board while it is not being edited: the editor
+   * opens editing, on the spot that was clicked. The board does not mark
+   * its parts outside editing, so the place is passed, not the part.
+   */
+  onRequestEdit?: (x: number, y: number) => void;
   /** The board without the drawn TV around it (DevicePreview's `bare`). */
   bare?: boolean;
   /** Handles around the board, and what a drag on them asks for (DevicePreview's `onResize`). */
@@ -337,7 +344,19 @@ export function TvDeviceStudio({
           ))}
         </div>
       ) : (
-        <div className="rounded-xl bg-muted/30 p-3">
+        <div
+          className="group relative rounded-xl bg-muted/30 p-3"
+          onDoubleClick={!editing && onRequestEdit ? (e) => onRequestEdit(e.clientX, e.clientY) : undefined}
+        >
+          {!editing && onRequestEdit && (
+            <div
+              aria-hidden
+              data-testid="edit-hint"
+              className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100"
+            >
+              לחיצה כפולה על חלק בלוח - כדי להזיז, להגדיל או לערוך אותו
+            </div>
+          )}
           <DeviceFrame
             view={choice.view as DeviceView}
             maxHeight={maxH ?? (choice.view.device === "tv" ? 520 : 620)}

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { BlockEntry, ScreenRow } from "./config";
-import { arrange, gridOf, moveBlock, percents, setHeight, setShare } from "./grid";
+import { arrange, gridOf, moveBlock, percents, setHeight, setRowShare, setShare } from "./grid";
 
 const blocks: BlockEntry[] = [
   { block: "header" },
@@ -67,5 +67,20 @@ describe("the shares shown", () => {
   it("always add up to the whole row", () => {
     expect(percents([0.73, 0.27]).reduce((a, b) => a + b, 0)).toBe(100);
     expect(percents([1, 1, 1])).toEqual([33, 33, 34]);
+  });
+});
+
+describe("the line between two rows", () => {
+  const start = gridOf(arrange(blocks));
+  it("gives one row what it takes from the other, and leaves the rest", () => {
+    const next = setRowShare(start, 0, 0.7);
+    expect(next[0].height).toBe(1.4);
+    expect(next[1].height).toBe(0.6);
+    expect(next[2].height).toBe(start[2].height);
+  });
+  it("keeps both rows readable, and does nothing past the last row", () => {
+    const tight = setRowShare(start, 0, 0.99);
+    expect(tight[1].height).toBeCloseTo(0.3, 2);
+    expect(setRowShare(start, 2, 0.5)).toBe(start);
   });
 });

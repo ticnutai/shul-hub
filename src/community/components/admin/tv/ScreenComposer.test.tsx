@@ -28,7 +28,7 @@ const illustrated: TvConfig = {
 function show(config: TvConfig = illustrated) {
   const onChange = vi.fn<(s: Screen[], i: number) => void>();
   const onSelect = vi.fn<(i: number, s: Screen) => void>();
-  const r = render(<ScreenComposer config={config} current={0} onChange={onChange} onSelect={onSelect} onLayouts={() => {}} />);
+  const r = render(<ScreenComposer config={config} current={0} onChange={onChange} onSelect={onSelect} onLayouts={() => {}} onEdit={() => {}} />);
   return { ...r, onChange, onSelect };
 }
 

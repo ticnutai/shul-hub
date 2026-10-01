@@ -4382,7 +4382,7 @@
  * Less air means taller panels - which, measured, is the difference between
  * eight rows of times and seven.
  */
-.tv-root.has-space-top.has-space-top .tv-stage {
+.tv-root.has-space-top.has-space-top:not(.is-layout-medallion) .tv-stage {
   padding-top: var(--space-top);
 }
 
@@ -5471,7 +5471,8 @@
 }
 
 .tv-root .tv-med .tv-panel.tv-med-strip {
-  padding: calc(var(--u) * 1.2) calc(var(--u) * 3);
+  /* --es: its size in the editor - the strip grows with its text, not just the text inside it. */
+  padding: calc(var(--u) * 1.2 * var(--es, 1)) calc(var(--u) * 3);
 }
 
 .tv-med-strip p {
@@ -5801,4 +5802,37 @@
 .tv-med > .tv-med-top,
 .tv-med > .tv-med-strip {
   flex: 0 0 auto;
+}
+
+/*
+ * The air the admin sets, on the boards the rules above did not reach.
+ *
+ * Bottom, as top: between the panels and the line below them.
+ *
+ * On the medallion the day and the clock stand inside the stage, above the
+ * frames: "מרווח עליון" there is the air between them and the frames - the
+ * stage itself keeps its own - and "מרווח תחתון" the air between the frames
+ * and the strip. The column already leaves 2.4u between each; the setting
+ * replaces that, so 0 means touching.
+ *
+ * The gap between panels reaches the frames of a composed screen, and of the
+ * medallion, too.
+ */
+.tv-root.has-space-bottom.has-space-bottom:not(.is-layout-medallion) .tv-stage {
+  padding-bottom: var(--space-bottom);
+}
+.tv-root.is-layout-medallion.has-space-top .tv-med > .tv-med-main,
+.tv-root.is-layout-medallion.has-space-top .tv-med > .tv-med-rows {
+  margin-top: calc(var(--space-top) - var(--u) * 2.4);
+}
+.tv-root.is-layout-medallion.has-space-bottom .tv-med > .tv-med-main,
+.tv-root.is-layout-medallion.has-space-bottom .tv-med > .tv-med-rows {
+  margin-bottom: calc(var(--space-bottom) - var(--u) * 2.4);
+}
+.tv-root.has-space-gap.has-space-gap .tv-composed,
+.tv-root.has-space-gap.has-space-gap .tv-composed-row,
+.tv-root.has-space-gap.has-space-gap .tv-med-rows,
+.tv-root.has-space-gap.has-space-gap .tv-med-row-of,
+.tv-root.has-space-gap.has-space-gap .tv-med-main {
+  gap: var(--space-gap);
 }
