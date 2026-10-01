@@ -1,13 +1,12 @@
 import { Link, NavLink } from "react-router-dom";
-import { BookOpen, House, LogIn, Megaphone, MessageCircle, UserRoundCheck, Users } from "lucide-react";
+import { BookOpen, House, LogIn, Megaphone, MessageCircle, ShieldCheck, UserRound, Users } from "lucide-react";
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
 import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
-import { useAuth } from "@/contexts/AuthContext";
 import { AdminAiShortcut } from "./AdminAiShortcut";
-import { useAuth as useCommunityAuth } from "@community/lib/use-auth";
 import { readLogos } from "@community/lib/logos";
+import { useAccount } from "@community/lib/use-account";
 
 function boundedDimension(value: number | null | undefined, fallback: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? Number(value) : fallback));
@@ -77,7 +76,9 @@ export function GlobalAppHeader() {
             "min-w-0 text-center",
             showKarovimLogo
               ? "col-span-3 col-start-1 row-start-2 justify-self-center sm:col-span-1 sm:col-start-2 sm:row-start-1"
-              : "col-start-2 row-start-1 justify-self-center sm:flex-1 sm:text-right",
+              // On a phone the side columns hold "ב״ה" and two round buttons; the
+              // name and address never run under them.
+              : "col-start-2 row-start-1 max-w-[calc(100vw-9.5rem)] justify-self-center sm:max-w-none sm:flex-1 sm:text-right",
           )}
         >
           {showKarovimLogo ? (
@@ -97,18 +98,73 @@ export function GlobalAppHeader() {
         </Link>
         <div
           data-testid="community-header-actions"
-          /* Only the bell now. The account and the message to the gabbai
-             moved to the corner at the foot of the page, where the site
-             already kept its other two utilities - four small things in one
-             corner read as a set, three scattered across a header read as
-             clutter above the name of the shul. */
-          className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-0.5"
+          /* The account, by name, and the bell. The account stood in the
+             corner at the foot of the page as a nameless icon; nobody found
+             it, and nobody could tell from it who was signed in. */
+          className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-1"
         >
+          <AccountChip />
           <NotificationCenter />
         </div>
       </div>
       <PrimaryDestinationNav className="mx-auto mb-2 mt-2 max-w-md px-2 sm:mb-2.5 sm:mt-2.5" />
     </header>
+  );
+}
+
+/**
+ * One door, with a name on it. A signed-in member sees their own name and
+ * what they are here ("חבר רשום" / "גבאי"), and a click opens their place: a
+ * member's area with everything they sent the gabbai, or the admin with
+ * everything in it. A guest sees "כניסה".
+ */
+function AccountChip() {
+  const account = useAccount();
+  const gabbai = account.role === "gabbai";
+  return (
+    <Link
+      to={account.href}
+      data-testid="account-entry"
+      data-role={account.role}
+      title={account.signedIn ? `${account.name} · ${account.roleLabel}` : "כניסה או הרשמה"}
+      aria-label={!account.signedIn ? "כניסה או הרשמה למערכת" : gabbai ? `${account.name}, גבאי - ניהול בית הכנסת` : `${account.name} - האזור האישי`}
+      className={cn(
+        // On a phone, a round badge with the first letter: the name and the
+        // address of the shul take the line, and the full name is a tap away.
+        "relative flex size-8 shrink-0 items-center justify-center gap-1.5 rounded-full border text-xs leading-none transition sm:size-auto sm:max-w-[13rem] sm:px-2 sm:py-1 sm:text-sm",
+        account.signedIn
+          ? "border-sidebar-primary/50 bg-sidebar-accent/40 text-sidebar-foreground hover:bg-sidebar-accent"
+          : "border-white/15 text-white/70 hover:bg-white/10 hover:text-amber-300",
+      )}
+    >
+      {!account.signedIn ? (
+        <>
+          <LogIn className="size-4 shrink-0" aria-hidden="true" />
+          <span className="sr-only sm:not-sr-only">כניסה</span>
+        </>
+      ) : (
+        <>
+          <span aria-hidden="true" className="text-sm font-bold sm:hidden">
+            {account.name.slice(0, 1).toUpperCase()}
+          </span>
+          {gabbai && (
+            <ShieldCheck
+              className="absolute -bottom-1 -left-1 size-3.5 rounded-full bg-sidebar text-sidebar-primary sm:static sm:size-4 sm:bg-transparent"
+              aria-hidden="true"
+            />
+          )}
+          {!gabbai && <UserRound className="hidden size-4 shrink-0 sm:block" aria-hidden="true" />}
+          <span className="sr-only sm:not-sr-only sm:flex sm:min-w-0 sm:flex-col sm:items-start sm:text-right">
+            <span data-testid="account-name" className="max-w-full truncate font-semibold">
+              {account.name}
+            </span>
+            <span data-testid="account-role" className="text-[10px] text-sidebar-foreground/70">
+              {account.roleLabel}
+            </span>
+          </span>
+        </>
+      )}
+    </Link>
   );
 }
 
@@ -130,9 +186,6 @@ export function CommunityHeader() {
 
 export function CommunityFooter() {
   const { data: settings } = useSettings();
-  const { user } = useAuth();
-  const { isAdmin } = useCommunityAuth();
-  const signedIn = Boolean(user && !user.is_anonymous);
   const contactPhone = settings?.phone ?? "054-647-3461";
   const contactPhoneDigits = contactPhone.replace(/\D/g, "");
   const whatsappPhone = contactPhoneDigits.startsWith("0")
@@ -175,30 +228,6 @@ export function CommunityFooter() {
           </div>
         </div>
         <Link to="/community" className="mt-4 inline-flex items-center gap-1 text-amber-400"><House className="size-4" />חזרה לדף הקהילה</Link>
-        {/* One door: the gabbai goes straight to the admin with everything in
-            it, a member to their own area ("הפניות שלי"), a visitor to sign in. The message
-            to the gabbai and the themes live in the member's area now. */}
-        <div
-          data-testid="footer-utility-actions"
-          className="absolute flex items-center gap-2"
-          style={{
-            right: "0.75rem",
-            bottom: "calc(0.75rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))",
-          }}
-        >
-          <Link
-            to={!signedIn ? "/auth" : isAdmin ? "/community/admin" : "/community/my"}
-            aria-label={!signedIn ? "כניסה או הרשמה למערכת" : isAdmin ? "ניהול בית הכנסת" : "כניסה לאזור האישי"}
-            title={!signedIn ? "כניסה או הרשמה" : isAdmin ? "ניהול בית הכנסת" : "האזור האישי"}
-            data-testid="account-entry"
-            className="inline-flex size-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:bg-white/10 hover:text-amber-400"
-          >
-            {signedIn
-              ? <UserRoundCheck className="size-4" aria-hidden="true" />
-              : <LogIn className="size-4" aria-hidden="true" />}
-            <span className="sr-only">כניסה למערכת</span>
-          </Link>
-        </div>
       </div>
       <AdminAiShortcut />
     </footer>

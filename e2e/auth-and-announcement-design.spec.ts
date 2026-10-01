@@ -1,7 +1,20 @@
 import { expect, test } from "@playwright/test";
+import { rememberShul } from "./support/chooseShul";
+
+// The site asks which synagogue first; these tests are not about that question.
+test.beforeEach(async ({ page }) => {
+  await rememberShul(page);
+});
 
 test("guest account entry opens a complete login flow", async ({ page }) => {
   await page.goto("/community");
+
+  // The door has a name on it: a guest reads "כניסה"; a member would read
+  // their own name and "חבר רשום", a gabbai "גבאי" - the same link, decided
+  // by who is signed in. It stands in the header, beside the bell.
+  const header = page.getByTestId("global-app-header");
+  await expect(header.getByTestId("account-entry")).toHaveAttribute("data-role", "guest");
+  await expect(header.getByTestId("account-entry")).toContainText("כניסה");
 
   const accountEntry = page.getByTestId("account-entry");
   await expect(accountEntry).toBeVisible();

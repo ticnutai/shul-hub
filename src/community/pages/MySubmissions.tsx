@@ -1,10 +1,14 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, Navigate } from "react-router-dom";
-import { BookMarked, CheckCheck, Clock, MessageSquareText, Palette, Users, XCircle } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { BookMarked, CheckCheck, Clock, MessageSquareText, Palette, Pencil, ShieldCheck, Users, XCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { CommunityFooter, CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAccount } from "@community/lib/use-account";
 import { useCommunityId, communityId } from "@/community/lib/community";
 
 /**
@@ -78,8 +82,57 @@ function useMySubmissions(userId: string | undefined) {
   });
 }
 
+/**
+ * The member's name, changed in place: it is what the site calls them, in the
+ * header and here, and what the gabbai sees on what they send. Kept in their
+ * profile (profiles.display_name), which the database lets them change alone.
+ */
+function NameEditor({ current, userId }: { current: string; userId?: string }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState(current);
+  const [busy, setBusy] = useState(false);
+  const queryClient = useQueryClient();
+  const save = async () => {
+    const next = name.trim().slice(0, 60);
+    if (!next || !userId) return;
+    setBusy(true);
+    const { error } = await supabase.from("profiles").upsert({ id: userId, display_name: next }, { onConflict: "id" });
+    setBusy(false);
+    if (error) return toast.error("לא הצלחנו לשמור את השם");
+    await queryClient.invalidateQueries({ queryKey: ["profile-name", userId] });
+    toast.success("השם עודכן");
+    setOpen(false);
+  };
+  if (!open)
+    return (
+      <Button type="button" variant="ghost" size="sm" className="gap-1 text-sm font-normal" onClick={() => { setName(current); setOpen(true); }}>
+        <Pencil className="h-3.5 w-3.5" /> שינוי שם
+      </Button>
+    );
+  return (
+    <span className="flex items-center gap-2 text-base font-normal">
+      <Input
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && void save()}
+        aria-label="השם שלי"
+        maxLength={60}
+        className="h-9 w-48"
+        autoFocus
+      />
+      <Button type="button" size="sm" onClick={() => void save()} disabled={busy || !name.trim()}>
+        שמירה
+      </Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)}>
+        ביטול
+      </Button>
+    </span>
+  );
+}
+
 export function MySubmissionsPage() {
   const { user, loading } = useAuth();
+  const account = useAccount();
   const signedIn = Boolean(user && !user.is_anonymous);
   const { data: items = [], isLoading, error } = useMySubmissions(signedIn ? user!.id : undefined);
 
@@ -89,8 +142,24 @@ export function MySubmissionsPage() {
     <div className="min-h-screen" dir="rtl">
       <CommunityHeader />
       <main className="mx-auto max-w-2xl px-4 py-10">
-        <h1 className="text-3xl font-bold">האזור שלי</h1>
-        <p className="mt-2 truncate text-muted-foreground">{user?.email}</p>
+        <h1 className="flex flex-wrap items-center gap-2 text-3xl font-bold">
+          <span>
+            שלום, <span data-testid="my-name">{account.name}</span>
+          </span>
+          <NameEditor current={account.name} userId={user?.id} />
+        </h1>
+        <p className="mt-2 truncate text-muted-foreground">
+          <span data-testid="my-role" className="font-medium text-foreground">{account.roleLabel}</span>
+          {account.email && <> · {account.email}</>}
+        </p>
+        {account.role === "gabbai" && (
+          <Button asChild className="mt-3 gap-2">
+            <Link to="/community/admin">
+              <ShieldCheck className="h-4 w-4" />
+              ניהול בית הכנסת - כל ההודעות, הבקשות והעריכה
+            </Link>
+          </Button>
+        )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           <Button asChild variant="outline" className="gap-2">

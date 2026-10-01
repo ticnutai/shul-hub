@@ -1,4 +1,10 @@
 import { expect, test } from "@playwright/test";
+import { rememberShul } from "./support/chooseShul";
+
+// The site asks which synagogue first; these tests are not about that question.
+test.beforeEach(async ({ page }) => {
+  await rememberShul(page);
+});
 
 const publicRoutes = [
   ["/community", "זמני התפילות"],
@@ -114,7 +120,12 @@ test("the global synagogue strip persists unchanged while only page content chan
 
   const header = page.getByTestId("global-app-header");
   await expect(header).toHaveCount(1);
-  await expect(header.getByTestId("community-site-title")).toHaveText("בית הכנסת אושר של יהודי");
+  // The synagogue's own name, whatever it is called in its settings; the
+  // geometry below is what this test is about.
+  await expect(header.getByTestId("community-site-title")).toHaveText(/בית הכנסת/);
+  // Wait for the account chip too: it is part of the strip, and the strip is
+  // measured once it is all there.
+  await expect(header.getByTestId("account-entry")).toBeVisible();
 
   const initialGeometry = await header.evaluate(element => {
     const rect = element.getBoundingClientRect();
@@ -262,30 +273,16 @@ test("the full synagogue name stays visible while management moves to the footer
   ]);
   expect(contactOrder[0]).toBeLessThan(contactOrder[1]);
   expect(contactOrder[1]).toBeLessThan(contactOrder[2]);
-  // One door only: a guest is sent to sign in (a gabbai to the admin, a
-  // member to their area - the same link, decided by who is signed in).
-  const utilityActions = footer.getByTestId("footer-utility-actions");
-  const accountLink = footer.getByTestId("account-entry");
-  await accountLink.scrollIntoViewIfNeeded();
+  // One door only, in the header and with a name on it: a guest is sent to
+  // sign in (a gabbai to the admin, a member to their area - the same link,
+  // decided by who is signed in). Nothing of it is left in the footer.
+  const accountLink = page.getByTestId("account-entry");
   await expect(accountLink).toBeVisible();
   await expect(accountLink).toHaveAttribute("href", "/auth");
-  await expect(utilityActions.locator("a, button")).toHaveCount(1);
-
-  const placement = await utilityActions.evaluate(element => {
-    const controls = Array.from(element.children, child => child.getBoundingClientRect());
-    const footerRect = element.parentElement!.getBoundingClientRect();
-    const actions = element.getBoundingClientRect();
-    return {
-      widths: controls.map(control => control.width),
-      heights: controls.map(control => control.height),
-      rightInset: footerRect.right - actions.right,
-      bottomInset: footerRect.bottom - actions.bottom,
-    };
-  });
-  expect(placement.widths.every(width => width <= 36)).toBeTruthy();
-  expect(placement.heights.every(height => height <= 36)).toBeTruthy();
-  expect(placement.rightInset).toBeLessThanOrEqual(16);
-  expect(placement.bottomInset).toBeGreaterThanOrEqual(0);
+  await expect(accountLink).toHaveAttribute("data-role", "guest");
+  await expect(accountLink).toContainText("כניסה");
+  await expect(page.getByTestId("community-header-actions").locator(accountLink)).toHaveCount(1);
+  await expect(footer.getByTestId("footer-utility-actions")).toHaveCount(0);
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(1);
