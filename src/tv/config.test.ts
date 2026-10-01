@@ -27,3 +27,17 @@ describe("logos on a board", () => {
     expect(c.logos).toEqual([{ id: "a", name: "טוב", url: "https://x/a.png" }]);
   });
 });
+
+describe("saved arrangements", () => {
+  it("keeps kits with a name and a valid arrangement, at most twelve", () => {
+    const c = normalizeTvConfig({
+      layouts: [
+        { id: "layout1", name: " תפילות גדול ", grid: [{ blocks: ["prayers", "zmanim"], widths: [2, 1], height: 1.5 }] },
+        { id: "layout2", name: "", grid: [{ blocks: ["prayers"], widths: [1], height: 1 }] },
+        { id: "layout3", name: "ריק", grid: [] },
+        { id: "bad id!", name: "x", grid: [{ blocks: ["prayers"], widths: [1], height: 1 }] },
+      ],
+    });
+    expect(c.layouts).toEqual([{ id: "layout1", name: "תפילות גדול", grid: [{ blocks: ["prayers", "zmanim"], widths: [2, 1], height: 1.5 }] }]);
+  });
+});

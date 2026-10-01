@@ -1357,6 +1357,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 setComposerScreen(i);
                 setPreviewScreen(s.id);
               }}
+              onLayouts={(layouts) => edit("layouts", (c) => ({ ...c, layouts }))}
               onChange={(screens, next) => {
                 setComposerScreen(next);
                 if (screens[next]) setPreviewScreen(screens[next].id);

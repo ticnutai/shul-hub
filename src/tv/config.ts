@@ -90,6 +90,16 @@ export interface Screen {
   grid?: ScreenRow[];
 }
 
+/**
+ * A hand arrangement kept under a name ("ערכת סידור"), to be put on any
+ * screen of the board again: its blocks and how they stand.
+ */
+export interface SavedLayout {
+  id: string;
+  name: string;
+  grid: ScreenRow[];
+}
+
 /** One row of a hand-arranged screen. */
 export interface ScreenRow {
   /** Right to left, as on the wall; at most three. */
@@ -541,6 +551,8 @@ export interface TvConfig {
    * an endless curtain. A frame whose content fits never moves.
    */
   overflow: { mode: "off" | "pause" | "loop"; speed: "slow" | "normal" };
+  /** Arrangements saved in the composer, to be put on a screen again (SavedLayout). */
+  layouts: SavedLayout[];
   alerts: {
     enabled: boolean;
     events: AlertEvent[];
@@ -654,6 +666,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   header: { parasha: true, dafYomi: true, logo: true },
   logos: [],
   overflow: { mode: "off", speed: "slow" },
+  layouts: [],
   alerts: {
     enabled: true,
     events: ["sof_zman_shma", "sof_zman_tefila", "sunset", "candle"],
@@ -771,6 +784,18 @@ function normalizeGrid(raw: unknown): ScreenRow[] | undefined {
     if (blocks.length) rows.push({ blocks, widths, height: num(r.height, 1, 0.3, 4) });
   }
   return rows.length ? rows : undefined;
+}
+
+function normalizeLayouts(raw: unknown): SavedLayout[] {
+  const out: SavedLayout[] = [];
+  for (const l of Array.isArray(raw) ? raw : []) {
+    if (!isObj(l) || typeof l.id !== "string" || !KEY_RE.test(l.id) || out.some((o) => o.id === l.id)) continue;
+    const grid = normalizeGrid(l.grid);
+    const name = typeof l.name === "string" ? l.name.trim().slice(0, 40) : "";
+    if (grid && name) out.push({ id: l.id.slice(0, 40), name, grid });
+    if (out.length >= 12) break;
+  }
+  return out;
 }
 
 function normalizeScreens(raw: unknown): Screen[] | undefined {
@@ -1122,6 +1147,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
     screens: withLogoSwitch(normalizeScreens(raw.screens), raw.logos),
     logos: normalizeLogos(raw.logos),
+    layouts: normalizeLayouts(raw.layouts),
     overflow: {
       mode: isObj(raw.overflow) && ["pause", "loop"].includes(raw.overflow.mode as string) ? (raw.overflow.mode as "pause" | "loop") : "off",
       speed: isObj(raw.overflow) && raw.overflow.speed === "normal" ? "normal" : "slow",

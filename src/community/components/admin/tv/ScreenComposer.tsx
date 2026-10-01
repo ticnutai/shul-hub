@@ -21,15 +21,15 @@
  * field present or absent.
  */
 import { Fragment, useState } from "react";
-import { Plus, RotateCcw, X } from "lucide-react";
+import { BookmarkPlus, Plus, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { BLOCKS, BLOCK_BY_ID } from "@/tv/blocks";
-import type { BlockArea, BlockId, Screen, TvConfig } from "@/tv/config";
+import type { BlockArea, BlockId, SavedLayout, Screen, TvConfig } from "@/tv/config";
 import { DAY_BLOCKS, dayScreen, readScreens } from "@/tv/screens";
-import { arrange } from "@/tv/grid";
+import { arrange, gridOf, tracks } from "@/tv/grid";
 import { SketchEditor, SKETCH_HINT } from "./SketchEditor";
 
 const AREA_LABELS: Record<"auto" | BlockArea, string> = {
@@ -46,7 +46,10 @@ const AREA_LABELS: Record<"auto" | BlockArea, string> = {
  */
 const GROUPS: { title: string; ids: BlockId[] }[] = [
   { title: "קבוע על כל מסך", ids: BLOCKS.filter((b) => b.chrome).map((b) => b.id) },
-  { title: "תוכן", ids: BLOCKS.filter((b) => !b.chrome && !DAY_BLOCKS.includes(b.id)).map((b) => b.id) },
+  {
+    title: "תוכן",
+    ids: BLOCKS.filter((b) => !b.chrome && !DAY_BLOCKS.includes(b.id)).map((b) => b.id),
+  },
 ];
 
 /** The ordinary screens: a board's old Shabbat and day screens are occasions now. */
@@ -62,6 +65,7 @@ export function ScreenComposer({
   current,
   onChange,
   onSelect,
+  onLayouts,
 }: {
   config: TvConfig;
   /** Which screen is open for editing; the composer keeps this in the parent. */
@@ -73,6 +77,8 @@ export function ScreenComposer({
    * when nothing had been.
    */
   onSelect: (current: number, screen: Screen) => void;
+  /** The board's saved arrangements changed (a kit saved or removed). */
+  onLayouts: (layouts: SavedLayout[]) => void;
 }) {
   // A board that never opened the composer is read from its old fields, so
   // the first thing shown is the board as it is now, not an empty sheet.
@@ -88,20 +94,54 @@ export function ScreenComposer({
 
   const toggle = (id: BlockId, on: boolean) =>
     editScreen({
-      blocks: on
-        ? [...screen.blocks, { block: id }]
-        : screen.blocks.filter((b) => b.block !== id),
+      blocks: on ? [...screen.blocks, { block: id }] : screen.blocks.filter((b) => b.block !== id),
     });
 
   // A "מיקום" chosen in the list is the automatic arrangement again: a hand one would ignore it.
   const setArea = (id: BlockId, area: string) =>
     editScreen({
       blocks: screen.blocks.map((b) =>
-        b.block !== id ? b : area === "auto" ? { block: id } : { block: id, area: area as BlockArea },
+        b.block !== id
+          ? b
+          : area === "auto"
+          ? { block: id }
+          : { block: id, area: area as BlockArea },
       ),
       grid: undefined,
     });
   const [sketchMessage, setSketchMessage] = useState(SKETCH_HINT);
+  const [kitName, setKitName] = useState<string | null>(null);
+
+  /** The screen as it stands now, kept under a name. */
+  const saveKit = () => {
+    const name = (kitName ?? "").trim();
+    if (!name) return;
+    const kit: SavedLayout = {
+      id: `layout${Date.now().toString(36)}`,
+      name: name.slice(0, 40),
+      grid: gridOf(rows),
+    };
+    onLayouts([...config.layouts.filter((l) => l.name !== kit.name), kit].slice(-12));
+    setKitName(null);
+    setSketchMessage(
+      `הסידור נשמר כערכה «${kit.name}». אפשר להחיל אותה על כל מסך, גם אחרי שינויים.`,
+    );
+  };
+  /**
+   * A kit put on the screen: its blocks on (and the screen's other content
+   * off), standing as they were saved. The bars stay as the screen has them.
+   */
+  const applyKit = (kit: SavedLayout) => {
+    const chrome = screen.blocks.filter((b) => BLOCK_BY_ID[b.block].chrome);
+    const content = kit.grid.flatMap((r) => r.blocks).map((block) => ({ block }));
+    editScreen({ blocks: [...chrome, ...content], grid: kit.grid });
+    setSketchMessage(`הוחלה הערכה «${kit.name}» על "${screen.name}".`);
+  };
+  const removeKit = (kit: SavedLayout) => {
+    if (!window.confirm(`למחוק את הערכה «${kit.name}»? המסכים שכבר מסודרים לפיה לא ישתנו.`)) return;
+    onLayouts(config.layouts.filter((l) => l.id !== kit.id));
+    setSketchMessage(`הערכה «${kit.name}» נמחקה.`);
+  };
 
   const addScreen = () => {
     const n = screens.length + 1;
@@ -147,13 +187,17 @@ export function ScreenComposer({
                 aria-current={i === index}
                 onClick={() => onSelect(i, s)}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
-                  i === index ? "border-primary ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
+                  i === index
+                    ? "border-primary ring-2 ring-primary ring-offset-1"
+                    : "hover:border-primary/50"
                 }`}
               >
                 <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
                 <span>{s.name}</span>
                 {empty(s) && (
-                  <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-900">לא יוצג</span>
+                  <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-900">
+                    לא יוצג
+                  </span>
                 )}
                 {screens.length > 1 && (
                   <span
@@ -162,7 +206,10 @@ export function ScreenComposer({
                     aria-label={`הסר את ${s.name}`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      write(screens.filter((_, j) => j !== i), Math.max(0, i - 1));
+                      write(
+                        screens.filter((_, j) => j !== i),
+                        Math.max(0, i - 1),
+                      );
                     }}
                     className="rounded p-0.5 text-muted-foreground hover:text-destructive"
                   >
@@ -181,14 +228,21 @@ export function ScreenComposer({
               : "מסך אחד — הלוח עומד. אין סיבוב ואין מה לדלג."}
             {" מה שמוצג בשבת ובחגים - בלשונית מועדים."}
             {shown < screens.length &&
-              ` ${screens.length - shown === 1 ? "מסך אחד ריק ולא יוצג" : `${screens.length - shown} מסכים ריקים ולא יוצגו`} — סמנו בו תוכן, או הסירו אותו.`}
+              ` ${
+                screens.length - shown === 1
+                  ? "מסך אחד ריק ולא יוצג"
+                  : `${screens.length - shown} מסכים ריקים ולא יוצגו`
+              } — סמנו בו תוכן, או הסירו אותו.`}
           </p>
         </div>
 
         {/* ------------------------------------------- name and seconds -- */}
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[10rem] flex-1">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="composer-name">
+            <label
+              className="mb-1 block text-xs font-medium text-muted-foreground"
+              htmlFor="composer-name"
+            >
               שם המסך
             </label>
             <Input
@@ -199,7 +253,10 @@ export function ScreenComposer({
           </div>
           {screens.length > 1 && !empty(screen) && (
             <div className="w-28">
-              <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="composer-seconds">
+              <label
+                className="mb-1 block text-xs font-medium text-muted-foreground"
+                htmlFor="composer-seconds"
+              >
                 שניות
               </label>
               <Input
@@ -225,7 +282,11 @@ export function ScreenComposer({
             className="grid aspect-video gap-1.5 rounded-lg border bg-[#0b1628] p-2 text-[#f0c35c]"
             style={{ gridTemplateRows: "auto minmax(0,1fr) auto" }}
           >
-            <Sketch ids={screen.blocks.filter((b) => BLOCK_BY_ID[b.block].zone === "top").map((b) => b.block)} />
+            <Sketch
+              ids={screen.blocks
+                .filter((b) => BLOCK_BY_ID[b.block].zone === "top")
+                .map((b) => b.block)}
+            />
             {rows.length === 0 ? (
               <div className="grid place-items-center rounded border border-dashed border-[#f0c35c]/30 text-[11px] opacity-60">
                 אין עדיין תוכן במסך הזה, ולכן הוא לא יוצג בלוח. סמנו תוכן מהרשימה.
@@ -239,27 +300,107 @@ export function ScreenComposer({
                 onMessage={setSketchMessage}
               />
             )}
-            <Sketch ids={screen.blocks.filter((b) => BLOCK_BY_ID[b.block].zone === "bottom").map((b) => b.block)} />
+            <Sketch
+              ids={screen.blocks
+                .filter((b) => BLOCK_BY_ID[b.block].zone === "bottom")
+                .map((b) => b.block)}
+            />
           </div>
           {rows.length > 0 && (
-            <div className="mt-1.5 flex items-start gap-2">
-              <p role="status" aria-live="polite" data-testid="sketch-status" className="min-h-[2.4em] flex-1 text-[11px] leading-snug text-muted-foreground">
+            <div className="mt-1.5 space-y-2">
+              <p
+                role="status"
+                aria-live="polite"
+                data-testid="sketch-status"
+                className="min-h-[2.4em] text-[11px] leading-snug text-muted-foreground"
+              >
                 {sketchMessage}
               </p>
-              {screen.grid && (
+              <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
                   className="h-7 shrink-0 px-2 text-[11px]"
-                  title="מבטל את הסידור הידני של המסך הזה; המסגרות יסודרו לפי ה'מיקום' שברשימה"
-                  onClick={() => {
-                    editScreen({ grid: undefined });
-                    setSketchMessage("חזרה לסידור האוטומטי: המסגרות מסודרות לפי ה'מיקום' שברשימה.");
-                  }}
+                  title="שומר את הסידור של המסך הזה בשם, כדי להחיל אותו שוב על כל מסך"
+                  onClick={() =>
+                    setKitName(kitName === null ? `סידור ${config.layouts.length + 1}` : null)
+                  }
                 >
-                  <RotateCcw className="size-3" /> סידור אוטומטי
+                  <BookmarkPlus className="size-3" /> שמירה כערכה
                 </Button>
+                {screen.grid && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 px-2 text-[11px]"
+                    title="מבטל את הסידור הידני של המסך הזה; המסגרות יסודרו לפי ה'מיקום' שברשימה"
+                    onClick={() => {
+                      editScreen({ grid: undefined });
+                      setSketchMessage(
+                        "חזרה לסידור האוטומטי: המסגרות מסודרות לפי ה'מיקום' שברשימה.",
+                      );
+                    }}
+                  >
+                    <RotateCcw className="size-3" /> סידור אוטומטי
+                  </Button>
+                )}
+              </div>
+              {kitName !== null && (
+                <div className="mt-1.5 flex items-center gap-2">
+                  <Input
+                    value={kitName}
+                    onChange={(e) => setKitName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && saveKit()}
+                    aria-label="שם הערכה"
+                    className="h-8 text-sm"
+                    maxLength={40}
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8"
+                    onClick={saveKit}
+                    disabled={!kitName.trim()}
+                  >
+                    שמירה
+                  </Button>
+                </div>
+              )}
+              {config.layouts.length > 0 && (
+                <div className="mt-2" data-testid="layout-kits">
+                  <div className="mb-1 text-[11px] font-medium text-muted-foreground">
+                    ערכות סידור - לחיצה מחילה על המסך הזה
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {config.layouts.map((kit) => (
+                      <div key={kit.id} className="group relative">
+                        <button
+                          type="button"
+                          onClick={() => applyKit(kit)}
+                          title={`החלת «${kit.name}» על "${screen.name}": ${kit.grid
+                            .flatMap((r) => r.blocks)
+                            .map((b) => BLOCK_BY_ID[b].name)
+                            .join(", ")}`}
+                          className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-xs hover:border-primary"
+                        >
+                          <KitThumb kit={kit} />
+                          {kit.name}
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`מחיקת הערכה ${kit.name}`}
+                          onClick={() => removeKit(kit)}
+                          className="absolute -left-1.5 -top-1.5 hidden size-4 place-items-center rounded-full bg-destructive text-[10px] text-destructive-foreground group-hover:grid"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -280,7 +421,10 @@ export function ScreenComposer({
                   const spec = BLOCK_BY_ID[id];
                   const checked = on(id);
                   return (
-                    <div key={id} className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted/50">
+                    <div
+                      key={id}
+                      className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted/50"
+                    >
                       <Switch
                         id={`block-${id}`}
                         checked={checked}
@@ -290,7 +434,9 @@ export function ScreenComposer({
                       <label htmlFor={`block-${id}`} className="min-w-0 flex-1 cursor-pointer">
                         <span className="block text-sm leading-tight">{spec.name}</span>
                         {spec.note && (
-                          <span className="block text-[11px] leading-tight text-muted-foreground">{spec.note}</span>
+                          <span className="block text-[11px] leading-tight text-muted-foreground">
+                            {spec.note}
+                          </span>
                         )}
                       </label>
                       {checked && spec.zone === "main" && (
@@ -316,7 +462,8 @@ export function ScreenComposer({
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
           בלי מיקום — הפריסה מסדרת לבד לפי מה שסומן. עם מיקום — נעוץ שם, והשאר מסתדרים סביבו.
-          {screen.grid && " המסך הזה מסודר ביד בשרטוט; בחירת מיקום כאן מחזירה אותו לסידור האוטומטי."}
+          {screen.grid &&
+            " המסך הזה מסודר ביד בשרטוט; בחירת מיקום כאן מחזירה אותו לסידור האוטומטי."}
         </p>
       </div>
     </div>
@@ -327,12 +474,37 @@ export function ScreenComposer({
 function Sketch({ ids }: { ids: BlockId[] }) {
   if (!ids.length) return <div aria-hidden className="h-1" />;
   return (
-    <div className="grid gap-1.5" style={{ gridTemplateColumns: `repeat(${ids.length}, minmax(0,1fr))` }}>
+    <div
+      className="grid gap-1.5"
+      style={{ gridTemplateColumns: `repeat(${ids.length}, minmax(0,1fr))` }}
+    >
       {ids.map((id) => (
-        <div key={id} className="truncate rounded border border-[#f0c35c]/25 px-2 py-0.5 text-[10px] opacity-80">
+        <div
+          key={id}
+          className="truncate rounded border border-[#f0c35c]/25 px-2 py-0.5 text-[10px] opacity-80"
+        >
           {BLOCK_BY_ID[id].name}
         </div>
       ))}
     </div>
+  );
+}
+
+/** A kit's arrangement in miniature: its rows and their proportions. */
+function KitThumb({ kit }: { kit: SavedLayout }) {
+  return (
+    <span
+      aria-hidden
+      className="grid h-[27px] w-12 shrink-0 gap-[2px] rounded-sm bg-[#0b1628] p-[2px]"
+      style={{ gridTemplateRows: tracks(kit.grid.map((r) => r.height)) }}
+    >
+      {kit.grid.map((r, i) => (
+        <span key={i} className="grid gap-[2px]" style={{ gridTemplateColumns: tracks(r.widths) }}>
+          {r.blocks.map((b) => (
+            <span key={b} className="rounded-[1px] bg-[#f0c35c]/60" />
+          ))}
+        </span>
+      ))}
+    </span>
   );
 }

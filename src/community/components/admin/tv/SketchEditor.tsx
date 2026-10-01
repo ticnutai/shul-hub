@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 import { Move } from "lucide-react";
 
 import { BLOCK_BY_ID } from "@/tv/blocks";
@@ -187,6 +187,74 @@ export function SketchEditor({
   };
   const handle = { onPointerMove: resizeMove, onPointerUp: resizeUp, onPointerCancel: resizeUp };
 
+  /* ---------------------------------------------------------- keyboard -- */
+  /**
+   * The same, without a mouse: a block in focus moves with the arrows - right
+   * and left along its row, up and down between rows - and with Shift the
+   * arrows size it: right and left its width against its neighbour, up and
+   * down its row's height. The focus stays on the block where it went.
+   */
+  const [focusBlock, setFocusBlock] = useState<BlockId | null>(null);
+  // The focus put back after a move is not news: it must not replace the line saying where the block went.
+  const restoring = useRef(false);
+  useEffect(() => {
+    const el = focusBlock ? box.current?.querySelector<HTMLElement>(`[data-sketch-cell="${focusBlock}"]`) : null;
+    if (!el || el === document.activeElement) return;
+    restoring.current = true;
+    el.focus();
+    restoring.current = false;
+  }, [focusBlock, rows]);
+
+  const keyDown = (block: BlockId, r: number, i: number) => (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) return;
+    e.preventDefault();
+    const row = grid[r];
+    if (e.shiftKey) {
+      if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+        const next = setHeight(grid, r, row.height + (e.key === "ArrowDown" ? 0.1 : -0.1));
+        onChange(next);
+        const h = next[r].height;
+        setMessage(`גובה שורה ${r + 1}: ${h === 1 ? "רגיל" : `פי ${h} מהרגיל`}`);
+        return;
+      }
+      // Its width against the block to its left, or - for the last - to its right.
+      const pair = i < row.blocks.length - 1 ? i : i - 1;
+      if (pair < 0) return setMessage(`${name(block)} לבד בשורה, ותופס את כל הרוחב`);
+      const share = row.widths[pair] / (row.widths[pair] + row.widths[pair + 1]);
+      // Growing this block: towards the side the arrow points to, which is its neighbour.
+      const grow = (e.key === "ArrowLeft") === (pair === i);
+      const delta = (grow ? 1 : -1) * (pair === i ? 0.05 : -0.05);
+      const next = setShare(grid, r, pair, share + delta);
+      onChange(next);
+      const p = percents(next[r].widths);
+      setMessage(`רוחב בשורה ${r + 1}: ` + next[r].blocks.map((b, k) => `${name(b)} ${p[k]}%`).join(" · "));
+      return;
+    }
+    let target: DropTarget | null = null;
+    if (e.key === "ArrowRight") target = i > 0 ? { row: r, index: i - 1 } : null;
+    if (e.key === "ArrowLeft") target = i < row.blocks.length - 1 ? { row: r, index: i + 2 } : null;
+    if (e.key === "ArrowUp") {
+      if (r > 0 && grid[r - 1].blocks.length < 3) target = { row: r - 1, index: grid[r - 1].blocks.length };
+      else if (row.blocks.length > 1 || r > 0) target = { newRowAt: r > 0 && row.blocks.length === 1 ? r - 1 : r };
+    }
+    if (e.key === "ArrowDown") {
+      if (r < grid.length - 1 && grid[r + 1].blocks.length < 3) target = { row: r + 1, index: grid[r + 1].blocks.length };
+      else if (row.blocks.length > 1 || r < grid.length - 1) target = { newRowAt: row.blocks.length === 1 ? r + 2 : r + 1 };
+    }
+    const result = target ? moveBlock(grid, block, target) : null;
+    if (!result || JSON.stringify(result.map((x) => x.blocks)) === JSON.stringify(grid.map((x) => x.blocks))) {
+      setMessage(`${name(block)} כבר בקצה`);
+      return;
+    }
+    onChange(result);
+    setFocusBlock(block);
+    const at = result.findIndex((x) => x.blocks.includes(block));
+    const blocks = result[at].blocks;
+    const k = blocks.indexOf(block);
+    const beside = blocks[k - 1] ? `, משמאל ל${name(blocks[k - 1])}` : blocks[k + 1] ? `, מימין ל${name(blocks[k + 1])}` : " - לבד בשורה";
+    setMessage(`${name(block)} בשורה ${at + 1}${beside}`);
+  };
+
   return (
     <div className="flex min-h-0 flex-col gap-1">
       <div ref={box} className="relative grid min-h-0 flex-1 gap-1.5" style={{ gridTemplateRows: tracks(rows.map((r) => r.height)) }}>
@@ -205,9 +273,13 @@ export function SketchEditor({
                   key={e.block}
                   data-sketch-cell={e.block}
                   role="button"
-                  tabIndex={-1}
-                  aria-label={`${BLOCK_BY_ID[e.block].name} - גררו כדי להזיז`}
-                  className={`relative min-w-0 cursor-grab touch-none select-none rounded border border-[#f0c35c]/35 bg-white/5 px-2 py-1 text-[11px] transition-colors hover:border-[#f0c35c]/80 hover:bg-white/10 active:cursor-grabbing ${
+                  tabIndex={0}
+                  aria-label={`${BLOCK_BY_ID[e.block].name} - גררו כדי להזיז, או חיצים (עם Shift: גודל)`}
+                  onKeyDown={keyDown(e.block, r, i)}
+                  onFocus={() => {
+                    if (!restoring.current) setMessage(`${BLOCK_BY_ID[e.block].name}: חיצים מזיזים, Shift וחיצים משנים גודל`);
+                  }}
+                  className={`relative min-w-0 cursor-grab touch-none select-none rounded outline-none focus-visible:ring-2 focus-visible:ring-sky-400 border border-[#f0c35c]/35 bg-white/5 px-2 py-1 text-[11px] transition-colors hover:border-[#f0c35c]/80 hover:bg-white/10 active:cursor-grabbing ${
                     drag?.block === e.block ? "opacity-40" : ""
                   }`}
                   onPointerDown={cellDown(e.block)}

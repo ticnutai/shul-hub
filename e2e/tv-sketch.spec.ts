@@ -66,3 +66,43 @@ test("drag a block, split a row, make a row taller; the board follows", async ({
   expect(await rowOf("shiurim")).toBe(2);
   await expectNotFrozen(page, "sketch");
 });
+
+test("the keyboard moves and sizes a block; an arrangement is kept as a kit and put back", async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const served = await serveEditor(page, { screenLayout: "rotate", screens: [{ id: "a", name: "הלוח", seconds: 20, blocks: BLOCKS }] });
+  const res = await page.goto(HARNESS).catch(() => null);
+  test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
+  await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("tab", { name: "פריסה" }).click();
+  const sketch = page.getByTestId("composer-sketch");
+  const status = page.getByTestId("sketch-status");
+  const cell = (id: string) => sketch.locator(`[data-sketch-cell="${id}"]`);
+  const rowOf = (id: string) => cell(id).evaluate((el) => Number(el.closest("[data-sketch-row]")!.getAttribute("data-sketch-row")));
+
+  // Up from the bottom row: the shiurim join the row above, and keep the focus.
+  await cell("shiurim").focus();
+  await page.keyboard.press("ArrowUp");
+  await expect(status).toContainText("«שיעורים» בשורה 2");
+  expect(await rowOf("shiurim")).toBe(1);
+  await expect(cell("shiurim")).toBeFocused();
+  // Shift + arrow: its row taller.
+  await page.keyboard.press("Shift+ArrowDown");
+  await expect(status).toContainText("גובה שורה 2: פי 1.1");
+
+  // Kept as a kit, the arrangement given up, then put back by the kit.
+  await page.getByRole("button", { name: "שמירה כערכה" }).click();
+  await page.getByLabel("שם הערכה").fill("שלוש בשורה");
+  await page.getByRole("button", { name: "שמירה", exact: true }).click();
+  await expect(status).toContainText("נשמר כערכה «שלוש בשורה»");
+  await page.getByRole("button", { name: "סידור אוטומטי" }).click();
+  expect(await rowOf("shiurim")).toBe(2);
+  await page.getByTestId("layout-kits").getByRole("button", { name: /שלוש בשורה/ }).click();
+  expect(await rowOf("shiurim")).toBe(1);
+  await expect(status).toContainText("הוחלה הערכה «שלוש בשורה»");
+
+  await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
+  await expect
+    .poll(() => JSON.stringify((served.saved() as { layouts?: { name: string }[] } | null)?.layouts ?? null))
+    .toContain("שלוש בשורה");
+  await expectNotFrozen(page, "kits");
+});
