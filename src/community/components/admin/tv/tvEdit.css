@@ -33,6 +33,8 @@
  * heading and its rows of tabs give their room to the board and its controls.
  */
 body.tv-focus [data-testid="global-app-header"],
+body.tv-focus .community-secondary-shell,
+body.tv-focus [data-testid="silent-screens-alert"],
 body.tv-focus [data-focus-hide] {
   display: none !important;
 }
