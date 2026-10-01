@@ -101,7 +101,8 @@ export const SIDDUR_PRESET_THEMES: SiddurTheme[] = [
     headerAccentColor: "#d5aa45",
     textColor: "#172033",
     headingColor: "#173463",
-    instructionColor: "#64748b",
+    // Gold, a shade darker than the accent: small italic text on ivory needs the contrast.
+    instructionColor: "#a17a28",
     accentColor: "#d5aa45",
     cardBg: "#fffdfa",
     cardBorder: "rgba(213,170,69,0.38)",
@@ -1124,6 +1125,8 @@ const ThemePicker = () => {
   const [hoverTheme, setHoverTheme] = useState<SiddurTheme | null>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  /** On a phone: the sheet folded to its header, so the whole page can be seen. */
+  const [minimized, setMinimized] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState("");
   const dragOffset = useRef({ x: 0, y: 0 });
@@ -1325,7 +1328,7 @@ const ThemePicker = () => {
             color: editor.text,
             border: `1px solid ${editor.border}`,
             direction: "rtl",
-            height: mobileViewport ? "50dvh" : "auto",
+            height: mobileViewport ? (minimized ? "auto" : "50dvh") : "auto",
             maxHeight: mobileViewport ? "50dvh" : "88vh",
             width: mobileViewport ? "100vw" : "628px",
             maxWidth: "100vw",
@@ -1364,12 +1367,36 @@ const ThemePicker = () => {
                 בחירת ערכה
               </button>
               <button
-                onClick={() => { setTab("custom"); setHoverTheme(null); }}
+                onClick={() => {
+                  // Editing starts from the theme in use: a preset is copied into a
+                  // draft of its own, a custom theme is edited as it is. It opened
+                  // an old separate draft, so a change landed on another theme.
+                  if (tab !== "custom" && !theme.isCustom) {
+                    const editable = normalizeSiddurTheme({ ...theme, isCustom: true });
+                    setDraft(editable);
+                    setEditingThemeId("");
+                    previewTheme(editable);
+                  }
+                  setTab("custom");
+                  setHoverTheme(null);
+                }}
                 className="px-2.5 py-1 rounded-full text-xs font-medium transition-all"
                 style={{ background: tab === "custom" ? editor.accent : editor.surfaceSoft, color: tab === "custom" ? "#101827" : editor.text }}
               >
                 עריכה מותאמת
               </button>
+              {mobileViewport && (
+                <button
+                  type="button"
+                  data-testid="theme-panel-minimize"
+                  onClick={() => setMinimized((v) => !v)}
+                  className="mr-1 h-6 px-2 flex items-center justify-center rounded-full text-[11px] transition-all hover:opacity-80"
+                  style={{ background: editor.surfaceSoft, color: editor.text }}
+                  title={minimized ? "הצגת העורך" : "מזעור העורך כדי לראות את הדף"}
+                >
+                  {minimized ? "הגדל" : "מזער"}
+                </button>
+              )}
               <button
                 onClick={handleClose}
                 className="mr-1 h-6 w-6 flex items-center justify-center rounded-full text-sm transition-all hover:opacity-80"
@@ -1381,8 +1408,39 @@ const ThemePicker = () => {
             </div>
           </div>
 
+          {/*
+            On a phone the sheet covers the lower half of the page, so a colour
+            changed there may be one the reader cannot see. The same preview the
+            wide editor keeps in its side column stands here, at the top.
+          */}
+          {mobileViewport && !minimized && tab === "custom" && (
+            <div
+              data-testid="theme-mobile-preview"
+              className="sm:hidden flex-shrink-0 border-b px-3 py-2"
+              style={{ borderColor: editor.border, background: previewedTheme.bg }}
+            >
+              {/* What a colour here changes: a heading, a line of prayer, an instruction. */}
+              <div
+                className="rounded-lg border px-3 py-1.5 text-right"
+                dir="rtl"
+                style={{ background: previewedTheme.cardBg, borderColor: previewedTheme.cardBorder, fontFamily: SERIF }}
+              >
+                <div className="flex items-center gap-1.5 text-[13px] font-bold" style={{ color: previewedTheme.headingColor ?? previewedTheme.accentColor }}>
+                  <span className="inline-block h-3 w-1 rounded-full" style={{ background: previewedTheme.accentColor }} />
+                  ברכות השחר
+                </div>
+                <p className="m-0 text-[15px] leading-snug" style={{ color: previewedTheme.textColor }}>
+                  {PREVIEW_PRAYER[0]}
+                </p>
+                <p className="m-0 text-[12px] italic leading-snug" style={{ color: previewedTheme.instructionColor ?? previewedTheme.textColor, opacity: 0.82 }}>
+                  {PREVIEW_INSTRUCTION}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ── Body: controls (flex-1) + mini preview (fixed 200px) ── */}
-          <div className="flex flex-col sm:flex-row flex-1 min-h-0">
+          <div className={`${mobileViewport && minimized ? "hidden" : "flex"} flex-col sm:flex-row flex-1 min-h-0`}>
 
             {/* Controls column */}
             <div className="overflow-y-auto flex-1 min-w-0">
@@ -1507,7 +1565,7 @@ const ThemePicker = () => {
 
                   {/* Action buttons */}
                   {publishError && <p className="text-xs text-red-300 text-center">{publishError}</p>}
-                  <div className="sticky bottom-0 grid grid-cols-2 gap-2 pt-2 pb-[max(0.25rem,env(safe-area-inset-bottom))]" style={{ background: editor.bg }}>
+                  <div className="sticky bottom-0 grid grid-cols-4 sm:grid-cols-2 gap-1.5 sm:gap-2 pt-2 pb-[max(0.25rem,env(safe-area-inset-bottom))]" style={{ background: editor.bg }}>
                     <button
                       onClick={() => {
                         const base = SIDDUR_PRESET_THEMES[0];
@@ -1542,8 +1600,10 @@ const ThemePicker = () => {
                       className="flex-1 inline-flex items-center justify-center gap-1 py-1.5 rounded-lg text-xs font-bold transition-all hover:opacity-90"
                       style={{ background: editor.surface, color: editor.text, border: `1px solid ${editor.border}` }}
                     >
-                      <Copy className="h-3.5 w-3.5" /> שכפל ושמור
+                      <Copy className="h-3.5 w-3.5" /> {mobileViewport ? "שכפל" : "שכפל ושמור"}
                     </button>
+                    {/* Only an administrator may publish; nobody else needs the button. */}
+                    {isAdmin && (
                     <button
                       onClick={applyCustom}
                       disabled={publishing}
@@ -1554,6 +1614,7 @@ const ThemePicker = () => {
                       {publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CloudUpload className="h-3.5 w-3.5" />}
                       {publishing ? "מפרסם..." : "פרסם לכולם"}
                     </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -1594,7 +1655,7 @@ const ThemePicker = () => {
 };
 
 /* ─── SiddurLine — renders one siddur line with semantic styling ─── */
-type SiddurLineSettings = { siddurFont: string; siddurSize: number; siddurBold: boolean; siddurHeadingBold: boolean; siddurOpeningBold: boolean; siddurOpeningWordCount: 1 | 2 | 3; textAlignment: string; lineHeight: string; lineHeightCustom: number; showNikud: boolean; showTaamim: boolean; letterSpacing: string; letterSpacingCustom: number; wordSpacing: number; };
+type SiddurLineSettings = { siddurFont: string; siddurSize: number; siddurBold: boolean; siddurHeadingBold: boolean; siddurOpeningBold: boolean; siddurOpeningWordCount: 1 | 2 | 3; textAlignment: string; lineHeight: string; lineHeightCustom: number; showNikud: boolean; showTaamim: boolean; showInstructions?: boolean; letterSpacing: string; letterSpacingCustom: number; wordSpacing: number; };
 
 const SiddurLine = ({ html, s }: { html: string; s: SiddurLineSettings }) => {
   html = stripText(html, s.showNikud, s.showTaamim);
@@ -1602,6 +1663,8 @@ const SiddurLine = ({ html, s }: { html: string; s: SiddurLineSettings }) => {
   const lh = lineHeightCSS(s.lineHeight, s.lineHeightCustom);
   const nikudStyle = withNikudTypography(s.siddurFont, lh, s.showNikud, s.showTaamim);
   const { theme } = useSiddurTheme();
+  // Hidden by the gold dot beside the section's title (InstructionsToggle).
+  if (type === "instruction" && s.showInstructions === false) return null;
 
   const letterSpacingCSS = s.letterSpacing === "custom"
     ? `${s.letterSpacingCustom ?? 0}em`
@@ -1665,6 +1728,45 @@ const SiddurLine = ({ html, s }: { html: string; s: SiddurLineSettings }) => {
     }}>
       {renderLineContent(html, s.siddurOpeningBold, s.siddurOpeningWordCount)}
     </p>
+  );
+};
+
+/* ─── InstructionsToggle ─────────────────────────────────── */
+/** Whether a section has any instruction lines - the dot shows only where there is something to hide. */
+const hasInstructions = (lines: string[]) => lines.some((l) => classifyLine(l) === "instruction");
+
+/**
+ * The small gold dot beside a section's title: instructions shown (filled) or
+ * hidden (a ring). One setting for the whole Siddur, kept with the reader's
+ * text settings (showInstructions), so it holds across sections and visits.
+ */
+const InstructionsToggle = () => {
+  const { settings, updateSettings } = useFontAndColorSettings();
+  const { theme } = useSiddurTheme();
+  const on = settings.showInstructions !== false;
+  return (
+    <button
+      type="button"
+      data-testid="instructions-toggle"
+      aria-pressed={on}
+      aria-label={on ? "הסתרת ההוראות" : "הצגת ההוראות"}
+      title={on ? "ההוראות מוצגות - לחיצה להסתרה" : "ההוראות מוסתרות - לחיצה להצגה"}
+      onClick={(e) => {
+        e.stopPropagation();
+        updateSettings({ showInstructions: !on });
+      }}
+      className="ms-auto inline-flex size-7 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-110"
+    >
+      <span
+        aria-hidden
+        className="block size-3.5 rounded-full transition-colors"
+        style={
+          on
+            ? { background: theme.accentColor, boxShadow: `0 0 0 3px ${theme.accentColor}33` }
+            : { border: `2px solid ${theme.accentColor}`, background: "transparent" }
+        }
+      />
+    </button>
   );
 };
 
@@ -1743,6 +1845,11 @@ const SectionCard = ({
         className="pb-4 pt-2 space-y-1.5 animate-fade-in border-t"
           style={{ direction: "rtl", paddingInline: gutter, borderColor: `${theme.accentColor}22` }}
         >
+          {hasInstructions(section.lines) && (
+            <div className="-mb-1 flex">
+              <InstructionsToggle />
+            </div>
+          )}
           {section.lines.map((line, i) => (
             <SiddurLine key={i} html={line} s={lineSettings} />
           ))}
@@ -1808,6 +1915,7 @@ const ContinuousReader = ({ sections }: { sections: SiddurSection[] }) => {
             <span className="inline-block w-1.5 h-4 rounded-full flex-shrink-0" style={{ background: theme.accentColor, opacity: 0.7 }} />
             {sec.title}
             <TodayBadge title={sec.title} />
+            {hasInstructions(sec.lines) && <InstructionsToggle />}
           </h3>
           <Divider />
           <div
@@ -1944,6 +2052,7 @@ const CategorySectionsBlock = ({ nusach, cat, first = false }: { nusach: string;
               <span className="inline-block w-1.5 h-4 rounded-full flex-shrink-0" style={{ background: theme.accentColor, opacity: 0.7 }} />
               {sec.title}
               <TodayBadge title={sec.title} />
+              {hasInstructions(sec.lines) && <InstructionsToggle />}
             </h3>
             <div
               data-siddur-card
@@ -2080,6 +2189,11 @@ const SplitPane = ({ nusach, catId }: { nusach: string; catId: string }) => {
       {/* Prayer text (left side in RTL) */}
       <div className="flex-1 min-w-0 pt-4 sm:pt-0 pr-0 sm:pr-4 overflow-y-auto">
         <OrnamentTitle text={sec.title} fontSize={s.siddurSize} withTools />
+        {hasInstructions(sec.lines) && (
+          <div className="-mt-1 flex">
+            <InstructionsToggle />
+          </div>
+        )}
         <Divider />
         <div
           data-siddur-card

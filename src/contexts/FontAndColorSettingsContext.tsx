@@ -112,6 +112,8 @@ export interface FontAndColorSettings {
   // Text filters
   showNikud: boolean;
   showTaamim: boolean;
+  /** The Siddur's instruction lines ("כשיגיע הלילה…"); toggled by the gold dot beside a section's title. */
+  showInstructions: boolean;
 
   // Display Settings
   textAlignment: "right" | "center" | "left" | "justify";
@@ -225,6 +227,7 @@ const defaultSettings: FontAndColorSettings = {
   tehillimWordSpacing: 0,
   showNikud: true,
   showTaamim: false,
+  showInstructions: true,
   textAlignment: "right",
   contentSpacing: "normal",
   contentSpacingCustom: 1,
