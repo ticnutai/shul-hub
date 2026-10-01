@@ -798,6 +798,8 @@ export type Database = {
           karovim_logo_mobile_width: number
           latitude: number
           longitude: number
+          minyan_days: string
+          minyan_layout: string | null
           name: string
           phone: string
           subtitle: string
@@ -825,6 +827,8 @@ export type Database = {
           karovim_logo_mobile_width?: number
           latitude?: number
           longitude?: number
+          minyan_days?: string
+          minyan_layout?: string | null
           name?: string
           phone?: string
           subtitle?: string
@@ -852,6 +856,8 @@ export type Database = {
           karovim_logo_mobile_width?: number
           latitude?: number
           longitude?: number
+          minyan_days?: string
+          minyan_layout?: string | null
           name?: string
           phone?: string
           subtitle?: string

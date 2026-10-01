@@ -1,9 +1,13 @@
+import type { MinyanCategory } from "@community/lib/data";
+import { minyanSubcategories } from "@community/lib/data";
 import type { WeekDay } from "@community/lib/week-schedule";
+import { DaySchedule } from "@community/components/DaySchedule";
+import type { PrayerLayoutMode } from "@community/components/PrayerLayoutPicker";
 
 /**
- * "כל השבוע" on the community page: each day tab one after another, its
- * prayers under it, and the minyanim of each prayer with their times. What
- * is empty is not drawn (week-schedule.ts already left it out).
+ * "כל השבוע" on the website: each day tab one after another, in the order the
+ * gabbai chose (today on top, or the tabs' own order), each day drawn in the
+ * same layout as its own tab. What is empty is not drawn.
  */
 const dateLabel = (d: Date) =>
   new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "numeric", timeZone: "Asia/Jerusalem" }).format(d);
@@ -11,47 +15,46 @@ const dateLabel = (d: Date) =>
 /** Which days a tab stands for, under its name. */
 function daysOf(day: WeekDay): string | null {
   if (day.category.system_key === "weekday") return "ימים א׳–ה׳";
-  if (day.category.system_key === "friday" || day.category.system_key === "shabbat") return dateLabel(day.date);
+  if (day.category.system_key) return dateLabel(day.date);
   return null;
 }
 
-export function WeekSchedule({ days }: { days: WeekDay[] }) {
+export function WeekSchedule({
+  days,
+  layoutFor,
+}: {
+  days: WeekDay[];
+  layoutFor: (category: MinyanCategory) => PrayerLayoutMode;
+}) {
   if (!days.length) {
-    return <p className="p-6 text-center text-muted-foreground">עדיין לא הוגדרו מניינים.</p>;
+    return <p className="card-elev mt-4 p-6 text-center text-muted-foreground">עדיין לא הוגדרו מניינים.</p>;
   }
   return (
-    <div className="divide-y divide-border" data-testid="week-schedule">
+    <div className="mt-2 space-y-8" data-testid="week-schedule">
       {days.map((day) => (
-        <section key={day.category.id} className="px-4 py-4" data-week-day={day.category.system_key ?? day.category.id}>
-          <h3 className="flex items-baseline gap-2 text-lg font-semibold">
+        <section
+          key={day.category.id}
+          data-week-day={day.category.system_key ?? day.category.id}
+          data-today={day.isToday || undefined}
+          className={day.isToday ? "rounded-xl border-2 border-gold/50 p-3 sm:p-4" : undefined}
+        >
+          <h3 className="flex flex-wrap items-baseline gap-2 text-lg font-semibold">
             {day.category.name}
+            {day.isToday && (
+              <span className="rounded-full bg-gold/15 px-2 py-0.5 text-xs font-semibold text-gold">היום</span>
+            )}
             {daysOf(day) && <span className="text-xs font-normal text-muted-foreground">{daysOf(day)}</span>}
           </h3>
-          <div className="mt-2 space-y-3">
-            {day.groups.map((group) => (
-              <div key={group.id}>
-                {group.label && <p className="mb-1 text-xs font-semibold text-primary">{group.label}</p>}
-                <ul className="space-y-1">
-                  {group.rows.map(({ minyan, time, source }) => (
-                    <li key={minyan.id} className="flex items-baseline justify-between gap-3">
-                      <span className="min-w-0 truncate">
-                        <span className="font-medium">{minyan.label}</span>
-                        {[minyan.room, minyan.note, source].filter(Boolean).length > 0 && (
-                          <span className="text-xs text-muted-foreground"> · {[minyan.room, minyan.note, source].filter(Boolean).join(" · ")}</span>
-                        )}
-                      </span>
-                      {/* The time is never broken across lines; the description gives way. */}
-                      <span className="shrink-0 whitespace-nowrap font-display text-xl font-semibold tabular-nums text-primary">{time}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
+          <DaySchedule
+            rows={day.rows}
+            prayerTabs={minyanSubcategories(day.category)}
+            layout={layoutFor(day.category)}
+            isToday={day.isToday}
+          />
         </section>
       ))}
-      <p className="px-4 py-2 text-[11px] text-muted-foreground">
-        הזמנים הקבועים של כל יום. שינוי של יום אחד מופיע בלשונית של אותו יום.
+      <p className="text-[11px] text-muted-foreground">
+        הזמנים הקבועים של כל יום. שינוי של יום אחד מופיע רק ביום שלו.
       </p>
     </div>
   );

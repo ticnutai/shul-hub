@@ -24,26 +24,18 @@ import {
   useShiurim,
   DAYS_HE,
   minyanSubcategories,
-  prayerLabel,
   useMinyanOverrides,
 } from "@community/lib/data";
-import { heldOn, overridesFor, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { overridesFor, resolveCategoryDay, zmanimFor } from "@community/lib/minyan-time";
 import { specialDayTitle, specialZmanim, holyEndMinutesFor, todaysCategories } from "@community/lib/specialDays";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
 import { QuickAddButton } from "@community/components/QuickAddButton";
-import {
-  normalizePrayerLayout,
-  PrayerLayoutPicker,
-} from "@community/components/PrayerLayoutPicker";
-import { CardsLayout, TimelineLayout } from "@community/components/PrayerScheduleLayouts";
+import { normalizePrayerLayout } from "@community/components/PrayerLayoutPicker";
+import { DaySchedule } from "@community/components/DaySchedule";
 import { WeekSchedule } from "@community/components/WeekSchedule";
 import { weekSchedule } from "@community/lib/week-schedule";
 import { useAuth } from "@community/lib/use-auth";
-import { useSaveRow } from "@community/lib/admin";
-
-/** "כל השבוע" in the prayer times, remembered in this browser. */
-const WEEK_VIEW_KEY = "minyanim-week-view";
 
 const SHOWN_ZMANIM: SolarEvent[] = [
   "alot",
@@ -128,7 +120,6 @@ export function CommunityHome() {
   const { data: shiurim = [] } = useShiurim();
   const { data: chavrutot = [] } = useChavrutot();
   const { data: widgets = [] } = useHomeWidgets();
-  const saveCategoryLayout = useSaveRow("minyan_categories", "minyan_categories");
 
   const sectionOrder = useMemo<string[]>(() => {
     const sections = widgets.filter((w) => w.kind === "section");
@@ -158,26 +149,18 @@ export function CommunityHome() {
 
   const today = useMemo(() => new Date(), []);
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  /**
-   * "כל השבוע": every day tab at once (week-schedule.ts) instead of one.
-   * Remembered in this browser, so whoever prefers it finds it again.
+  /*
+   * Which days and how, as the gabbai set it for the website and the app
+   * (settings.minyan_days / minyan_layout, in the admin's "איך יראו זמני
+   * התפילות"); the board has its own. With a week chosen the page opens on
+   * "כל השבוע"; a day's tab is still a tap away.
    */
-  const [weekView, setWeekViewState] = useState(() => {
-    try {
-      return localStorage.getItem(WEEK_VIEW_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
-  const setWeekView = (on: boolean) => {
-    setWeekViewState(on);
-    try {
-      localStorage.setItem(WEEK_VIEW_KEY, on ? "1" : "0");
-    } catch {
-      /* private window: not remembered */
-    }
-  };
-  const [prayer, setPrayer] = useState("shacharit");
+  const daysMode = settings?.minyan_days ?? "day";
+  const weekOffered = daysMode === "week_today" || daysMode === "week_fixed";
+  const [pickedView, setPickedView] = useState<"week" | "day" | null>(null);
+  const weekView = weekOffered && pickedView !== "day";
+  const layoutFor = (category: { display_mode?: string | null } | undefined) =>
+    normalizePrayerLayout(settings?.minyan_layout ?? category?.display_mode);
 
   const zmanim = useMemo(() => zmanimFor(today, settings), [today, settings]);
   // One-day exceptions to the timetable. Empty on almost every day, and on
@@ -198,47 +181,26 @@ export function CommunityHome() {
     () => specialZmanim(today, zmanim, holyEndMinutesFor(settings)),
     [today, zmanim, settings],
   );
+  // The phone must agree with the wall: the same rows, the same one-day
+  // exceptions, worked out by the same function.
   const categoryRows = useMemo(
-    () =>
-      minyanim
-        .filter(
-          (minyan) =>
-            minyan.active &&
-            heldOn(minyan, today) &&
-            (minyan.category_id === selectedCategory?.id ||
-              (!minyan.category_id && minyan.day_type === selectedCategory?.system_key)),
-        )
-        // The phone must agree with the wall: the same one-day exceptions,
-        // resolved by the same function.
-        .map((minyan) => resolveMinyan(minyan, zmanim, todayOverrides.get(minyan.id)))
-        .filter((row): row is NonNullable<typeof row> => row !== null)
-        .sort((a, b) => a.minutes - b.minutes),
+    () => (selectedCategory ? resolveCategoryDay(minyanim, selectedCategory, today, zmanim, todayOverrides) : []),
     [minyanim, selectedCategory, zmanim, todayOverrides, today],
   );
   const week = useMemo(
-    () => (weekView ? weekSchedule({ categories: minyanCategories, minyanim, settings, today }) : []),
-    [weekView, minyanCategories, minyanim, settings, today],
-  );
-  const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
-  const hasSubcategories = prayerTabs.length > 0;
-  const rows = useMemo(
     () =>
-      hasSubcategories
-        ? categoryRows.filter(({ minyan }) => minyan.prayer === prayer)
-        : categoryRows,
-    [categoryRows, hasSubcategories, prayer],
+      weekView
+        ? weekSchedule({
+            categories: minyanCategories,
+            minyanim,
+            settings,
+            today,
+            order: daysMode === "week_fixed" ? "fixed" : "today_first",
+            todayOverrides,
+          })
+        : [],
+    [weekView, daysMode, minyanCategories, minyanim, settings, today, todayOverrides],
   );
-  const prayerLayout = normalizePrayerLayout(selectedCategory?.display_mode);
-  const isListView = prayerLayout === "list";
-  const isTableView = prayerLayout === "table";
-  const isTimelineView = prayerLayout === "timeline";
-  const isCardsView = prayerLayout === "cards";
-
-  useEffect(() => {
-    if (prayerTabs.length > 0 && !prayerTabs.some((item) => item.id === prayer)) {
-      setPrayer(prayerTabs[0]!.id);
-    }
-  }, [prayer, prayerTabs]);
 
   const hebrewDateLabel = formatHebrewDate(today);
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
@@ -317,14 +279,14 @@ export function CommunityHome() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <h2 className="text-2xl font-semibold">זמני התפילות</h2>
-                    {isAdmin && selectedCategory && !weekView && (
-                      <PrayerLayoutPicker
-                        value={prayerLayout}
-                        disabled={saveCategoryLayout.isPending}
-                        onChange={(displayMode) =>
-                          saveCategoryLayout.mutate({ id: selectedCategory.id, display_mode: displayMode })
-                        }
-                      />
+                    {isAdmin && (
+                      <Link
+                        to="/community/admin?tab=minyanim#prayer-display"
+                        className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                        title="אילו ימים מוצגים ואיך - נקבע במקום אחד, בניהול המניינים"
+                      >
+                        עריכת התצוגה
+                      </Link>
                     )}
                   </div>
                   <div
@@ -336,10 +298,8 @@ export function CommunityHome() {
                       <button
                         key={category.id}
                         onClick={() => {
-                          setWeekView(false);
+                          setPickedView("day");
                           setCategoryId(category.id);
-                          const first = minyanSubcategories(category)[0];
-                          if (first) setPrayer(first.id);
                         }}
                         aria-pressed={!weekView && selectedCategory?.id === category.id}
                         className={
@@ -352,11 +312,12 @@ export function CommunityHome() {
                         {category.name}
                       </button>
                     ))}
+                    {weekOffered && (
                     <button
                       type="button"
                       data-testid="minyanim-week"
                       aria-pressed={weekView}
-                      onClick={() => setWeekView(true)}
+                      onClick={() => setPickedView("week")}
                       title="כל ימי השבוע במבט אחד: ימות החול, שישי ושבת"
                       className={
                         "rounded-md px-3 py-1.5 text-sm transition-colors " +
@@ -367,163 +328,22 @@ export function CommunityHome() {
                     >
                       כל השבוע
                     </button>
+                    )}
                   </div>
                 </div>
 
-                {!weekView && prayerLayout === "tabs" && hasSubcategories && (
-                  <div
-                    role="group"
-                    className="mt-3 flex gap-1 rounded-lg bg-secondary p-1"
-                    aria-label="סוג תפילה"
-                  >
-                    {prayerTabs.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => setPrayer(item.id)}
-                        className={
-                          "flex-1 rounded-md px-3 py-2 text-sm transition-colors " +
-                          (prayer === item.id
-                            ? "bg-primary font-medium text-primary-foreground shadow-soft"
-                            : "text-muted-foreground hover:text-foreground")
-                        }
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
+                {weekView ? (
+                  <WeekSchedule days={week} layoutFor={layoutFor} />
+                ) : isLoading || categoriesLoading ? (
+                  <p className="card-elev mt-4 p-6 text-center text-muted-foreground">טוען…</p>
+                ) : (
+                  <DaySchedule
+                    key={selectedCategory?.id ?? "none"}
+                    rows={categoryRows}
+                    prayerTabs={minyanSubcategories(selectedCategory)}
+                    layout={layoutFor(selectedCategory)}
+                  />
                 )}
-
-                <div
-                  className="card-elev mt-4 divide-y divide-border overflow-hidden"
-                  data-minyan-display-mode={weekView ? "week" : prayerLayout}
-                >
-                  {weekView ? (
-                    <WeekSchedule days={week} />
-                  ) : (
-                  <>
-                  {(isLoading || categoriesLoading) && (
-                    <p className="p-6 text-center text-muted-foreground">טוען…</p>
-                  )}
-                  {!isLoading &&
-                    !categoriesLoading &&
-                    (prayerLayout !== "tabs" ? categoryRows.length === 0 : rows.length === 0) && (
-                      <p className="p-6 text-center text-muted-foreground">
-                        עדיין לא הוגדרו מניינים ליום זה.
-                      </p>
-                    )}
-                  {isTimelineView && categoryRows.length > 0 ? (
-                    <TimelineLayout rows={categoryRows} prayerTabs={prayerTabs} />
-                  ) : isCardsView && categoryRows.length > 0 ? (
-                    <CardsLayout rows={categoryRows} prayerTabs={prayerTabs} />
-                  ) : isTableView && categoryRows.length > 0 ? (
-                    <>
-                      <div className="divide-y divide-border sm:hidden" data-testid="prayer-table-mobile">
-                        {categoryRows.map(({ minyan, time, source }) => {
-                          const label = prayerLabel(prayerTabs, minyan.prayer);
-                          return (
-                            <div key={minyan.id} className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-1 px-4 py-3">
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold text-primary">{label}</p>
-                                <p className="truncate font-medium">
-                                  <InlineEdit table="minyanim" id={minyan.id} field="label" value={minyan.label} queryKey="minyanim" />
-                                </p>
-                                <p className="truncate text-xs text-muted-foreground">
-                                  {[minyan.room, minyan.note, source].filter(Boolean).join(" · ")}
-                                </p>
-                              </div>
-                              <span className="font-display text-2xl font-semibold tabular-nums text-primary">{time}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <table className="hidden w-full table-fixed border-collapse text-right sm:table" data-testid="prayer-table-desktop">
-                        <thead className="bg-secondary text-sm text-muted-foreground">
-                          <tr>
-                            <th className="w-1/5 px-4 py-2 font-medium">תפילה</th>
-                            <th className="w-2/5 px-4 py-2 font-medium">מניין</th>
-                            <th className="w-1/4 px-4 py-2 font-medium">מיקום והערה</th>
-                            <th className="w-[15%] px-4 py-2 font-medium">שעה</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {categoryRows.map(({ minyan, time, source }) => (
-                            <tr key={minyan.id}>
-                              <td className="px-4 py-3 font-semibold text-primary">
-                                {prayerLabel(prayerTabs, minyan.prayer)}
-                              </td>
-                              <td className="truncate px-4 py-3 font-medium">
-                                <InlineEdit table="minyanim" id={minyan.id} field="label" value={minyan.label} queryKey="minyanim" />
-                              </td>
-                              <td className="truncate px-4 py-3 text-sm text-muted-foreground">
-                                {[minyan.room, minyan.note, source].filter(Boolean).join(" · ")}
-                              </td>
-                              <td className="px-4 py-3 font-display text-xl font-semibold tabular-nums text-primary">{time}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </>
-                  ) : (isListView && hasSubcategories
-                    ? prayerTabs.map((prayerItem) => ({
-                        prayerItem,
-                        rows: categoryRows.filter(({ minyan }) => minyan.prayer === prayerItem.id),
-                      }))
-                    : [{ prayerItem: null, rows }]
-                  ).map(({ prayerItem, rows: displayedRows }) => (
-                    <div key={prayerItem?.id ?? prayer}>
-                      {prayerItem && (
-                        <h3 className="bg-secondary px-4 py-2 text-base font-semibold text-primary">
-                          {prayerItem.label}
-                        </h3>
-                      )}
-                      <div className="divide-y divide-border">
-                        {displayedRows.length === 0 && prayerItem && (
-                          <p className="px-4 py-3 text-sm text-muted-foreground">
-                            לא הוגדרו זמני {prayerItem.label}.
-                          </p>
-                        )}
-                        {displayedRows.map(({ minyan, time, source }) => (
-                          <div key={minyan.id} className="flex items-center gap-4 px-4 py-3.5">
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate font-medium">
-                                <InlineEdit
-                                  table="minyanim"
-                                  id={minyan.id}
-                                  field="label"
-                                  value={minyan.label}
-                                  queryKey="minyanim"
-                                />
-                              </p>
-                              <p className="truncate text-xs text-muted-foreground">
-                                {source}
-                                {minyan.room ? ` · ${minyan.room}` : ""}
-                                {minyan.note ? ` · ${minyan.note}` : ""}
-                              </p>
-                            </div>
-                            <span className="font-display text-2xl font-semibold tabular-nums text-primary">
-                              {minyan.time_mode === "fixed" ? (
-                                <InlineEdit
-                                  table="minyanim"
-                                  id={minyan.id}
-                                  field="fixed_time"
-                                  value={minyan.fixed_time ? minyan.fixed_time.slice(0, 5) : ""}
-                                  as="time"
-                                  display={time}
-                                  queryKey="minyanim"
-                                  inputClassName="text-2xl"
-                                />
-                              ) : (
-                                time
-                              )}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                                  </>
-                  )}
-</div>
               </section>
             );
           }

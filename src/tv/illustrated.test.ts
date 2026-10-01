@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TV_CONFIG, ILLUSTRATIONS, normalizeTvConfig } from "./config";
-import { ILLUSTRATED_ROWS, ILLUSTRATION_DEFS, illustrationDef, rowWindow, todaysRows } from "./illustrated";
+import { ILLUSTRATED_ROWS, ILLUSTRATION_DEFS, illustrationDef, rowWindow } from "./illustrated";
+import { prayerDaysOf } from "./useBoardData";
 
 describe("the illustrated layout's config", () => {
   it("is a layout like the others, with a painted board to choose", () => {
@@ -74,6 +75,6 @@ describe("today's minyanim in one painted frame", () => {
       { id: "prayer:slichot", kind: "prayer", title: "סליחות", rows: [row("slichot", 480), row("shacharit", 510)], subcategories: [], seconds: 20, layout: "split" },
       { id: "learning", kind: "learning", seconds: 15, layout: "cards" },
     ] as never;
-    expect(todaysRows(slides).map((r) => r.minyan.id)).toEqual(["slichot", "shacharit"]);
+    expect(prayerDaysOf(slides)[0].rows.map((r) => r.minyan.id)).toEqual(["slichot", "shacharit"]);
   });
 });

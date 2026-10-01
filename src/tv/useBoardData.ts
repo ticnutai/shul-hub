@@ -15,11 +15,12 @@ import {
   type Shiur,
 } from "@community/lib/data";
 import { useMemo } from "react";
-import { dayTypeFor, heldOn, jerusalemDateKey, jerusalemWeekday, overridesFor, resolveDay, resolveMinyan, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
+import { dayTypeFor, jerusalemDateKey, jerusalemWeekday, minyanNow, overridesFor, resolveCategoryDay, resolveDay, zmanimFor, type ResolvedMinyan } from "@community/lib/minyan-time";
+import { planWeek } from "@community/lib/week-schedule";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { specialDayFor, todaysCategories } from "@community/lib/specialDays";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
-import type { BlockArea, BlockId, Screen, ScreenRow, TvConfig } from "./config";
+import type { BlockArea, BlockId, PrayerDays, Screen, ScreenRow, TvConfig } from "./config";
 import { arrange } from "./grid";
 import { dayScreen, place, readScreens } from "./screens";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
@@ -96,7 +97,20 @@ interface SlideBase {
 }
 
 export type BoardSlide =
-  | (SlideBase & { kind: "prayer"; title: string; rows: ResolvedMinyan[]; subcategories: MinyanSubcategory[]; page?: number; pages?: number })
+  | (SlideBase & {
+      kind: "prayer";
+      title: string;
+      rows: ResolvedMinyan[];
+      subcategories: MinyanSubcategory[];
+      page?: number;
+      pages?: number;
+      /**
+       * false for another day of the week (tv_config.prayerDays): its minyanim
+       * are neither "הבא" nor over. Absent means today, as every prayer slide
+       * was before the week could be shown.
+       */
+      isToday?: boolean;
+    })
   | (SlideBase & { kind: "learning" })
   | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
   | (SlideBase & { kind: "shiurim"; items: Shiur[] })
@@ -189,7 +203,7 @@ export function splitPrayerRows(rows: ResolvedMinyan[], perScreen: number): Reso
  * `day_type` only, so a category like סליחות - whose minyanim are stored as
  * `custom` - never appeared on the wall at all.
  */
-export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidden: Set<string>) {
+export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidden: Set<string>, days: PrayerDays = "today") {
   const dayType = dayTypeFor(now);
   // Hidden from the board by the admin (the website still lists them).
   const minyanim = (data.minyanim ?? []).filter((m) => !hidden.has(`minyan:${m.id}`));
@@ -198,7 +212,21 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
   const today = overridesFor(data.overrides, now);
 
   if (!data.categories || data.categories.length === 0) {
-    return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim, today, now), subcategories: [] as MinyanSubcategory[] }];
+    return [{ id: dayType, title: "", rows: resolveDay(minyanim, dayType, zmanim, today, now), subcategories: [] as MinyanSubcategory[], isToday: true }];
+  }
+
+  // The whole week (tv_config.prayerDays): every day tab for the next date it
+  // stands for, in the order planWeek gives the website too - today's own
+  // exceptions on today's tab only, each other day with its own date's zmanim.
+  if (days !== "today") {
+    const shown = data.categories.filter((c) => !hidden.has(`cat:${c.id}`));
+    return planWeek(shown, now, days === "week_fixed" ? "fixed" : "today_first").map(({ category: c, date, isToday }) => ({
+      id: c.id,
+      isToday,
+      title: isToday ? `${c.name} · היום` : c.name,
+      subcategories: minyanSubcategories(c),
+      rows: resolveCategoryDay(minyanim, c, date, isToday ? zmanim : zmanimFor(date, data.settings), isToday ? today : undefined),
+    }));
   }
 
   // Today's tabs: a special day's own timetable (יום כיפור, צום גדליה) in place
@@ -218,11 +246,8 @@ export function prayerSchedules(data: BoardData, now: Date, zmanim: Zmanim, hidd
       id: c.id,
       title: c.name,
       subcategories: minyanSubcategories(c),
-      rows: minyanim
-        .filter((m) => m.active && heldOn(m, now) && (m.category_id === c.id || (!m.category_id && m.day_type === c.system_key)))
-        .map((m) => resolveMinyan(m, zmanim, today.get(m.id)))
-        .filter((r): r is ResolvedMinyan => r !== null)
-        .sort((a, b) => a.minutes - b.minutes),
+      rows: resolveCategoryDay(minyanim, c, now, zmanim, today),
+      isToday: true,
     }));
 }
 
@@ -247,7 +272,7 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
     const base = { seconds: sc.seconds, layout: config.screenLayout === "split" && sc.kind === "prayer" ? "timeline" : sc.layout };
 
     if (sc.kind === "prayer") {
-      const schedules = prayerSchedules(data, now, zmanim, hidden);
+      const schedules = prayerSchedules(data, now, zmanim, hidden, config.prayerDays);
       const withRows = schedules.filter((s) => s.rows.length > 0);
       // Always keep one prayer slide, even empty: it also carries the zmanim.
       for (const s of withRows.length ? withRows : schedules.slice(0, 1)) {
@@ -260,6 +285,7 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
             title: s.title,
             rows,
             subcategories: s.subcategories,
+            isToday: s.isToday,
             ...(pages.length > 1 ? { page: i + 1, pages: pages.length } : {}),
           });
         });
@@ -514,4 +540,44 @@ export function useDayZmanim(now: Date, settings: Settings | null): Zmanim {
 export function jerusalemMinutes(date: Date): number {
   const [h, m] = formatTime(date).split(":");
   return Number(h) * 60 + Number(m);
+}
+
+/** "הבא" and what is over, by the website's own rule (minyan-time.ts). */
+export { minyanNow };
+
+export interface BoardPrayerDay {
+  key: string;
+  /** The day's name ("יום שישי"); empty for today. */
+  title: string;
+  isToday: boolean;
+  rows: ResolvedMinyan[];
+}
+
+/**
+ * The prayer slides as days, for a frame that shows one day at a time (the
+ * medallion, the painted boards): today's tabs together, in the order of the
+ * day, and then each other day of the week the board was set to show, in the
+ * order planWeek gave. Today alone when the board shows today only.
+ */
+export function prayerDaysOf(slides: BoardSlide[]): BoardPrayerDay[] {
+  const days: BoardPrayerDay[] = [];
+  const seen = new Set<string>();
+  for (const s of slides) {
+    if (s.kind !== "prayer") continue;
+    const isToday = s.isToday !== false;
+    const key = isToday ? "today" : s.id.replace(/^prayer:/, "").replace(/:\d+$/, "");
+    let day = days.find((d) => d.key === key);
+    if (!day) {
+      day = { key, title: isToday ? "" : s.title, isToday, rows: [] };
+      if (isToday) days.unshift(day);
+      else days.push(day);
+    }
+    for (const r of s.rows) {
+      if (seen.has(`${key}:${r.minyan.id}`)) continue;
+      seen.add(`${key}:${r.minyan.id}`);
+      day.rows.push(r);
+    }
+  }
+  for (const d of days) d.rows.sort((a, b) => a.minutes - b.minutes);
+  return days;
 }

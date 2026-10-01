@@ -9,7 +9,7 @@ import { SHOWN_ZMANIM, useBoardEdit, type BoardEditApi } from "./boardEdit";
 import { specialZmanim } from "@community/lib/specialDays";
 import type { FlipArea } from "./config";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
-import { composedLayout, jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
+import { composedLayout, jerusalemMinutes, minyanNow, shiurMinutes, type BoardSlide } from "./useBoardData";
 import { tracks } from "./grid";
 import { useFitText } from "./useFitText";
 import { useShrinkToFit } from "./useShrinkToFit";
@@ -160,7 +160,10 @@ function PrayerSlide({
 }) {
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
-  const nextIndex = slide.rows.findIndex((r) => r.minutes >= nowMin);
+  const today = slide.isToday !== false;
+  const { next: nextIndex, past } = minyanNow(slide.rows, now, today);
+  // "המניין הבא בגדול" means nothing on another day: that day is its list.
+  const layout = !today && slide.layout === "next" ? "split" : slide.layout;
   const heading = (
     <SlideHeading k="heading.prayer" fallback="זמני התפילות">
       {slide.title && <small>{slide.title}</small>}
@@ -187,7 +190,7 @@ function PrayerSlide({
     // times twice next to each other.
     const grid = panelGrid(edit, "prayer", [
       { key: "panel.minyanim-empty", width: 1.4, node: <div className="tv-panel tv-empty" {...edit.frame("prayers")}>לא הוגדרו מניינים להיום</div> },
-      ...(slide.layout === "timeline" ? [] : [zmanimPanel]),
+      ...(layout === "timeline" ? [] : [zmanimPanel]),
     ]);
     return (
       <section className="tv-slide">
@@ -199,7 +202,7 @@ function PrayerSlide({
     );
   }
 
-  if (slide.layout === "next") {
+  if (layout === "next") {
     const next = nextIndex >= 0 ? slide.rows[nextIndex] : null;
     const rest = slide.rows.filter((_, i) => i !== nextIndex && (nextIndex < 0 || i > nextIndex)).slice(0, 6);
     const hero = (
@@ -249,7 +252,7 @@ function PrayerSlide({
     );
   }
 
-  if (slide.layout === "timeline") {
+  if (layout === "timeline") {
     return (
       <section className="tv-slide">
         {heading}
@@ -257,7 +260,7 @@ function PrayerSlide({
           {slide.rows.map((r, i) => (
             <li
               key={r.minyan.id}
-              className={`tv-tl-row${i === nextIndex ? " is-next" : ""}${nextIndex === -1 || i < nextIndex ? " is-past" : ""}`}
+              className={`tv-tl-row${i === nextIndex ? " is-next" : ""}${past(i) ? " is-past" : ""}`}
               {...edit.attr(`minyan:${r.minyan.id}`)}
             >
               <span className="tv-tl-dot" />
@@ -286,7 +289,7 @@ function PrayerSlide({
         {slide.rows.map((r: ResolvedMinyan, i) => (
           <li
             key={r.minyan.id}
-            className={`tv-minyan-row${i === nextIndex ? " is-next" : ""}${nextIndex === -1 || i < nextIndex ? " is-past" : ""}`}
+            className={`tv-minyan-row${i === nextIndex ? " is-next" : ""}${past(i) ? " is-past" : ""}`}
             {...edit.attr(`minyan:${r.minyan.id}`)}
           >
             <span className="tv-minyan-name">

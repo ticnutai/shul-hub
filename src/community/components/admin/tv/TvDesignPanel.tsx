@@ -46,6 +46,8 @@ import {
   DEFAULT_TV_CONFIG,
   SLIDE_KIND_LABELS,
   SLIDE_LAYOUTS,
+  PRAYER_DAYS,
+  PRAYER_DAYS_LABELS,
   normalizeTvConfig,
   type AlertEvent,
   configForDevice,
@@ -640,7 +642,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
     return hash;
   });
-  const [tab, setTab] = useState(figmaHandoff ? "tools" : "design");
+  // ?panel= opens a tab directly: the minyanim admin links to "פריסה" for
+  // the board's own prayer-times setting.
+  const [tab, setTab] = useState(() => {
+    if (figmaHandoff) return "tools";
+    const panel = new URLSearchParams(window.location.search).get("panel");
+    return panel && ["design", "layout", "content", "occasions", "tools"].includes(panel) ? panel : "design";
+  });
 
   /** "ביטול שינויים" asks inline before it throws the draft away. */
   const [confirmDiscard, setConfirmDiscard] = useState(false);
@@ -1386,9 +1394,31 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           </Section>
 
           <Section
-            title="כמה נכנס במסך"
-            hint="יום עם הרבה מניינים לא נכנס במסך אחד. הלוח לוקח עוד מסך במקום להקטין את הטקסט — כאן קובעים איפה הקו."
+            title="זמני התפילות בלוח"
+            hint="מה הלוח מראה ואיך זה נכנס במסך. באתר ובאפליקציה זה נקבע בנפרד, בניהול המניינים."
           >
+            <p className="mb-2 text-sm font-medium">אילו ימים הלוח מראה?</p>
+            <div className="mb-4 grid gap-2 sm:grid-cols-3" role="group" aria-label="אילו ימים הלוח מראה" data-testid="board-prayer-days">
+              {PRAYER_DAYS.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={draft.prayerDays === value}
+                  onClick={() => edit("prayerDays", (c) => ({ ...c, prayerDays: value }))}
+                  className={
+                    "rounded-lg border p-3 text-right transition-colors " +
+                    (draft.prayerDays === value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted")
+                  }
+                >
+                  <span className="block text-sm font-medium">{PRAYER_DAYS_LABELS[value].label}</span>
+                  <span className="mt-0.5 block text-xs text-muted-foreground">{PRAYER_DAYS_LABELS[value].description}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mb-2 text-xs text-muted-foreground">
+              כל השבוע: כל יום מוצג בתורו — במסגרת התפילות של המדליון, או כמסך תפילות משלו. "הבא" ו"עבר" מסומנים רק
+              בתפילות של היום. איך התפילות של יום מסודרות — בפריסת שקופית התפילות, ברשימת המסכים.
+            </p>
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-32">
                 <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="rows-per-screen">
@@ -1409,8 +1439,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 />
               </div>
               <p className="flex-1 text-xs text-muted-foreground">
-                התשובה תלויה במסך: טלוויזיה מעל ארון הקודש מחזיקה יותר ממסך קטן על מדף. השבירה תמיד
-                במעבר בין תפילות — שחרית לא תיחתך באמצע.
+                יום עם הרבה מניינים לא נכנס במסך אחד: הלוח לוקח עוד מסך במקום להקטין את הטקסט. התשובה
+                תלויה במסך — טלוויזיה מעל ארון הקודש מחזיקה יותר ממסך קטן על מדף. השבירה תמיד במעבר בין
+                תפילות, שחרית לא תיחתך באמצע.
               </p>
             </div>
             {(painted || draft.screenLayout === "medallion") && <PaintedRows config={draft} onEdit={edit} />}

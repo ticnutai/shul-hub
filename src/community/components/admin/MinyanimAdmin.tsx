@@ -42,10 +42,7 @@ import { useDeleteRow, useSaveRow } from "@community/lib/admin";
 import { RELATIVE_LABELS, heldOn, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { RELATIVE_OPTIONS } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
-import {
-  normalizePrayerLayout,
-  PrayerLayoutPicker,
-} from "@community/components/PrayerLayoutPicker";
+import { PrayerDisplaySettings } from "@community/components/admin/PrayerDisplaySettings";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { isEventCategory } from "@community/lib/specialDays";
@@ -452,6 +449,7 @@ export function MinyanimAdmin() {
 
   return (
     <div dir="rtl" className="space-y-4 text-right">
+      <PrayerDisplaySettings settings={settings} categories={categories} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div
           role="group"
@@ -509,14 +507,6 @@ export function MinyanimAdmin() {
                 {category.name}
                 {!category.active && <span className="mr-1 text-xs">(מוסתר)</span>}
               </button>
-              <PrayerLayoutPicker
-                value={normalizePrayerLayout(category.display_mode)}
-                disabled={saveCategory.isPending}
-                label={`שינוי תצוגת ${category.name}`}
-                onChange={(displayMode) =>
-                  saveCategory.mutate({ id: category.id, display_mode: displayMode })
-                }
-              />
             </div>
           ))}
           <button

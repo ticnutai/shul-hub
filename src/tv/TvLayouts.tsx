@@ -9,7 +9,7 @@ import { useBoardEdit } from "./boardEdit";
 import { useFitRows } from "./useFitRows";
 import { amudYomi, dafYomi, seasonalPrayers, weeklyParasha } from "./learning";
 import { AnnouncementCard, ZmanimPanel } from "./TvSlides";
-import { jerusalemMinutes, shiurMinutes, type BoardSlide } from "./useBoardData";
+import { jerusalemMinutes, minyanNow, shiurMinutes, type BoardSlide } from "./useBoardData";
 
 /**
  * The two screen layouts beside the one-slide-at-a-time board (see
@@ -172,10 +172,9 @@ function PrayerPanel({
   countdown?: boolean;
 }) {
   const edit = useBoardEdit();
-  const nowMin = jerusalemMinutes(now);
-  // A minyan called off today is not the next minyan. Pointing "הבא" at one
-  // is the single most misleading thing this panel could do.
-  const nextIndex = schedule.rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
+  // A minyan called off today is not the next minyan, and another day of the
+  // week has none (minyanNow).
+  const { next: nextIndex, past } = minyanNow(schedule.rows, now, schedule.isToday !== false);
   const title = titleKey ? edit.text(titleKey, "זמני התפילות") : schedule.title;
   const listRef = useFitRows<HTMLUListElement>(schedule.rows.length);
   return (
@@ -198,7 +197,7 @@ function PrayerPanel({
             <li
               key={r.minyan.id}
               className={`tv-dash-row${i === nextIndex ? " is-next" : ""}${
-                nextIndex === -1 || i < nextIndex ? " is-past" : ""
+                past(i) ? " is-past" : ""
               }${r.cancelled ? " is-cancelled" : ""}${r.overridden ? " is-today-only" : ""}`}
               {...edit.attr(`minyan:${r.minyan.id}`)}
             >
@@ -429,7 +428,11 @@ export function SplitSide({
 }) {
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
-  const rows = slides.filter((s): s is PrayerSlide => s.kind === "prayer").flatMap((s) => s.rows);
+  // Today's minyanim only: with the week on the board, Shabbat's shacharit
+  // is not the next minyan on a Wednesday evening.
+  const rows = slides
+    .filter((s): s is PrayerSlide => s.kind === "prayer" && s.isToday !== false)
+    .flatMap((s) => s.rows.filter((r) => !r.cancelled));
   const next =
     rows.filter((r) => r.minutes >= nowMin).sort((a, b) => a.minutes - b.minutes)[0] ?? null;
   const minutesLeft = next ? next.minutes - nowMin : 0;

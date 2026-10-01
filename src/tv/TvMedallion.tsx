@@ -4,8 +4,9 @@ import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { useBoardEdit } from "./boardEdit";
 import { frameZmanim, useBoardDay } from "./boardDay";
 import { useHolyEndMinutes } from "./holyEnd";
-import { rowWindow, todaysRows } from "./illustrated";
-import { composedLayout, jerusalemMinutes, type BoardSlide, type ComposedPart } from "./useBoardData";
+import { rowWindow } from "./illustrated";
+import { composedLayout, minyanNow, type BoardPrayerDay, type BoardSlide, type ComposedPart } from "./useBoardData";
+import { useShownPrayerDay } from "./useDayCycle";
 import { tracks } from "./grid";
 import type { ScreenRow } from "./config";
 import { SlideView } from "./TvSlides";
@@ -69,7 +70,8 @@ export function MedallionStage({
   const titleShown = !edit.hidden("header.title");
   const rest = [day.parasha, day.candle ? `הדלקת נרות ${formatTime(day.candle)}` : null].filter(Boolean);
 
-  const prayers = <PrayersFrame rows={todaysRows(slides)} now={now} max={rowsPerFrame} />;
+  const prayerDay = useShownPrayerDay(slides);
+  const prayers = <PrayersFrame day={prayerDay} now={now} max={rowsPerFrame} />;
   const zmanimFrame = <ZmanimFrame zmanim={zmanim} now={now} max={rowsPerFrame} />;
   const flipped = edit.flipped("prayer");
 
@@ -189,10 +191,10 @@ function ScreenFrames({
   );
 }
 
-function PrayersFrame({ rows, now, max }: { rows: ResolvedMinyan[]; now: Date; max: number }) {
+function PrayersFrame({ day, now, max }: { day: BoardPrayerDay; now: Date; max: number }) {
   const edit = useBoardEdit();
-  const nowMin = jerusalemMinutes(now);
-  const next = rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
+  const { rows } = day;
+  const { next } = minyanNow(rows, now, day.isToday);
   // Scrolling, every minyan of the day passes; otherwise a window around the next.
   const scrolls = useScrolls();
   const [from, to] = scrolls ? [0, rows.length] : rowWindow(rows.length, next, max);
@@ -200,7 +202,7 @@ function PrayersFrame({ rows, now, max }: { rows: ResolvedMinyan[]; now: Date; m
   return (
     <div className="tv-panel tv-med-list" {...edit.frame("prayers")}>
       <h3 className="tv-panel-title" {...edit.attr("dash.prayers")}>
-        {edit.text("dash.prayers", "תפילות היום")}
+        {day.isToday ? edit.text("dash.prayers", "תפילות היום") : `תפילות ${day.title}`}
       </h3>
       {rows.length === 0 ? (
         <p className="tv-med-empty">לא הוגדרו מניינים להיום</p>

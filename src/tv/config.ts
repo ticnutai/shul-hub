@@ -118,6 +118,15 @@ export const SLIDE_KIND_LABELS: Record<SlideKind, string> = {
   slideshow: "מצגת תמונות",
 };
 
+/** The board's choice of days for the prayer times (TvConfig.prayerDays). */
+export const PRAYER_DAYS = ["today", "week_today", "week_fixed"] as const;
+export type PrayerDays = (typeof PRAYER_DAYS)[number];
+export const PRAYER_DAYS_LABELS: Record<PrayerDays, { label: string; description: string }> = {
+  today: { label: "היום בלבד", description: "רק התפילות של היום" },
+  week_today: { label: "כל השבוע · היום ראשון", description: "היום, ואחריו הימים הבאים, יום אחרי יום" },
+  week_fixed: { label: "כל השבוע · סדר קבוע", description: "חול, שישי, שבת - היום מסומן" },
+};
+
 export const SLIDE_LAYOUTS: Record<SlideKind, Array<{ id: string; label: string }>> = {
   prayer: [
     { id: "split", label: "מניינים + זמני היום" },
@@ -459,6 +468,15 @@ export interface TvConfig {
    */
   prayerRowsPerScreen: number;
   /**
+   * Which days' prayer times the board shows: today's alone (as it always
+   * has), or the whole week - today first, or in the tabs' own order - one
+   * day after another as the board turns. The board's own answer: the
+   * website and the app have theirs in settings.minyan_days, because a wall
+   * nobody taps is not a page somebody does. The order of the days is worked
+   * out for both by planWeek (community/lib/week-schedule.ts).
+   */
+  prayerDays: PrayerDays;
+  /**
    * Days that meet (a festival on Shabbat, Rosh Chodesh on Chanukah...):
    * "one" - one screen naming them all; "separate" - a screen for each, in turn.
    */
@@ -700,6 +718,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   eventDetail: "full",
   eventEverySeconds: 45,
   prayerRowsPerScreen: 14,
+  prayerDays: "today",
   eventCombine: "one",
   clockStyle: "digital",
   frame: { shape: "auto", top: null, bottom: null },
@@ -1172,6 +1191,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     eventDetail: raw.eventDetail === "short" ? "short" : "full",
     eventEverySeconds: num(raw.eventEverySeconds, d.eventEverySeconds, 10, 600),
     prayerRowsPerScreen: num(raw.prayerRowsPerScreen, d.prayerRowsPerScreen, 4, 60),
+    prayerDays: (PRAYER_DAYS as readonly string[]).includes(raw.prayerDays as string) ? (raw.prayerDays as PrayerDays) : "today",
     eventCombine: raw.eventCombine === "separate" ? "separate" : "one",
     eventHold: raw.eventHold !== false,
     illustration:

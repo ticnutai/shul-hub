@@ -7,8 +7,9 @@ import { useBoardEdit } from "./boardEdit";
 import { frameZmanim, useBoardDay } from "./boardDay";
 import { illustratedLayers } from "./illustratedAdjust";
 import type { IllustratedStyle } from "./config";
-import { illustrationDef, rowWindow, todaysRows, type Box, type CustomIllustration, type Illustration } from "./illustrated";
-import { jerusalemMinutes, type BoardSlide } from "./useBoardData";
+import { illustrationDef, rowWindow, type Box, type CustomIllustration, type Illustration } from "./illustrated";
+import { minyanNow, type BoardPrayerDay, type BoardSlide } from "./useBoardData";
+import { useShownPrayerDay } from "./useDayCycle";
 import { ILLUSTRATION_PICTURES } from "./illustrationPictures";
 import type { FrameId, FrameLook } from "./frameLooks";
 import { fillCss } from "./layerCss";
@@ -49,18 +50,18 @@ function useMark() {
 /** Row type size: a narrow frame (the carved wood's side panels) gets smaller type, not clipped names. */
 const rowSize = (b: Box) => `calc(${b[2] - b[0] < 25 ? 1.55 : 1.95}cqw * var(--ill-k, 1))`;
 
-function PrayerFrame({ d, rows, now, max }: { d: Illustration; rows: ResolvedMinyan[]; now: Date; max: number }) {
+function PrayerFrame({ d, day, now, max }: { d: Illustration; day: BoardPrayerDay; now: Date; max: number }) {
   const edit = useBoardEdit();
   const mark = useMark();
   const b = d.boxes.panelR;
-  const nowMin = jerusalemMinutes(now);
-  const next = rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
+  const { rows } = day;
+  const { next } = minyanNow(rows, now, day.isToday);
   const [from, to] = rowWindow(rows.length, next, max);
   return (
     <At b={b} style={{ color: d.ink }}>
       <div className="tv-ill-list" style={{ "--ill-size": rowSize(b) } as CSSProperties}>
         <div className="tv-ill-title" style={{ color: d.accent }} {...mark("dash.prayers")}>
-          {edit.text("dash.prayers", "תפילות היום")}
+          {day.isToday ? edit.text("dash.prayers", "תפילות היום") : `תפילות ${day.title}`}
         </div>
         {rows.length === 0 ? (
           <p className="tv-ill-empty">לא הוגדרו מניינים להיום</p>
@@ -188,7 +189,7 @@ export function IllustratedStage({
    */
   const titleShown = !edit.hidden("header.title");
   const title = edit.text("header.title", settings?.name ?? "בית הכנסת");
-  const rows = todaysRows(slides);
+  const prayerDay = useShownPrayerDay(slides);
   const candleLine = day.candle ? `הדלקת נרות ${formatTime(day.candle)}` : "";
 
   return (
@@ -248,7 +249,7 @@ export function IllustratedStage({
             </At>
           )}
           <ZmanimFrame d={inFrame("zmanim")} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
-          <PrayerFrame d={inFrame("prayers")} rows={rows} now={now} max={look.rows} />
+          <PrayerFrame d={inFrame("prayers")} day={prayerDay} now={now} max={look.rows} />
         </>
       ) : (
         <>
@@ -258,7 +259,7 @@ export function IllustratedStage({
           <At b={b.plaqueL}>
             <span className="tv-ill-plaque">{day.hebrew}</span>
           </At>
-          <PrayerFrame d={inFrame("prayers")} rows={rows} now={now} max={look.rows} />
+          <PrayerFrame d={inFrame("prayers")} day={prayerDay} now={now} max={look.rows} />
           <ZmanimFrame d={inFrame("zmanim")} zmanim={zmanim} box={b.panelL} max={look.rows} now={now} />
           {b.barR && (
             <At b={b.barR}>

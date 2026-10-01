@@ -1,4 +1,4 @@
-import type { Minyan, Settings } from "./data";
+import type { Minyan, MinyanCategory, Settings } from "./data";
 import { calcZmanim, formatTime, type SolarEvent, type Zmanim } from "./zmanim";
 
 export type DayType = "weekday" | "friday";
@@ -113,6 +113,23 @@ function onPrayerDay(minutes: number): number {
   return minutes < PRAYER_DAY_STARTS ? minutes + 24 * 60 : minutes;
 }
 
+/**
+ * Where now falls in a day's minyanim: which one is "הבא" (-1: none) and which
+ * are over. The one answer the website and the board both use. A minyan
+ * called off today is never "הבא"; on a day that is not today ("כל השבוע")
+ * nothing is next and nothing is over.
+ */
+export function minyanNow(
+  rows: ResolvedMinyan[],
+  now: Date,
+  isToday = true,
+): { next: number; past: (i: number) => boolean } {
+  if (!isToday) return { next: -1, past: () => false };
+  const nowMin = minutesInJerusalem(now);
+  const next = rows.findIndex((r) => r.minutes >= nowMin && !r.cancelled);
+  return { next, past: (i) => next === -1 || i < next };
+}
+
 export function resolveMinyan(
   minyan: Minyan,
   zmanim: Zmanim,
@@ -186,6 +203,31 @@ export const RELATIVE_LABELS: Record<SolarEvent, string> = {
   sunset: "השקיעה",
   tzeit: "צאת הכוכבים",
 };
+
+/**
+ * A tab's minyanim on a date, in the order of the day. The one place this is
+ * worked out: the day tabs, "כל השבוע" and the board all ask it, so the phone
+ * and the wall cannot list a different timetable. `overrides` are the one-day
+ * exceptions of that date - pass them only for today.
+ */
+export function resolveCategoryDay(
+  minyanim: Minyan[],
+  category: Pick<MinyanCategory, "id" | "system_key">,
+  date: Date,
+  zmanim: Zmanim,
+  overrides?: Map<string, MinyanOverride>,
+): ResolvedMinyan[] {
+  return minyanim
+    .filter(
+      (m) =>
+        m.active &&
+        heldOn(m, date) &&
+        (m.category_id === category.id || (!m.category_id && m.day_type === category.system_key)),
+    )
+    .map((m) => resolveMinyan(m, zmanim, overrides?.get(m.id)))
+    .filter((r): r is ResolvedMinyan => r !== null)
+    .sort((a, b) => a.minutes - b.minutes);
+}
 
 export function resolveDay(
   minyanim: Minyan[],

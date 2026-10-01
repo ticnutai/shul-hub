@@ -1,8 +1,7 @@
 import { useMemo } from "react";
 import { InlineEdit } from "@community/components/InlineEdit";
-import { formatTime } from "@community/lib/zmanim";
 import { useNow } from "@community/lib/realtime";
-import type { ResolvedMinyan } from "@community/lib/minyan-time";
+import { minyanNow, type ResolvedMinyan } from "@community/lib/minyan-time";
 import { prayerLabel, type MinyanSubcategory } from "@community/lib/data";
 
 /**
@@ -17,29 +16,24 @@ import { prayerLabel, type MinyanSubcategory } from "@community/lib/data";
 interface LayoutProps {
   rows: ResolvedMinyan[];
   prayerTabs: MinyanSubcategory[];
-}
-
-/** Minutes past midnight in Jerusalem, matching how `resolveMinyan` counts. */
-function jerusalemMinutes(date: Date): number {
-  const [h, m] = formatTime(date).split(":");
-  return Number(h) * 60 + Number(m);
+  /** false for another day in "כל השבוע": nothing on it is next or over. */
+  isToday?: boolean;
 }
 
 /**
- * Index of the first minyan that has not started yet, or -1 once the day's
- * last one has passed. Rows arrive sorted by `minutes`.
+ * The first minyan that has not started yet (-1 once the day's last has
+ * passed), and which are over. Rows arrive sorted by `minutes`.
  */
-function useNextIndex(rows: ResolvedMinyan[]): number {
+function useNextIndex(rows: ResolvedMinyan[], isToday = true): { next: number; past: (i: number) => boolean } {
   // Half a minute is plenty: the highlight moves at most once per minyan, and
   // a one-second tick would re-render the whole schedule for nothing.
   const now = useNow(30_000);
-  const nowMinutes = jerusalemMinutes(now);
-  // A minyan called off today is not the next minyan - the same rule the
-  // board uses, so the phone and the wall never disagree about which one it is.
-  return useMemo(
-    () => rows.findIndex((row) => row.minutes >= nowMinutes && !row.cancelled),
-    [rows, nowMinutes],
-  );
+  const minute = Math.floor(now.getTime() / 60_000);
+  // The same rule the board uses (minyanNow), so the phone and the wall never
+  // disagree about which one it is. Worked out again once a minute, not on
+  // every tick.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => minyanNow(rows, now, isToday), [rows, minute, isToday]);
 }
 
 export function details(row: ResolvedMinyan): string {
@@ -57,8 +51,8 @@ export function details(row: ResolvedMinyan): string {
  * the next minyan?" — without making them scan. Minyanim that have already
  * started are dimmed rather than hidden, since latecomers still look them up.
  */
-export function TimelineLayout({ rows, prayerTabs }: LayoutProps) {
-  const nextIndex = useNextIndex(rows);
+export function TimelineLayout({ rows, prayerTabs, isToday = true }: LayoutProps) {
+  const { next: nextIndex, past } = useNextIndex(rows, isToday);
 
   return (
     <ol className="relative px-4 py-3" data-testid="prayer-timeline">
@@ -69,7 +63,7 @@ export function TimelineLayout({ rows, prayerTabs }: LayoutProps) {
       />
       {rows.map((row, index) => {
         const isNext = index === nextIndex;
-        const isPast = nextIndex === -1 || index < nextIndex;
+        const isPast = past(index);
         return (
           <li
             key={row.minyan.id}
@@ -136,8 +130,8 @@ export function TimelineLayout({ rows, prayerTabs }: LayoutProps) {
  * lobby, where each tile can be read from across the room. Falls to two
  * columns on a phone so the times stay large.
  */
-export function CardsLayout({ rows, prayerTabs }: LayoutProps) {
-  const nextIndex = useNextIndex(rows);
+export function CardsLayout({ rows, prayerTabs, isToday = true }: LayoutProps) {
+  const { next: nextIndex } = useNextIndex(rows, isToday);
 
   return (
     <div

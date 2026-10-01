@@ -1,26 +1,20 @@
-import { Clock4, LayoutGrid, LayoutList, PanelsTopLeft, Table2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
+/**
+ * How a day's prayers are drawn on the website. Chosen in one place, the
+ * admin's "איך יראו זמני התפילות" (PrayerDisplaySettings) - for every day
+ * alike, or per day tab (minyan_categories.display_mode). The board has its
+ * own layouts (tv/config.ts SLIDE_LAYOUTS).
+ *
+ * The values are pinned by CHECK constraints on minyan_categories.display_mode
+ * and settings.minyan_layout: a new one needs a migration with it.
+ */
 export type PrayerLayoutMode = "tabs" | "list" | "table" | "timeline" | "cards";
 
-export const PRAYER_LAYOUTS: Array<{
-  value: PrayerLayoutMode;
-  label: string;
-  description: string;
-  icon: typeof PanelsTopLeft;
-}> = [
-  { value: "tabs", label: "טאבים", description: "תפילה אחת בכל פעם", icon: PanelsTopLeft },
-  { value: "list", label: "רשימה מלאה", description: "כל התפילות אחת אחרי השנייה", icon: LayoutList },
-  { value: "table", label: "טבלה מרוכזת", description: "כל המניינים במבט אחד", icon: Table2 },
-  { value: "timeline", label: "ציר זמן", description: "לפי סדר השעות, המניין הבא מודגש", icon: Clock4 },
-  { value: "cards", label: "כרטיסיות", description: "ריבועים גדולים עם שעה בולטת", icon: LayoutGrid },
+export const PRAYER_LAYOUTS: Array<{ value: PrayerLayoutMode; label: string; description: string }> = [
+  { value: "tabs", label: "תפילה אחת בכל פעם", description: "לשוניות שחרית / מנחה / ערבית" },
+  { value: "list", label: "כל התפילות ברשימה", description: "שחרית, ואחריה מנחה, ואחריה ערבית" },
+  { value: "table", label: "טבלה אחת ליום", description: "כל מנייני היום בטבלה אחת" },
+  { value: "timeline", label: "לפי סדר השעות", description: "המניין הבא מודגש" },
+  { value: "cards", label: "כרטיסיות", description: "ריבועים גדולים עם שעה בולטת" },
 ];
 
 const VALID_LAYOUTS = new Set<string>(PRAYER_LAYOUTS.map((layout) => layout.value));
@@ -32,55 +26,4 @@ const VALID_LAYOUTS = new Set<string>(PRAYER_LAYOUTS.map((layout) => layout.valu
  */
 export function normalizePrayerLayout(value?: string | null): PrayerLayoutMode {
   return value && VALID_LAYOUTS.has(value) ? (value as PrayerLayoutMode) : "tabs";
-}
-
-export function PrayerLayoutPicker({
-  value,
-  onChange,
-  disabled = false,
-  label = "שינוי פריסת זמני התפילות",
-}: {
-  value: PrayerLayoutMode;
-  onChange: (value: PrayerLayoutMode) => void;
-  disabled?: boolean;
-  label?: string;
-}) {
-  const current = PRAYER_LAYOUTS.find((layout) => layout.value === value) ?? PRAYER_LAYOUTS[0];
-  const CurrentIcon = current.icon;
-
-  return (
-    <DropdownMenu dir="rtl">
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          disabled={disabled}
-          aria-label={label}
-          title={label}
-        >
-          <CurrentIcon className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={(nextValue) => onChange(normalizePrayerLayout(nextValue))}
-        >
-          {PRAYER_LAYOUTS.map((layout) => {
-            const Icon = layout.icon;
-            return (
-              <DropdownMenuRadioItem key={layout.value} value={layout.value} className="gap-3 py-2.5">
-                <Icon className="size-4 shrink-0 text-primary" />
-                <span>
-                  <span className="block font-medium">{layout.label}</span>
-                  <span className="block text-xs text-muted-foreground">{layout.description}</span>
-                </span>
-              </DropdownMenuRadioItem>
-            );
-          })}
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
 }
