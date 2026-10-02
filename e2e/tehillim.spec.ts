@@ -104,3 +104,15 @@ test("a chapter opens at its first verse, a verse at itself - never under the he
     .poll(async () => (await first.boundingBox())!.y >= (await pinnedBottom(page)), { timeout: 5_000 })
     .toBe(true);
 });
+
+test("the T of the text settings is on the Tehillim page too, and sets Tehillim's own text", async ({ page }) => {
+  await page.goto("/siddur?tab=tehillim");
+  const t = page.getByRole("button", { name: "הגדרות תצוגת טקסט" });
+  await expect(t).toBeVisible({ timeout: 20_000 });
+  await t.click();
+  const panel = page.locator('[data-layout="dialog-text-display"]');
+  await expect(panel).toBeVisible();
+  // Tehillim's settings alone - not the Chumash's פסוקים, שאלות and the rest.
+  await expect(panel.getByTestId("text-settings-scope")).toHaveText("תהילים");
+  await expect(panel.getByRole("tab")).toHaveCount(0);
+});

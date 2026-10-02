@@ -2810,7 +2810,10 @@ const TehillimPane = () => {
 
   return (
     <div className="pb-10 px-1" dir="rtl">
-      <OrnamentTitle text="תהילים" fontSize={tehillimSettings.tehillimSize} />
+      {/* The page's controls flank this title on a phone (SiddurToolsContext),
+          as they do the first prayer's - among them the T of the text
+          settings, which open on Tehillim's own. The פירושים view has its own. */}
+      <OrnamentTitle text="תהילים" fontSize={tehillimSettings.tehillimSize} withTools />
       <Divider />
       {contentTabs}
 
@@ -3675,7 +3678,11 @@ export const Siddur = () => {
               {/* Theme picker */}
               <ThemePicker />
               {/* T — text settings */}
-              <TextDisplaySettings initialTab={settingsTab} />
+              <TextDisplaySettings
+                initialTab={settingsTab}
+                tabs={catId === "tehillim" ? ["tehillim"] : catId === "kria" ? undefined : ["siddur"]}
+                showPasukCount={catId === "kria"}
+              />
     </>
   );
 

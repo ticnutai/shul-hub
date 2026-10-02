@@ -404,13 +404,30 @@ const TAB_PREVIEW_TEXT: Record<TextSettingsTab, string> = {
 };
 
 /* ─── Main component ─────────────────────────────────────── */
+const ALL_TABS: { value: TextSettingsTab; label: string }[] = [
+  { value: "pasuk", label: "פסוקים" },
+  { value: "titles", label: "כותרות" },
+  { value: "questions", label: "שאלות" },
+  { value: "commentary", label: "מפרשים" },
+  { value: "siddur", label: "תפילות" },
+  { value: "tehillim", label: "תהילים" },
+];
+
 export const TextDisplaySettings = ({
   initialTab = "pasuk",
   showPasukCount = true,
+  tabs,
 }: {
   initialTab?: TextSettingsTab;
   showPasukCount?: boolean;
+  /**
+   * The parts of the text this page has. In Tehillim only "תהילים" changes
+   * anything on the screen; offering the Chumash's פסוקים / שאלות there too
+   * was six tabs where five do nothing. Absent: all of them (the Chumash).
+   */
+  tabs?: TextSettingsTab[];
 }) => {
+  const shownTabs = tabs?.length ? ALL_TABS.filter((t) => tabs.includes(t.value)) : ALL_TABS;
   const {
     settings: contextSettings,
     updateSettings: commitSettings,
@@ -747,14 +764,20 @@ export const TextDisplaySettings = ({
           >
             {/* Tab list */}
             <div className="px-2 pt-2 flex-shrink-0">
-              <TabsList className={`w-full grid ${isMobile ? "grid-cols-6" : "grid-cols-3"} h-auto gap-0.5 bg-muted/50 p-1 rounded-xl border border-border/30`}>
-                <TabsTrigger value="pasuk"      className={tabTriggerClass}>פסוקים</TabsTrigger>
-                <TabsTrigger value="titles"     className={tabTriggerClass}>כותרות</TabsTrigger>
-                <TabsTrigger value="questions"  className={tabTriggerClass}>שאלות</TabsTrigger>
-                <TabsTrigger value="commentary" className={tabTriggerClass}>מפרשים</TabsTrigger>
-                <TabsTrigger value="siddur"     className={tabTriggerClass}>תפילות</TabsTrigger>
-                <TabsTrigger value="tehillim"   className={tabTriggerClass}>תהילים</TabsTrigger>
-              </TabsList>
+              {shownTabs.length > 1 ? (
+                <TabsList
+                  className="w-full grid h-auto gap-0.5 bg-muted/50 p-1 rounded-xl border border-border/30"
+                  style={{ gridTemplateColumns: `repeat(${isMobile ? shownTabs.length : Math.min(3, shownTabs.length)}, minmax(0, 1fr))` }}
+                >
+                  {shownTabs.map((t) => (
+                    <TabsTrigger key={t.value} value={t.value} className={tabTriggerClass}>{t.label}</TabsTrigger>
+                  ))}
+                </TabsList>
+              ) : (
+                <p className="text-center text-xs font-semibold text-muted-foreground" data-testid="text-settings-scope">
+                  {shownTabs[0]?.label}
+                </p>
+              )}
             </div>
 
             {/* ── Live preview — always visible, updates instantly ── */}
