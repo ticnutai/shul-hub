@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeTvConfig } from "./config";
-import { applyDesign, captureDesign, coloursOnScreen } from "./designs";
+import { applyDesign, captureDesign, coloursOnScreen, findDesign } from "./designs";
+import { getTheme } from "./themes";
 
 const board = () =>
   normalizeTvConfig({
@@ -81,5 +82,19 @@ describe("saved designs", () => {
     expect(bad).toHaveLength(1);
     expect(bad[0].colours).toEqual({});
     expect(bad[0].values.backgroundGradient).toBeNull();
+  });
+});
+
+describe("a ready-made design laid over a board", () => {
+  it("brings its whole ground: a colour it does not name comes from its own theme, not the board under it", () => {
+    // The navy board of אושר של יהודי, dressed for הושענא רבה in carved wood.
+    const navy = normalizeTvConfig({ theme: "navy", themeOverrides: { "--tv-text": "#f3f5f8" } });
+    const wood = findDesign(navy, "d_wood")!;
+    const dressed = applyDesign(navy, wood);
+    const ground = coloursOnScreen(dressed)["--tv-bg-a"];
+    expect(ground).toBe(getTheme("stone", []).vars["--tv-bg-a"]);
+    expect(ground).not.toBe(getTheme("navy", []).vars["--tv-bg-a"]);
+    // What it does name, it keeps.
+    expect(coloursOnScreen(dressed)["--tv-panel"]).toBe("#f3e4c4");
   });
 });

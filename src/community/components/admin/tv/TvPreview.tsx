@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from "react";
 import "./tvEdit.css";
 import { configForDevice, type TvConfig } from "@/tv/config";
+import { applyDayLook } from "@/tv/dayLooks";
 import { classOfPreviewDevice } from "@/tv/devices";
 import { TvBoard } from "@/tv/TvBoard";
 import type { BoardSlide } from "@/tv/useBoardData";
@@ -142,8 +143,15 @@ export function TvDeviceStudio({
   onResize,
   onResizeReset,
   onRequestEdit,
+  dayLook = false,
   ...props
 }: BoardProps & {
+  /**
+   * The board as the screens wear it at this moment: with the design of the
+   * occasion that is on (dayLooks.ts), as TvApp and the connected-screens tab
+   * draw it. Off, the board is the one being edited, without it.
+   */
+  dayLook?: boolean;
   /**
    * A double click on the board while it is not being edited: the editor
    * opens editing, on the spot that was clicked. The board does not mark
@@ -203,7 +211,8 @@ export function TvDeviceStudio({
 
   /** The board as one particular screen shows it. */
   const boardFor = (id: DeviceId) => {
-    const c = configForDevice(props.config, classOfPreviewDevice(id));
+    const own = configForDevice(props.config, classOfPreviewDevice(id));
+    const c = dayLook ? applyDayLook(own, props.now, props.data.settings) : own;
     return preview ? { ...c, ...preview } : c;
   };
   const [actualSize, setActualSize] = useState(false);

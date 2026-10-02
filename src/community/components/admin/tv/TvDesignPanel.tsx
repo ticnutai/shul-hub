@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   ArrowDown,
@@ -170,7 +170,7 @@ import { FrameSpacing } from "./BoardLook";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
 import { uploadImages } from "./uploadImages";
 import { DesignLibrary } from "./DesignLibrary";
-import { captureDesign, MAX_DESIGNS } from "@/tv/designs";
+import { captureDesign, findDesign, MAX_DESIGNS } from "@/tv/designs";
 import { ScreenComposer } from "./ScreenComposer";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
@@ -187,7 +187,7 @@ import {
 import { PaintedPresets, PaintedRows } from "./IllustratedLookEditor";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
-import { readOccasions } from "@/tv/occasions";
+import { occasionDesign, occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -525,6 +525,26 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   /** Which screen the composer has open. Not part of the board; the editor's own place. */
   const [composerScreen, setComposerScreen] = useState(0);
   const board = useTvSlides(view, simulatedNow);
+  /**
+   * The design an occasion dresses the screens in at the preview's moment
+   * (הושענא רבה in carved wood). The screens and the connected-screens tab
+   * wear it; the editor shows the board being edited, without it - and says
+   * so, with a way to look at it as the screens do. Without this the three
+   * pictures of one board (here, there, and the TV's photo) disagreed with
+   * nothing to explain why.
+   */
+  const previewMinute = Math.floor(board.now.getTime() / 60_000);
+  const dayLookNow = useMemo(() => {
+    const at = new Date(previewMinute * 60_000);
+    const settings = board.data.settings;
+    const { active } = occasionPagesNow(view, settings, at, (d) => zmanimFor(d, settings));
+    const id = occasionDesign(active);
+    const design = findDesign(view, id);
+    if (!design) return null;
+    return { design: design.name, occasion: active.find((a) => a.occasion.design === id)?.occasion.name ?? "" };
+  }, [view, board.data.settings, previewMinute]);
+  const [dayLookShown, setDayLookShown] = useState(false);
+  const dayLook = dayLookShown && dayLookNow !== null;
   const [previewIndex, setPreviewIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
   // Click-to-edit on the board itself (see boardEdit.ts / TvEditInspector).
@@ -1053,6 +1073,29 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           מדמה {shabbatPreview ? `${simulatedNow.toLocaleDateString("he-IL")}, ` : "את השעה "}
           {simulatedNow.toTimeString().slice(0, 5)}
         </span>
+      )}
+      {dayLookNow && (
+        <div
+          className="flex w-full flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2 py-1.5 text-xs text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
+          data-testid="day-look-note"
+        >
+          <span className="min-w-0 flex-1">
+            {`${simulatedNow ? "ביום הזה" : "עכשיו"} המסכים לובשים את העיצוב «${dayLookNow.design}» של ${dayLookNow.occasion}. `}
+            {dayLook
+              ? "כך הם נראים עכשיו. שינויים בעיצוב כאן חלים על הלוח הרגיל."
+              : "כאן מוצג העיצוב הרגיל שאתם עורכים. את עיצוב המועד בוחרים בהגדרות המועד (לשונית מועדים)."}
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 px-2 text-xs"
+            aria-pressed={dayLook}
+            onClick={() => setDayLookShown((v) => !v)}
+          >
+            {dayLook ? "הצגת העיצוב הרגיל" : "הצגה כמו במסכים"}
+          </Button>
+        </div>
       )}
     </>
   );
@@ -1932,6 +1975,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           onDeviceChange={onDeviceChange}
           preview={preview}
           {...board}
+          dayLook={dayLook}
           fullscreen
           config={state.present}
           index={index}
@@ -2094,6 +2138,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         onDeviceChange={onDeviceChange}
         preview={preview}
         {...board}
+        dayLook={dayLook}
         config={state.present}
         index={index}
         cycle={cycle}

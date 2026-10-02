@@ -74,3 +74,49 @@ test("an occasion stands beside the screens; its card and the prayers share its 
   await page.getByRole("button", { name: /הלוח/ }).first().click();
   await expect(page.getByTestId("occasion-screen-note")).toHaveCount(0);
 });
+
+test("an occasion's design: the editor says the screens wear it, and shows it as they do", async ({ page }) => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date());
+  await serveEditor(page, {
+    screenLayout: "medallion",
+    theme: "navy",
+    occasions: [
+      {
+        id: "o_testday2",
+        name: "יום העץ",
+        title: null,
+        enabled: true,
+        when: { type: "date", date: today },
+        window: "day",
+        display: "turns",
+        banner: false,
+        overlap: "only",
+        seconds: 30,
+        elements: ["title", "date"],
+        blocks: [],
+        items: [],
+        pictures: [],
+        pictureSeconds: 30,
+        design: "d_wood",
+        screen: null,
+      },
+    ],
+  });
+  const res = await page.goto(HARNESS).catch(() => null);
+  test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
+  const root = page.locator(".tv-frame .tv-root").first();
+  await expect(root).toBeVisible({ timeout: 20_000 });
+
+  // The board being edited: navy, no carved frames - and it says what the screens wear.
+  const note = page.getByTestId("day-look-note");
+  await expect(note).toContainText("מסגרת עץ מגולפת");
+  await expect(note).toContainText("יום העץ");
+  await expect(root).not.toHaveClass(/has-frame-image/);
+
+  // As the screens show it.
+  await note.getByRole("button", { name: "הצגה כמו במסכים" }).click();
+  await expect(root).toHaveClass(/has-frame-image/);
+  await expect(root).toHaveClass(/has-bg-image/);
+  await note.getByRole("button", { name: "הצגת העיצוב הרגיל" }).click();
+  await expect(root).not.toHaveClass(/has-frame-image/);
+});

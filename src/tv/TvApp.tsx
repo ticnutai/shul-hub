@@ -1,4 +1,5 @@
 import { boardConfig } from "./boardConfig";
+import { inlineVariableImages } from "./snapshotImages";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
@@ -730,6 +731,8 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
 async function captureSnapshot(link: DeviceLink) {
   const node = document.querySelector<HTMLElement>(".tv-frame");
   if (!node) return;
+  const root = node.querySelector<HTMLElement>(".tv-root");
+  const restore = root ? await inlineVariableImages(root) : () => {};
   try {
     const { toJpeg } = await import("html-to-image");
     // Full screen resolution (1920x1080 on a DPR-2 box), so the admin sees
@@ -743,5 +746,7 @@ async function captureSnapshot(link: DeviceLink) {
     link.log("info", "snapshot", "צילום מסך נשלח", { bytes: image.length });
   } catch (error) {
     link.log("error", "snapshot", `צילום מסך נכשל: ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    restore();
   }
 }

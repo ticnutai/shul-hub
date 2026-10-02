@@ -126,7 +126,11 @@ export function applyDesign(c: TvConfig, d: SavedDesign): TvConfig {
   const overrides: Record<string, string> = {};
   for (const v of THEME_VARS) {
     const part = (Object.keys(PART_VARS) as DesignPart[]).find((p) => PART_VARS[p].includes(v));
-    const want = part && d.parts.includes(part) && d.colours[v] ? d.colours[v]! : before[v];
+    // A part the design brings is wholly the design's: a colour it does not
+    // name comes from its own theme, not from the board it is laid over. The
+    // carved-wood board kept the navy ground of the board under it, which
+    // showed wherever its wood had not loaded (and in every photo of it).
+    const want = part && d.parts.includes(part) ? (d.colours[v] ?? base[v]) : before[v];
     if (want !== base[v]) overrides[v] = want;
   }
   next.themeOverrides = overrides;
