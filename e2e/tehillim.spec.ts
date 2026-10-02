@@ -139,3 +139,29 @@ test("a verse that runs on starts its next line under its first word, not under 
   const letter = await page.locator("p[data-pasuk='2'] span[aria-hidden]").boundingBox();
   expect(letter!.x).toBeGreaterThanOrEqual(starts[0] - 1);
 });
+
+test("opening a chapter scrolls there in one smooth movement - no step back, no twitch after it arrives", async ({ page }) => {
+  await page.goto("/siddur?tab=tehillim");
+  await page.locator('button[title="פרק קנ"]').scrollIntoViewIfNeeded({ timeout: 20_000 });
+  const trace = await page.evaluate(async () => {
+    const out: number[] = [];
+    const t0 = performance.now();
+    await new Promise<void>((done) => {
+      const tick = () => {
+        out.push(Math.round(window.scrollY));
+        if (performance.now() - t0 < 2200) requestAnimationFrame(tick);
+        else done();
+      };
+      (document.querySelector('button[title="פרק קיט"]') as HTMLButtonElement).click();
+      tick();
+    });
+    return out;
+  });
+  const steps = trace.slice(1).map((y, i) => y - trace[i]).filter((d) => d !== 0);
+  // One direction all the way.
+  expect(new Set(steps.map(Math.sign)).size).toBeLessThanOrEqual(1);
+  // And once it reaches where it ends, it stays there.
+  const end = trace[trace.length - 1];
+  const arrived = trace.indexOf(end);
+  expect(trace.slice(arrived).every((y) => y === end)).toBe(true);
+});

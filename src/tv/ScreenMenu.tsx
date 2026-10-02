@@ -48,6 +48,11 @@ type Row =
   | { kind: "theme" }
   | { kind: "close" };
 
+/** How long the second OK is waited for. */
+const CONFIRM_MS = 8_000;
+/** A second OK sooner than this is the remote repeating the first. */
+const CONFIRM_MIN_MS = 600;
+
 export function ScreenMenu({
   open,
   onClose,
@@ -73,6 +78,25 @@ export function ScreenMenu({
    * line twice in the screen's log, one second apart, on the real box.
    */
   const busyRef = useRef(false);
+  /**
+   * Moving the screen to another synagogue takes a second OK.
+   *
+   * One press used to move it: the synagogues stand above the theme in this
+   * list, so somebody going down to "ערכת נושא" and pressing OK a row too
+   * early moved the screen - and from then on it showed another shul's board,
+   * and every change made to its own went nowhere. It happened at תורה
+   * ואהבתה on 2.10.2026 (and before that at אהל אברהם). The first OK now asks;
+   * a second one, a moment later, on the same row, moves. A held key (the
+   * remote repeats it) is not a second press, and moving off the row cancels.
+   */
+  const [confirm, setConfirm] = useState<{ id: string; at: number } | null>(null);
+  const confirmRef = useRef<{ id: string; at: number } | null>(null);
+  confirmRef.current = confirm;
+  useEffect(() => {
+    if (!confirm) return;
+    const t = window.setTimeout(() => setConfirm(null), CONFIRM_MS);
+    return () => window.clearTimeout(t);
+  }, [confirm]);
   /**
    * The rows as they are now, for a listener that was registered earlier.
    *
@@ -116,6 +140,7 @@ export function ScreenMenu({
     setIndex(0);
     busyRef.current = false;
     setBusy(false);
+    setConfirm(null);
   }, [open]);
 
   const rows: Row[] = [
@@ -158,10 +183,12 @@ export function ScreenMenu({
       switch (e.key) {
         case "ArrowUp":
           stop();
+          setConfirm(null);
           setIndex((i) => (i - 1 + rowsRef.current.length) % Math.max(1, rowsRef.current.length));
           break;
         case "ArrowDown":
           stop();
+          setConfirm(null);
           setIndex((i) => (i + 1) % Math.max(1, rowsRef.current.length));
           break;
         case "Enter":
@@ -182,6 +209,16 @@ export function ScreenMenu({
             onClose();
             break;
           }
+          {
+            const asked = confirmRef.current;
+            const confirmed =
+              asked?.id === row.community.id && !e.repeat && Date.now() - asked.at >= CONFIRM_MIN_MS;
+            if (!confirmed) {
+              if (!e.repeat && asked?.id !== row.community.id) setConfirm({ id: row.community.id, at: Date.now() });
+              break;
+            }
+          }
+          setConfirm(null);
           busyRef.current = true;
           setBusy(true);
           void setDeviceCommunity(row.community.id)
@@ -227,6 +264,11 @@ export function ScreenMenu({
         <div className="tv-menu-title">באיזה בית כנסת המסך הזה</div>
 
         {error && <div className="tv-menu-note is-error">{error}</div>}
+        {confirm && (
+          <div className="tv-menu-note is-confirm" role="alert" data-testid="screen-menu-confirm">
+            {`להעביר את המסך הזה ל«${communities?.find((c) => c.id === confirm.id)?.name ?? ""}»? לחצו OK שוב כדי לאשר, או חץ כדי לבטל.`}
+          </div>
+        )}
         {canSwitch && !communities && !error && <div className="tv-menu-note">טוען…</div>}
         {!canSwitch && (
           <div className="tv-menu-note">בחירת בית כנסת נעשית מהמסך עצמו, עם השלט.</div>
@@ -259,7 +301,7 @@ export function ScreenMenu({
               >
                 <span>{row.community.name}</span>
                 <span className="tv-menu-value">
-                  {busy && active ? "מעביר…" : here ? "המסך הזה" : ""}
+                  {busy && active ? "מעביר…" : here ? "המסך הזה" : confirm?.id === row.community.id ? "OK שוב להעברה" : ""}
                 </span>
               </li>
             );

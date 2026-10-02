@@ -896,6 +896,19 @@ function SectionStrip({
  * `find` is asked again until the element exists (a prayer still loading, a
  * chapter still rendering).
  */
+/**
+ * Where an element stands in the page's own layout, from the top of the
+ * document. Not getBoundingClientRect: a chapter opens with a fade that also
+ * slides it up a little (animate-fade-in), and measured mid-slide it stood
+ * ten-odd pixels from where it would come to rest - so the scroll arrived,
+ * and then had to be corrected with a visible twitch.
+ */
+function layoutTop(el: HTMLElement): number {
+  let top = 0;
+  for (let node: HTMLElement | null = el; node; node = node.offsetParent as HTMLElement | null) top += node.offsetTop;
+  return top;
+}
+
 function scrollUnderChrome(find: () => HTMLElement | null, where: "start" | "center" = "start"): () => void {
   const timers: number[] = [];
   const attempt = (tries: number) => {
@@ -910,28 +923,42 @@ function scrollUnderChrome(find: () => HTMLElement | null, where: "start" | "cen
     // name. A fixed number landed somewhere in the middle of the section.
     const target = () => {
       const chrome = stickyChromeHeight();
-      const r = el.getBoundingClientRect();
       const room = window.innerHeight - chrome;
-      const below = where === "center" ? Math.max(8, (room - r.height) / 2) : 8;
-      return Math.max(0, r.top + window.scrollY - chrome - below);
+      const below = where === "center" ? Math.max(8, (room - el.offsetHeight) / 2) : 8;
+      return Math.max(0, layoutTop(el) - chrome - below);
     };
     window.scrollTo({ top: target(), behavior: "smooth" });
     // Smooth scrolling is ignored outright in some places - reduced motion,
-    // a background tab, a television WebView. A tap that quietly does nothing
-    // is worse than one that arrives without an animation, so check afterwards
-    // and finish the job. Measured again rather than reused: the text above
-    // can still be settling and move the target under the pinned rows.
-    for (const delay of [450, 1000]) {
-      timers.push(
-        window.setTimeout(() => {
-          const wanted = target();
-          if (Math.abs(window.scrollY - wanted) > 4) window.scrollTo({ top: wanted });
-        }, delay),
-      );
-    }
+    // a background tab, a television WebView - and the text above can still
+    // be settling. So once the scroll has come to rest (not at a fixed time:
+    // a long way is still on its way at half a second, and a correction then
+    // jumped it), it is checked, and finished smoothly if it fell short.
+    let last = window.scrollY;
+    let still = 0;
+    let corrected = false;
+    const startedAt = Date.now();
+    const watch = window.setInterval(() => {
+      const y = window.scrollY;
+      still = Math.abs(y - last) < 1 ? still + 1 : 0;
+      last = y;
+      if (still < 2 && Date.now() - startedAt < 2000) return;
+      const wanted = target();
+      if (!corrected && Math.abs(y - wanted) > 2) {
+        corrected = true;
+        still = 0;
+        window.scrollTo({ top: wanted, behavior: "smooth" });
+        return;
+      }
+      window.clearInterval(watch);
+    }, 100);
+    timers.push(watch);
   };
   timers.push(window.setTimeout(() => attempt(0), 60));
-  return () => timers.forEach((t) => window.clearTimeout(t));
+  return () =>
+    timers.forEach((t) => {
+      window.clearTimeout(t);
+      window.clearInterval(t);
+    });
 }
 
 /**

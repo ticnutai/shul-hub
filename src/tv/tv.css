@@ -5141,6 +5141,10 @@
   opacity: 0.75;
 }
 
+.tv-menu-note.is-confirm {
+  color: #fde68a;
+  font-weight: 700;
+}
 .tv-menu-note.is-error {
   color: #f0a3a3;
   opacity: 1;

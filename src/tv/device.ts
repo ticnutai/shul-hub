@@ -484,6 +484,10 @@ export class DeviceLink {
 
   /** Same error at most once per 10 minutes, so a loop cannot flood the log. */
   private reportError(message: string, where: string | undefined) {
+    // The browser's own note that a resize took two frames to settle. Nothing
+    // is wrong when it says so, but it arrived as an error every ten minutes
+    // from אהל אברהם's screen and put "שגיאה" in front of the admin each time.
+    if (/^ResizeObserver loop/.test(message)) return;
     const now = Date.now();
     if ((this.recentErrors.get(message) ?? 0) > now - 10 * 60_000) return;
     this.recentErrors.set(message, now);
