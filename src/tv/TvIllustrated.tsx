@@ -9,7 +9,7 @@ import { illustratedLayers } from "./illustratedAdjust";
 import type { IllustratedStyle } from "./config";
 import { illustrationDef, rowWindow, type Box, type CustomIllustration, type Illustration } from "./illustrated";
 import { minyanNow, type BoardSlide } from "./useBoardData";
-import { useShownPrayerDay } from "./useDayCycle";
+import { useShownPrayerDay, type ShownPrayerDay } from "./useDayCycle";
 import { PrayerDaysLine } from "./PrayerDaysLine";
 import { ILLUSTRATION_PICTURES } from "./illustrationPictures";
 import type { FrameId, FrameLook } from "./frameLooks";
@@ -51,7 +51,7 @@ function useMark() {
 /** Row type size: a narrow frame (the carved wood's side panels) gets smaller type, not clipped names. */
 const rowSize = (b: Box) => `calc(${b[2] - b[0] < 25 ? 1.55 : 1.95}cqw * var(--ill-k, 1))`;
 
-function PrayerFrame({ d, shown, now, max }: { d: Illustration; shown: ReturnType<typeof useShownPrayerDay>; now: Date; max: number }) {
+function PrayerFrame({ d, shown, now, max }: { d: Illustration; shown: ShownPrayerDay; now: Date; max: number }) {
   const edit = useBoardEdit();
   const { day } = shown;
   const mark = useMark();
@@ -65,7 +65,7 @@ function PrayerFrame({ d, shown, now, max }: { d: Illustration; shown: ReturnTyp
         <div className="tv-ill-title" style={{ color: d.accent }} {...mark("dash.prayers")}>
           {day.isToday ? edit.text("dash.prayers", "תפילות היום") : `תפילות ${day.title}`}
         </div>
-        <PrayerDaysLine days={shown.days} index={shown.index} />
+        <PrayerDaysLine shown={shown} />
         {rows.length === 0 ? (
           <p className="tv-ill-empty">לא הוגדרו מניינים להיום</p>
         ) : (

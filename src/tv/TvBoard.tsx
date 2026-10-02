@@ -10,6 +10,7 @@ import type { Settings } from "@community/lib/data";
 import { CORNER_SHAPE, logoCut, type TvConfig } from "./config";
 import { layerVars } from "./layerCss";
 import { MedallionStage } from "./TvMedallion";
+import { BoardPreviewContext } from "./useDayCycle";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
 import { dafYomi, weeklyParasha } from "./learning";
 import { backdropUrl } from "./backdrops";
@@ -49,6 +50,8 @@ export interface TvBoardProps {
   paused: boolean;
   /** Admin editor: mark editable elements (data-edit) for click-to-edit. */
   editing?: boolean;
+  /** Drawn in the editor's preview, not on a screen (BoardPreviewContext). */
+  preview?: boolean;
   /** Anything to layer on top: remote-control toasts, help, pairing code. */
   overlay?: ReactNode;
   className?: string;
@@ -63,7 +66,7 @@ const DRIFT = [
   "translate3d(0%, 0%, 0)",
 ];
 
-export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className, editing = false }: TvBoardProps) {
+export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progress, paused, overlay, className, editing = false, preview = false }: TvBoardProps) {
   const edit = useMemo(() => makeBoardEdit(config, editing), [config, editing]);
   const overflow = useMemo(
     () => ({ mode: config.overflow.mode, speed: config.overflow.speed, still: editing }),
@@ -206,6 +209,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   return (
     <HolyEndMinutesContext.Provider value={holyEndMinutes}>
     <BoardEditContext.Provider value={edit}>
+    <BoardPreviewContext.Provider value={preview}>
       <OverflowContext.Provider value={overflow}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
       <div
@@ -377,6 +381,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       </div>
     </div>
       </OverflowContext.Provider>
+    </BoardPreviewContext.Provider>
     </BoardEditContext.Provider>
     </HolyEndMinutesContext.Provider>
   );

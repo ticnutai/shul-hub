@@ -5472,6 +5472,15 @@
   color: var(--tv-accent);
   font-weight: 700;
 }
+.tv-days-line button {
+  all: unset;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.tv-days-line button:hover,
+.tv-days-line button:focus-visible {
+  text-decoration: underline;
+}
 .tv-ill-list .tv-days-line {
   margin: -2% 0 3%;
   font-size: 0.72em;

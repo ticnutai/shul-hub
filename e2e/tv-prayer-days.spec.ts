@@ -63,30 +63,24 @@ test("the whole week on the board: today first, then each day in turn, 'הבא' 
   const choice = page.getByTestId("board-prayer-days").getByRole("button", { name: /כל השבוע · היום ראשון/ });
   await choice.click();
   await expect(choice).toHaveAttribute("aria-pressed", "true");
-  // Seen at once, without waiting a turn: the days the frame will show, today marked.
+  // Seen at once, in the preview: the days the frame turns through, and the
+  // next day already on - the change shows now, not a turn later.
   const line = prayers.locator(".tv-days-line");
   await expect(line).toBeVisible();
-  await expect(line.locator(".is-on")).toHaveText("היום");
-  await expect(line.locator("span")).toHaveText(["היום", ...after]);
+  await expect(line.getByRole("button")).toHaveText(["היום", ...after]);
+  await expect(prayers.locator("h3")).toHaveText(`תפילות ${after[0]}`);
+  await expect(line.locator(".is-on")).toHaveText(after[0]);
   if (process.env.SHOT_DIR) await prayers.screenshot({ path: `${process.env.SHOT_DIR}/prayer-days-${test.info().project.name}.png` });
 
-  // Today, then each following day - one after another, in that order.
-  const seen: string[] = [];
-  await expect
-    .poll(
-      async () => {
-        const title = (await prayers.locator("h3").textContent())?.trim() ?? "";
-        if (seen.at(-1) !== title) seen.push(title);
-        return seen.join(" | ");
-      },
-      { timeout: 25_000, intervals: [500] },
-    )
-    .toContain(["תפילות היום", ...after.map((d) => `תפילות ${d}`)].join(" | "));
-
-  // Another day's turn: its own minyanim, and none of them "הבא" or over,
-  // whatever the clock says.
-  await expect(prayers.locator("h3")).toHaveText(`תפילות ${after[1]}`, { timeout: 20_000 });
+  // A day picked in the preview is shown at once.
+  await line.getByRole("button", { name: "היום" }).click();
+  await expect(prayers.locator("h3")).toHaveText("תפילות היום");
+  await line.getByRole("button", { name: after[1] }).click();
+  await expect(prayers.locator("h3")).toHaveText(`תפילות ${after[1]}`);
+  // Another day: its own minyanim, and none of them "הבא", whatever the clock says.
   await expect(prayers.locator("li")).not.toHaveCount(0);
   await expect(prayers.locator(".is-next")).toHaveCount(0);
-  await expect(line.locator(".is-on")).toHaveText(after[1]);
+
+  // And it keeps turning on its own: after its turn, the next day (today again).
+  await expect(prayers.locator("h3")).toHaveText("תפילות היום", { timeout: 15_000 });
 });

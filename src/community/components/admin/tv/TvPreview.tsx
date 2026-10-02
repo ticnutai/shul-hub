@@ -117,6 +117,7 @@ function BoardInFrame({ config, slides, data, now, zmanim, index, paused = false
         progress={progress}
         paused={paused}
         editing={editing}
+        preview
       />
     </div>
   );

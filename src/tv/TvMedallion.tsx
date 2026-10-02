@@ -6,7 +6,7 @@ import { frameZmanim, useBoardDay } from "./boardDay";
 import { useHolyEndMinutes } from "./holyEnd";
 import { rowWindow } from "./illustrated";
 import { composedLayout, minyanNow, type BoardSlide, type ComposedPart } from "./useBoardData";
-import { useShownPrayerDay } from "./useDayCycle";
+import { useShownPrayerDay, type ShownPrayerDay } from "./useDayCycle";
 import { PrayerDaysLine } from "./PrayerDaysLine";
 import { tracks } from "./grid";
 import type { ScreenRow } from "./config";
@@ -192,7 +192,7 @@ function ScreenFrames({
   );
 }
 
-function PrayersFrame({ shown, now, max }: { shown: ReturnType<typeof useShownPrayerDay>; now: Date; max: number }) {
+function PrayersFrame({ shown, now, max }: { shown: ShownPrayerDay; now: Date; max: number }) {
   const edit = useBoardEdit();
   const { day } = shown;
   const { rows } = day;
@@ -206,7 +206,7 @@ function PrayersFrame({ shown, now, max }: { shown: ReturnType<typeof useShownPr
       <h3 className="tv-panel-title" {...edit.attr("dash.prayers")}>
         {day.isToday ? edit.text("dash.prayers", "תפילות היום") : `תפילות ${day.title}`}
       </h3>
-      <PrayerDaysLine days={shown.days} index={shown.index} />
+      <PrayerDaysLine shown={shown} />
       {rows.length === 0 ? (
         <p className="tv-med-empty">לא הוגדרו מניינים להיום</p>
       ) : (

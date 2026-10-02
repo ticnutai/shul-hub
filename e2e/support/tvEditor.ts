@@ -66,8 +66,18 @@ const MINYANIM = [
   { ...minyan("m3", "סליחות א'", "05:45:00", 1), category_id: "c2", day_type: "custom" },
 ];
 
+/*
+ * The board shows the tab of the day it is (ימות החול, יום שישי, שבת). The
+ * fixture's day tab stands for whatever day the tests run on, so they do not
+ * pass on a Thursday and fail on a Friday.
+ */
+const TODAY_KEY = (() => {
+  const day = new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "Asia/Jerusalem" }).format(new Date());
+  return day === "Fri" ? "friday" : day === "Sat" ? "shabbat" : "weekday";
+})();
+
 const CATEGORIES = [
-  { id: "c1", name: "ימות החול", system_key: "weekday", sort_order: 1, active: true, visible_from: null, visible_until: null },
+  { id: "c1", name: "ימות החול", system_key: TODAY_KEY, sort_order: 1, active: true, visible_from: null, visible_until: null },
   // A second panel, the one an admin takes off the board once the season is
   // over - the case this was built for.
   { id: "c2", name: "סליחות", system_key: null, sort_order: 2, active: true, visible_from: null, visible_until: null },
