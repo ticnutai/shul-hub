@@ -307,7 +307,7 @@ export function SiteHeaderSettings() {
               {numericControl("karovim_logo_desktop_offset_y", "מיקום אנכי במחשב", -120, 120, 0)}
             </fieldset>
           </div>
-          <KarovimHeaderPreview form={form} setForm={setForm} logoSrc={logoSrc} />
+          <KarovimHeaderPreview form={form as never} setForm={setForm as never} logoSrc={logoSrc} />
         </section>
       )}
       <Button type="submit" disabled={save.isPending}>
