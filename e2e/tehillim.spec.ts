@@ -17,14 +17,14 @@ test("the Tehillim tab opens Tehillim, remembers the place, and gives the Siddur
   await nav.getByRole("link", { name: "תהילים" }).click();
   await expect(page).toHaveURL(/\/siddur\?tab=tehillim/);
   await expect(nav.locator('[aria-current="page"]')).toHaveText("תהילים");
-  await expect(page.locator('button[title="פרק 1"]')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('button[title="פרק א"]')).toBeVisible({ timeout: 20_000 });
 
   // A link to a chapter and verse - a bookmark's - opens there.
   await page.goto("/siddur?tab=tehillim&perek=23&pasuk=4");
   const bookmark = page.getByTestId("tehillim-bookmark");
   await expect(bookmark).toBeVisible({ timeout: 20_000 });
   await expect(bookmark).toHaveText("סימניה לפסוק");
-  await expect(page.getByText("פרק כג (23)")).toBeVisible();
+  await expect(page.getByTestId("tehillim-breadcrumb")).toContainText("פרק כג");
 
   // Back to the chapters: the place just read is offered first.
   await page.getByRole("button", { name: "כל הפרקים" }).click();
@@ -39,4 +39,68 @@ test("the Tehillim tab opens Tehillim, remembers the place, and gives the Siddur
   await nav.getByRole("link", { name: "סידור", exact: true }).click();
   await expect(page).toHaveURL(/\/siddur$/);
   await expect(nav.locator('[aria-current="page"]')).toHaveText("סידור");
+});
+
+/** Whatever is pinned at the top of the screen: where text starts to be readable. */
+const pinnedBottom = (page: import("@playwright/test").Page) =>
+  page.evaluate(() =>
+    Math.max(
+      0,
+      ...[...document.querySelectorAll<HTMLElement>("header, [data-sticky-chrome]")]
+        .filter((e) => ["sticky", "fixed"].includes(getComputedStyle(e).position))
+        .map((e) => e.getBoundingClientRect().bottom),
+    ),
+  );
+
+test("a chapter opens at its first verse, a verse at itself - never under the header; numbers in letters; the trail reads right to left", async ({ page }) => {
+  await page.goto("/siddur?tab=tehillim");
+  const grid = page.locator('button[title="פרק צג"]');
+  await expect(grid).toBeVisible({ timeout: 20_000 });
+  // No numerals beside the letters.
+  await expect(page.getByText(/\(\d+\)/)).toHaveCount(0);
+
+  // From far down the list of chapters, the way it happens on a phone.
+  await page.locator('button[title="פרק קנ"]').scrollIntoViewIfNeeded();
+  await grid.click();
+  const first = page.locator("p[data-pasuk='1']");
+  await expect(first).toBeVisible();
+  await expect
+    .poll(async () => {
+      const top = (await first.boundingBox())!.y;
+      const pinned = await pinnedBottom(page);
+      return top >= pinned && top < pinned + 260;
+    }, { timeout: 5_000 })
+    .toBe(true);
+
+  // The trail: right to left, תהילים first (on the right), no numerals.
+  const trail = page.getByTestId("tehillim-breadcrumb");
+  await expect(trail).toHaveAttribute("dir", "rtl");
+  await expect(trail).not.toContainText("(");
+  const [home, chapter] = await Promise.all([
+    trail.getByRole("button", { name: "תהילים" }).boundingBox(),
+    trail.getByText("פרק צג").boundingBox(),
+  ]);
+  expect(home!.x).toBeGreaterThan(chapter!.x);
+
+  // A verse from the row of verses comes into view, below the header.
+  await page.getByRole("button", { name: "פסוק ה", exact: true }).click();
+  const fifth = page.locator("p[data-pasuk='5']");
+  await expect
+    .poll(async () => {
+      const box = (await fifth.boundingBox())!;
+      const pinned = await pinnedBottom(page);
+      const vh = page.viewportSize()!.height;
+      return box.y >= pinned && box.y + box.height <= vh;
+    }, { timeout: 5_000 })
+    .toBe(true);
+  await expect(trail).toContainText("פסוק ה");
+
+  // A tap on a verse marks it; the chapter in the trail goes back to its top.
+  await page.locator("p[data-pasuk='2']").click();
+  await expect(trail).toContainText("פסוק ב");
+  await trail.getByRole("button", { name: "פרק צג" }).click();
+  await expect(trail).not.toContainText("פסוק");
+  await expect
+    .poll(async () => (await first.boundingBox())!.y >= (await pinnedBottom(page)), { timeout: 5_000 })
+    .toBe(true);
 });

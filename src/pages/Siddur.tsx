@@ -887,6 +887,54 @@ function SectionStrip({
 }
 
 /**
+ * Brings an element into view just below what is pinned at the top of the
+ * screen - at the top of what is left ("start"), or in its middle ("center").
+ * Returns a cancel. The one way the siddur and Tehillim scroll to a place:
+ * scrollIntoView put it at the very top of the window, under the header, and
+ * a chapter opened with its first verses hidden behind it.
+ *
+ * `find` is asked again until the element exists (a prayer still loading, a
+ * chapter still rendering).
+ */
+function scrollUnderChrome(find: () => HTMLElement | null, where: "start" | "center" = "start"): () => void {
+  const timers: number[] = [];
+  const attempt = (tries: number) => {
+    const el = find();
+    if (!el) {
+      if (tries < 20) timers.push(window.setTimeout(() => attempt(tries + 1), 100));
+      return;
+    }
+    // Measured, not guessed. What stays over the text is the app header (and
+    // any pinned row), and how tall that is depends on the synagogue - a board
+    // showing the קרובים logo has a header twice the height of one showing a
+    // name. A fixed number landed somewhere in the middle of the section.
+    const target = () => {
+      const chrome = stickyChromeHeight();
+      const r = el.getBoundingClientRect();
+      const room = window.innerHeight - chrome;
+      const below = where === "center" ? Math.max(8, (room - r.height) / 2) : 8;
+      return Math.max(0, r.top + window.scrollY - chrome - below);
+    };
+    window.scrollTo({ top: target(), behavior: "smooth" });
+    // Smooth scrolling is ignored outright in some places - reduced motion,
+    // a background tab, a television WebView. A tap that quietly does nothing
+    // is worse than one that arrives without an animation, so check afterwards
+    // and finish the job. Measured again rather than reused: the text above
+    // can still be settling and move the target under the pinned rows.
+    for (const delay of [450, 1000]) {
+      timers.push(
+        window.setTimeout(() => {
+          const wanted = target();
+          if (Math.abs(window.scrollY - wanted) > 4) window.scrollTo({ top: wanted });
+        }, delay),
+      );
+    }
+  };
+  timers.push(window.setTimeout(() => attempt(0), 60));
+  return () => timers.forEach((t) => window.clearTimeout(t));
+}
+
+/**
  * Brings a jumped-to section into view. Lives on the page, not in the strip,
  * because the strip exists only on a phone and search jumps on every screen.
  */
@@ -895,41 +943,11 @@ function SectionJumpScroller() {
 
   // After the tap: the card (if there is one) has opened in the same commit,
   // so by the next frame there is something with a height to scroll to.
+  // Coming from search in another prayer, that prayer may still be loading:
+  // scrollUnderChrome waits for the section to exist.
   useEffect(() => {
     if (index === null) return;
-    const timers: number[] = [];
-    // Coming from search in another prayer, that prayer may still be
-    // loading; wait for the section to exist rather than give up.
-    const attempt = (tries: number) => {
-      const el = document.getElementById(sectionAnchor(index));
-      if (!el) {
-        if (tries < 20) timers.push(window.setTimeout(() => attempt(tries + 1), 100));
-        return;
-      }
-      // Measured, not guessed. The only thing that stays over the text is
-      // the app header, and how tall that is depends on the synagogue - a
-      // board showing the קרובים logo has a header twice the height of one
-      // showing a name. A fixed number landed somewhere in the middle of
-      // the section, which is the one place a title is no use.
-      const target = () => Math.max(0, el.getBoundingClientRect().top + window.scrollY - stickyChromeHeight() - 8);
-      window.scrollTo({ top: target(), behavior: "smooth" });
-      // Smooth scrolling is ignored outright in some places - reduced
-      // motion, a background tab, a television WebView. A tap that quietly
-      // does nothing is worse than one that arrives without an animation,
-      // so check afterwards and finish the job. Measured again rather than
-      // reused: the text above can still be settling (a card closing, a
-      // section rendering) and move the title under the pinned rows.
-      for (const delay of [450, 1000]) {
-        timers.push(
-          window.setTimeout(() => {
-            const wanted = target();
-            if (Math.abs(window.scrollY - wanted) > 4) window.scrollTo({ top: wanted });
-          }, delay),
-        );
-      }
-    };
-    timers.push(window.setTimeout(() => attempt(0), 60));
-    return () => timers.forEach((t) => window.clearTimeout(t));
+    return scrollUnderChrome(() => document.getElementById(sectionAnchor(index)));
   }, [index, nonce]);
 
   return null;
@@ -2500,21 +2518,33 @@ const TehillimPane = () => {
   const [commentaryExpanded, setCommentaryExpanded] = useState(true);
   const { settings: tehillimSettings } = useFontAndColorSettings();
   const textRef               = useRef<HTMLDivElement>(null);
+  const chapterTopRef         = useRef<HTMLDivElement>(null);
   const continuousSentinelRef = useRef<HTMLDivElement>(null);
   const verseRefs             = useRef<(HTMLParagraphElement | null)[]>([]);
   const [visibleCount, setVisibleCount] = useState(5);
+
+  // One scroll at a time: a link to a verse opens its chapter and then the
+  // verse, and the chapter's late correction must not pull back to the top.
+  const cancelScroll = useRef<(() => void) | null>(null);
+  const scrollTo = (find: () => HTMLElement | null, where: "start" | "center" = "start") => {
+    cancelScroll.current?.();
+    cancelScroll.current = scrollUnderChrome(find, where);
+  };
+  useEffect(() => () => cancelScroll.current?.(), []);
 
   const handleChapterSelect = (ch: number) => {
     setChapter(ch);
     setPasuk(null);
     verseRefs.current = [];
     setLevel("text");
-    setTimeout(() => textRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    // The chapter's own title, with its first verse right under it - below
+    // the pinned header, not behind it.
+    scrollTo(() => chapterTopRef.current);
   };
 
   const handlePasukSelect = (idx: number) => {
     setPasuk(idx + 1);
-    setTimeout(() => verseRefs.current[idx]?.scrollIntoView({ behavior: "smooth", block: "center" }), 80);
+    scrollTo(() => verseRefs.current[idx] ?? null, "center");
   };
 
   /*
@@ -2760,7 +2790,9 @@ const TehillimPane = () => {
         <p
           key={i}
           ref={trackRefs ? (el => { verseRefs.current[i] = el; }) : undefined}
-          className="leading-relaxed text-foreground transition-all rounded-lg"
+          data-pasuk={i + 1}
+          onClick={trackRefs ? () => setPasuk(pasuk === i + 1 ? null : i + 1) : undefined}
+          className={`leading-relaxed text-foreground transition-all rounded-lg${trackRefs ? " cursor-pointer" : ""}`}
           style={{
             ...textStyle,
             ...nikudTextStyle,
@@ -2852,7 +2884,7 @@ const TehillimPane = () => {
                   className="text-xs font-bold px-2 py-0.5 rounded-full transition-all"
                   style={{ background: `${theme.accentColor}22`, color: theme.accentColor, border: `1px solid ${theme.accentColor}55` }}
                 >
-                  פרק {heNum(todayChapter)} ({todayChapter})
+                  פרק {heNum(todayChapter)}
                 </button>
               </div>
 
@@ -2861,7 +2893,7 @@ const TehillimPane = () => {
                   <button
                     key={ch}
                     onClick={() => handleChapterSelect(ch)}
-                    title={`פרק ${ch}`}
+                    title={`פרק ${heNum(ch)}`}
                     className="w-full aspect-square flex items-center justify-center rounded text-[10px] sm:text-xs font-medium transition-all leading-none"
                     style={
                       ch === chapter
@@ -2878,23 +2910,44 @@ const TehillimPane = () => {
 
           {level === "text" && current && (
             <div key={chapter} className="animate-fade-in">
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-1.5 text-xs mb-3 flex-wrap" dir="ltr">
+              {/*
+                Breadcrumb, right to left: תהילים ‹ פרק ‹ פסוק. It was laid out
+                left to right, so it read backwards and the separators pointed
+                the wrong way. Every step but the last is a way back.
+              */}
+              <nav
+                className="flex items-center gap-1.5 text-sm mb-3 flex-wrap"
+                dir="rtl"
+                aria-label="מיקום בתהילים"
+                data-testid="tehillim-breadcrumb"
+              >
                 <button
+                  type="button"
                   onClick={() => { setLevel("chapter"); setPasuk(null); }}
                   className="font-medium hover:underline transition-colors"
                   style={{ color: "hsl(var(--muted-foreground))" }}
                 >
                   תהילים
                 </button>
-                <span className="opacity-40 text-foreground">›</span>
-                <span className="font-semibold" style={{ color: theme.accentColor }}>
-                  {`פרק ${heNum(chapter)} (${chapter})`}
-                </span>
+                <span aria-hidden className="opacity-40 text-foreground">‹</span>
+                {pasuk ? (
+                  <button
+                    type="button"
+                    onClick={() => { setPasuk(null); scrollTo(() => chapterTopRef.current); }}
+                    className="font-semibold hover:underline"
+                    style={{ color: theme.accentColor }}
+                  >
+                    פרק {heNum(chapter)}
+                  </button>
+                ) : (
+                  <span className="font-semibold" aria-current="page" style={{ color: theme.accentColor }}>
+                    פרק {heNum(chapter)}
+                  </span>
+                )}
                 {pasuk && (
                   <>
-                    <span className="opacity-40 text-foreground">›</span>
-                    <span className="font-semibold" style={{ color: theme.accentColor }}>פסוק {heNum(pasuk)}</span>
+                    <span aria-hidden className="opacity-40 text-foreground">‹</span>
+                    <span className="font-semibold" aria-current="page" style={{ color: theme.accentColor }}>פסוק {heNum(pasuk)}</span>
                   </>
                 )}
                 {(() => {
@@ -2920,7 +2973,7 @@ const TehillimPane = () => {
                     </button>
                   );
                 })()}
-              </div>
+              </nav>
 
               {/* Verse picker row */}
               <div className="overflow-x-auto [&::-webkit-scrollbar]:hidden mb-3" style={{ scrollbarWidth: "none" }}>
@@ -2928,7 +2981,10 @@ const TehillimPane = () => {
                   {current.lines.map((_, i) => (
                     <button
                       key={i}
+                      type="button"
                       onClick={() => handlePasukSelect(i)}
+                      aria-label={`פסוק ${heNum(i + 1)}`}
+                      aria-pressed={pasuk === i + 1}
                       className="min-w-[30px] h-7 px-1 rounded-md text-[10px] font-bold transition-all"
                       style={{
                         background: pasuk === i + 1 ? theme.accentColor : "hsl(var(--muted))",
@@ -2943,7 +2999,9 @@ const TehillimPane = () => {
                 </div>
               </div>
 
-              <OrnamentTitle text={`פרק ${heNum(chapter)} — ${current.title || "תהלים"}`} fontSize={tehillimSettings.tehillimSize} />
+              <div ref={chapterTopRef} data-testid="tehillim-chapter-top">
+                <OrnamentTitle text={`פרק ${heNum(chapter)} — ${current.title || "תהלים"}`} fontSize={tehillimSettings.tehillimSize} />
+              </div>
               <div ref={textRef}>
                 {renderVerseCard(current.lines, pasuk, true)}
               </div>
@@ -2955,7 +3013,7 @@ const TehillimPane = () => {
                   className="text-xs px-3 py-1.5 rounded-full disabled:opacity-30 transition-all"
                   style={{ background: `${theme.accentColor}22`, color: theme.accentColor, border: `1px solid ${theme.accentColor}55` }}
                 >
-                  פרק קודם «
+                  › פרק קודם
                 </button>
                 <button
                   onClick={() => setLevel("chapter")}
@@ -2970,7 +3028,7 @@ const TehillimPane = () => {
                   className="text-xs px-3 py-1.5 rounded-full disabled:opacity-30 transition-all"
                   style={{ background: `${theme.accentColor}22`, color: theme.accentColor, border: `1px solid ${theme.accentColor}55` }}
                 >
-                  » פרק הבא
+                  פרק הבא ‹
                 </button>
               </div>
             </div>
