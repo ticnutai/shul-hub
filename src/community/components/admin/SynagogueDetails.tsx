@@ -30,7 +30,7 @@ import { PlacePicker } from "./PlacePicker";
 
 
 /** The settings row with the columns newer than the generated types. */
-export type SettingsWithLogos = Settings & { logos?: SynagogueLogo[] | null; header_logo?: string | null };
+export type SettingsWithLogos = Omit<Settings, "logos" | "header_logo"> & { logos?: SynagogueLogo[] | null; header_logo?: string | null };
 
 
 const MAX_LOGO_BYTES = 3 * 1024 * 1024;
@@ -78,7 +78,7 @@ export function SynagogueDetailsDialog({
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as SettingsWithLogos | null;
+      return (data ?? null) as unknown as SettingsWithLogos | null;
     },
   });
 

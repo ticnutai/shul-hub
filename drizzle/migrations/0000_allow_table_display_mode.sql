@@ -1,0 +1,2 @@
+ALTER TABLE public.minyan_categories DROP CONSTRAINT IF EXISTS minyan_categories_display_mode_valid;
+ALTER TABLE public.minyan_categories ADD CONSTRAINT minyan_categories_display_mode_valid CHECK (display_mode IN ('tabs','list','table'));
