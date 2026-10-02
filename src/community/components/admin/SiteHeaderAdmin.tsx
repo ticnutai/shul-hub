@@ -165,12 +165,12 @@ export function SiteHeaderSettings() {
   const [form, setForm] = useState<Partial<SettingsWithLogos>>({});
 
   useEffect(() => {
-    if (data) setForm(data as SettingsWithLogos);
+    if (data) setForm(data as unknown as SettingsWithLogos);
   }, [data]);
 
   if (!data) return <p className="text-muted-foreground">טוען…</p>;
 
-  const logos = readLogos((data as SettingsWithLogos).logos);
+  const logos = readLogos((data as unknown as SettingsWithLogos).logos);
   const chosen = logos.find((l) => l.id === form.header_logo) ?? null;
   const logoSrc = chosen?.url ?? BUILT_IN_LOGO;
   const logoMode = form.home_header_variant === "karovim_logo";

@@ -78,7 +78,7 @@ export function SynagogueDetailsDialog({
         .limit(1)
         .maybeSingle();
       if (error) throw error;
-      return (data ?? null) as SettingsWithLogos | null;
+      return (data ?? null) as unknown as SettingsWithLogos | null;
     },
   });
 
