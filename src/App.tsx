@@ -20,6 +20,7 @@ import { useBriefly } from "@/hooks/useBriefly";
 import { lazy, Suspense, useEffect, useState, Profiler, type ProfilerOnRenderCallback } from "react";
 import { Loader2, WifiOff } from "lucide-react";
 import { PWAReloadPrompt } from "@/components/PWAReloadPrompt";
+import { Capacitor } from "@capacitor/core";
 import { ReminderPopup } from "@/components/ReminderPopup";
 import { OmerEntryPopup } from "@/components/OmerEntryPopup";
 import { useNotifications } from "@/hooks/useNotifications";
@@ -182,7 +183,8 @@ const App = () => {
                       <TooltipProvider>
                       <Toaster />
                       <Sonner />
-                      <PWAReloadPrompt />
+                      {/* The app carries its own files; a service worker is the website's. */}
+                      {!Capacitor.isNativePlatform() && <PWAReloadPrompt />}
                       <OfflineBanner />
                       {reminderHookEnabled && <DeferredReminderPopup />}
                       <Router

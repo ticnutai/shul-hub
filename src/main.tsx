@@ -35,7 +35,25 @@ if (import.meta.env.DEV && "serviceWorker" in navigator) {
 // A regular refresh may still be answered by the currently active PWA
 // worker. Reload exactly once when a newer worker takes control so the page
 // starts with its new HTML/JS shell. A first-time install needs no reload.
-if (import.meta.env.PROD && "serviceWorker" in navigator) {
+/*
+ * The installed app is the app: its files come inside the APK, and a new
+ * version arrives as a new APK. A service worker there is the website's
+ * habit and only harm - it can keep serving the previous version's files
+ * after the new one is installed. So none is registered in the app, and any
+ * left from an earlier build is removed with its caches.
+ */
+const nativeApp = Capacitor.isNativePlatform();
+if (nativeApp && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.getRegistrations().then(async (registrations) => {
+    if (!registrations.length) return;
+    await Promise.all(registrations.map((r) => r.unregister()));
+    if ("caches" in window) await Promise.all((await caches.keys()).map((k) => caches.delete(k)));
+    // The page in front of us may have come from that worker: once, fresh.
+    if (navigator.serviceWorker.controller) window.location.reload();
+  });
+}
+
+if (import.meta.env.PROD && !nativeApp && "serviceWorker" in navigator) {
   const hadControllerAtStartup = Boolean(navigator.serviceWorker.controller);
   let reloadingForNewWorker = false;
 
