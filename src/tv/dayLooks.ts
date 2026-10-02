@@ -3,7 +3,7 @@ import { zmanimFor } from "@community/lib/minyan-time";
 import { checkClock } from "./clock";
 import type { TvConfig } from "./config";
 import { applyDesign, findDesign } from "./designs";
-import { occasionDesign, occasionPagesNow } from "./occasions";
+import { dressingNow, occasionDesign, occasionPagesNow } from "./occasions";
 
 /**
  * The board as it should look right now: the design of the occasion that is
@@ -18,9 +18,15 @@ import { occasionDesign, occasionPagesNow } from "./occasions";
  * Never on a clock that cannot be trusted: a board that believes it is
  * Shabbat on a Tuesday would otherwise dress for it.
  */
-export function applyDayLook(config: TvConfig, now: Date, settings: Settings | null | undefined): TvConfig {
+export function applyDayLook(
+  config: TvConfig,
+  now: Date,
+  settings: Settings | null | undefined,
+  /** The slide up now: an occasion's own screen wears its design even when the rest of the board does not. */
+  slideId?: string | null,
+): TvConfig {
   if (!checkClock(now).trusted) return config;
-  const { active } = occasionPagesNow(config, settings, now, (d) => zmanimFor(d, settings));
-  const design = findDesign(config, occasionDesign(active));
+  const { active, pages } = occasionPagesNow(config, settings, now, (d) => zmanimFor(d, settings));
+  const design = findDesign(config, occasionDesign(dressingNow(active, pages, slideId)));
   return design ? applyDesign(config, design) : config;
 }

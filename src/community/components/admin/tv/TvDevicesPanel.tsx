@@ -193,6 +193,22 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
   // empty object (buildSlides reads config.slides).
   const board = useTvSlides(mirrorConfig ?? DEFAULT_TV_CONFIG);
   const index = Math.max(0, board.slides.findIndex((x) => x.id === s.slideId));
+  // As the TV draws the slide it is on: an occasion's own screen in its design (TvApp's drawConfig).
+  const shownId = board.slides[index]?.id ?? null;
+  const occasionSlideId = shownId?.startsWith("occasion:") ? shownId : null;
+  const drawConfig = useMemo(
+    () =>
+      baseConfig && occasionSlideId
+        ? boardConfig(baseConfig, {
+            deviceClass: "tv",
+            themeOverride: s.themeOverride ?? null,
+            now: new Date(minute * 60_000),
+            settings,
+            slideId: occasionSlideId,
+          })
+        : mirrorConfig,
+    [baseConfig, occasionSlideId, s.themeOverride, minute, settings, mirrorConfig],
+  );
   const clock = useNow(1000).getTime();
   const progress = s.paused
     ? (s.elapsedMs ?? 0) / ((s.slideSeconds ?? 20) * 1000)
@@ -300,7 +316,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
             <div className={health.online ? "" : "opacity-50 grayscale"}>
               <TvPreview
                 {...board}
-                config={mirrorConfig}
+                config={drawConfig}
                 index={index}
                 paused={Boolean(s.paused)}
                 progress={progress}

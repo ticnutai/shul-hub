@@ -75,45 +75,63 @@ test("an occasion stands beside the screens; its card and the prayers share its 
   await expect(page.getByTestId("occasion-screen-note")).toHaveCount(0);
 });
 
-test("an occasion's design: the editor says the screens wear it, and shows it as they do", async ({ page }) => {
+const woodDay = (today: string, designOn: "screen" | "board") => ({
+  id: "o_testday2",
+  name: "יום העץ",
+  title: null,
+  enabled: true,
+  when: { type: "date", date: today },
+  window: "day",
+  display: "turns",
+  banner: false,
+  overlap: "only",
+  seconds: 30,
+  elements: ["title", "date"],
+  blocks: [],
+  items: [],
+  pictures: [],
+  pictureSeconds: 30,
+  design: "d_wood",
+  designOn,
+  screen: null,
+});
+
+test("an occasion's design on its screen only: the ordinary screen keeps its look, the occasion's screen wears it", async ({ page }) => {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date());
-  await serveEditor(page, {
-    screenLayout: "medallion",
-    theme: "navy",
-    occasions: [
-      {
-        id: "o_testday2",
-        name: "יום העץ",
-        title: null,
-        enabled: true,
-        when: { type: "date", date: today },
-        window: "day",
-        display: "turns",
-        banner: false,
-        overlap: "only",
-        seconds: 30,
-        elements: ["title", "date"],
-        blocks: [],
-        items: [],
-        pictures: [],
-        pictureSeconds: 30,
-        design: "d_wood",
-        screen: null,
-      },
-    ],
-  });
+  await serveEditor(page, { screenLayout: "medallion", theme: "navy", occasions: [woodDay(today, "screen")] });
   const res = await page.goto(HARNESS).catch(() => null);
   test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
   const root = page.locator(".tv-frame .tv-root").first();
   await expect(root).toBeVisible({ timeout: 20_000 });
 
-  // The board being edited: navy, no carved frames - and it says what the screens wear.
   const note = page.getByTestId("day-look-note");
-  await expect(note).toContainText("מסגרת עץ מגולפת");
-  await expect(note).toContainText("יום העץ");
-  await expect(root).not.toHaveClass(/has-frame-image/);
+  await expect(note).toContainText("המסך של יום העץ בעיצוב «מסגרת עץ מגולפת»");
+  await expect(note).toContainText("המסכים הרגילים בעיצוב שלהם");
+  await expect(note.getByRole("button")).toHaveCount(0);
 
-  // As the screens show it.
+  // The board's own screen: its own look.
+  await page.getByRole("tab", { name: "פריסה" }).click();
+  await page.getByRole("button", { name: /הלוח/ }).first().click();
+  await expect(root).not.toHaveClass(/has-frame-image/);
+  // The occasion's screen: in its wood.
+  await page.getByTestId("occasion-screen-tab").and(page.locator('[data-occasion="o_testday2"]')).click();
+  await expect(root).toHaveClass(/has-frame-image/);
+});
+
+test("an occasion's design on the whole board: the editor says so, and shows it as the screens do", async ({ page }) => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date());
+  await serveEditor(page, { screenLayout: "medallion", theme: "navy", occasions: [woodDay(today, "board")] });
+  const res = await page.goto(HARNESS).catch(() => null);
+  test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
+  const root = page.locator(".tv-frame .tv-root").first();
+  await expect(root).toBeVisible({ timeout: 20_000 });
+
+  const note = page.getByTestId("day-look-note");
+  await expect(note).toContainText("כל המסכים לובשים את העיצוב «מסגרת עץ מגולפת» של יום העץ");
+  // On the board's own screen, the board being edited - until asked to show it as the screens do.
+  await page.getByRole("tab", { name: "פריסה" }).click();
+  await page.getByRole("button", { name: /הלוח/ }).first().click();
+  await expect(root).not.toHaveClass(/has-frame-image/);
   await note.getByRole("button", { name: "הצגה כמו במסכים" }).click();
   await expect(root).toHaveClass(/has-frame-image/);
   await expect(root).toHaveClass(/has-bg-image/);

@@ -22,10 +22,17 @@ export function boardConfig(
     themeOverride,
     now,
     settings,
+    slideId,
   }: {
     deviceClass: DeviceClass;
     /** A theme chosen from the remote on this screen. */
     themeOverride?: string | null;
+    /**
+     * The slide up now. An occasion's own screen wears the occasion's design;
+     * without it, only a design that dresses the whole board is applied -
+     * which is what the slides are built from.
+     */
+    slideId?: string | null;
     now: Date;
     settings: Settings | null | undefined;
   },
@@ -48,5 +55,5 @@ export function boardConfig(
       ? { ...forScreen, theme: themeOverride, themeOverrides: {} }
       : forScreen;
   // Then Shabbat's, a festival's or Friday's look, when the day has one.
-  return applyDayLook(chosen, now, settings);
+  return applyDayLook(chosen, now, settings, slideId);
 }

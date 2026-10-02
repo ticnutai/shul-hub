@@ -124,8 +124,15 @@ export interface Occasion {
   /** "art:<id>" (a Shabbat drawing), "style:<n>" (a built-in design), or an uploaded picture's https URL. */
   pictures: string[];
   pictureSeconds: number;
-  /** A design (designs.ts) the board wears while this is on. */
+  /** A design (designs.ts) worn while this is on. */
   design: string | null;
+  /**
+   * Where that design is worn: on the occasion's own screen only, the board's
+   * ordinary screens keeping their own look ("screen"); or by the whole board
+   * while it is on ("board"), as every design was worn before there was a
+   * choice.
+   */
+  designOn: "screen" | "board";
   /**
    * Its screen, built in the composer like any other ("פריסה"): the card is
    * one block there ("festival", כרטיס המועד) beside the board's own -
@@ -186,6 +193,7 @@ function builtinDefault(def: SpecialDayDef | null): Occasion {
       pictures: ["art:classic"],
       pictureSeconds: 60,
       design: null,
+      designOn: "screen",
       screen: null,
     };
   const holy = keptFromEve(def);
@@ -206,6 +214,7 @@ function builtinDefault(def: SpecialDayDef | null): Occasion {
     pictures: eventSlides(undefined, stylesFor(def)).map((s) => ("image" in s ? s.image : `style:${s.variant}`)),
     pictureSeconds: 30,
     design: null,
+    designOn: "screen",
     screen: null,
   };
 }
@@ -278,6 +287,8 @@ export function fromLegacy(c: TvConfig): Occasion[] {
         pictures: c.shabbat.rotate ? c.shabbat.scenes : c.shabbat.scenes.slice(0, 1),
         pictureSeconds: c.shabbat.secondsPerScene,
         design: designFor("shabbat"),
+        // The old "look per day" dressed the whole board; read as it was.
+        designOn: "board" as const,
       };
     }
     const key = (o.when as { key: string }).key;
@@ -307,6 +318,7 @@ export function fromLegacy(c: TvConfig): Occasion[] {
       elements: c.eventDetail === "short" ? SHORT : FULL,
       pictures: eventSlides(images, stylesFor(def), c.eventStyles[key]).map((s) => ("image" in s ? s.image : `style:${s.variant}`)),
       design: key === "rosh_chodesh" ? designFor("roshChodesh") : def.group === "national" ? null : designFor("festival"),
+      designOn: "board" as const,
     };
   });
 }
@@ -393,6 +405,7 @@ export function normalizeOccasions(
         .slice(0, MAX_OCCASION_PICTURES),
       pictureSeconds: clamp(r.pictureSeconds, d.pictureSeconds, 5, 600),
       design: typeof r.design === "string" && /^d_[a-z0-9_]{2,20}$/.test(r.design) ? r.design : null,
+      designOn: r.designOn === "board" ? "board" : "screen",
       // Kept only with its card on it: without the card it would not be the occasion's screen.
       screen: (() => {
         const s = r.screen ? readScreen(r.screen) : undefined;
@@ -548,6 +561,21 @@ export function pageDisplay(page: OccasionPage): OccasionDisplay {
 /** The design the board wears now: that of the most important occasion on that has one. */
 export function occasionDesign(active: ActiveOccasion[]): string | null {
   return active.find((a) => a.occasion.design)?.occasion.design ?? null;
+}
+
+/**
+ * The occasions whose design is worn on the slide up now: those that dress
+ * the whole board, and - on an occasion's own screen - that page's own. The
+ * board's ordinary screens keep their look beside an occasion whose design is
+ * for its screen alone. `slideId` absent: the board as a whole (what its
+ * slides are built from), so only the whole-board designs.
+ */
+export function dressingNow(active: ActiveOccasion[], pages: OccasionPage[], slideId?: string | null): ActiveOccasion[] {
+  const page = slideId
+    ? pages.find((p) => slideId === `occasion:${p.main.occasion.id}` || slideId.startsWith(`occasion:${p.main.occasion.id}:`))
+    : undefined;
+  const own = new Set(page ? [page.main, ...page.with].map((a) => a.occasion.id) : []);
+  return active.filter((a) => a.occasion.designOn === "board" || own.has(a.occasion.id));
 }
 
 /** The next civil date an occasion falls on, from `from` (for the list and the preview), up to a year and a bit ahead. */

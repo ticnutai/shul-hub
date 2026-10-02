@@ -202,6 +202,16 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const found = slides.findIndex((s) => s.id === currentId);
   const index = found >= 0 ? found : 0;
   const slide = slides[index];
+  // The board as this slide wears it: an occasion's own screen in its design,
+  // the ordinary screens in theirs (occasions.ts `designOn`).
+  const occasionSlideId = slide?.id.startsWith("occasion:") ? slide.id : null;
+  const drawConfig = useMemo<TvConfig>(
+    () =>
+      occasionSlideId
+        ? boardConfig(baseConfig, { deviceClass, themeOverride, now: minuteNow, settings: data.settings, slideId: occasionSlideId })
+        : config,
+    [occasionSlideId, config, baseConfig, deviceClass, themeOverride, minuteNow, data.settings],
+  );
 
   // Rotation is one timeout per slide, not a ticking counter. A 250 ms state
   // tick re-rendered the whole board four times a second, which on the TV box
@@ -616,7 +626,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   return (
     <TvBoard
       data={boardData}
-      config={config}
+      config={drawConfig}
       now={now}
       zmanim={zmanim}
       slides={slides}

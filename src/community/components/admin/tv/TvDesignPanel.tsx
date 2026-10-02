@@ -187,7 +187,7 @@ import {
 import { PaintedPresets, PaintedRows } from "./IllustratedLookEditor";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
-import { occasionDesign, occasionPagesNow, readOccasions } from "@/tv/occasions";
+import { occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -538,13 +538,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     const at = new Date(previewMinute * 60_000);
     const settings = board.data.settings;
     const { active } = occasionPagesNow(view, settings, at, (d) => zmanimFor(d, settings));
-    const id = occasionDesign(active);
-    const design = findDesign(view, id);
-    if (!design) return null;
-    return { design: design.name, occasion: active.find((a) => a.occasion.design === id)?.occasion.name ?? "" };
+    // The most important occasion on with a design: the one that would be worn.
+    const dressed = active.find((a) => a.occasion.design && findDesign(view, a.occasion.design));
+    if (!dressed) return null;
+    return {
+      design: findDesign(view, dressed.occasion.design)!.name,
+      occasion: dressed.occasion.name,
+      on: dressed.occasion.designOn,
+    };
   }, [view, board.data.settings, previewMinute]);
   const [dayLookShown, setDayLookShown] = useState(false);
-  const dayLook = dayLookShown && dayLookNow !== null;
+  // Only a design that dresses the whole board changes the ordinary screens.
+  const dayLook = dayLookShown && dayLookNow?.on === "board";
   const [previewIndex, setPreviewIndex] = useState(0);
   const [autoplay, setAutoplay] = useState(false);
   // Click-to-edit on the board itself (see boardEdit.ts / TvEditInspector).
@@ -1080,11 +1085,15 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           data-testid="day-look-note"
         >
           <span className="min-w-0 flex-1">
-            {`${simulatedNow ? "ביום הזה" : "עכשיו"} המסכים לובשים את העיצוב «${dayLookNow.design}» של ${dayLookNow.occasion}. `}
-            {dayLook
-              ? "כך הם נראים עכשיו. שינויים בעיצוב כאן חלים על הלוח הרגיל."
-              : "כאן מוצג העיצוב הרגיל שאתם עורכים. את עיצוב המועד בוחרים בהגדרות המועד (לשונית מועדים)."}
+            {dayLookNow.on === "screen"
+              ? `${simulatedNow ? "ביום הזה" : "עכשיו"} המסך של ${dayLookNow.occasion} בעיצוב «${dayLookNow.design}», והמסכים הרגילים בעיצוב שלהם. את עיצוב המועד בוחרים בהגדרות המועד (לשונית מועדים).`
+              : `${simulatedNow ? "ביום הזה" : "עכשיו"} כל המסכים לובשים את העיצוב «${dayLookNow.design}» של ${dayLookNow.occasion}. ${
+                  dayLook
+                    ? "כך הם נראים עכשיו. שינויים בעיצוב כאן חלים על הלוח הרגיל."
+                    : "כאן מוצג העיצוב הרגיל שאתם עורכים."
+                }`}
           </span>
+          {dayLookNow.on === "board" && (
           <Button
             type="button"
             size="sm"
@@ -1095,6 +1104,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           >
             {dayLook ? "הצגת העיצוב הרגיל" : "הצגה כמו במסכים"}
           </Button>
+          )}
         </div>
       )}
     </>

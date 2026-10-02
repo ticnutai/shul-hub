@@ -611,9 +611,9 @@ function OccasionDialog({
           </section>
 
           <section className="space-y-2">
-            <h3 className="font-medium">עיצוב הלוח במועד</h3>
+            <h3 className="font-medium">עיצוב המועד</h3>
             <select
-              aria-label="עיצוב הלוח במועד"
+              aria-label="עיצוב המועד"
               value={o.design ?? ""}
               onChange={(e) => onPatch({ design: e.target.value || null })}
               className="h-9 rounded-md border bg-background px-2"
@@ -636,6 +636,36 @@ function OccasionDialog({
                 </optgroup>
               )}
             </select>
+            {o.design && (
+              <div className="space-y-1 text-sm" role="radiogroup" aria-label="איפה העיצוב חל" data-testid="occasion-design-on">
+                <label className="flex items-start gap-2">
+                  <input
+                    type="radio"
+                    name={`design-on-${o.id}`}
+                    checked={o.designOn === "screen"}
+                    onChange={() => onPatch({ designOn: "screen" })}
+                    className="mt-1"
+                  />
+                  <span>
+                    רק על המסך של המועד
+                    <span className="block text-[11px] text-muted-foreground">המסכים הרגילים נשארים בעיצוב שלהם, גם ביום הזה.</span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2">
+                  <input
+                    type="radio"
+                    name={`design-on-${o.id}`}
+                    checked={o.designOn === "board"}
+                    onChange={() => onPatch({ designOn: "board" })}
+                    className="mt-1"
+                  />
+                  <span>
+                    על כל הלוח בזמן המועד
+                    <span className="block text-[11px] text-muted-foreground">גם המסכים הרגילים לובשים אותו עד שהמועד נגמר.</span>
+                  </span>
+                </label>
+              </div>
+            )}
           </section>
 
           <div className="flex flex-wrap justify-between gap-2 border-t pt-3">

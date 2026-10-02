@@ -210,9 +210,12 @@ export function TvDeviceStudio({
   }, [choice.mode, onDeviceChange]);
 
   /** The board as one particular screen shows it. */
+  // An occasion's own screen is drawn in its design, always - that is its look.
+  const shownId = props.slides[props.index]?.id ?? null;
+  const occasionSlideId = shownId?.startsWith("occasion:") ? shownId : null;
   const boardFor = (id: DeviceId) => {
     const own = configForDevice(props.config, classOfPreviewDevice(id));
-    const c = dayLook ? applyDayLook(own, props.now, props.data.settings) : own;
+    const c = dayLook || occasionSlideId ? applyDayLook(own, props.now, props.data.settings, occasionSlideId) : own;
     return preview ? { ...c, ...preview } : c;
   };
   const [actualSize, setActualSize] = useState(false);
