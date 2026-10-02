@@ -170,6 +170,10 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const composed = slide?.kind === "composed" ? slide : null;
   // An occasion's screen with blocks beside its card is drawn as a composed screen.
   const occasionScreen = Boolean(composed?.parts.some((p) => p.slide?.kind === "occasion"));
+  // The occasion's line along the bottom, when it is up: the countdown goes
+  // into it rather than under it - both stood centred at the foot of the
+  // board, and הושענא רבה covered "הדלקת נרות בעוד" (אהל אברהם, 2.10.2026).
+  const bannerShown = !occasionStage && Boolean(bannerPage) && !occasionScreen;
   /**
    * The bars of the screen up now: the composer's "שם בית הכנסת", "שעון" and
    * "שורת הפרשה והנרות" switches. Saved on every screen from the start and
@@ -324,7 +328,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             </div>
           )}
 
-          {alert && !alert.popup && (
+          {alert && !alert.popup && !bannerShown && (
             <div className="tv-alert-chip">
               <span className="tv-alert-chip-icon">⏳</span>
               {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
@@ -372,6 +376,14 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               settings={data.settings}
               endMinutes={endMinutes}
               zmanimFor={zmanimOn}
+              aside={
+                alert &&
+                !alert.popup && (
+                  <span className="tv-event-banner-time tv-event-banner-countdown" data-testid="banner-countdown">
+                    ⏳ {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
+                  </span>
+                )
+              }
             />
           )
         )}

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { HDate } from "@hebcal/core";
 import type { Settings } from "@community/lib/data";
 import { jerusalemWeekday, type ResolvedMinyan } from "@community/lib/minyan-time";
@@ -32,6 +32,8 @@ export interface DaySchedule {
   id: string;
   title: string;
   rows: ResolvedMinyan[];
+  /** The tab's own sections, in the order the gabbai set (ליל החג, יום החג, מוצאי החג). */
+  subcategories?: { id: string }[];
 }
 
 /** The zmanim of the day, in the order of the day. */
@@ -53,7 +55,14 @@ const PRAYER_LABELS: Record<string, string> = { shacharit: "שחרית", mincha:
 function prayerLines(schedules: DaySchedule[]): { label: string; times: { time: string; cancelled?: boolean }[] }[] {
   const lines = new Map<string, { time: string; cancelled?: boolean; minutes: number }[]>();
   for (const s of schedules) {
-    for (const r of s.rows) {
+    // In the order of the tab's sections, and by the clock within each. By the
+    // clock alone, a festival's tab mixed its two evenings: אהל אברהם's שמחת
+    // תורה listed tonight's ערבית 19:05 between מוצאי החג's 18:59 and 19:09
+    // (2.10.2026), as if it were tomorrow night's.
+    const place = new Map((s.subcategories ?? []).map((c, i) => [c.id, i]));
+    const at = (r: ResolvedMinyan) => place.get(r.minyan.prayer) ?? place.size;
+    const rows = place.size ? [...s.rows].sort((a, b) => at(a) - at(b) || a.minutes - b.minutes) : s.rows;
+    for (const r of rows) {
       const label = PRAYER_LABELS[r.minyan.prayer] ?? r.minyan.label;
       const list = lines.get(label) ?? [];
       if (!list.some((x) => x.time === r.time)) list.push({ time: r.time, cancelled: r.cancelled, minutes: r.minutes });
@@ -88,9 +97,11 @@ export interface OccasionCardProps {
   zmanimFor: (date: Date) => Zmanim;
   /** The day's minyanim (the board's own schedules for that date, worked out with the slides). */
   schedules?: DaySchedule[];
+  /** banner: what else stands on the line - the board's countdown, which sat in the same place beneath it. */
+  aside?: ReactNode;
 }
 
-export function OccasionCard({ page, mode, now, settings, endMinutes, zmanimFor, schedules }: OccasionCardProps) {
+export function OccasionCard({ page, mode, now, settings, endMinutes, zmanimFor, schedules, aside }: OccasionCardProps) {
   const { main } = page;
   const o = main.occasion;
   const date = main.date;
@@ -184,6 +195,7 @@ export function OccasionCard({ page, mode, now, settings, endMinutes, zmanimFor,
               {r.label} <b>{formatTime(r.time)}</b>
             </span>
           ))}
+          {aside}
         </div>
       </div>
     );

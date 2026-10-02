@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AutoScroll } from "./AutoScroll";
 import { SCROLLING_BLOCKS } from "./overflowContext";
 import { useHolyEndMinutes } from "./holyEnd";
@@ -442,14 +442,14 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
           {facts.upcoming.length === 0 ? (
             <p className="tv-empty">אין מועדים בשלושת השבועות הקרובים</p>
           ) : (
-            <ul>
+            <WholeLines watch={facts.upcoming.map((u) => u.title + u.inDays).join()}>
               {facts.upcoming.map((u) => (
                 <li key={u.title + u.inDays} className={u.major ? "is-major" : ""}>
                   <span className="tv-up-title">{u.title}</span>
                   <span className="tv-up-when">{whenLabel(u.inDays, u.date)}</span>
                 </li>
               ))}
-            </ul>
+            </WholeLines>
           )}
         </div>
       ),
@@ -463,6 +463,36 @@ function LearningSlide({ layout, now }: { layout: string; now: Date }) {
         {grid.nodes}
       </div>
     </section>
+  );
+}
+
+/**
+ * A list that shows only the lines that fit whole, from the top: the nearest
+ * first, and none cut in half. "בימים הקרובים" lists three weeks of days, and
+ * in a small frame the last showed its title with its date sliced off below
+ * (אהל אברהם, 2.10.2026: "שמיני עצרת", and half of "מחר · יום שבת").
+ */
+function WholeLines({ watch, children }: { watch: string; children: ReactNode }) {
+  const ref = useRef<HTMLUListElement>(null);
+  useLayoutEffect(() => {
+    const list = ref.current;
+    if (!list) return;
+    const fit = () => {
+      const lines = [...list.children] as HTMLElement[];
+      for (const li of lines) li.hidden = false;
+      // Never less than one: an empty frame says less than a tight one.
+      for (let n = lines.length - 1; n > 0 && list.scrollHeight > list.clientHeight + 1; n--) lines[n].hidden = true;
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(fit);
+    ro.observe(list);
+    return () => ro.disconnect();
+  }, [watch]);
+  return (
+    <ul ref={ref} className="is-whole-lines">
+      {children}
+    </ul>
   );
 }
 

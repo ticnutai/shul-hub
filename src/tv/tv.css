@@ -737,6 +737,16 @@
   justify-content: space-evenly;
 }
 
+/* Measured against its frame (WholeLines), so it may not grow past it. */
+.tv-upcoming ul.is-whole-lines {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tv-upcoming li[hidden] {
+  display: none;
+}
+
 .tv-upcoming li {
   display: flex;
   flex-direction: column;

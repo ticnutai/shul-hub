@@ -100,6 +100,30 @@ describe("what the gabbai chose for the screen, and nothing else", () => {
     expect(prayers.textContent).toContain("מנחה");
   });
 
+  it("a festival's tab in the order of its sections: tonight's ערבית before the next night's", () => {
+    // אהל אברהם, שמחת תורה 2.10.2026: by the clock alone, tonight's 19:05 stood
+    // between מוצאי החג's 18:59 and 19:09.
+    const chag: DaySchedule[] = [
+      {
+        id: "chag",
+        title: "שמחת תורה",
+        subcategories: [{ id: "night" }, { id: "day" }, { id: "motzei" }],
+        rows: [
+          { minyan: { prayer: "day", label: "שחרית" }, time: "08:00", minutes: 480, source: "" },
+          { minyan: { prayer: "motzei", label: "ערבית מנין א" }, time: "18:59", minutes: 1139, source: "" },
+          { minyan: { prayer: "night", label: "ערבית ליל החג" }, time: "19:05", minutes: 1145, source: "" },
+          { minyan: { prayer: "motzei", label: "ערבית מנין ב" }, time: "19:09", minutes: 1149, source: "" },
+        ] as never,
+      },
+    ];
+    show({}, chag);
+    const text = screen.getByTestId("event-prayers").textContent ?? "";
+    const at = (t: string) => text.indexOf(t);
+    expect(at("19:05")).toBeLessThan(at("08:00"));
+    expect(at("08:00")).toBeLessThan(at("18:59"));
+    expect(at("18:59")).toBeLessThan(at("19:09"));
+  });
+
   it("only what is ticked: without the zmanim and the minyanim, just its own times and Shema", () => {
     const occasions = fromLegacy(normalizeTvConfig({})).map((o) =>
       o.id === "cal:sukkot" ? { ...o, elements: ["title", "times", "shma"] as typeof o.elements } : o,

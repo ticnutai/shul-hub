@@ -132,6 +132,18 @@ describe("the day on a board built of screens", () => {
     expect(container.querySelector(".tv-event-splash:not(.is-banner)")).toBeNull();
   });
 
+  it("carries the countdown on its line, rather than covering it", () => {
+    // אהל אברהם, הושענא רבה 2.10.2026: the day's line and "הדלקת נרות בעוד"
+    // both stood centred at the foot of the board, one over the other.
+    const withDay = painted();
+    withDay.screens = [{ ...screens[0], blocks: [...screens[0].blocks, { block: "festival" }] }];
+    withDay.alerts = { enabled: true, events: ["sunset"], leadMinutes: [10], popupSeconds: 10 };
+    const sunset = zmanimFor(cholHamoed, null).sunset!;
+    const { container } = drawAt(withDay, new Date(sunset.getTime() - 5 * 60_000));
+    expect(container.querySelector(".tv-event-banner")?.textContent).toContain("שקיעה בעוד");
+    expect(container.querySelector(".tv-alert-chip")).toBeNull();
+  });
+
   it("alone on its screen, is the day's full screen - also in the admin's preview", () => {
     const dayOnly = painted();
     dayOnly.screens = [{ id: "festival", name: "מסך החג", seconds: 40, blocks: [{ block: "festival" }] }];
