@@ -2661,11 +2661,14 @@ const TehillimPane = () => {
     showTaamim
   );
 
+  // The verse's letter stands in a column of its own, raised as it was; the
+  // text beside it is a block, so a verse that runs on starts its next line
+  // under its own first word, not under the letter (a hanging indent).
   const verseNumStyle: React.CSSProperties = {
     color: theme.accentColor, fontSize: "0.7em", opacity: 0.9,
     fontFamily: "'Noto Serif Hebrew', serif",
-    minWidth: "1.4em", verticalAlign: "super", lineHeight: 1,
-    display: "inline-block", marginLeft: "0.3em",
+    flex: "0 0 1.6em", lineHeight: 1,
+    position: "relative", top: "-0.45em",
   };
 
   const contentTabs = (
@@ -2796,13 +2799,17 @@ const TehillimPane = () => {
           style={{
             ...textStyle,
             ...nikudTextStyle,
+            display: "flex",
+            alignItems: "baseline",
             background:  highlightPasuk === i + 1 ? `${theme.accentColor}18` : "transparent",
             padding:     highlightPasuk === i + 1 ? "2px 6px" : "0",
             borderRight: highlightPasuk === i + 1 ? `3px solid ${theme.accentColor}` : "3px solid transparent",
           }}
         >
-          <span style={verseNumStyle}>{heNum(i + 1)}</span>
-          {stripText(cleanLine(line), showNikud, showTaamim)}
+          <span style={verseNumStyle} aria-hidden>{heNum(i + 1)}</span>
+          <span className="min-w-0 flex-1" data-verse-text>
+            {stripText(cleanLine(line), showNikud, showTaamim)}
+          </span>
         </p>
       ))}
     </div>

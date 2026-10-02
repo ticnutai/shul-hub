@@ -116,3 +116,26 @@ test("the T of the text settings is on the Tehillim page too, and sets Tehillim'
   await expect(panel.getByTestId("text-settings-scope")).toHaveText("תהילים");
   await expect(panel.getByRole("tab")).toHaveCount(0);
 });
+
+test("a verse that runs on starts its next line under its first word, not under its letter", async ({ page }) => {
+  await page.goto("/siddur?tab=tehillim");
+  await page.locator('button[title="פרק ב"]').click({ timeout: 20_000 });
+  const text = page.locator("p[data-pasuk='2'] [data-verse-text]");
+  await expect(text).toBeVisible();
+  const starts = await text.evaluate((el) => {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const lines = new Map<number, number>();
+    for (const r of range.getClientRects()) {
+      const key = Math.round(r.top / 4);
+      lines.set(key, Math.max(lines.get(key) ?? 0, r.right));
+    }
+    return [...lines.values()].map(Math.round);
+  });
+  // Long enough to run on, on any screen the test runs on.
+  test.skip(starts.length < 2, "the verse fits one line here");
+  expect(new Set(starts).size).toBe(1);
+  // And the letter stands beside the text, not under it.
+  const letter = await page.locator("p[data-pasuk='2'] span[aria-hidden]").boundingBox();
+  expect(letter!.x).toBeGreaterThanOrEqual(starts[0] - 1);
+});
