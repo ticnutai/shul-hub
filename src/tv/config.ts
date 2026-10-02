@@ -1183,7 +1183,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
       [...BUILTIN_DESIGNS.map((x) => x.id), ...designs.map((x) => x.id)],
     ),
     eventImages: normalizeEventImages(raw.eventImages),
-    occasions: normalizeOccasions(raw.occasions, BLOCK_IDS),
+    occasions: normalizeOccasions(raw.occasions, BLOCK_IDS, (s) => normalizeScreens([s])?.[0]),
     eventStyles: normalizeEventStyles(raw.eventStyles),
     eventSplash: raw.eventSplash !== false,
     eventAuto: raw.eventAuto === "info" || raw.eventAuto === "off" ? raw.eventAuto : "full",

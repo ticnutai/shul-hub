@@ -158,9 +158,11 @@ export const BLOCKS: readonly BlockSpec[] = [
     elements: [],
   },
   {
+    // The occasion's own card, on the occasion's screen (occasions.ts): its
+    // name, date, times and pictures, as set in the מועדים tab.
     id: "festival",
-    name: "מסך החג",
-    note: "מופיע רק כשיש מועד: סוכות, פסח, תעניות, ראש חודש",
+    name: "כרטיס המועד",
+    note: "השם, התאריך, הזמנים והתמונות - מה שבו נקבע בהגדרות המועד",
     zone: "main",
     weight: 4,
     elements: [],

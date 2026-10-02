@@ -69,7 +69,7 @@ import {
 } from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
 import { nextCandleLighting } from "@/tv/shabbat";
-import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
+import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 
 /** The screen layouts, with a small sketch of each for the picker. */
 const LAYOUT_CHOICES: Array<{
@@ -684,7 +684,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const [previewScreen, setPreviewScreen] = useState<string | null>(null);
   useEffect(() => {
     if (!previewScreen) return;
-    const i = board.slides.findIndex((s) => s.id === `screen:${previewScreen}`);
+    // An occasion's screen is its card, or its own screen (occasion:<id>:screen).
+    const target = previewScreen.startsWith("occasion:") ? previewScreen : `screen:${previewScreen}`;
+    const i = board.slides.findIndex((s) => s.id === target || s.id.startsWith(`${target}:`));
     if (i >= 0) setPreviewIndex(i);
   }, [previewScreen, board.slides]);
   const index = Math.min(previewIndex, Math.max(board.slides.length - 1, 0));
@@ -1382,6 +1384,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               }}
               onLayouts={(layouts) => edit("layouts", (c) => ({ ...c, layouts }))}
               onEdit={edit}
+              onOccasion={(o, day) => {
+                // Its screen shows only on its day: the preview goes there, and to it.
+                if (!o || !day) return previewAt(null);
+                previewAt(new Date(Date.parse(`${jerusalemDateKey(day)}T11:00:00+03:00`)));
+                setPreviewScreen(`occasion:${o.id}`);
+              }}
               onChange={(screens, next) => {
                 setComposerScreen(next);
                 if (screens[next]) setPreviewScreen(screens[next].id);

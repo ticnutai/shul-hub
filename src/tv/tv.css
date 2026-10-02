@@ -5605,6 +5605,43 @@
   height: 100%;
 }
 
+/* The card in a frame of the occasion's own screen: its pictures fill the
+   frame, the card stands in its corner as on the whole board. */
+.tv-occasion-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.tv-occasion.is-frame {
+  z-index: auto;
+  animation: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+.tv-occasion.is-frame .tv-event-card {
+  margin: 1.2cqw;
+  min-width: 0;
+  max-width: calc(100% - 2.4cqw);
+}
+/* No picture: the card is the frame's whole content. */
+.tv-occasion.is-frame.is-plain {
+  align-items: center;
+  justify-content: center;
+}
+.tv-occasion.is-frame.is-plain .tv-event-card {
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.tv-med-cell.is-occasion,
+.tv-composed-cell:has(> .tv-occasion-frame),
+.tv-composed-cell:has(.tv-autoscroll-copy > .tv-occasion-frame) {
+  padding: 0;
+}
+
 /* A card taller than the screen shrinks to fit it (OccasionCard measures it). */
 .tv-occasion .tv-event-card {
   zoom: var(--card-fit, 1);

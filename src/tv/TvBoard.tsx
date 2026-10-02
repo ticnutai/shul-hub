@@ -177,7 +177,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
    * with no screens, and an occasion's own screens, keep all three.
    */
   const bars = useMemo(() => {
-    const on = (b: string) => !composed || occasionScreen || composed.screen.blocks.some((x) => x.block === b);
+    const on = (b: string) => !composed || composed.screen.blocks.some((x) => x.block === b);
     return { header: on("header"), clock: on("clock"), footer: on("footer"), logo: on("logo") };
   }, [composed, occasionScreen]);
   const screenSlides = composed
@@ -190,8 +190,8 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   // a screen with the prayers or the zmanim on it.
   const screenFitsLook =
     !composed ||
-    (!occasionScreen &&
-      (config.screenLayout === "medallion" || composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim")));
+    config.screenLayout === "medallion" ||
+    (!occasionScreen && composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim"));
   // An occasion's screen always takes the whole stage, whatever the layout.
   const layout = occasionStage
     ? "rotate"

@@ -25,7 +25,7 @@ import { arrange } from "./grid";
 import { dayScreen, place, readScreens } from "./screens";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
 import { checkClock } from "./clock";
-import { occasionPagesNow, pageDisplay, SHABBAT_ID, type OccasionPage } from "./occasions";
+import { CARD_BLOCK, occasionPagesNow, pageDisplay, SHABBAT_ID, type OccasionPage } from "./occasions";
 import type { DaySchedule } from "./OccasionCard";
 
 /**
@@ -386,6 +386,27 @@ function withOccasions(board: BoardSlide[], built: BoardSlide[], config: TvConfi
       endMinutes,
       schedules: o.elements.includes("prayers") ? prayerSchedules(data, page.main.date, z, hidden) : [],
     };
+    // Its own screen, built in the composer: the card a block among the
+    // board's, each where the gabbai put it - one screen, as arranged.
+    if (o.screen) {
+      const own = o.screen;
+      const parts: ComposedPart[] = own.blocks.flatMap((entry): ComposedPart[] => {
+        if (entry.block === CARD_BLOCK) return [{ block: entry.block, area: entry.area, slide: card }];
+        // The zmanim are a panel with no slide; the bars are drawn by the board around the screen.
+        if (entry.block === "zmanim") return [{ block: entry.block, area: entry.area }];
+        return (byBlock.get(entry.block) ?? []).map((slide) => ({ block: entry.block, area: entry.area, slide }));
+      });
+      return [
+        {
+          id: `${id}:screen`,
+          kind: "composed",
+          seconds: o.seconds,
+          layout: "composed",
+          screen: { ...own, id: `${id}:screen`, name: o.name, seconds: o.seconds },
+          parts,
+        },
+      ];
+    }
     const blocks = [...new Set([o, ...page.with.map((w) => w.occasion)].flatMap((x) => x.blocks))];
     const parts: ComposedPart[] = blocks.flatMap((block) => (byBlock.get(block) ?? []).map((slide) => ({ block, slide })));
     if (!parts.length) return [card];

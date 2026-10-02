@@ -11,6 +11,7 @@ import { PrayerDaysLine } from "./PrayerDaysLine";
 import { tracks } from "./grid";
 import type { ScreenRow } from "./config";
 import { SlideView } from "./TvSlides";
+import { OccasionFrame } from "./OccasionCard";
 import { AutoScroll } from "./AutoScroll";
 import { SCROLLING_BLOCKS, useScrolls } from "./overflowContext";
 import { Fragment, type ReactNode } from "react";
@@ -164,6 +165,17 @@ function ScreenFrames({
           return;
         }
         if (!part.slide) return;
+        if (part.slide.kind === "occasion") {
+          cells.push({
+            width,
+            node: (
+              <div key={`o${i}`} className="tv-panel tv-med-cell is-occasion" data-block={part.block}>
+                <OccasionFrame slide={part.slide} />
+              </div>
+            ),
+          });
+          return;
+        }
         cells.push({
           width,
           node: (

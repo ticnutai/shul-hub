@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { HDate } from "@hebcal/core";
 import type { Settings } from "@community/lib/data";
 import { jerusalemWeekday, type ResolvedMinyan } from "@community/lib/minyan-time";
@@ -11,6 +11,7 @@ import {
   type SpecialDayDef,
 } from "@community/lib/specialDays";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
+import { zmanimFor as zmanimOf } from "@community/lib/minyan-time";
 import { DefaultArt } from "./EventSplash";
 import { upcomingDays, weeklyParasha } from "./learning";
 import { SHABBAT_ID, type ActiveOccasion, type CardElement, type OccasionPage } from "./occasions";
@@ -78,7 +79,8 @@ function defOf(a: ActiveOccasion): SpecialDayDef {
 
 export interface OccasionCardProps {
   page: OccasionPage;
-  mode: "stage" | "banner";
+  /** The whole board / a line along its bottom / a frame of the occasion's own screen. */
+  mode: "stage" | "banner" | "frame";
   /** Second precision: the clock and the pictures' turns. */
   now: Date;
   settings: Settings | null | undefined;
@@ -171,7 +173,7 @@ export function OccasionCard({ page, mode, now, settings, endMinutes, zmanimFor,
   const prayers = show("prayers") && schedules ? prayerLines(schedules) : [];
 
   // Before any early return: a hook is called on every render.
-  const fit = useCardFit(`${dayKey}|${o.elements.join()}|${rows.length}|${prayers.length}|${items.length}`);
+  const fit = useCardFit(`${dayKey}|${o.elements.join()}|${rows.length}|${prayers.length}|${items.length}`, mode === "frame");
   if (mode === "banner")
     return (
       <div className="tv-event-splash is-info is-banner" role="region" aria-label={day.title}>
@@ -317,14 +319,54 @@ export function OccasionCard({ page, mode, now, settings, endMinutes, zmanimFor,
 }
 
 /**
+ * The card in a frame of the occasion's own screen (occasions.ts, `screen`),
+ * beside the blocks the gabbai put there. The screen is drawn once a minute;
+ * the card keeps its pictures turning on a clock of its own, and only when it
+ * has more than one - a board at rest stays at rest.
+ */
+export function OccasionFrame({
+  slide,
+}: {
+  slide: { page: OccasionPage; settings: Settings | null; endMinutes: number; schedules: DaySchedule[] };
+}) {
+  const o = slide.page.main.occasion;
+  const turning = o.elements.includes("pictures") && o.pictures.length > 1;
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (!turning) return;
+    const t = window.setInterval(() => setNow(new Date()), Math.max(5, o.pictureSeconds) * 1000);
+    return () => window.clearInterval(t);
+  }, [turning, o.pictureSeconds]);
+  const zmanimFor = useMemo(() => (d: Date) => zmanimOf(d, slide.settings), [slide.settings]);
+  return (
+    <div className="tv-occasion-frame" data-block="festival">
+      <OccasionCard
+        page={slide.page}
+        mode="frame"
+        now={now}
+        settings={slide.settings}
+        endMinutes={slide.endMinutes}
+        zmanimFor={zmanimFor}
+        schedules={slide.schedules}
+      />
+    </div>
+  );
+}
+
+/**
  * A card with everything ticked (every zman, the minyanim, the Torah
  * reading, two verses) can be taller than the screen, and its name at the
  * top was cut off. It is measured once its contents change and scaled down
  * to fit - never below 60%, which is still readable across a hall.
+ *
+ * In a frame of the occasion's screen (`grow`) it is sized for the board and
+ * came out small in a frame a third as wide; there it also grows, as far as
+ * the frame allows in both directions, and again when the frame is resized.
  */
-function useCardFit(key: string) {
+function useCardFit(key: string, grow = false) {
   const ref = useRef<HTMLDivElement>(null);
   const fitRef = useRef(1);
+  const [size, setSize] = useState("");
   useLayoutEffect(() => {
     const card = ref.current;
     const box = card?.parentElement;
@@ -332,9 +374,20 @@ function useCardFit(key: string) {
     card.style.setProperty("--card-fit", "1");
     const room = box.clientHeight * 0.94;
     const need = card.scrollHeight;
-    const fit = need > room && room > 0 ? Math.max(0.6, Math.floor((room / need) * 100) / 100) : 1;
+    let fit = need > room && room > 0 ? Math.max(0.6, Math.floor((room / need) * 100) / 100) : 1;
+    if (grow && room > 0 && need > 0) {
+      const wide = (box.clientWidth * 0.92) / Math.max(1, card.offsetWidth);
+      fit = Math.max(0.6, Math.min(3, Math.floor(Math.min(room / need, wide) * 100) / 100));
+    }
     fitRef.current = fit;
     card.style.setProperty("--card-fit", String(fit));
-  }, [key]);
+  }, [key, grow, size]);
+  useEffect(() => {
+    const box = ref.current?.parentElement;
+    if (!grow || !box || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setSize(`${Math.round(e.contentRect.width)}x${Math.round(e.contentRect.height)}`));
+    ro.observe(box);
+    return () => ro.disconnect();
+  }, [grow]);
   return { ref, style: { "--card-fit": fitRef.current } as CSSProperties };
 }

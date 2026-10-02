@@ -116,6 +116,7 @@ export function OccasionsEditor({
         pictures: ["style:0"],
         pictureSeconds: 30,
         design: null,
+        screen: null,
       },
     ]);
     setOpenId(id);
@@ -454,6 +455,14 @@ function OccasionDialog({
                 </label>
               ))}
             </div>
+            {o.screen ? (
+              // One place decides what stands beside the card, and where.
+              <p className="rounded-md bg-muted/60 p-2 text-[11px] text-muted-foreground" data-testid="occasion-arranged">
+                למועד הזה יש מסך משלו, מסודר בלשונית <b>פריסה</b> ("מסכים ומה עליהם"): שם בוחרים מה עומד ליד הכרטיס - תפילות,
+                זמנים, הודעות - ואיפה. כאן נקבע מה בתוך הכרטיס.
+              </p>
+            ) : (
+            <>
             <div className="text-xs font-medium">ומהלוח הרגיל - במסך נוסף שמתחלף עם מסך המועד:</div>
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
               {OCCASION_BLOCKS.map((b) => (
@@ -467,6 +476,11 @@ function OccasionDialog({
                 </label>
               ))}
             </div>
+            <p className="text-[11px] text-muted-foreground">
+              לסידור חופשי - הכרטיס ליד תפילות, זמנים והודעות, כל אחד במקום שתבחרו - פתחו את המועד בלשונית <b>פריסה</b>.
+            </p>
+            </>
+            )}
           </section>
 
           <section className="space-y-2">

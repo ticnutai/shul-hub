@@ -20,8 +20,8 @@
  * fall out of step with the first, because pinned and automatic are the same
  * field present or absent.
  */
-import { Fragment, useRef, useState } from "react";
-import { BookmarkPlus, Plus, RotateCcw, X } from "lucide-react";
+import { Fragment, useMemo, useRef, useState } from "react";
+import { BookmarkPlus, CalendarDays, Plus, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 import { BLOCKS, BLOCK_BY_ID } from "@/tv/blocks";
 import type { BlockArea, BlockId, SavedLayout, Screen, TvConfig } from "@/tv/config";
 import { DAY_BLOCKS, dayScreen, readScreens } from "@/tv/screens";
+import { CARD_BLOCK, nextDateOf, occasionScreenOf, readOccasions, type Occasion } from "@/tv/occasions";
 import { arrange, gridOf, tracks } from "@/tv/grid";
 import { resolveElementStyle, setElementStyle, styleTargetKey } from "@/tv/boardEdit";
 import { SketchEditor, SKETCH_HINT } from "./SketchEditor";
@@ -53,6 +54,34 @@ const GROUPS: { title: string; ids: BlockId[] }[] = [
   },
 ];
 
+/** On an occasion's screen: its card, a block of its own, first. */
+const OCCASION_GROUPS: { title: string; ids: BlockId[] }[] = [GROUPS[0], { title: "המועד", ids: [CARD_BLOCK] }, GROUPS[1]];
+
+const DAY_MS = 86_400_000;
+/** How far ahead an occasion stands beside the board's screens. */
+const OCCASION_DAYS_AHEAD = 7;
+
+/**
+ * The occasions of the coming days (Shabbat, a festival, the shul's own), each
+ * with its day - shown beside the board's screens, so the screen of a day is
+ * built where every screen is built. Only those that have a screen at all.
+ */
+function upcomingOccasions(config: TvConfig, today: Date): { occasion: Occasion; day: Date; inDays: number }[] {
+  const cache = new Map();
+  return readOccasions(config)
+    .filter((o) => o.enabled && o.display !== "off")
+    .flatMap((occasion) => {
+      const day = nextDateOf(occasion, today, cache);
+      if (!day) return [];
+      const inDays = Math.round((day.getTime() - today.getTime()) / DAY_MS);
+      return inDays >= 0 && inDays < OCCASION_DAYS_AHEAD ? [{ occasion, day, inDays }] : [];
+    })
+    .sort((a, b) => a.day.getTime() - b.day.getTime())
+    .slice(0, 6);
+}
+
+const whenLabel = (inDays: number) => (inDays === 0 ? "היום" : inDays === 1 ? "מחר" : `בעוד ${inDays} ימים`);
+
 /** The ordinary screens: a board's old Shabbat and day screens are occasions now. */
 function ordinaryScreens(config: TvConfig): Screen[] {
   const all = readScreens(config)
@@ -68,6 +97,7 @@ export function ScreenComposer({
   onSelect,
   onLayouts,
   onEdit,
+  onOccasion,
 }: {
   config: TvConfig;
   /** Which screen is open for editing; the composer keeps this in the parent. */
@@ -87,18 +117,55 @@ export function ScreenComposer({
    * steps, as the sliders and the board's own editor.
    */
   onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void;
+  /**
+   * An occasion's screen opened (null: back to the board's screens), with the
+   * day it is for - the preview goes there, since that screen shows only then.
+   */
+  onOccasion?: (occasion: Occasion | null, day: Date | null) => void;
 }) {
   // A board that never opened the composer is read from its old fields, so
   // the first thing shown is the board as it is now, not an empty sheet.
   const screens = ordinaryScreens(config);
   const index = Math.min(current, screens.length - 1);
-  const screen = screens[index];
+
+  // The occasions of the coming days stand beside the screens; one may be open.
+  const [today] = useState(() => new Date());
+  const upcoming = useMemo(() => upcomingOccasions(config, today), [config, today]);
+  const [occasionId, setOccasionId] = useState<string | null>(null);
+  const opened = upcoming.find((u) => u.occasion.id === occasionId) ?? null;
+  const occasion = opened?.occasion ?? null;
+  const screen = occasion ? occasionScreenOf(occasion) : screens[index];
 
   const write = (next: Screen[], goTo = index) =>
     onChange(next, Math.max(0, Math.min(goTo, next.length - 1)));
 
-  const editScreen = (patch: Partial<Screen>) =>
-    write(screens.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+  /**
+   * An edit to the screen open: one of the board's, or an occasion's - kept on
+   * the occasion (its first edit gives it a screen of its own, from what it
+   * showed until then). Its card never leaves it: without the card it would
+   * not be the occasion's screen.
+   */
+  const editScreen = (patch: Partial<Screen>) => {
+    if (!occasion) return write(screens.map((s, i) => (i === index ? { ...s, ...patch } : s)));
+    const id = occasion.id;
+    onEdit(`occasion-screen:${id}:${Object.keys(patch).join(",")}`, (c) => ({
+      ...c,
+      occasions: readOccasions(c).map((o) => {
+        if (o.id !== id) return o;
+        const next = { ...occasionScreenOf(o), ...patch };
+        return next.blocks.some((b) => b.block === CARD_BLOCK) ? { ...o, screen: next } : o;
+      }),
+    }));
+  };
+  /** Back to the card over the whole board, as before it was arranged. */
+  const unarrange = () => {
+    if (!occasion) return;
+    const id = occasion.id;
+    onEdit(`occasion-screen:${id}:reset`, (c) => ({
+      ...c,
+      occasions: readOccasions(c).map((o) => (o.id === id ? { ...o, screen: null } : o)),
+    }));
+  };
 
   const toggle = (id: BlockId, on: boolean) =>
     editScreen({
@@ -141,8 +208,11 @@ export function ScreenComposer({
    */
   const applyKit = (kit: SavedLayout) => {
     const chrome = screen.blocks.filter((b) => BLOCK_BY_ID[b.block].chrome);
-    const content = kit.grid.flatMap((r) => r.blocks).map((block) => ({ block }));
-    editScreen({ blocks: [...chrome, ...content], grid: kit.grid });
+    // An occasion's card stays on its screen: a kit without it gets it on top.
+    const keepCard = occasion && !kit.grid.some((r) => r.blocks.includes(CARD_BLOCK));
+    const grid = keepCard ? [{ blocks: [CARD_BLOCK], widths: [1], height: 1 }, ...kit.grid] : kit.grid;
+    const content = grid.flatMap((r) => r.blocks).map((block) => ({ block }));
+    editScreen({ blocks: [...chrome, ...content], grid });
     setSketchMessage(`הוחלה הערכה «${kit.name}» על "${screen.name}".`);
   };
   const removeKit = (kit: SavedLayout) => {
@@ -192,10 +262,16 @@ export function ScreenComposer({
               <button
                 key={s.id + i}
                 type="button"
-                aria-current={i === index}
-                onClick={() => onSelect(i, s)}
+                aria-current={!occasion && i === index}
+                onClick={() => {
+                  if (occasion) {
+                    setOccasionId(null);
+                    onOccasion?.(null, null);
+                  }
+                  onSelect(i, s);
+                }}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
-                  i === index
+                  !occasion && i === index
                     ? "border-primary ring-2 ring-primary ring-offset-1"
                     : "hover:border-primary/50"
                 }`}
@@ -229,12 +305,46 @@ export function ScreenComposer({
             <Button type="button" variant="outline" size="sm" onClick={addScreen}>
               <Plus className="size-4" /> מסך
             </Button>
+            {upcoming.map(({ occasion: o, day, inDays }) => (
+              <button
+                key={o.id}
+                type="button"
+                aria-current={occasion?.id === o.id}
+                data-testid="occasion-screen-tab"
+                data-occasion={o.id}
+                onClick={() => {
+                  setOccasionId(o.id);
+                  onOccasion?.(o, day);
+                }}
+                title={`המסך של ${o.name} - מופיע רק ביום שלו (${whenLabel(inDays)})`}
+                className={`flex items-center gap-2 rounded-lg border border-amber-400/70 bg-amber-50 px-3 py-1.5 text-sm text-amber-950 transition dark:bg-amber-950/30 dark:text-amber-100 ${
+                  occasion?.id === o.id ? "ring-2 ring-amber-500 ring-offset-1" : "hover:border-amber-500"
+                }`}
+              >
+                <CalendarDays className="size-3.5" aria-hidden />
+                <span>{o.name}</span>
+                <span className="rounded bg-amber-200/80 px-1 text-[10px] text-amber-950">{whenLabel(inDays)}</span>
+              </button>
+            ))}
           </div>
+          {occasion ? (
+            <p className="mt-2 text-xs text-muted-foreground" data-testid="occasion-screen-note">
+              {`המסך של ${occasion.name}: מופיע רק ביום שלו, ${whenLabel(opened!.inDays)}. מסדרים אותו כמו כל מסך - מה יופיע ואיפה; `}
+              {`"כרטיס המועד" הוא השם, התאריך, הזמנים והתמונות, ומה שבתוכו נקבע בלשונית מועדים.`}
+              {occasion.screen ? (
+                <button type="button" className="mr-1 underline underline-offset-2 hover:text-foreground" onClick={unarrange}>
+                  ביטול הסידור - חזרה לכרטיס על כל הלוח
+                </button>
+              ) : (
+                " עד שתשנו כאן משהו, הכרטיס מכסה את כל הלוח, כמו עד עכשיו."
+              )}
+            </p>
+          ) : (
           <p className="mt-2 text-xs text-muted-foreground">
             {ordinary > 1
               ? `${ordinary} מסכים — הלוח מתחלף ביניהם, וחץ בשלט מדלג.`
               : "מסך אחד — הלוח עומד. אין סיבוב ואין מה לדלג."}
-            {" מה שמוצג בשבת ובחגים - בלשונית מועדים."}
+            {" מועדים של הימים הקרובים עומדים כאן ליד המסכים, כל אחד עם המסך שלו."}
             {shown < screens.length &&
               ` ${
                 screens.length - shown === 1
@@ -242,9 +352,11 @@ export function ScreenComposer({
                   : `${screens.length - shown} מסכים ריקים ולא יוצגו`
               } — סמנו בו תוכן, או הסירו אותו.`}
           </p>
+          )}
         </div>
 
         {/* ------------------------------------------- name and seconds -- */}
+        {!occasion && (
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[10rem] flex-1">
             <label
@@ -278,6 +390,7 @@ export function ScreenComposer({
             </div>
           )}
         </div>
+        )}
 
         {/* ------------------------------------------------- the sketch -- */}
         <div>
@@ -454,7 +567,7 @@ export function ScreenComposer({
       <div className="rounded-xl border bg-card p-3">
         <h4 className="text-sm font-semibold">מה יופיע במסך הזה</h4>
         <div className="mt-2 space-y-3">
-          {GROUPS.map((group) => (
+          {(occasion ? OCCASION_GROUPS : GROUPS).map((group) => (
             <Fragment key={group.title}>
               <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {group.title}
@@ -471,6 +584,8 @@ export function ScreenComposer({
                       <Switch
                         id={`block-${id}`}
                         checked={checked}
+                        // The card is what makes it the occasion's screen.
+                        disabled={id === CARD_BLOCK}
                         onCheckedChange={(v) => toggle(id, v)}
                         aria-label={spec.name}
                       />

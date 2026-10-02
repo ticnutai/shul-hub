@@ -13,6 +13,7 @@ import { composedLayout, jerusalemMinutes, minyanNow, shiurMinutes, type BoardSl
 import { tracks } from "./grid";
 import { useFitText } from "./useFitText";
 import { useShrinkToFit } from "./useShrinkToFit";
+import { OccasionFrame } from "./OccasionCard";
 
 /**
  * The slide bodies. Pure presentation: everything they need arrives as props,
@@ -135,6 +136,8 @@ function ComposedSlide({
               <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
                 {part.block === "zmanim" ? (
                   <ZmanimPanel zmanim={zmanim} now={now} />
+                ) : part.slide?.kind === "occasion" ? (
+                  <OccasionFrame slide={part.slide} />
                 ) : part.slide ? (
                   <SlideView slide={part.slide} now={now} zmanim={zmanim} paused={paused} />
                 ) : null}

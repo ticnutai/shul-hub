@@ -28,8 +28,20 @@ const illustrated: TvConfig = {
 function show(config: TvConfig = illustrated) {
   const onChange = vi.fn<(s: Screen[], i: number) => void>();
   const onSelect = vi.fn<(i: number, s: Screen) => void>();
-  const r = render(<ScreenComposer config={config} current={0} onChange={onChange} onSelect={onSelect} onLayouts={() => {}} onEdit={() => {}} />);
-  return { ...r, onChange, onSelect };
+  const onEdit = vi.fn<(key: string, update: (c: TvConfig) => TvConfig) => void>();
+  const onOccasion = vi.fn();
+  const r = render(
+    <ScreenComposer
+      config={config}
+      current={0}
+      onChange={onChange}
+      onSelect={onSelect}
+      onLayouts={() => {}}
+      onEdit={onEdit}
+      onOccasion={onOccasion}
+    />,
+  );
+  return { ...r, onChange, onSelect, onEdit, onOccasion };
 }
 
 describe("the screen composer", () => {
@@ -38,7 +50,7 @@ describe("the screen composer", () => {
     // Illustrated merges its content into one screen. Shabbat and the day's
     // screen are occasions, set in their own tab - and it says where.
     expect(screen.getByText(/מסך אחד — הלוח עומד/)).toBeTruthy();
-    expect(screen.getByText(/בשבת ובחגים - בלשונית מועדים/)).toBeTruthy();
+    expect(screen.getByText(/מועדים של הימים הקרובים עומדים כאן ליד המסכים/)).toBeTruthy();
     expect(screen.getByLabelText("תפילות היום")).toBeTruthy();
   });
 
@@ -51,7 +63,7 @@ describe("the screen composer", () => {
 
   it("leaves Shabbat and the day's screen to the occasions: no screens or switches of theirs here", () => {
     const { onChange } = show();
-    expect(screen.queryByLabelText("מסך החג")).toBeNull();
+    expect(screen.queryByLabelText("כרטיס המועד")).toBeNull();
     expect(screen.queryByLabelText("מסך השבת")).toBeNull();
     expect(screen.queryAllByRole("button", { name: /מסך החג|מסך השבת/ })).toHaveLength(0);
     expect(onChange).not.toHaveBeenCalled();
@@ -146,5 +158,44 @@ describe("opening a screen", () => {
     fireEvent.click(screen.getAllByRole("button").find((b) => b.textContent?.includes("הודעות"))!);
     expect(onChange).not.toHaveBeenCalled();
     expect(onSelect).toHaveBeenCalledWith(1, expect.objectContaining({ id: "b" }));
+  });
+});
+
+describe("an occasion's screen, beside the board's", () => {
+  // Shabbat comes every week, so it is always among the coming days.
+  const openShabbat = () => {
+    const r = show();
+    const tab = screen.getAllByTestId("occasion-screen-tab").find((t) => t.getAttribute("data-occasion") === "shabbat")!;
+    expect(tab).toBeTruthy();
+    fireEvent.click(tab);
+    return r;
+  };
+
+  it("stands beside the screens with its day, and opening it goes to that day", () => {
+    const { onOccasion } = openShabbat();
+    expect(onOccasion).toHaveBeenCalledWith(expect.objectContaining({ id: "shabbat" }), expect.any(Date));
+    expect(screen.getByTestId("occasion-screen-note").textContent).toMatch(/המסך של שבת/);
+  });
+
+  it("has its card as a block that stays on, beside the board's blocks", () => {
+    openShabbat();
+    const card = screen.getByLabelText("כרטיס המועד") as HTMLButtonElement;
+    expect(card.getAttribute("aria-checked")).toBe("true");
+    expect(card.disabled).toBe(true);
+    expect(screen.getByLabelText("תפילות היום")).toBeTruthy();
+  });
+
+  it("an edit gives the occasion a screen of its own, the card kept; the board's screens are untouched", () => {
+    const { onEdit, onChange } = openShabbat();
+    fireEvent.click(screen.getByLabelText("תפילות היום"));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(onEdit).toHaveBeenCalled();
+    const [key, update] = onEdit.mock.calls.at(-1)!;
+    expect(key).toMatch(/^occasion-screen:shabbat:/);
+    const next = update(illustrated);
+    const shabbat = next.occasions.find((o) => o.id === "shabbat")!;
+    const blocks = shabbat.screen!.blocks.map((b) => b.block);
+    expect(blocks).toContain("festival");
+    expect(blocks).toContain("prayers");
   });
 });

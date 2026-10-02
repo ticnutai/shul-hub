@@ -294,7 +294,12 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
    * ever comes up wrongly again, the answer will be in the log instead of
    * in an afternoon of guessing.
    */
-  const shabbatUp = slide?.id === "occasion:shabbat" || (slide?.kind === "occasion" && slide.page.with.some((w) => w.occasion.id === "shabbat"));
+  // The card on the whole board, or on the occasion's own screen beside other blocks.
+  const occasionUp =
+    slide?.kind === "occasion" ? slide : slide?.kind === "composed" ? slide.parts.find((p) => p.slide?.kind === "occasion")?.slide : undefined;
+  const shabbatUp =
+    occasionUp?.kind === "occasion" &&
+    (occasionUp.page.main.occasion.id === "shabbat" || occasionUp.page.with.some((w) => w.occasion.id === "shabbat"));
   const wasShabbatUp = useRef(shabbatUp);
   useEffect(() => {
     if (shabbatUp === wasShabbatUp.current) return;

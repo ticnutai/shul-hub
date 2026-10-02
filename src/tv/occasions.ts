@@ -4,7 +4,7 @@ import { jerusalemDateKey, jerusalemWeekday } from "@community/lib/minyan-time";
 import { SPECIAL_DAYS, holyWindow, isHolyDay, specialDaysOn, type SpecialDayDef } from "@community/lib/specialDays";
 import type { Zmanim } from "@community/lib/zmanim";
 import { civilHDate } from "@/lib/jewishDay";
-import type { BlockId, TvConfig } from "./config";
+import type { BlockId, Screen, TvConfig } from "./config";
 import { eventSlides, stylesFor } from "./eventSlides";
 import { shabbatNow } from "./shabbat";
 
@@ -126,6 +126,27 @@ export interface Occasion {
   pictureSeconds: number;
   /** A design (designs.ts) the board wears while this is on. */
   design: string | null;
+  /**
+   * Its screen, built in the composer like any other ("פריסה"): the card is
+   * one block there ("festival", כרטיס המועד) beside the board's own -
+   * prayers, zmanim, announcements - each where the gabbai put it. Null: the
+   * card over the whole board, as every occasion was drawn before, and still
+   * is until somebody arranges it.
+   */
+  screen: Screen | null;
+}
+
+/** The card's block on an occasion's screen. */
+export const CARD_BLOCK: BlockId = "festival";
+
+/**
+ * The screen an occasion starts from in the composer: the bars, its card,
+ * and the blocks it already carried beside the card.
+ */
+export function occasionScreenOf(o: Occasion): Screen {
+  if (o.screen) return o.screen;
+  const blocks: BlockId[] = ["header", "clock", CARD_BLOCK, ...o.blocks.filter((b) => b !== "ticker"), "footer"];
+  return { id: `occasion-${o.id.replace(/[^a-z0-9_-]/gi, "_")}`.slice(0, 40), name: o.name, seconds: o.seconds, blocks: blocks.map((block) => ({ block })) };
 }
 
 export const SHABBAT_ID = "shabbat";
@@ -165,6 +186,7 @@ function builtinDefault(def: SpecialDayDef | null): Occasion {
       pictures: ["art:classic"],
       pictureSeconds: 60,
       design: null,
+      screen: null,
     };
   const holy = keptFromEve(def);
   return {
@@ -184,6 +206,7 @@ function builtinDefault(def: SpecialDayDef | null): Occasion {
     pictures: eventSlides(undefined, stylesFor(def)).map((s) => ("image" in s ? s.image : `style:${s.variant}`)),
     pictureSeconds: 30,
     design: null,
+    screen: null,
   };
 }
 
@@ -320,7 +343,12 @@ function readWhen(v: unknown): OccasionWhen | null {
  * `when` (it is what makes them what they are); the shul's own are kept only
  * with a valid one.
  */
-export function normalizeOccasions(raw: unknown, blockIds: readonly string[]): Occasion[] {
+export function normalizeOccasions(
+  raw: unknown,
+  blockIds: readonly string[],
+  /** The board's own screen reader (config.ts), so an occasion's screen is read by the same rules. */
+  readScreen: (raw: unknown) => Screen | undefined = () => undefined,
+): Occasion[] {
   if (!Array.isArray(raw)) return [];
   const builtins = new Map(builtinOccasions().map((o) => [o.id, o]));
   const seen = new Set<string>();
@@ -365,6 +393,11 @@ export function normalizeOccasions(raw: unknown, blockIds: readonly string[]): O
         .slice(0, MAX_OCCASION_PICTURES),
       pictureSeconds: clamp(r.pictureSeconds, d.pictureSeconds, 5, 600),
       design: typeof r.design === "string" && /^d_[a-z0-9_]{2,20}$/.test(r.design) ? r.design : null,
+      // Kept only with its card on it: without the card it would not be the occasion's screen.
+      screen: (() => {
+        const s = r.screen ? readScreen(r.screen) : undefined;
+        return s && s.blocks.some((b) => b.block === CARD_BLOCK) ? s : null;
+      })(),
     });
   }
   return out;
