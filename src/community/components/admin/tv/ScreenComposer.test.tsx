@@ -199,3 +199,18 @@ describe("an occasion's screen, beside the board's", () => {
     expect(blocks).toContain("prayers");
   });
 });
+
+describe("an occasion further ahead", () => {
+  it("is opened from the list beside the tabs, to be ready before its day", () => {
+    const { onOccasion } = show();
+    const more = screen.getByTestId("occasion-screen-more") as HTMLSelectElement;
+    const pesach = [...more.options].find((o) => o.textContent?.startsWith("פסח"));
+    expect(pesach, "Pesach among the occasions further ahead").toBeTruthy();
+    fireEvent.change(more, { target: { value: pesach!.value } });
+    expect(onOccasion).toHaveBeenCalledWith(expect.objectContaining({ id: pesach!.value }), expect.any(Date));
+    // It stands as a tab while it is open, and its screen is the one being edited.
+    const tab = screen.getAllByTestId("occasion-screen-tab").find((t) => t.getAttribute("data-occasion") === pesach!.value)!;
+    expect(tab.getAttribute("aria-current")).toBe("true");
+    expect(screen.getByTestId("occasion-screen-note").textContent).toMatch(/מופיע רק ביום שלו, ב־/);
+  });
+});

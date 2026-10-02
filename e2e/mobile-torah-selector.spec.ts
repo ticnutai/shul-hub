@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { rememberShul } from "./support/chooseShul";
 
 test.beforeEach(async ({ page }) => {
+  // Past the synagogue chooser: the Chumash wears the synagogue's header.
+  await rememberShul(page);
   await page.addInitScript(() => {
     localStorage.removeItem("fab_position");
     localStorage.removeItem("fab_position_ts");
@@ -18,7 +21,8 @@ test("mobile yellow action opens the compact Torah selector directly", async ({ 
   await yellowAction.click();
 
   const selector = page.getByTestId("mobile-torah-selector");
-  await expect(selector).toBeVisible();
+  // The selector is loaded on demand; on a dev server that is a few seconds.
+  await expect(selector).toBeVisible({ timeout: 20_000 });
   await expect(selector.getByRole("heading", { name: "פרשות" })).toBeVisible();
   await expect(page.getByPlaceholder("חיפוש בתורה...")).toBeHidden();
 

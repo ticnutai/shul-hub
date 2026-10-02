@@ -16,6 +16,9 @@ import { deviceHealth, tvDb, useTvDevices, type TvEvent } from "./tvAdminData";
  * Push to a phone would need a server-side sender, which this project does
  * not have yet.
  */
+const DISMISSED_KEY = "tv-offline-alert-dismissed";
+const CHIP_OPEN_MS = 8_000;
+
 export default function TvAdminWatcher() {
   const { isAdmin } = useAuth();
   return isAdmin ? <Watcher /> : null;
@@ -28,7 +31,35 @@ function Watcher() {
   const location = useLocation();
   const offline = (devices.data ?? []).filter((d) => d.approved && !deviceHealth(d, now).online);
   const offlineKey = offline.map((d) => d.id).sort().join(",");
-  const [dismissedKey, setDismissedKey] = useState<string | null>(null);
+  // "✕" holds until the set of offline screens changes - across visits too:
+  // a test screen left off for weeks was back on every page of the admin.
+  const [dismissedKey, setDismissedKeyState] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(DISMISSED_KEY);
+    } catch {
+      return null;
+    }
+  });
+  const setDismissedKey = (key: string) => {
+    setDismissedKeyState(key);
+    try {
+      localStorage.setItem(DISMISSED_KEY, key);
+    } catch {
+      /* private window: for this visit only */
+    }
+  };
+  /*
+   * The chip opens for a moment, so it is seen, and then folds to an icon in
+   * the corner: spread across the corner it sat on the admin's own buttons
+   * ("מחיקת הקטגוריה" could not be pressed). A tap on the icon opens it again.
+   */
+  const [open, setOpen] = useState(true);
+  useEffect(() => {
+    if (!offlineKey) return;
+    setOpen(true);
+    const t = window.setTimeout(() => setOpen(false), CHIP_OPEN_MS);
+    return () => window.clearTimeout(t);
+  }, [offlineKey]);
 
   // Toast only on a change during this visit - not for a screen that was
   // already offline when the admin opened the site (the chip covers that).
@@ -86,18 +117,37 @@ function Watcher() {
 
   const first = offline[0];
   const silent = deviceHealth(first, now).silentMs;
+  const what = `${offline.length === 1 ? `"${first.name}" מנותק` : `${offline.length} מסכים מנותקים`}${
+    silent ? ` · ${formatDuration(silent)}` : ""
+  }`;
+  if (!open)
+    return (
+      <button
+        type="button"
+        data-testid="tv-offline-chip"
+        aria-label={what}
+        title={what}
+        onClick={() => setOpen(true)}
+        className="fixed bottom-4 left-4 z-[60] flex size-9 items-center justify-center rounded-full border border-red-300 bg-red-50 text-red-900 shadow-lg dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+      >
+        <MonitorX className="size-4" />
+        {offline.length > 1 && (
+          <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-red-600 text-[10px] font-bold text-white">
+            {offline.length}
+          </span>
+        )}
+      </button>
+    );
   return (
     <div
+      data-testid="tv-offline-chip"
       role="status"
       dir="rtl"
       className="fixed bottom-4 left-4 z-[60] flex max-w-xs items-center gap-2 rounded-full border border-red-300 bg-red-50 py-2 pe-2 ps-4 text-sm text-red-900 shadow-lg dark:border-red-900 dark:bg-red-950 dark:text-red-100"
     >
       <button type="button" className="flex items-center gap-2 text-right" onClick={() => navigate("/community/admin?tab=tv&tvTab=logs")}>
         <MonitorX className="size-4 shrink-0" />
-        <span>
-          {offline.length === 1 ? `"${first.name}" מנותק` : `${offline.length} מסכים מנותקים`}
-          {silent ? ` · ${formatDuration(silent)}` : ""}
-        </span>
+        <span>{what}</span>
       </button>
       <button type="button" aria-label="הסתרה עד השינוי הבא" className="rounded-full p-1 hover:bg-red-100 dark:hover:bg-red-900" onClick={() => setDismissedKey(offlineKey)}>
         <X className="size-3.5" />

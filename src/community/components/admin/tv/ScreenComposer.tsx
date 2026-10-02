@@ -61,26 +61,33 @@ const DAY_MS = 86_400_000;
 /** How far ahead an occasion stands beside the board's screens. */
 const OCCASION_DAYS_AHEAD = 7;
 
+interface DatedOccasion {
+  occasion: Occasion;
+  day: Date;
+  inDays: number;
+}
+
 /**
- * The occasions of the coming days (Shabbat, a festival, the shul's own), each
- * with its day - shown beside the board's screens, so the screen of a day is
- * built where every screen is built. Only those that have a screen at all.
+ * Every occasion that has a screen (Shabbat, a festival, the shul's own), with
+ * its next day, soonest first: those of the coming days stand beside the
+ * board's screens, so the screen of a day is built where every screen is
+ * built; any other can be opened from the list beside them, to be ready ahead.
  */
-function upcomingOccasions(config: TvConfig, today: Date): { occasion: Occasion; day: Date; inDays: number }[] {
+function datedOccasions(config: TvConfig, today: Date): DatedOccasion[] {
   const cache = new Map();
   return readOccasions(config)
     .filter((o) => o.enabled && o.display !== "off")
     .flatMap((occasion) => {
       const day = nextDateOf(occasion, today, cache);
       if (!day) return [];
-      const inDays = Math.round((day.getTime() - today.getTime()) / DAY_MS);
-      return inDays >= 0 && inDays < OCCASION_DAYS_AHEAD ? [{ occasion, day, inDays }] : [];
+      return [{ occasion, day, inDays: Math.round((day.getTime() - today.getTime()) / DAY_MS) }];
     })
-    .sort((a, b) => a.day.getTime() - b.day.getTime())
-    .slice(0, 6);
+    .sort((a, b) => a.day.getTime() - b.day.getTime());
 }
 
 const whenLabel = (inDays: number) => (inDays === 0 ? "היום" : inDays === 1 ? "מחר" : `בעוד ${inDays} ימים`);
+const dayLabel = (d: Date) =>
+  new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "numeric", timeZone: "Asia/Jerusalem" }).format(d);
 
 /** The ordinary screens: a board's old Shabbat and day screens are occasions now. */
 function ordinaryScreens(config: TvConfig): Screen[] {
@@ -130,9 +137,13 @@ export function ScreenComposer({
 
   // The occasions of the coming days stand beside the screens; one may be open.
   const [today] = useState(() => new Date());
-  const upcoming = useMemo(() => upcomingOccasions(config, today), [config, today]);
+  const dated = useMemo(() => datedOccasions(config, today), [config, today]);
   const [occasionId, setOccasionId] = useState<string | null>(null);
-  const opened = upcoming.find((u) => u.occasion.id === occasionId) ?? null;
+  const opened = dated.find((u) => u.occasion.id === occasionId) ?? null;
+  // The coming days' occasions as tabs - and one opened from further ahead, while it is open.
+  const soon = dated.filter((u) => u.inDays < OCCASION_DAYS_AHEAD).slice(0, 6);
+  const upcoming = opened && !soon.includes(opened) ? [...soon, opened] : soon;
+  const later = dated.filter((u) => !upcoming.includes(u));
   const occasion = opened?.occasion ?? null;
   const screen = occasion ? occasionScreenOf(occasion) : screens[index];
 
@@ -323,13 +334,38 @@ export function ScreenComposer({
               >
                 <CalendarDays className="size-3.5" aria-hidden />
                 <span>{o.name}</span>
-                <span className="rounded bg-amber-200/80 px-1 text-[10px] text-amber-950">{whenLabel(inDays)}</span>
+                <span className="rounded bg-amber-200/80 px-1 text-[10px] text-amber-950">
+                  {inDays < OCCASION_DAYS_AHEAD ? whenLabel(inDays) : dayLabel(day)}
+                </span>
               </button>
             ))}
+            {later.length > 0 && (
+              <select
+                aria-label="מועד אחר"
+                data-testid="occasion-screen-more"
+                value=""
+                onChange={(e) => {
+                  const u = later.find((x) => x.occasion.id === e.target.value);
+                  if (!u) return;
+                  setOccasionId(u.occasion.id);
+                  onOccasion?.(u.occasion, u.day);
+                }}
+                className="h-8 max-w-[11rem] rounded-lg border border-amber-400/70 bg-amber-50 px-2 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
+              >
+                <option value="">מועד אחר…</option>
+                {later.map((u) => (
+                  <option key={u.occasion.id} value={u.occasion.id}>
+                    {`${u.occasion.name} · ${dayLabel(u.day)}`}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
           {occasion ? (
             <p className="mt-2 text-xs text-muted-foreground" data-testid="occasion-screen-note">
-              {`המסך של ${occasion.name}: מופיע רק ביום שלו, ${whenLabel(opened!.inDays)}. מסדרים אותו כמו כל מסך - מה יופיע ואיפה; `}
+              {`המסך של ${occasion.name}: מופיע רק ביום שלו, ${
+                opened!.inDays < OCCASION_DAYS_AHEAD ? whenLabel(opened!.inDays) : `ב־${dayLabel(opened!.day)}`
+              }. מסדרים אותו כמו כל מסך - מה יופיע ואיפה; `}
               {`"כרטיס המועד" הוא השם, התאריך, הזמנים והתמונות, ומה שבתוכו נקבע בלשונית מועדים.`}
               {occasion.screen ? (
                 <button type="button" className="mr-1 underline underline-offset-2 hover:text-foreground" onClick={unarrange}>

@@ -21,6 +21,15 @@ import {
   setCommunity,
 } from "@/community/lib/community";
 
+/**
+ * Pages that belong to no synagogue's data - an event's own page, sent round
+ * as a link. Somebody opening it from WhatsApp was asked "לאיזה בית כנסת?"
+ * before the page they were sent. They open as they are; their links out to
+ * the site load the page afresh, so the question is asked there, where it
+ * matters (YamimNoraimEvent).
+ */
+const STANDALONE = /^\/events\//;
+
 export function CommunityProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<{
@@ -54,6 +63,8 @@ export function CommunityProvider({ children }: { children: React.ReactNode }) {
     },
     [queryClient],
   );
+
+  if (STANDALONE.test(window.location.pathname) && state.status !== "ready") return <>{children}</>;
 
   if (state.status === "resolving") {
     return (

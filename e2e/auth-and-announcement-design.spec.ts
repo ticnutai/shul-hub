@@ -78,12 +78,14 @@ test("the daily lesson flyer is published in announcements and lessons", async (
   await expect(announcement).toContainText("16:15");
   await expect(announcement).toContainText("הרב יעקב טננבוים");
 
+  // The lesson itself, by what stays when the gabbai edits its wording or its
+  // day (it was "שיעור העמוד היומי העולמי", "בכל יום"; on the live data it is
+  // now "עמוד היומי"): its name, its time and its rabbi.
   await page.goto("/community/shiurim");
-  const lesson = page.locator("article").filter({ hasText: "שיעור העמוד היומי העולמי" });
-  await expect(lesson).toBeVisible();
-  await expect(lesson).toContainText("בכל יום");
-  await expect(lesson).toContainText("16:15");
-  await expect(lesson).toContainText("הרב יעקב טננבוים");
+  const lesson = page.locator("article").filter({ hasText: "עמוד היומי" });
+  await expect(lesson.first()).toBeVisible();
+  await expect(lesson.first()).toContainText("16:15");
+  await expect(lesson.first()).toContainText("הרב יעקב טננבוים");
 });
 
 test("active Karovim layout shows one large centered header logo", async ({ page }) => {

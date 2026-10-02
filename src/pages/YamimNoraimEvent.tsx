@@ -1,5 +1,4 @@
 import { ArrowRight, CalendarDays, Check, Clock3, ExternalLink, MapPin, MessageCircle, Phone, ShieldAlert, Sparkles, Ticket, Volume2 } from "lucide-react";
-import { Link } from "react-router-dom";
 import { YAMIM_NORAIM_EVENT, type EventScheduleDay } from "@/data/yamimNoraimEvent";
 import { cn } from "@/lib/utils";
 
@@ -35,9 +34,10 @@ export default function YamimNoraimEvent() {
     <main data-testid="yamim-noraim-event-page" className="min-h-screen bg-[#f7f3e8] text-[#102c57]" dir="rtl">
       <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0b2348]/95 px-3 py-2 text-white shadow-lg backdrop-blur" style={{ paddingTop: "max(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)), 10px)" }}>
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
-          <Link to="/" className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4bd35]">
+          {/* A full load, not a route change: the site asks which synagogue (CommunityProvider). */}
+          <a href="/" className="inline-flex h-10 items-center gap-2 rounded-xl px-3 text-sm font-bold transition-colors hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f4bd35]">
             <ArrowRight className="h-4 w-4" />חזרה
-          </Link>
+          </a>
           <div className="min-w-0 text-center">
             <p className="truncate text-sm font-black text-[#ffd263]">{event.title}</p>
             <p className="truncate text-[10px] text-white/60">{event.venue}</p>

@@ -9,12 +9,21 @@ import { rememberShul } from "./support/chooseShul";
  */
 async function withDisplay(page: Page, display: { minyan_days: string; minyan_layout?: string | null }) {
   await page.route("**/rest/v1/settings?**", async (route) => {
-    const response = await route.fetch();
-    const body = await response.json();
-    const json = Array.isArray(body) ? body.map((r) => ({ ...r, ...display })) : { ...body, ...display };
-    await route.fulfill({ response, json });
+    // A test that is already done can leave a request on its way here.
+    try {
+      const response = await route.fetch();
+      const body = await response.json();
+      const json = Array.isArray(body) ? body.map((r) => ({ ...r, ...display })) : { ...body, ...display };
+      await route.fulfill({ response, json });
+    } catch {
+      /* the page has closed */
+    }
   });
 }
+
+test.afterEach(async ({ page }) => {
+  await page.unrouteAll({ behavior: "ignoreErrors" });
+});
 
 test("each day in its own tab: no week tab, the page opens on today", async ({ page }) => {
   await withDisplay(page, { minyan_days: "day" });

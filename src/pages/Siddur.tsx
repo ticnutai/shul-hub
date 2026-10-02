@@ -3105,11 +3105,12 @@ const TehillimPane = () => {
 };
 
 /* ─── KriaPane ───────────────────────────────────────────── */
-const ALIYAH_NUM_HE: Record<number, string> = { 1: 'כהן', 2: 'לוי', 3: 'ישראל' };
+const ALIYAH_NUM_HE: Record<number, string> = { 1: 'כהן', 2: 'לוי', 3: 'ישראל', 4: 'רביעי', 5: 'חמישי', 6: 'שישי', 7: 'שביעי' };
 
+/** "פרק ה פסוק יב": a place in the Torah is written in letters, as in every sefer. */
 function pasukRef(ref: string): string {
   const [p, v] = ref.split(':').map(Number);
-  return `פרק\u00a0${p} פסוק\u00a0${v}`;
+  return `פרק\u00a0${heNum(p)} פסוק\u00a0${heNum(v)}`;
 }
 
 const WeekdayReadingCard = ({ onOpenReading }: { onOpenReading: (seferId: number, parshaNum: number) => void }) => {
@@ -3184,7 +3185,7 @@ const WeekdayReadingCard = ({ onOpenReading }: { onOpenReading: (seferId: number
               className="text-xs font-bold px-2 py-0.5 rounded-full shrink-0"
               style={{ background: `${theme.accentColor}22`, color: theme.accentColor, fontFamily: "'Noto Serif Hebrew', serif" }}
             >
-              {ALIYAH_NUM_HE[i + 1] ?? `עלייה ${i + 1}`}
+              {ALIYAH_NUM_HE[i + 1] ?? `עלייה ${heNum(i + 1)}`}
             </span>
             <div className="flex-1 text-right">
               <span className="text-sm font-medium" style={{ fontFamily: "'Noto Serif Hebrew', serif" }}>
@@ -3195,7 +3196,7 @@ const WeekdayReadingCard = ({ onOpenReading }: { onOpenReading: (seferId: number
                 {pasukRef(a.end)}
               </span>
             </div>
-            <span className="text-xs text-muted-foreground shrink-0">{a.verses}&nbsp;פסוקים</span>
+            <span className="text-xs text-muted-foreground shrink-0">{heNum(a.verses)}&nbsp;פסוקים</span>
           </div>
         ))}
       </div>

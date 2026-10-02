@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useSyncedState } from "@/hooks/useSyncedState";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_THEME_APPEARANCE, THEME_SHADOWS, type ThemeAppearanceSettings } from "@/components/ThemeAppearanceControls";
-import { communityId } from "@/community/lib/community";
+import { communityId, currentCommunity } from "@/community/lib/community";
 
 export type Theme = "classic" | "navy" | "jerusalem" | "bordeaux" | "forest" | "sand" | "night" | "royal-gold" | "elegant-night" | "ancient-scroll" | "light" | "gold-silver" | "torah-luxury" | "pearl-gold" | "parchment-navy" | "midnight-gold" | "custom";
 
@@ -136,6 +136,9 @@ export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   }, [user?.id]);
 
   const loadPublicThemes = useCallback(async () => {
+    // A page that belongs to no synagogue (an event's own page) has none of
+    // its shared themes to offer.
+    if (!currentCommunity()) return;
     const { data, error } = await supabase
       .from("app_themes")
       .select("id,name,theme,updated_at")

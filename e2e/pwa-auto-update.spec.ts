@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
+import { rememberShul } from './support/chooseShul';
 
 /**
  * A deploy reaching a phone that already has the app installed.
@@ -53,7 +54,11 @@ async function servePwa(): Promise<ChildProcess> {
 
 test.describe.configure({ timeout: 300_000 });
 
-test('an installed app picks up a new build without losing what is on it', async ({ page }) => {
+test('an installed app picks up a new build without losing what is on it', async ({ page }, testInfo) => {
+  // It builds into the one dist folder: two projects at once would build over each other.
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'built and served once, on one project');
+  // The site's worker is registered once a synagogue is chosen.
+  await rememberShul(page);
   buildPwa('qa-v1');
   const server = await servePwa();
 
