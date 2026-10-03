@@ -3920,6 +3920,19 @@
 
 /* ------------------------------------------------ a frame for the board -- */
 
+/*
+ * Drawn from pieces (boardFrame.ts: boardFramePieces), each placed by the
+ * variables the editor moves (boardFrameVars): --bf-s thickness, --bf-l
+ * length along its side, --bf-x away from the side, --bf-y up or down. The
+ * room the content leaves for the frame is worked out from the same numbers.
+ */
+.tv-root {
+  --bf-s: 1;
+  --bf-l: 1;
+  --bf-x: 0px;
+  --bf-y: 0px;
+}
+
 .tv-board-frame {
   position: absolute;
   inset: 0;
@@ -3927,123 +3940,154 @@
   pointer-events: none;
 }
 
-.tv-board-frame::before,
-.tv-board-frame::after {
-  content: "";
+.tv-board-frame > i {
   position: absolute;
+  display: block;
   pointer-events: none;
 }
 
-/* Gold columns at the sides: capital, fluted shaft, base. */
-.tv-root.is-board-frame-columns,
-.tv-root.is-board-frame-heichal {
-  padding-inline: calc(var(--tv-safe-x) + var(--u) * 6);
-}
-
-.tv-board-frame:is([data-frame="columns"], [data-frame="heichal"])::before {
-  inset: calc(var(--u) * 0.6) calc(var(--u) * 0.8);
-  --shaft: calc(var(--u) * 4.4) calc(100% - var(--u) * 9.8);
+/* Gold columns: capital, fluted shaft, base. */
+.tv-bf-column {
+  --col-w: calc(var(--u) * 6.4 * var(--bf-s));
+  --cap-h: calc(var(--u) * 5.4 * var(--bf-s));
+  --base-h: calc(var(--u) * 4.6 * var(--bf-s));
+  --shaft: 69% calc(100% - var(--cap-h) - var(--base-h) + var(--u) * 0.2);
   --shine: linear-gradient(90deg, rgba(60, 40, 0, 0.55) 0 6%, rgba(255, 248, 220, 0.45) 22%, rgba(255, 255, 255, 0.15) 42%, rgba(120, 90, 20, 0.25) 62%, rgba(40, 25, 0, 0.6) 100%);
   --flutes: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.35) 0 1px, transparent 1px 6px);
+  top: calc((100% - (100% - var(--u) * 1.2) * var(--bf-l)) / 2 + var(--bf-y));
+  height: calc((100% - var(--u) * 1.2) * var(--bf-l));
+  width: var(--col-w);
   background:
-    var(--orn-capital) left top / calc(var(--u) * 6.4) calc(var(--u) * 5.4) no-repeat,
-    var(--orn-base) left bottom / calc(var(--u) * 6.4) calc(var(--u) * 4.6) no-repeat,
-    var(--shine) left calc(var(--u) * 1) center / var(--shaft) no-repeat,
-    var(--flutes) left calc(var(--u) * 1) center / var(--shaft) no-repeat,
-    var(--tex-gold) left calc(var(--u) * 1) center / var(--shaft) no-repeat,
-    var(--orn-capital) right top / calc(var(--u) * 6.4) calc(var(--u) * 5.4) no-repeat,
-    var(--orn-base) right bottom / calc(var(--u) * 6.4) calc(var(--u) * 4.6) no-repeat,
-    var(--shine) right calc(var(--u) * 1) center / var(--shaft) no-repeat,
-    var(--flutes) right calc(var(--u) * 1) center / var(--shaft) no-repeat,
-    var(--tex-gold) right calc(var(--u) * 1) center / var(--shaft) no-repeat;
+    var(--orn-capital) top / 100% var(--cap-h) no-repeat,
+    var(--orn-base) bottom / 100% var(--base-h) no-repeat,
+    var(--shine) center / var(--shaft) no-repeat,
+    var(--flutes) center / var(--shaft) no-repeat,
+    var(--tex-gold) center / var(--shaft) no-repeat;
 }
 
-/* Gold beams above and below the board. */
-.tv-root.is-board-frame-beams,
-.tv-root.is-board-frame-heichal {
-  padding-block: calc(var(--tv-safe-y) + var(--u) * 1.2);
+.tv-bf-column.is-right {
+  right: calc(var(--u) * 0.8 + var(--bf-x));
 }
 
-.tv-board-frame:is([data-frame="beams"], [data-frame="heichal"])::after {
-  inset: 0;
+.tv-bf-column.is-left {
+  left: calc(var(--u) * 0.8 + var(--bf-x));
+}
+
+/* Gold beams above and below. */
+.tv-bf-beam {
+  left: calc((100% - 100% * var(--bf-l)) / 2);
+  width: calc(100% * var(--bf-l));
+  height: calc(var(--u) * 1.6 * var(--bf-s));
+  background: var(--tex-gold) center / cover;
+  box-shadow: 0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) rgba(0, 0, 0, 0.45);
+}
+
+.tv-bf-beam.is-top {
+  top: var(--bf-y);
+}
+
+.tv-bf-beam.is-bottom {
+  bottom: var(--bf-y);
+}
+
+/* A פרוכת hung over the board: the velvet's folds, a scalloped hem and a fringe, on a gold rod. */
+.tv-bf-drape,
+.tv-bf-rod {
+  left: calc((100% - 100% * var(--bf-l)) / 2);
+  width: calc(100% * var(--bf-l));
+  top: var(--bf-y);
+}
+
+.tv-bf-drape {
+  --u-s: calc(var(--u) * var(--bf-s));
+  height: calc(var(--u-s) * 9);
   background:
-    var(--tex-gold) top / 100% calc(var(--u) * 1.6) no-repeat,
-    var(--tex-gold) bottom / 100% calc(var(--u) * 1.6) no-repeat;
-  filter: drop-shadow(0 calc(var(--u) * 0.3) calc(var(--u) * 0.6) rgba(0, 0, 0, 0.45));
-}
-
-/* A פרוכת hung over the board: a gold rod, the velvet's folds, a scalloped hem and a fringe. */
-.tv-root.is-board-frame-parochet {
-  padding-top: calc(var(--tv-safe-y) + var(--u) * 7.5);
-}
-
-.tv-board-frame[data-frame="parochet"]::before {
-  inset-inline: 0;
-  top: 0;
-  height: calc(var(--u) * 9);
-  background:
-    radial-gradient(circle at 50% 0, #f6e3a8 0 calc(var(--u) * 0.5), transparent calc(var(--u) * 0.55)) 0 100% / calc(var(--u) * 1.6) calc(var(--u) * 1.2) repeat-x,
-    radial-gradient(circle at 50% 0, #8a1a30 0 calc(var(--u) * 2.8), transparent calc(var(--u) * 2.85)) 0 calc(100% - var(--u) * 0.9) / calc(var(--u) * 6.4) calc(var(--u) * 3.2) repeat-x,
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0 calc(var(--u) * 0.5), rgba(255, 255, 255, 0.12) calc(var(--u) * 1.4), rgba(0, 0, 0, 0.4) calc(var(--u) * 3.2)) top / 100% calc(100% - var(--u) * 2.4) no-repeat,
-    var(--tex-velvet) top / 100% calc(100% - var(--u) * 2.4) no-repeat;
+    radial-gradient(circle at 50% 0, #f6e3a8 0 calc(var(--u-s) * 0.5), transparent calc(var(--u-s) * 0.55)) 0 100% / calc(var(--u-s) * 1.6) calc(var(--u-s) * 1.2) repeat-x,
+    radial-gradient(circle at 50% 0, #8a1a30 0 calc(var(--u-s) * 2.8), transparent calc(var(--u-s) * 2.85)) 0 calc(100% - var(--u-s) * 0.9) / calc(var(--u-s) * 6.4) calc(var(--u-s) * 3.2) repeat-x,
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0 calc(var(--u) * 0.5), rgba(255, 255, 255, 0.12) calc(var(--u) * 1.4), rgba(0, 0, 0, 0.4) calc(var(--u) * 3.2)) top / 100% calc(100% - var(--u-s) * 2.4) no-repeat,
+    var(--tex-velvet) top / 100% calc(100% - var(--u-s) * 2.4) no-repeat;
   filter: drop-shadow(0 calc(var(--u) * 0.5) calc(var(--u) * 1) rgba(0, 0, 0, 0.45));
 }
 
-.tv-board-frame[data-frame="parochet"]::after {
-  inset-inline: 0;
-  top: 0;
-  height: calc(var(--u) * 1.1);
+.tv-bf-rod {
+  height: calc(var(--u) * 1.1 * var(--bf-s));
   background: var(--tex-gold) center / cover;
   box-shadow: 0 calc(var(--u) * 0.3) calc(var(--u) * 0.8) rgba(0, 0, 0, 0.5);
 }
 
-/* Velvet curtains drawn back at both sides, each held by a gold band. */
-.tv-root.is-board-frame-curtain {
-  padding-inline: calc(var(--tv-safe-x) + var(--u) * 6);
-}
-
-.tv-board-frame[data-frame="curtain"]::before,
-.tv-board-frame[data-frame="curtain"]::after {
-  top: 0;
-  bottom: 0;
-  width: calc(var(--u) * 8.5);
+/* Velvet curtains drawn back at the sides, each held by a gold band. */
+.tv-bf-curtain {
+  top: calc((100% - 100% * var(--bf-l)) / 2 + var(--bf-y));
+  height: calc(100% * var(--bf-l));
+  width: calc(var(--u) * 8.5 * var(--bf-s));
   background:
-    linear-gradient(#f6e3a8, #8a6a1a) center 62% / 100% calc(var(--u) * 1.4) no-repeat,
+    linear-gradient(#f6e3a8, #8a6a1a) center 62% / 100% calc(var(--u) * 1.4 * var(--bf-s)) no-repeat,
     repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.45) 0 calc(var(--u) * 0.5), rgba(255, 255, 255, 0.12) calc(var(--u) * 1.3), rgba(0, 0, 0, 0.4) calc(var(--u) * 2.2)),
     var(--tex-velvet) center / cover;
   filter: drop-shadow(0 0 calc(var(--u) * 0.8) rgba(0, 0, 0, 0.5));
 }
 
-.tv-board-frame[data-frame="curtain"]::before {
-  left: 0;
+.tv-bf-curtain.is-left {
+  left: var(--bf-x);
   clip-path: polygon(0 0, 100% 0, 38% 62%, 70% 100%, 0 100%);
 }
 
-.tv-board-frame[data-frame="curtain"]::after {
-  right: 0;
+.tv-bf-curtain.is-right {
+  right: var(--bf-x);
   clip-path: polygon(0 0, 100% 0, 100% 100%, 30% 100%, 62% 62%);
 }
 
 /* A carved gold frame around the whole screen. */
-.tv-root.is-board-frame-carved {
-  padding: calc(var(--tv-safe-y) + var(--u) * 2) calc(var(--tv-safe-x) + var(--u) * 2);
-}
-
-.tv-board-frame[data-frame="carved"]::before {
-  inset: calc(var(--u) * 0.8);
-  border: calc(var(--u) * 2.4) solid transparent;
+.tv-bf-carved {
+  inset: calc(var(--u) * 0.8 + var(--bf-y)) calc(var(--u) * 0.8 + var(--bf-x));
+  border: calc(var(--u) * 2.4 * var(--bf-s)) solid transparent;
   border-image: var(--orn-frame) 30 stretch;
 }
 
 /* Two lines around the screen, in the accent colour. */
-.tv-board-frame[data-frame="double-line"]::before {
-  inset: calc(var(--u) * 1);
-  border: max(2px, calc(var(--u) * 0.35)) solid var(--tv-accent);
+.tv-bf-line.is-outer {
+  inset: calc(var(--u) * 1 + var(--bf-y)) calc(var(--u) * 1 + var(--bf-x));
+  border: max(2px, calc(var(--u) * 0.35 * var(--bf-s))) solid var(--tv-accent);
 }
 
-.tv-board-frame[data-frame="double-line"]::after {
-  inset: calc(var(--u) * 1.9);
-  border: max(1px, calc(var(--u) * 0.15)) solid color-mix(in srgb, var(--tv-accent) 70%, transparent);
+.tv-bf-line.is-inner {
+  inset: calc(var(--u) * (1 + 0.9 * var(--bf-s)) + var(--bf-y)) calc(var(--u) * (1 + 0.9 * var(--bf-s)) + var(--bf-x));
+  border: max(1px, calc(var(--u) * 0.15 * var(--bf-s))) solid color-mix(in srgb, var(--tv-accent) 70%, transparent);
+}
+
+/* The room the content leaves: the frame's own size, where it stands. */
+.tv-root.is-board-frame-columns,
+.tv-root.is-board-frame-heichal {
+  --bf-side: calc(var(--tv-safe-x) + var(--u) * 6 * var(--bf-s) + var(--bf-x));
+}
+
+.tv-root.is-board-frame-curtain {
+  --bf-side: calc(var(--tv-safe-x) + var(--u) * 6 * var(--bf-s) + var(--bf-x));
+}
+
+.tv-root:is(.is-board-frame-columns, .is-board-frame-heichal, .is-board-frame-curtain):is(.is-bf-sides-both, .is-bf-sides-right) {
+  padding-right: var(--bf-side);
+}
+
+.tv-root:is(.is-board-frame-columns, .is-board-frame-heichal, .is-board-frame-curtain):is(.is-bf-sides-both, .is-bf-sides-left) {
+  padding-left: var(--bf-side);
+}
+
+.tv-root.is-board-frame-beams,
+.tv-root.is-board-frame-heichal {
+  padding-block: calc(var(--tv-safe-y) + var(--u) * 1.2 * var(--bf-s) + max(0px, var(--bf-y)));
+}
+
+.tv-root.is-board-frame-parochet {
+  padding-top: calc(var(--tv-safe-y) + var(--u) * 7.5 * var(--bf-s) + max(0px, var(--bf-y)));
+}
+
+.tv-root.is-board-frame-carved {
+  padding: calc(var(--tv-safe-y) + var(--u) * 2 * var(--bf-s) + var(--bf-y)) calc(var(--tv-safe-x) + var(--u) * 2 * var(--bf-s) + var(--bf-x));
+}
+
+.tv-root.is-board-frame-double-line {
+  padding: calc(var(--tv-safe-y) + var(--bf-y)) calc(var(--tv-safe-x) + var(--bf-x));
 }
 
 /* ------------------------------------------------------ the silhouettes -- */

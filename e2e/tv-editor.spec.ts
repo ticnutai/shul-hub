@@ -56,6 +56,24 @@ test.describe("TV editor", () => {
     expect([...applied].sort()).toEqual(["none", ...BOARD_FRAMES].sort());
   });
 
+  test("the board's frame can be moved, lengthened, widened and put on one side", async ({ page }) => {
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await boardFrames(page).filter({ hasText: "עמודי זהב" }).click();
+    const controls = page.getByTestId("board-frame-controls");
+    const column = root(page).locator(".tv-bf-column").first();
+    const before = await column.boundingBox();
+    await controls.getByLabel("רוחב העמודים", { exact: true }).fill("2");
+    await controls.getByLabel("גובה העמודים", { exact: true }).fill("0.5");
+    await expect.poll(async () => (await column.boundingBox())!.width).toBeGreaterThan(before!.width * 1.5);
+    await expect.poll(async () => (await column.boundingBox())!.height).toBeLessThan(before!.height * 0.7);
+    await controls.getByRole("button", { name: "רק שמאל" }).click();
+    await expect(root(page).locator(".tv-bf-column")).toHaveCount(1);
+    await expect(root(page).locator(".tv-bf-column.is-left")).toHaveCount(1);
+    await controls.getByRole("button", { name: /חזרה לגודל/ }).click();
+    await expect(root(page).locator(".tv-bf-column")).toHaveCount(2);
+    await expectNotFrozen(page, "board frame tuned");
+  });
+
   test("a title style for every box, and one box apart", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("title-styles").first().getByRole("button", { name: "כותרת: סרט" }).click();

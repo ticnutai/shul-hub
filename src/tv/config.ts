@@ -3,6 +3,7 @@ import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
 import { normalizeBackgrounds, type SavedBackground } from "./backgroundItem";
 import { migratePainted } from "./paintedMigration";
 import { skinToParts } from "./skinMigration";
+import { DEFAULT_BOARD_FRAME_TUNE, normalizeBoardFrameTune, type BoardFrameTune } from "./boardFrame";
 import { normalizeOccasions, type Occasion } from "./occasions";
 import {
   DEFAULT_BACKGROUND_TUNE,
@@ -341,6 +342,7 @@ export interface DeviceOverlay {
   screenLayout?: ScreenLayout;
   clockStyle?: ClockStyle;
   boardFrame?: BoardFrame | null;
+  boardFrameTune?: BoardFrameTune;
   titleStyle?: TitleStyle;
   /**
    * The painted board: which painting, and everything the panel beside it
@@ -490,6 +492,8 @@ export interface TvConfig {
   clockStyle: ClockStyle;
   /** A frame for the whole board (BOARD_FRAMES); null - none. */
   boardFrame: BoardFrame | null;
+  /** Where the board's frame stands and how big it is (boardFrame.ts). */
+  boardFrameTune: BoardFrameTune;
   /** How every box's name is set (TITLE_STYLES); a box can have its own (frameLooks). */
   titleStyle: TitleStyle;
   /**
@@ -756,6 +760,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   backgroundTune: DEFAULT_BACKGROUND_TUNE,
   frameStyle: DEFAULT_FRAME_STYLE,
   boardFrame: null,
+  boardFrameTune: DEFAULT_BOARD_FRAME_TUNE,
   titleStyle: "plain",
 };
 
@@ -1274,6 +1279,7 @@ function normalizeStored(stored: unknown): TvConfig {
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
     boardFrame: BOARD_FRAMES.includes(raw.boardFrame as BoardFrame) ? (raw.boardFrame as BoardFrame) : d.boardFrame,
     titleStyle: TITLE_STYLES.includes(raw.titleStyle as TitleStyle) ? (raw.titleStyle as TitleStyle) : d.titleStyle,
+    boardFrameTune: normalizeBoardFrameTune(raw.boardFrameTune),
     frame: normalizeFrame(raw.frame, d.frame),
     spacing: normalizeSpacing(raw.spacing),
     perDevice: normalizePerDevice(raw.perDevice),
@@ -1309,7 +1315,9 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
               ? normalizeBackgroundTune(v)
               : k === "frameStyle"
                 ? normalizeFrameStyle(v)
-                : v;
+                : k === "boardFrameTune"
+                  ? normalizeBoardFrameTune(v)
+                  : v;
     }
     if (Object.keys(kept).length > 0) out[device] = kept;
   }
@@ -1318,7 +1326,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
 
 /** Guards normalizePerDevice against a stray key from an older board. */
 const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
-  screenLayout: true, clockStyle: true, boardFrame: true, titleStyle: true, frame: true, spacing: true,
+  screenLayout: true, clockStyle: true, boardFrame: true, boardFrameTune: true, titleStyle: true, frame: true, spacing: true,
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true, backgroundOverlay: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,

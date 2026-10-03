@@ -39,6 +39,7 @@ export function blankBoard(c: TvConfig, blocks: readonly BlockId[]): TvConfig {
     ...c,
     ...plain,
     boardFrame: null,
+    boardFrameTune: structuredClone(DEFAULT_TV_CONFIG.boardFrameTune),
     titleStyle: "plain",
     perDevice,
     // The occasions are kept as they were read from the old screens, before those screens go.

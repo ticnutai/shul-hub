@@ -26,6 +26,7 @@ import {
   type SavedBackground,
 } from "@/tv/backgrounds";
 import { BoardFramePicker, FrameCorners, TitleStylePicker } from "./BoardLook";
+import { BOARD_FRAME_KNOBS, BOARD_FRAME_LIMITS, DEFAULT_BOARD_FRAME_TUNE, type BoardFrameTune } from "@/tv/boardFrame";
 import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
@@ -714,6 +715,58 @@ function TitledPart({ title, children, testId }: { title: string; children: Reac
   );
 }
 
+/**
+ * The board's frame moved and sized by hand: thicker, longer, further from
+ * the side, up or down, on one side or both - each knob named for the frame
+ * chosen (boardFrame.BOARD_FRAME_KNOBS). The content makes room by itself.
+ */
+function BoardFrameControls({ config, onEdit }: { config: TvConfig; onEdit: LayerProps["onEdit"] }) {
+  const frame = config.boardFrame;
+  if (!frame) return null;
+  const knobs = BOARD_FRAME_KNOBS[frame];
+  const t = config.boardFrameTune;
+  const set = (key: string, patch: Partial<BoardFrameTune>) =>
+    onEdit(`board-frame-tune:${key}`, (c) => ({ ...c, boardFrameTune: { ...c.boardFrameTune, ...patch } }));
+  const L = BOARD_FRAME_LIMITS;
+  const u = (v: number) => `${v}`;
+  return (
+    <div className="space-y-2 rounded-md border p-2" data-testid="board-frame-controls">
+      <div className="text-xs font-medium">מיקום וגודל</div>
+      {knobs.sides && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label="באיזה צד">
+          <span>באיזה צד:</span>
+          {(
+            [
+              ["both", "שני הצדדים"],
+              ["right", "רק ימין"],
+              ["left", "רק שמאל"],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={t.sides === id}
+              onClick={() => set("sides", { sides: id })}
+              className={`h-7 rounded-md border px-2 ${t.sides === id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      <Range label={knobs.size} value={t.size} min={L.size[0]} max={L.size[1]} step={0.05} show={pct} onChange={(v) => set("size", { size: v })} />
+      {knobs.length && (
+        <Range label={knobs.length} value={t.length} min={L.length[0]} max={L.length[1]} step={0.02} show={pct} onChange={(v) => set("length", { length: v })} />
+      )}
+      {knobs.x && <Range label={knobs.x} value={t.x} min={L.x[0]} max={L.x[1]} step={0.5} show={u} onChange={(v) => set("x", { x: v })} />}
+      {knobs.y && <Range label={knobs.y} value={t.y} min={L.y[0]} max={L.y[1]} step={0.5} show={u} onChange={(v) => set("y", { y: v })} />}
+      <button type="button" className="text-xs underline" onClick={() => set("reset", { ...DEFAULT_BOARD_FRAME_TUNE })}>
+        חזרה לגודל ולמקום הרגילים
+      </button>
+    </div>
+  );
+}
+
 const BOX_SHAPE_NAMES: Record<BoxShape, string> = {
   square: "ישר",
   round: "מעוגל",
@@ -887,6 +940,7 @@ export function FramesLayer(
         <Part title="מסגרת ללוח כולו" testId="board-frame">
           <BoardFramePicker config={config} onEdit={onEdit} />
           <p className="text-[11px] text-muted-foreground">חלה על כל המסך, לא על תיבה אחת. הצבעים והחומרים של התיבות נשארים כפי שבחרתם.</p>
+          <BoardFrameControls config={saved} onEdit={onEdit} />
         </Part>
       )}
 

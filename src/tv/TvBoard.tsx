@@ -19,6 +19,7 @@ import { SlideView } from "./TvSlides";
 import { OverflowContext } from "./overflowContext";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
 import { ClockContext } from "./clockContext";
+import { boardFramePieces, boardFrameVars } from "./boardFrame";
 import { TvShapes } from "./TvShapes";
 import { holyOccasionOn, type BoardData, type BoardSlide } from "./useBoardData";
 import { checkClock } from "./clock";
@@ -220,7 +221,9 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       <div
         className={`tv-root is-layout-${layout}${
           // A frame for the whole board: room is made for it (tv.css, .tv-board-frame).
-          config.boardFrame ? ` has-board-frame is-board-frame-${config.boardFrame}` : ""
+          config.boardFrame
+            ? ` has-board-frame is-board-frame-${config.boardFrame} is-bf-sides-${config.boardFrameTune.sides}`
+            : ""
         }${
           // A light board is a different contrast problem from a dark one,
           // and some things that read on navy vanish on parchment.
@@ -230,7 +233,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         }${
           config.backgroundGradient ? " has-bg-gradient" : ""
         }${frame.classes}`}
-        style={{ ...style, ...frame.vars }}
+        style={{ ...style, ...frame.vars, ...(config.boardFrame ? boardFrameVars(config.boardFrameTune) : {}) }}
         data-title-style={config.titleStyle !== "plain" ? config.titleStyle : undefined}
         {...edit.attr("board.background")}
       >
@@ -240,7 +243,13 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             <div className="tv-bg-tint" style={{ background: tint, opacity: config.backgroundTune.tintStrength }} />
           )}
         </div>
-        {config.boardFrame && <div className="tv-board-frame" data-frame={config.boardFrame} aria-hidden />}
+        {config.boardFrame && (
+          <div className="tv-board-frame" data-frame={config.boardFrame} aria-hidden>
+            {boardFramePieces(config.boardFrame, config.boardFrameTune.sides).map((piece) => (
+              <i key={piece} className={piece} />
+            ))}
+          </div>
+        )}
         <TvShapes />
         {!ownHeader && (bars.header || bars.clock || (bars.logo && config.logos.length > 0)) && (
           <TvHeader
