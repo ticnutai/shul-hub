@@ -85,7 +85,7 @@ export function SlideView({
     case "prayer":
       return <PrayerSlide slide={slide} now={now} zmanim={zmanim} />;
     case "learning":
-      return <LearningSlide layout={slide.layout} now={now} />;
+      return <LearningSlide layout={slide.layout} now={now} national={slide.national ?? false} />;
     case "announcements":
       return <AnnouncementsSlide slide={slide} />;
     case "shiurim":
@@ -368,13 +368,13 @@ function whenLabel(inDays: number, date: Date): string {
   return `${weekday} · בעוד ${inDays} ימים`;
 }
 
-function LearningSlide({ layout, now }: { layout: string; now: Date }) {
+function LearningSlide({ layout, now, national }: { layout: string; now: Date; national: boolean }) {
   const edit = useBoardEdit();
   const dayKey = now.toDateString();
   const facts = useMemo(() => {
     const day = new Date(dayKey);
-    return { parasha: weeklyParasha(day), daf: dafYomi(day), upcoming: upcomingDays(day) };
-  }, [dayKey]);
+    return { parasha: weeklyParasha(day), daf: dafYomi(day), upcoming: upcomingDays(day, 21, 6, { national }) };
+  }, [dayKey, national]);
 
   const parashaName = facts.parasha?.replace(/^פרשת\s+/, "") ?? "—";
   const parashaLabel = edit.text("learning.parasha", "פרשת השבוע");

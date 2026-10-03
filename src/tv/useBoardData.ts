@@ -111,7 +111,7 @@ export type BoardSlide =
        */
       isToday?: boolean;
     })
-  | (SlideBase & { kind: "learning" })
+  | (SlideBase & { kind: "learning"; /** The state's four days among "בימים הקרובים" (tv_config.eventNationalAuto). */ national?: boolean })
   | (SlideBase & { kind: "announcements"; items: Announcement[]; page: number; pages: number })
   | (SlideBase & { kind: "shiurim"; items: Shiur[] })
   | (SlideBase & { kind: "slideshow"; images: TvConfig["slideshow"]["images"]; secondsPerImage: number })
@@ -291,7 +291,7 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
         });
       }
     } else if (sc.kind === "learning") {
-      slides.push({ ...base, id: "learning", kind: "learning" });
+      slides.push({ ...base, id: "learning", kind: "learning", national: config.eventNationalAuto });
     } else if (sc.kind === "announcements") {
       const items = (data.announcements ?? []).filter(
         // "בתוקף עד" a date means through that whole day, in Israel. Read as a

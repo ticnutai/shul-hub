@@ -149,12 +149,24 @@ const UPCOMING_MASK =
   flags.MINOR_HOLIDAY |
   flags.MODERN_HOLIDAY;
 
-/** Holidays, fasts, Rosh Chodesh and special Shabbatot in the next `days`. */
-export function upcomingDays(date: Date, days = 21, limit = 6): UpcomingDay[] {
+/**
+ * The state's days the board may name, and only when the shul turned them on
+ * (tv_config.eventNationalAuto) - the same four, and the same switch, as the
+ * day's own screen (specialDays.ts, "ימים לאומיים (לא מוצגים)").
+ *
+ * The calendar's "modern holidays" are the whole civil calendar: on שמחת תורה
+ * 2026 אהל אברהם's board listed "יום הזכרון ליצחק רבין" and a school
+ * observance, "שמירת בית הספר ליום העליה", among the festivals.
+ */
+const NATIONAL_DAYS = /^(Yom HaShoah|Yom HaZikaron|Yom HaAtzma'ut|Yom Yerushalayim)$/;
+
+/** Holidays, fasts, Rosh Chodesh and special Shabbatot in the next `days`; the state's four only with `national`. */
+export function upcomingDays(date: Date, days = 21, limit = 6, { national = false } = {}): UpcomingDay[] {
   const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const end = new Date(start.getTime() + days * DAY_MS);
   return HebrewCalendar.calendar({ start, end, il: true, locale: "he" })
     .filter((ev) => ev.getFlags() & UPCOMING_MASK)
+    .filter((ev) => !(ev.getFlags() & flags.MODERN_HOLIDAY) || (national && NATIONAL_DAYS.test(ev.getDesc())))
     .map((ev) => {
       const d = ev.getDate().greg();
       return {

@@ -71,6 +71,20 @@ describe("weeklyParasha", () => {
 });
 
 describe("upcomingDays", () => {
+  it("leaves out the state's civil calendar (אהל אברהם, שמחת תורה 2026)", () => {
+    const titles = upcomingDays(new Date(2026, 9, 3), 21, 20).map((d) => d.title);
+    expect(titles).toContain("ראש חודש חשון");
+    expect(titles.some((t) => /רבין|העליה/.test(t))).toBe(false);
+    expect(upcomingDays(new Date(2026, 9, 3), 21, 20, { national: true }).some((d) => /רבין|העליה/.test(d.title))).toBe(false);
+  });
+
+  it("names the state's four days only when the shul turned them on", () => {
+    // יום העצמאות 5787: 12 May 2027.
+    const at = new Date(2027, 4, 5);
+    expect(upcomingDays(at, 14, 20).some((d) => d.title.includes("יום העצמאות"))).toBe(false);
+    expect(upcomingDays(at, 14, 20, { national: true }).some((d) => d.title.includes("יום העצמאות"))).toBe(true);
+  });
+
   it("lists Yom Kippur three days ahead of 18 Sep 2026", () => {
     const days = upcomingDays(new Date(2026, 8, 18));
     const yk = days.find((d) => d.title === "יום כיפור");
