@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { backdropUrl } from "./backdrops";
 import { FRAME_PICTURES, framePictureRef, framePictureUrl } from "./framePictures";
-import { isSafeCssValue, isSafeGradient, isSafeUrl } from "./themes";
+import { FONT_FALLBACK, getFont, isSafeCssValue, isSafeGradient, isSafeUrl } from "./themes";
 import type { FrameLook } from "./frameLooks";
 import type { BackgroundTune, FrameStyle } from "./layers";
 
@@ -154,6 +154,15 @@ export function frameLookProps(look: FrameLook | undefined): {
     css["--tv-text-dim"] = look.text;
   }
   if (look.accent) css["--tv-accent"] = look.accent;
+  // Its own font and size: the variables every line inside reads, redefined
+  // on the box. The size is the board's (--tv-scale) times its own.
+  if (look.font) {
+    const f = getFont(look.font);
+    css["--tv-font-display"] = f.display + FONT_FALLBACK;
+    css["--tv-font-body"] = f.body + FONT_FALLBACK;
+  }
+  if (look.textScale && look.textScale !== 1)
+    css["--fs"] = `calc(var(--u) * var(--tv-scale, 1) * ${look.textScale} / var(--tv-text-boost, 1))`;
   if (look.line) {
     css["--frame-line"] = look.line;
     css["--frame-line-w"] = lineWidth(look.lineWidth ?? 2);

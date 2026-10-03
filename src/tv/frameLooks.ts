@@ -1,4 +1,4 @@
-import { isSafeCssValue } from "./themes";
+import { TV_FONTS, isSafeCssValue, type TvFontId } from "./themes";
 import { isSafeLayerFill } from "./layers";
 
 /** A box's own shape: square or round corners, or one of the whole-box shapes. */
@@ -64,12 +64,16 @@ export interface FrameLook {
   shape?: BoxShape;
   /** Its own frame picture, over the one every box has. */
   image?: string;
+  /** Its text's own font, over the board's. */
+  font?: TvFontId;
+  /** Its text's own size, as a share of the board's (1 = as the board). */
+  textScale?: number;
 }
 
 export type FrameLooks = Partial<Record<FrameId, FrameLook>>;
 
 const FIELDS = ["bg", "text", "accent", "line"] as const;
-const NUMBERS = { bgOpacity: [0, 1], lineWidth: [0, 6] } as const;
+const NUMBERS = { bgOpacity: [0, 1], lineWidth: [0, 6], textScale: [0.6, 1.8] } as const;
 
 /** Only frames that exist, only colours (and, for the background, gradients) that are safe in a style attribute. */
 export function normalizeFrameLooks(raw: unknown): FrameLooks {
@@ -91,6 +95,9 @@ export function normalizeFrameLooks(raw: unknown): FrameLooks {
     }
     const shape = (v as Record<string, unknown>).shape;
     if (typeof shape === "string" && (BOX_SHAPES as string[]).includes(shape)) look.shape = shape as BoxShape;
+    const font = (v as Record<string, unknown>).font;
+    if (typeof font === "string" && TV_FONTS.some((f) => f.id === font)) look.font = font as TvFontId;
+    if (look.textScale === 1) delete look.textScale;
     const image = (v as Record<string, unknown>).image;
     if (typeof image === "string" && isFramePicture(image.trim())) look.image = image.trim();
     // A box with no colour of its own may still be see-through (the theme's colour, faded).

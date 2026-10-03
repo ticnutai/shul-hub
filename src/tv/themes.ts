@@ -250,7 +250,8 @@ export function getFont(id: string | null | undefined): TvFont {
   return TV_FONTS.find((f) => f.id === id) ?? TV_FONTS[0];
 }
 
-const FALLBACK = ', "Segoe UI", system-ui, sans-serif';
+export const FONT_FALLBACK = ', "Segoe UI", system-ui, sans-serif';
+const FALLBACK = FONT_FALLBACK;
 
 /**
  * Inline style for .tv-root. Overrides from the live editor win over the

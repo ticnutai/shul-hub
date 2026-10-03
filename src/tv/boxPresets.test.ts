@@ -63,3 +63,14 @@ describe("ready boxes", () => {
     expect(wearsBoxPreset(c, pill, "prayers")).toBe(false);
   });
 });
+
+describe("one box's own text", () => {
+  it("has a font and a size of its own, checked, over the board's", () => {
+    const looks = normalizeFrameLooks({ clock: { font: "traditional", textScale: 1.4 }, zmanim: { font: "comic", textScale: 9 } });
+    expect(looks.clock).toEqual({ font: "traditional", textScale: 1.4 });
+    expect(looks.zmanim).toEqual({ textScale: 1.8 });
+    const css = frameLookProps(looks.clock).style as Record<string, string>;
+    expect(css["--tv-font-body"]).toContain("David Libre");
+    expect(css["--fs"]).toBe("calc(var(--u) * var(--tv-scale, 1) * 1.4 / var(--tv-text-boost, 1))");
+  });
+});

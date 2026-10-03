@@ -98,6 +98,8 @@ function frameLooksFor(c: TvConfig, parts: DesignPart[]): TvConfig["frameLooks"]
       ...(parts.includes("frames") && look.image ? { image: look.image } : {}),
       ...(parts.includes("text") && look.text ? { text: look.text } : {}),
       ...(parts.includes("text") && look.accent ? { accent: look.accent } : {}),
+      ...(parts.includes("text") && look.font ? { font: look.font } : {}),
+      ...(parts.includes("text") && look.textScale ? { textScale: look.textScale } : {}),
     };
     if (Object.keys(kept).length) out[id] = kept;
   }

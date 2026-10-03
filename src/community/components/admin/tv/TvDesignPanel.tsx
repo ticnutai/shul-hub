@@ -173,6 +173,7 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { MedallionRows } from "./MedallionRows";
+import { FRAME_IDS, FRAME_LABELS } from "@/tv/frameLooks";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
@@ -442,6 +443,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
    * and change that occasion's design (occasionDesign.ts), on every screen.
    */
   const [occasionScope, setOccasionScope] = useState<string | null>(null);
+  /** Every box ("frames") or one ("frame:<id>"): what the parts 2-5 of the design tab are about. */
+  const [partTarget, setPartTarget] = useState("frames");
 
   // The device strip over the preview is the only switcher; choosing a
   // device there is also choosing what these controls edit.
@@ -1442,24 +1445,69 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.
               </p>
             )}
+            {/* A ready box is a bundle - a shape, a background and a frame
+                together - so it is among the sets, not among the parts. */}
+            <FramesLayer {...layerProps} target={partTarget} part="presets" />
           </Section>
 
+          {/*
+            The look in its parts, each in its own place: the board's
+            background, then the boxes' shape, background, frames and text -
+            for every box or for one, chosen once here rather than in three
+            pickers of their own.
+          */}
           <Section
-            title="רקעים"
+            title="1. רקע הלוח"
             hint="מה שמאחורי הלוח, ממקום אחד: צבע, מעבר צבעים או תמונה (מוכנה או שלכם, עם צבע או מעבר מעליה), סליידרים לכל אחד, ושמירה בגלריה."
           >
             <BackgroundLayer {...layerProps} />
           </Section>
 
-          <Section
-            title="תיבות ומסגרות"
-            hint="כל מה ששייך לתיבה, לכל התיבות או לתיבה אחת: תיבות מוכנות, צורה, רקע, קו ובליטה, ומסגרת מיוחדת. איפה הן עומדות - בלשונית פריסה."
+          <div
+            className="sticky top-16 z-[5] rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur min-[1700px]:col-span-2"
+            data-testid="parts-scope"
           >
-            <FramesLayer {...layerProps} />
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="font-semibold">התיבות והטקסט של:</span>
+              <select
+                aria-label="התיבות והטקסט של"
+                value={partTarget}
+                onChange={(e) => setPartTarget(e.target.value)}
+                className="h-9 min-w-48 flex-1 rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="frames">הכול - כל התיבות וכל הלוח</option>
+                <optgroup label="תיבה אחת">
+                  {FRAME_IDS.map((id) => (
+                    <option key={id} value={`frame:${id}`}>
+                      {FRAME_LABELS[id]}
+                      {draft.frameLooks[id] ? " •" : ""}
+                    </option>
+                  ))}
+                </optgroup>
+              </select>
+            </label>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              חל על 2-5 למטה: צורה, רקע, מסגרות וטקסט. "•" - לתיבה יש עיצוב משלה.
+            </p>
+          </div>
+
+          <Section title="2. צורת התיבה" hint="הצורה של תיבת הטקסט: פינות, קשת, כמוסה, אליפסה, משושה, מתומן.">
+            <FramesLayer {...layerProps} target={partTarget} part="shape" />
           </Section>
 
-          <Section title="טקסט" hint="גופן, גודל וצבעים - לכל הלוח, בתוך מסגרת מסוימת, או לאזור אחד על הלוח.">
-            <TextLayer {...layerProps} />
+          <Section
+            title="3. רקע התיבה"
+            hint="צבע, מעבר צבעים או תמונה מאותה גלריה של הרקעים - ו'אטימות': 100% חוסם, פחות - רואים את רקע הלוח דרך התיבה."
+          >
+            <FramesLayer {...layerProps} target={partTarget} part="background" />
+          </Section>
+
+          <Section title="4. מסגרות" hint="קו מסביב לתיבה, כמה היא בולטת, ומסגרת מיוחדת מהגלריה (או מסגרת משלכם).">
+            <FramesLayer {...layerProps} target={partTarget} part="frames" />
+          </Section>
+
+          <Section title="5. טקסט" hint="גופן, גודל וצבעים - לכל הלוח או לתיבה שנבחרה למעלה, ואם רוצים - לחלק מסוים בה (השעה, כותרת...).">
+            <TextLayer {...layerProps} target={partTarget} />
           </Section>
         </TabsContent>
         <TabsContent

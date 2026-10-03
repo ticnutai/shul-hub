@@ -27,13 +27,18 @@ test.describe("TV editor, by layer", () => {
     page.getByRole("heading", { name, exact: true, level: 3 });
   const bg = (el: import("@playwright/test").Locator) => el.evaluate((e) => getComputedStyle(e).backgroundColor);
 
-  test("the design tab is backgrounds, frames and text; the layout tab is where things stand", async ({ page }) => {
-    for (const name of ["ערכות נושא ועיצובים", "רקעים", "תיבות ומסגרות", "טקסט"]) await expect(heading(page, name)).toBeVisible();
+  test("the design tab is its parts, each in its own place; the layout tab is where things stand", async ({ page }) => {
+    // The look in its parts: the board's background, then the boxes' shape,
+    // background, frames and text - for every box or one, chosen once.
+    for (const name of ["ערכות נושא ועיצובים", "1. רקע הלוח", "2. צורת התיבה", "3. רקע התיבה", "4. מסגרות", "5. טקסט"])
+      await expect(heading(page, name)).toBeVisible();
     await expect(page.getByTestId("layer-background")).toBeVisible();
-    await expect(page.getByTestId("layer-frames")).toBeVisible();
+    await expect(page.getByTestId("parts-scope")).toBeVisible();
+    for (const part of ["shape", "background", "frames"]) await expect(page.getByTestId(`box-part-${part}`)).toBeVisible();
     await expect(page.getByTestId("layer-text")).toBeVisible();
-    // The paintings are not frames any more.
-    await expect(page.getByTestId("layer-frames").getByTestId("painted-boards")).toHaveCount(0);
+    // A ready box is a bundle: among the sets, not among the parts.
+    await expect(page.getByTestId("box-part-presets").getByTestId("box-presets")).toBeVisible();
+    await expect(page.getByTestId("painted-boards")).toHaveCount(0);
 
     await page.getByRole("tab", { name: "פריסה" }).click();
     await expect(page.getByTestId("skin-picker")).toHaveCount(0);
@@ -57,10 +62,11 @@ test.describe("TV editor, by layer", () => {
   });
 
   test("every box gets a background from the same gallery, and one box its own - beside its shape and line", async ({ page }) => {
-    // A box's background is with the rest of the box, not in a second place.
-    const frames = page.getByTestId("layer-frames");
-    const layer = frames.getByTestId("box-layer-background");
-    await expect(frames.getByTestId("box-background-gallery")).toBeVisible();
+    // A box's background is its own part, from the same gallery.
+    const scope = page.getByLabel("התיבות והטקסט של");
+    const part = page.getByTestId("box-part-background");
+    const layer = part.getByTestId("box-layer-background");
+    await expect(part.getByTestId("box-background-gallery")).toBeVisible();
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#203a5c");
     const prayers = root(page).locator('[data-frame="prayers"]').first();
@@ -68,8 +74,8 @@ test.describe("TV editor, by layer", () => {
     await expect.poll(() => bg(prayers)).toBe("rgb(32, 58, 92)");
     await expect.poll(() => bg(zmanim)).toBe("rgb(32, 58, 92)");
 
-    // One box apart: the zmanim in burgundy, the rest stay blue.
-    await frames.getByLabel("מסגרות של").selectOption("frame:zmanim");
+    // One box apart, chosen once at the top: the zmanim in burgundy, the rest stay blue.
+    await scope.selectOption("frame:zmanim");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
     await expect.poll(() => bg(zmanim)).toBe("rgb(90, 26, 42)");
@@ -82,24 +88,23 @@ test.describe("TV editor, by layer", () => {
   });
 
   test("boxes: a ready one, a shape of its own for one box, and a frame from the gallery", async ({ page }) => {
-    const frames = page.getByTestId("layer-frames");
     // A ready box: a hexagon, its gold line drawn as a ring that follows the cut.
-    await frames.getByTestId("box-presets").getByRole("button", { name: "משושה זהב" }).click();
+    await page.getByTestId("box-presets").getByRole("button", { name: "משושה זהב" }).click();
     await expect(root(page)).toHaveClass(/has-shape-hexagon/);
     const prayers = root(page).locator('[data-frame="prayers"]').first();
     await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e).clipPath)).toContain("polygon");
     await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e, "::after").clipPath)).toContain("evenodd");
 
     // One box apart: the zmanim an ellipse, the others stay hexagons.
-    await frames.getByLabel("מסגרות של").selectOption("frame:zmanim");
-    await frames.getByTestId("box-shapes").getByRole("button", { name: "אליפסה" }).click();
+    await page.getByLabel("התיבות והטקסט של").selectOption("frame:zmanim");
+    await page.getByTestId("box-shapes").getByRole("button", { name: "אליפסה" }).click();
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
     await expect(zmanim).toHaveAttribute("data-shape", "ellipse");
     await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).clipPath)).toBe("none");
     await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e).clipPath)).toContain("polygon");
 
     // And a frame of its own from the gallery; a second click takes it off.
-    const pictures = frames.getByTestId("frame-pictures");
+    const pictures = page.getByTestId("frame-pictures");
     await pictures.getByRole("button", { name: "קו כפול זהב" }).click();
     await expect(zmanim).toHaveAttribute("data-own-image", "");
     await pictures.getByRole("button", { name: "קו כפול זהב" }).click();
@@ -108,7 +113,7 @@ test.describe("TV editor, by layer", () => {
   });
 
   test("frames get a line, depth and the arch shape", async ({ page }) => {
-    const layer = page.getByTestId("layer-frames");
+    const layer = page.getByTestId("box-part-frames");
     await layer.getByRole("button", { name: "הוספת קו מסביב" }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-frame-line");
     const panel = root(page).locator('[data-frame="prayers"]').first();
@@ -133,9 +138,8 @@ test.describe("TV editor, by layer", () => {
     // A frame style reaches its frames, and one frame can stand apart.
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("skin-picker").getByRole("button").nth(1).click();
-    const frames = page.getByTestId("layer-frames");
-    await frames.getByLabel("מסגרות של").selectOption("frame:clock");
-    const layer = frames.getByTestId("box-layer-background");
+    await page.getByLabel("התיבות והטקסט של").selectOption("frame:clock");
+    const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
     await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(90, 26, 42)");
@@ -157,15 +161,25 @@ test.describe("TV editor, by layer", () => {
     await expectNotFrozen(page, "ready designs");
   });
 
-  test("text is chosen for the board, inside one frame, or one area", async ({ page }) => {
+  test("text is chosen for the board, one box - its colours, font and size - or one part of it", async ({ page }) => {
     const layer = page.getByTestId("layer-text");
-    await layer.getByLabel("טקסט של").selectOption("frame:zmanim");
+    await page.getByLabel("התיבות והטקסט של").selectOption("frame:zmanim");
     await layer.getByRole("button", { name: "הוספת טקסט" }).click();
     await layer.getByLabel("טקסט", { exact: true }).fill("#ffeeaa");
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
     await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).color)).toBe("rgb(255, 238, 170)");
+    // Its own font and size, over the board's.
+    const boardFont = await root(page).evaluate((e) => getComputedStyle(e).getPropertyValue("--tv-font-body"));
+    const other = boardFont.includes("Heebo") ? "traditional" : "modern";
+    await layer.getByLabel("גופן התיבה").selectOption(other);
+    await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).getPropertyValue("--tv-font-body"))).not.toBe(boardFont);
+    // ...and the board's own is untouched.
+    expect(await root(page).evaluate((e) => getComputedStyle(e).getPropertyValue("--tv-font-body"))).toBe(boardFont);
+    await layer.getByLabel("גודל הטקסט בתיבה").fill("1.4");
+    await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).getPropertyValue("--fs"))).toContain("1.4");
 
-    await layer.getByLabel("טקסט של").selectOption("area:header.title");
+    await page.getByLabel("התיבות והטקסט של").selectOption("frames");
+    await layer.getByLabel("חלק מסוים בטקסט").selectOption("header.title");
     // The same editor as a click on the board: size in steps, weight from one list.
     const bigger = layer.getByRole("button", { name: "הגדלת גודל טקסט של הרכיב" });
     for (let i = 0; i < 10; i++) await bigger.click();

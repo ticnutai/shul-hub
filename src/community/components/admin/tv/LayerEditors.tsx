@@ -387,7 +387,7 @@ export function BackgroundLayer({
             key={target}
             config={config}
             onEdit={onEdit}
-            applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${FRAME_LABELS[frame]}` : "החלה על כל המסגרות"}
+            applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${FRAME_LABELS[frame]}` : "החלה על כל התיבות"}
             current={current && isSafeGradient(current) ? current : null}
             onPreview={preview}
             onApply={apply}
@@ -443,7 +443,7 @@ export function BackgroundLayer({
       {current && (
         <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => apply(null)}>
           <RotateCcw className="size-3.5" />
-          {onBoard ? "רקע הלוח לפי ערכת הנושא" : frame ? `${FRAME_LABELS[frame]}: רקע כמו כל המסגרות` : "המסגרות: רקע לפי הסגנון"}
+          {onBoard ? "רקע הלוח לפי ערכת הנושא" : frame ? `${FRAME_LABELS[frame]}: רקע כמו כל התיבות` : "התיבות: רקע לפי הסגנון"}
         </Button>
       )}
 
@@ -692,8 +692,17 @@ function PictureLayer({ saved, onEdit }: { saved: TvConfig; onEdit: Edit }) {
 
 /* -------------------------------------------------------------- מסגרות -- */
 
+/** A part's controls with nothing around them, when its section already says what it is. */
+function BarePart({ children, testId }: { title: string; children: ReactNode; testId?: string }) {
+  return (
+    <div className="space-y-2" data-testid={testId}>
+      {children}
+    </div>
+  );
+}
+
 /** A part of a section: a small heading over its controls. */
-function Part({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+function TitledPart({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
   return (
     <div className="space-y-2 rounded-lg border p-3" data-testid={testId}>
       <div className="text-sm font-medium">{title}</div>
@@ -718,9 +727,22 @@ const BOX_SHAPE_NAMES: Record<BoxShape, string> = {
  * A box's background used to be under "רקעים" and its line here: two places
  * for one box.
  */
-export function FramesLayer(props: LayerProps) {
+export type BoxPart = "presets" | "shape" | "background" | "frames";
+
+export function FramesLayer(
+  props: LayerProps & {
+    /** Every box ("frames") or one ("frame:<id>"), chosen once at the top of the tab. */
+    target?: string;
+    /** Which part of the box this section shows; all of them when not given. */
+    part?: BoxPart;
+  },
+) {
   const { config, saved, onEdit, colourFields } = props;
-  const [target, setTarget] = useState("frames");
+  const [ownTarget, setTarget] = useState("frames");
+  const target = props.target ?? ownTarget;
+  const show = (p: BoxPart) => !props.part || props.part === p;
+  // Shown as a section of its own, the section's title is its title: no second one inside.
+  const Part = props.part ? BarePart : TitledPart;
   const frame = frameOf(target);
   const fs = saved.frameStyle;
   const own = frame ? saved.frameLooks[frame] : undefined;
@@ -761,15 +783,18 @@ export function FramesLayer(props: LayerProps) {
   ];
 
   return (
-    <div className="space-y-3" data-testid="layer-frames">
-      <TargetPicker
-        label="מסגרות של"
-        value={target}
-        onChange={setTarget}
-        top={[{ value: "frames", label: "כל התיבות" }]}
-        groups={[{ label: "תיבה אחת", options: frameOptions(config) }]}
-      />
+    <div className="space-y-3" data-testid={props.part ? `box-part-${props.part}` : "layer-frames"}>
+      {!props.target && (
+        <TargetPicker
+          label="מסגרות של"
+          value={target}
+          onChange={setTarget}
+          top={[{ value: "frames", label: "כל התיבות" }]}
+          groups={[{ label: "תיבה אחת", options: frameOptions(config) }]}
+        />
+      )}
 
+      {show("presets") && (
       <Part title="תיבות מוכנות" testId="box-presets">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {BOX_PRESETS.map((p) => {
@@ -791,7 +816,9 @@ export function FramesLayer(props: LayerProps) {
         </div>
         <p className="text-[11px] text-muted-foreground">כל חלק אפשר לשנות אחר כך למטה, בנפרד.</p>
       </Part>
+      )}
 
+      {show("shape") && (
       <Part title="צורת התיבה" testId="box-shape">
         {frame ? (
           <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7" data-testid="box-shapes">
@@ -823,11 +850,21 @@ export function FramesLayer(props: LayerProps) {
         )}
       </Part>
 
+      )}
+
+      {show("background") && (
       <Part title="רקע התיבה" testId="box-background">
         <BackgroundLayer key={target} {...props} fixedTarget={target} />
+        {!frame && (
+          <details className="rounded-md border p-2">
+            <summary className="cursor-pointer text-xs font-medium">צבע התיבות של ערכת הנושא (כשאין להן רקע משלהן)</summary>
+            <div className="mt-2">{colourFields(THEME_VAR_LAYERS.frames)}</div>
+          </details>
+        )}
       </Part>
+      )}
 
-      {(
+      {show("frames") && (
         <Part title="קו ובליטה" testId="frame-style">
           {frame ? (
             <>
@@ -865,6 +902,7 @@ export function FramesLayer(props: LayerProps) {
         </Part>
       )}
 
+      {show("frames") && (
       <Part title="מסגרת מיוחדת" testId="frame-pictures">
         <p className="text-[11px] leading-tight text-muted-foreground">
           הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה או מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה.
@@ -916,12 +954,6 @@ export function FramesLayer(props: LayerProps) {
           </>
         )}
       </Part>
-
-      {!frame && (
-        <details className="rounded-md border p-2">
-          <summary className="cursor-pointer text-xs font-medium">צבעי המסגרות של ערכת הנושא</summary>
-          <div className="mt-2">{colourFields(THEME_VAR_LAYERS.frames)}</div>
-        </details>
       )}
     </div>
   );
@@ -929,26 +961,58 @@ export function FramesLayer(props: LayerProps) {
 
 /* --------------------------------------------------------------- טקסט -- */
 
-export function TextLayer({ config, saved, onEdit, colourFields }: LayerProps) {
-  const [target, setTarget] = useState("board");
+export function TextLayer({
+  config,
+  saved,
+  onEdit,
+  colourFields,
+  target: given,
+}: LayerProps & {
+  /** Every box ("frames": the board's text) or one ("frame:<id>"), chosen once at the top of the tab. */
+  target?: string;
+}) {
+  const [ownTarget, setTarget] = useState("board");
+  // With the box chosen at the top: optionally one element of the board (the clock's time, a title...).
+  const [element, setElement] = useState("");
+  const target = given ? (element ? `area:${element}` : given === "frames" ? "board" : given) : ownTarget;
   const frame = frameOf(target);
   const area = target.startsWith("area:") ? target.slice(5) : null;
 
   return (
     <div className="space-y-3" data-testid="layer-text">
-      <TargetPicker
-        label="טקסט של"
-        value={target}
-        onChange={setTarget}
-        top={[{ value: "board", label: "כל הלוח" }]}
-        groups={[
-          { label: "בתוך מסגרת", options: frameOptions(config) },
-          {
-            label: "אזור על הלוח",
-            options: TEXT_AREAS.map((a) => ({ value: `area:${a.key}`, label: `${a.label}${config.styles[a.key] ? " •" : ""}` })),
-          },
-        ]}
-      />
+      {given ? (
+        <label className="flex items-center gap-2 rounded-md bg-muted/60 p-2 text-sm">
+          <span className="shrink-0 font-medium">חלק מסוים:</span>
+          <select
+            aria-label="חלק מסוים בטקסט"
+            value={element}
+            onChange={(e) => setElement(e.target.value)}
+            className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="">{given === "frames" ? "כל הטקסט בלוח" : "כל הטקסט בתיבה"}</option>
+            {TEXT_AREAS.map((a) => (
+              <option key={a.key} value={a.key}>
+                {a.label}
+                {config.styles[a.key] ? " •" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <TargetPicker
+          label="טקסט של"
+          value={target}
+          onChange={setTarget}
+          top={[{ value: "board", label: "כל הלוח" }]}
+          groups={[
+            { label: "בתוך מסגרת", options: frameOptions(config) },
+            {
+              label: "אזור על הלוח",
+              options: TEXT_AREAS.map((a) => ({ value: `area:${a.key}`, label: `${a.label}${config.styles[a.key] ? " •" : ""}` })),
+            },
+          ]}
+        />
+      )}
 
       {area ? (
         <>
@@ -969,6 +1033,39 @@ export function TextLayer({ config, saved, onEdit, colourFields }: LayerProps) {
             fallback="#f0c35c"
             unsetLabel="כמו כל הלוח"
             onChange={(v) => onEdit(`layer-text:${frame}:accent`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { accent: v }) }))}
+          />
+          {/* Its own font and size: for this box only, over the board's. */}
+          <label className="flex items-center gap-2 text-xs">
+            <span className="shrink-0">גופן</span>
+            <select
+              aria-label="גופן התיבה"
+              value={saved.frameLooks[frame]?.font ?? ""}
+              onChange={(e) =>
+                onEdit(`layer-text:${frame}:font`, (c) => ({
+                  ...c,
+                  frameLooks: setFrameLook(c.frameLooks, frame, { font: (e.target.value || null) as TvConfig["font"] | null }),
+                }))
+              }
+              className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+            >
+              <option value="">כמו כל הלוח</option>
+              {TV_FONTS.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Range
+            label="גודל הטקסט בתיבה"
+            value={saved.frameLooks[frame]?.textScale ?? 1}
+            min={0.6}
+            max={1.8}
+            step={0.05}
+            show={pct}
+            onChange={(v) =>
+              onEdit(`layer-text:${frame}:scale`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { textScale: v === 1 ? null : v }) }))
+            }
           />
         </div>
       ) : (
