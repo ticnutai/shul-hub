@@ -681,7 +681,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   /** "ביטול שינויים" asks inline before it throws the draft away. */
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   /** The theme whose "מחיקה" is waiting to be confirmed, inline. */
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   // Saving, or an undo back to the saved design, answers the question itself.
   useEffect(() => {
     if (!dirty) setConfirmDiscard(false);
@@ -836,8 +835,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   // What is being edited: the board, one screen's, or one occasion's design.
   const themes = allThemes(draft.customThemes);
   const theme = getTheme(scoped.theme, draft.customThemes);
-  const isCustom = draft.customThemes.some((t) => t.id === scoped.theme);
-  const hasOverrides = Object.keys(scoped.themeOverrides).length > 0;
   const layerProps: LayerProps = {
     config: view,
     saved: scoped,
@@ -878,44 +875,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       ThemeVar,
       string
     >);
-  const [naming, setNaming] = useState<{ id: string; value: string } | null>(null);
-  // Switching themes drops the colour tweaks made on top of the current one.
-  // Losing work in silence is how a design gets messy, so ask first.
-  const [themeSwitch, setThemeSwitch] = useState<string | null>(null);
-  const applyThemeChoice = (id: string) =>
-    edit("theme", (c) => ({ ...c, theme: id, themeOverrides: {} }));
-  const pickTheme = (id: string) => {
-    if (id === scoped.theme) return;
-    if (Object.keys(scoped.themeOverrides).length) setThemeSwitch(id);
-    else applyThemeChoice(id);
-  };
-  const commitName = () => {
-    if (!naming) return;
-    const name = naming.value.trim().slice(0, 40);
-    if (!name) return toast.error("צריך לתת שם לערכה");
-    edit("theme-rename", (c) => ({
-      ...c,
-      customThemes: c.customThemes.map((t) => (t.id === naming.id ? { ...t, name } : t)),
-    }));
-    setNaming(null);
-  };
-  const updateTheme = () => {
-    const vars = currentVars();
-    edit("theme-update", (c) => ({
-      ...c,
-      customThemes: c.customThemes.map((t) =>
-        t.id === c.theme ? { ...t, vars, light: isLightColor(vars["--tv-bg-a"]) } : t,
-      ),
-      themeOverrides: {},
-    }));
-    toast.success(`הערכה "${theme.name}" עודכנה.`);
-  };
-  const deleteTheme = (id: string) =>
-    edit("theme-delete", (c) => ({
-      ...c,
-      customThemes: c.customThemes.filter((t) => t.id !== id),
-      ...(c.theme === id ? { theme: "navy", themeOverrides: {} } : {}),
-    }));
   /* --------------------------------------------- import and export -- */
 
   const doExport = async (what: "themes" | "gradients" | "all", how: "file" | "clipboard") => {
@@ -1246,219 +1205,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         >
           <Section
             title="ערכות - נקודת התחלה שממלאת את החלקים"
-            hint="ערכת צבעים - בסיס הצבעים. עיצוב - צירוף של חלקים (רקע, צורה, מסגרות, טקסט, פריסה) שממלא אותם בלחיצה אחת; אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; פריט מוכן - מסתירים ב-✕ ומחזירים מתי שרוצים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה."
+            hint="עיצוב הוא צירוף של חלקים (רקע, צורה, מסגרות, צבעים וטקסט, פריסה) שממלא אותם בלחיצה אחת; אחר כך כל חלק - וכל צבע - משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; פריט מוכן - מסתירים ב-✕ ומחזירים מתי שרוצים."
           >
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {themes.filter((t) => !isHiddenReady(draft, "theme", t.id) || t.id === scoped.theme).map((t) => {
-                const custom = !TV_THEMES.some((b) => b.id === t.id);
-                return (
-                  <div
-                    key={t.id}
-                    className={`group relative overflow-hidden rounded-lg border text-right transition ${
-                      scoped.theme === t.id
-                        ? "ring-2 ring-primary ring-offset-2"
-                        : "hover:border-primary/50"
-                    }`}
-                  >
-                    {/* A ready theme can be taken off the list too - not the one the board wears. */}
-                    {!custom && scoped.theme !== t.id && (
-                      <TileRemove name={t.name} ready onClick={() => edit("theme-hide", (c) => hideReady(c, "theme", t.id))} />
-                    )}
-                    <button
-                      type="button"
-                      aria-pressed={scoped.theme === t.id}
-                      onClick={() => pickTheme(t.id)}
-                      className="block w-full text-right"
-                    >
-                      <div
-                        className="flex h-12 items-end gap-1 p-2"
-                        style={{
-                          background: `radial-gradient(ellipse at 20% 0%, ${t.vars["--tv-bg-b"]}, transparent 70%), ${t.vars["--tv-bg-a"]}`,
-                        }}
-                      >
-                        <span
-                          className="size-4 rounded-full"
-                          style={{ background: t.vars["--tv-accent"] }}
-                        />
-                        <span
-                          className="size-4 rounded-full"
-                          style={{ background: t.vars["--tv-text"] }}
-                        />
-                        <span
-                          className="size-4 rounded-full"
-                          style={{ background: t.vars["--tv-accent-2"] }}
-                        />
-                      </div>
-                      <div className="p-2 pb-1">
-                        <div className="text-sm font-medium">
-                          {t.name}
-                          {custom && (
-                            <span className="ms-1 rounded bg-secondary px-1 text-[10px] font-normal text-muted-foreground">
-                              שלי
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] leading-tight text-muted-foreground">
-                          {t.description}
-                        </div>
-                      </div>
-                    </button>
-                    {custom && (
-                      <div className="flex gap-1 px-1 pb-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-1.5 text-[11px]"
-                          onClick={() => setNaming({ id: t.id, value: t.name })}
-                        >
-                          שינוי שם
-                        </Button>
-                        {confirmDelete === t.id ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant="destructive"
-                              size="sm"
-                              className="h-6 px-1.5 text-[11px]"
-                              onClick={() => {
-                                setConfirmDelete(null);
-                                deleteTheme(t.id);
-                              }}
-                            >
-                              {scoped.theme === t.id ? "למחוק? הלוח יחזור לברירת המחדל" : "למחוק?"}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 px-1.5 text-[11px]"
-                              onClick={() => setConfirmDelete(null)}
-                            >
-                              ביטול
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-1.5 text-[11px] text-destructive"
-                            onClick={() => setConfirmDelete(t.id)}
-                          >
-                            מחיקה
-                          </Button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
             <DesignLibrary config={view} onEdit={edit} />
-            <AlertDialog
-              open={Boolean(themeSwitch)}
-              onOpenChange={(open) => !open && setThemeSwitch(null)}
-            >
-              <AlertDialogContent dir="rtl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>יש שינויי צבע שלא נשמרו בערכה</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    מעבר לערכה אחרת יבטל את שינויי הצבע שעשיתם על ״{theme.name}״. אפשר לשמור אותם
-                    קודם כעיצוב חדש, וכך הם יישארו זמינים תמיד.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>להישאר כאן</AlertDialogCancel>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      const name = `${theme.name} (מותאם)`;
-                      edit("design-new", (c) => ({
-                        ...c,
-                        designs: [...c.designs, captureDesign(c, name, ["background", "frames", "text"])].slice(0, MAX_DESIGNS),
-                      }));
-                      toast.success(`הצבעים נשמרו כעיצוב "${name}".`);
-                      setThemeSwitch(null);
-                    }}
-                  >
-                    שמירה כעיצוב חדש
-                  </Button>
-                  <AlertDialogAction
-                    onClick={() => {
-                      if (themeSwitch) applyThemeChoice(themeSwitch);
-                      setThemeSwitch(null);
-                    }}
-                  >
-                    החלפה בלי לשמור
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-            {naming ? (
-              <form
-                className="flex flex-wrap items-center gap-2"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  commitName();
-                }}
-              >
-                <Input
-                  autoFocus
-                  aria-label="שם הערכה"
-                  value={naming.value}
-                  maxLength={40}
-                  placeholder="שם חדש"
-                  className="h-9 w-56"
-                  onChange={(e) => setNaming({ ...naming, value: e.target.value })}
-                />
-                <Button type="submit" size="sm">
-                  שינוי השם
-                </Button>
-                <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(null)}>
-                  ביטול
-                </Button>
-              </form>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                {isCustom && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={!hasOverrides}
-                    onClick={updateTheme}
-                    title={
-                      hasOverrides
-                        ? "שומר את שינויי הצבע שלמטה לתוך הערכה"
-                        : "שנו צבעים למטה ואז עדכנו"
-                    }
-                  >
-                    <Save className="size-4" /> עדכון הערכה "{theme.name}"
-                  </Button>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  {isCustom
-                    ? 'ערכה שלכם: שנו צבעים למטה ולחצו "עדכון הערכה".'
-                    : 'ערכה מובנית: שנו צבעים (ב"רקעים", "מסגרות" ו"טקסט") ושמרו כעיצוב חדש.'}
-                  {draft.customThemes.length >= 24 ? " הגעתם למספר הערכות המרבי (24)." : ""}
-                </span>
-              </div>
-            )}
-            <HiddenShelf
-              testId="themes-hidden"
-              items={TV_THEMES.filter((t) => isHiddenReady(draft, "theme", t.id) && t.id !== scoped.theme).map((t) => ({
-                key: t.id,
-                name: t.name,
-              }))}
-              onRestore={(id) => edit("theme-show", (c) => showReady(c, "theme", id))}
-            />
-            {hasOverrides && (
-              <p className="text-xs text-muted-foreground">
-                בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.
-              </p>
-            )}
             {/* A ready box is a bundle - a shape, a background and a frame
                 together - so it is among the sets, not among the parts. */}
             <FramesLayer {...layerProps} target={partTarget} part="presets" />

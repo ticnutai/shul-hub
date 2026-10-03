@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { BOARD_SKINS } from "../src/tv/config";
-import { TV_THEMES } from "../src/tv/themes";
 import { expectNotFrozen, serveEditor, type EditorServer } from "./support/tvEditor";
 import { chooseDevice } from "./support/deviceMenu";
 
@@ -35,20 +34,6 @@ test.describe("TV editor", () => {
 
   const cssVar = (page: import("@playwright/test").Page, name: string) =>
     root(page).evaluate((el, v) => getComputedStyle(el).getPropertyValue(v).trim(), name);
-
-  test("every theme applies to the board, one after another", async ({ page }) => {
-    const seen: string[] = [];
-    for (const theme of TV_THEMES) {
-      await page.getByRole("button", { name: new RegExp(`^${theme.name} `) }).click();
-      // The board carries the theme's own background colour.
-      await expect
-        .poll(() => cssVar(page, "--tv-bg-a"), { message: `theme ${theme.name}` })
-        .toBe(theme.vars["--tv-bg-a"]);
-      seen.push(theme.name);
-      await expectNotFrozen(page, `theme ${theme.name}`);
-    }
-    expect(seen).toEqual(TV_THEMES.map((t) => t.name));
-  });
 
   test("every style in the picker applies, and they are all the board's own", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
@@ -180,7 +165,7 @@ test.describe("TV editor", () => {
   });
 
   test("a look can be saved as a design, and the board can be broadcast", async ({ page }) => {
-    await page.getByRole("button", { name: /^זהב מלכותי/ }).click();
+    await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
     await page.getByRole("button", { name: "שמירה כעיצוב חדש" }).click();
     await page.getByLabel("שם העיצוב").fill("זהב שלי");
     await page.getByRole("button", { name: "שמירת העיצוב" }).click();
@@ -194,13 +179,14 @@ test.describe("TV editor", () => {
   });
 
   test("discarding unsaved changes does not leave the page stuck", async ({ page }) => {
-    await page.getByRole("button", { name: /^ירוק שבת/ }).click();
+    await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
+    await expect(root(page)).toHaveClass(/has-bg-gradient/);
     await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
 
     await page.getByRole("button", { name: "ביטול שינויים" }).click();
     await page.getByRole("button", { name: "לבטל הכל?" }).click();
     // Back to what the database holds, and the page still answers.
-    await expect.poll(() => cssVar(page, "--tv-bg-a")).toBe(TV_THEMES[0].vars["--tv-bg-a"]);
+    await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
     await expectNotFrozen(page, "discard");
   });
 
@@ -227,8 +213,8 @@ test.describe("TV editor", () => {
     const root = page.locator(".tv-frame .tv-root").first();
     const library = page.getByTestId("design-library");
     // A background only.
-    await page.getByRole("button", { name: /^ירוק שבת/ }).click();
-    const green = await cssVar(page, "--tv-bg-a");
+    await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
+    await expect(root).toHaveClass(/has-bg-gradient/);
     await library.getByRole("button", { name: "שמירה כעיצוב חדש" }).click();
     await library.getByLabel("שם העיצוב").fill("רקע ירוק");
     await library.getByRole("checkbox", { name: "מסגרות" }).uncheck();
@@ -238,12 +224,12 @@ test.describe("TV editor", () => {
     await expect(library.getByText("רקע", { exact: true })).toBeVisible();
     await expectNotFrozen(page, "design saved");
 
-    // Another theme, and the design brings its background back - only that.
-    await page.getByRole("button", { name: /^זהב מלכותי/ }).click();
-    const accent = await cssVar(page, "--tv-accent");
+    // Another background - a picture - and the design brings its own back.
+    await page.getByTestId("background-gallery").getByRole("button", { name: "שמיים בערב", exact: true }).click();
+    await expect(root).toHaveClass(/has-bg-image/);
     await library.getByRole("button", { name: /^רקע ירוק/ }).click();
-    await expect.poll(() => cssVar(page, "--tv-bg-a")).toBe(green);
-    expect(await cssVar(page, "--tv-accent")).toBe(accent);
+    await expect(root).toHaveClass(/has-bg-gradient/);
+    await expect(root).not.toHaveClass(/has-bg-image/);
     await expect(root).toBeVisible();
     await expectNotFrozen(page, "design applied");
 
@@ -274,11 +260,8 @@ test.describe("TV editor", () => {
   });
 
   test("a run through the editor, the way an admin actually uses it", async ({ page }) => {
-    // Theme, style, frame, gradient, a slide, the Shabbat screen, and save -
+    // Style, frame, gradient, a slide, the Shabbat screen, and save -
     // one after another, checking after each that the page still answers.
-    await page.getByRole("button", { name: /^אבן ירושלים / }).click();
-    await expectNotFrozen(page, "theme");
-
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("skin-picker").getByRole("button").nth(12).click();
     await expectNotFrozen(page, "style");
@@ -639,23 +622,4 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "amud line edited");
   });
 
-  test("an edit can be kept to a copy of the theme, leaving the others alone", async ({ page }) => {
-    // The third answer to "which themes does this apply to": neither all of
-    // them nor the one in use, but a copy made for the purpose.
-    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
-    await page.locator(".tv-frame .tv-panel-title").first().click();
-    await expect(page.getByText("בערכות נושא:")).toBeVisible();
-
-    const themesBefore = await page.getByRole("button", { name: /^לילה כחול / }).count();
-    await page.getByRole("button", { name: /שכפול לערכה חדשה/ }).click();
-    await expectNotFrozen(page, "theme duplicated");
-
-    // A new theme exists, the board is on it, and the edit is scoped to it.
-    await expect(page.getByTestId("style-scope")).toContainText("(עותק)");
-    await page.getByRole("tab", { name: "עיצוב" }).click();
-    await expect(
-      page.getByRole("button", { name: "לילה כחול (עותק)", exact: false }).first(),
-    ).toBeVisible();
-    expect(themesBefore).toBe(1);
-  });
 });

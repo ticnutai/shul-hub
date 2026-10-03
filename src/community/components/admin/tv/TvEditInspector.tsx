@@ -6,7 +6,6 @@ import {
   ArrowUp,
   Crosshair,
   Eye,
-  Copy,
   EyeOff,
   Globe,
   Minus,
@@ -46,7 +45,6 @@ import {
   toggleFlip,
 } from "@/tv/boardEdit";
 import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
-import { duplicateTheme } from "@/tv/themes";
 import { applyBackground, galleryOf, tileOf, wears } from "@/tv/backgrounds";
 import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { getTheme, isSafeCssValue } from "@/tv/themes";
@@ -478,7 +476,6 @@ export function ElementLook({
   const style = config.styles[target];
   // What the board actually shows here (family rule + this element's own).
   const effective = resolveElementStyle(config, k);
-  const themeName = getTheme(config.theme, config.customThemes).name;
   const inherited =
     !onFamily && fk && config.styles[fk] ? STYLE_FAMILIES[fk.slice(FAMILY_PREFIX.length)] : null;
 
@@ -586,55 +583,21 @@ export function ElementLook({
             <span className="text-muted-foreground">(רכיב יחיד בלוח - אין רכיבים דומים)</span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
-          <span className="font-medium">בערכות נושא:</span>
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name={`theme-scope-${k}`}
-              checked={!style?.theme}
-              onChange={() => set({ theme: undefined }, "theme-scope")}
-            />
-            בכולן
-          </label>
-          <label className="flex items-center gap-1">
-            <input
-              type="radio"
-              name={`theme-scope-${k}`}
-              checked={Boolean(style?.theme)}
-              onChange={() => set({ theme: config.theme }, "theme-scope")}
-            />
-            רק ב״{themeName}״
-          </label>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-6 px-2 text-[11px]"
-            title="יוצר עותק של הערכה הנוכחית, עובר אליו, ומחיל את השינוי רק עליו"
-            onClick={() =>
-              onEdit(`style:theme-copy:${k}`, (c) => {
-                const { config: withCopy, theme } = duplicateTheme(c);
-                return setElementStyle(withCopy, styleTargetKey(withCopy, k), { theme: theme.id });
-              })
-            }
-          >
-            <Copy className="size-3" /> שכפול לערכה חדשה
-          </Button>
-        </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
           השינוי מוחל בכל המסכים - טלוויזיה, מחשב, לפטופ, טאבלט ונייד - ובכל הפריסות.
-          ״בכולן״ משנה גם ערכות אחרות; ״שכפול לערכה חדשה״ יוצר עותק ושומר את השינוי רק בו,
-          כך ששום ערכה קיימת לא נוגעת.
         </p>
         {inherited && (
           <p className="text-[11px] leading-tight text-amber-700 dark:text-amber-400">
             לרכיב הזה יש גם עיצוב מ״{inherited}״. מה שנקבע כאן גובר עליו.
           </p>
         )}
+        {/* Set once for one theme only; there is no choosing themes any more, so it can be made to show. */}
         {style?.theme && style.theme !== config.theme && (
-          <p className="text-[11px] leading-tight text-amber-700 dark:text-amber-400">
-            העיצוב הזה מוגדר לערכה אחרת, ולכן אינו מוצג כרגע.
+          <p className="flex flex-wrap items-center gap-2 text-[11px] leading-tight text-amber-700 dark:text-amber-400">
+            העיצוב הזה נקבע פעם לערכת צבעים אחרת, ולכן אינו מוצג.
+            <button type="button" className="underline" onClick={() => set({ theme: undefined }, "theme-scope")}>
+              להציג אותו
+            </button>
           </p>
         )}
       </div>

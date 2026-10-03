@@ -446,13 +446,13 @@ export function BackgroundLayer({
       {current && (
         <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => apply(null)}>
           <RotateCcw className="size-3.5" />
-          {onBoard ? "רקע הלוח לפי ערכת הנושא" : frame ? `${FRAME_LABELS[frame]}: רקע כמו כל התיבות` : "התיבות: רקע לפי הסגנון"}
+          {onBoard ? "רקע הלוח לפי צבעי הבסיס" : frame ? `${FRAME_LABELS[frame]}: רקע כמו כל התיבות` : "התיבות: רקע לפי הסגנון"}
         </Button>
       )}
 
       {onBoard && (
         <details className="rounded-md border p-2">
-          <summary className="cursor-pointer text-xs font-medium">צבעי הרקע של ערכת הנושא</summary>
+          <summary className="cursor-pointer text-xs font-medium">צבעי הבסיס של רקע הלוח (כשאין לו רקע משלו)</summary>
           <div className="mt-2">{colourFields(THEME_VAR_LAYERS.background)}</div>
         </details>
       )}
@@ -873,7 +873,7 @@ export function FramesLayer(
         <BackgroundLayer key={target} {...props} fixedTarget={target} />
         {!frame && (
           <details className="rounded-md border p-2">
-            <summary className="cursor-pointer text-xs font-medium">צבע התיבות של ערכת הנושא (כשאין להן רקע משלהן)</summary>
+            <summary className="cursor-pointer text-xs font-medium">צבע הבסיס של התיבות (כשאין להן רקע משלהן)</summary>
             <div className="mt-2">{colourFields(THEME_VAR_LAYERS.frames)}</div>
           </details>
         )}
