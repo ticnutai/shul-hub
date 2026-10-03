@@ -1,3 +1,5 @@
+// First: in the trial version it must be in place before the database client is made (sandbox.ts).
+import "./sandbox";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
