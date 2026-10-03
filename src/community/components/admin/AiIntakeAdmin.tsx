@@ -13,7 +13,9 @@ import { jerusalemDateKey } from "@community/lib/minyan-time";
 import { presetAnnouncementStyle } from "@community/lib/announcement-style";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
 import { eventSystemKey, specialDayByKey } from "@community/lib/specialDays";
-import { analyzeDirect, getPersonalKey, looksLikeApiKey, maskKey, setPersonalKey } from "@community/lib/aiIntakeDirect";
+import { analyzeDirect, getPersonalKey, maskKey } from "@community/lib/aiIntakeDirect";
+import { useAccountApiKey } from "@community/lib/apiKeys";
+import { useSearchParams } from "react-router-dom";
 
 /**
  * "עוזר חכם": a photo, a dictated sentence or a pasted message becomes
@@ -130,9 +132,12 @@ export function AiIntakeAdmin() {
   const [overrides, setOverrides] = useState<Picked<OverrideProposal>[]>([]);
   const [anns, setAnns] = useState<Picked<AnnouncementProposal>[]>([]);
   const [shiurim, setShiurim] = useState<Picked<ShiurProposal>[]>([]);
-  const [personalKey, setKeyState] = useState<string | null>(() => getPersonalKey());
-  const [keyDraft, setKeyDraft] = useState("");
-  const [keyOpen, setKeyOpen] = useState(false);
+  // The key kept with the account ("מפתח API"); one still kept the old way,
+  // in this browser only, until it is moved there.
+  const { data: accountKey = null } = useAccountApiKey();
+  const [localKey] = useState<string | null>(() => getPersonalKey());
+  const personalKey = accountKey ?? localKey;
+  const [, setSearchParams] = useSearchParams();
   const recRef = useRef<Recognition | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -436,63 +441,19 @@ export function AiIntakeAdmin() {
           לא נשמר עד שמאשרים.
         </p>
 
-        <div className="rounded-md border bg-muted/30 p-3 text-sm" data-testid="ai-personal-key">
-          <button type="button" className="flex w-full items-center gap-2 text-right" onClick={() => setKeyOpen((o) => !o)} aria-expanded={keyOpen}>
-            <KeyRound className="size-4" />
-            <span className="font-medium">מפתח Claude אישי</span>
-            <span className="text-xs text-muted-foreground">{personalKey ? `פעיל · ${maskKey(personalKey)}` : "לא הוגדר"}</span>
-          </button>
-          {keyOpen && (
-            <div className="mt-2 space-y-2">
-              <p className="text-xs text-muted-foreground">
-                המפתח נשמר רק בדפדפן הזה, לא באתר ולא במסד הנתונים, ונשלח רק ל-Anthropic. השימוש מחויב בחשבון שלכם.
-                בלי מפתח אישי העוזר משתמש במפתח של בית הכנסת בשרת, אם הוגדר.
-              </p>
-              {personalKey ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setPersonalKey(null);
-                    setKeyState(null);
-                    toast.success("המפתח הוסר מהדפדפן");
-                  }}
-                >
-                  <Trash2 className="size-4" /> הסרת המפתח
-                </Button>
-              ) : (
-                <form
-                  className="flex gap-2"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    if (!looksLikeApiKey(keyDraft)) {
-                      toast.error("זה לא נראה כמו מפתח Claude (מתחיל ב-sk-ant-)");
-                      return;
-                    }
-                    setPersonalKey(keyDraft);
-                    setKeyState(keyDraft.trim());
-                    setKeyDraft("");
-                    setKeyOpen(false);
-                    toast.success("המפתח נשמר בדפדפן הזה");
-                  }}
-                >
-                  <input
-                    type="password"
-                    autoComplete="off"
-                    spellCheck={false}
-                    dir="ltr"
-                    value={keyDraft}
-                    onChange={(e) => setKeyDraft(e.target.value)}
-                    placeholder="sk-ant-..."
-                    aria-label="מפתח Claude"
-                    className={`${input} flex-1`}
-                  />
-                  <Button type="submit" size="sm">שמירה</Button>
-                </form>
-              )}
-            </div>
-          )}
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm" data-testid="ai-personal-key">
+          <KeyRound className="size-4" />
+          <span className="font-medium">מפתח Claude</span>
+          <span className="text-xs text-muted-foreground">
+            {accountKey
+              ? `שמור בחשבון · ${maskKey(accountKey)}`
+              : localKey
+                ? `שמור רק בדפדפן הזה · ${maskKey(localKey)}`
+                : "לא הוגדר - בלי מפתח העוזר עובד רק אם הוגדר מפתח בשרת"}
+          </span>
+          <Button type="button" size="sm" variant="outline" className="ms-auto h-7" onClick={() => setSearchParams({ tab: "api" })}>
+            {accountKey ? "ניהול המפתח" : "הוספת מפתח"}
+          </Button>
         </div>
 
         <div className="grid grid-cols-2 gap-2">
