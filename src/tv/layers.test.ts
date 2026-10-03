@@ -66,7 +66,20 @@ describe("the layers: background adjustments and every frame's dress", () => {
 describe("ready-made frame pictures", () => {
   it("are stored by name and resolve to the shipped file", async () => {
     const { FRAME_PICTURES, framePictureRef, framePictureUrl } = await import("./framePictures");
-    expect(FRAME_PICTURES.map((f) => f.id)).toEqual(["gold-ornate", "carved-wood"]);
+    expect(FRAME_PICTURES.map((f) => f.id)).toEqual([
+      "gold-ornate",
+      "carved-wood",
+      "double-gold",
+      "double-silver",
+      "ornate-corners",
+      "stepped",
+      "rope",
+    ]);
+    // The drawn ones are pictures too: an SVG, transparent inside.
+    for (const f of FRAME_PICTURES.slice(2)) {
+      expect(f.url).toMatch(/^data:image\/svg\+xml;utf8,/);
+      expect(decodeURIComponent(f.url)).toContain('fill="none"');
+    }
     const ref = framePictureRef("gold-ornate");
     expect(normalizeFrameStyle({ image: ref }).image).toBe(ref);
     expect(framePictureUrl(ref)).toBe(FRAME_PICTURES[0].url);

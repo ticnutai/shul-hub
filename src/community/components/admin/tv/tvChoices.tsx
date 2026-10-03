@@ -264,4 +264,18 @@ export const FRAME_CHOICES: Array<{ id: FrameShape; name: string; hint: string; 
     hint: "ראש מקושת כמו לוחות הברית, והתחתית לפי העיגול למטה",
     css: { borderRadius: "50% 50% 4px 4px / 45% 45% 4px 4px" },
   },
+  { id: "pill", name: "כמוסה", hint: "קצוות עגולים לגמרי, כמו גלולה", css: { borderRadius: "999px" } },
+  { id: "ellipse", name: "אליפסה", hint: "תיבה עגולה; הטקסט נכנס פנימה מהשוליים", css: { borderRadius: "50%" } },
+  {
+    id: "hexagon",
+    name: "משושה",
+    hint: "שש צלעות; הקו מסביב עוקב אחרי הצורה",
+    css: { clipPath: "polygon(14% 0, 86% 0, 100% 50%, 86% 100%, 14% 100%, 0 50%)", borderRadius: 0 },
+  },
+  {
+    id: "octagon",
+    name: "מתומן",
+    hint: "שמונה צלעות - פינות חתוכות; הקו מסביב עוקב אחרי הצורה",
+    css: { clipPath: "polygon(18% 0, 82% 0, 100% 22%, 100% 78%, 82% 100%, 18% 100%, 0 78%, 0 22%)", borderRadius: 0 },
+  },
 ];

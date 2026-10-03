@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { backdropUrl } from "./backdrops";
-import { framePictureUrl } from "./framePictures";
+import { FRAME_PICTURES, framePictureRef, framePictureUrl } from "./framePictures";
 import { isSafeCssValue, isSafeGradient, isSafeUrl } from "./themes";
 import type { FrameLook } from "./frameLooks";
 import type { BackgroundTune, FrameStyle } from "./layers";
@@ -113,10 +113,21 @@ export function frameLookProps(look: FrameLook | undefined): {
   style?: CSSProperties;
   "data-own-fill"?: "";
   "data-own-line"?: "";
+  "data-own-image"?: "";
+  "data-shape"?: string;
 } {
   if (!look) return {};
   const css: Record<string, string> = {};
-  const out: { style?: CSSProperties; "data-own-fill"?: ""; "data-own-line"?: "" } = {};
+  const out: { style?: CSSProperties; "data-own-fill"?: ""; "data-own-line"?: ""; "data-own-image"?: ""; "data-shape"?: string } = {};
+  if (look.shape) out["data-shape"] = look.shape;
+  const picture = framePictureUrl(look.image);
+  if (picture) {
+    const ready = FRAME_PICTURES.find((f) => look.image === framePictureRef(f.id));
+    css["--frame-image"] = `url("${picture}")`;
+    css["--frame-image-slice"] = `${ready?.slice ?? 30}%`;
+    css["--frame-image-w"] = `calc(var(--u) * ${ready?.width ?? 2.5})`;
+    out["data-own-image"] = "";
+  }
   const fill = fillCss(look.bg, look.bgOpacity ?? 1);
   if (fill) {
     css["--frame-fill"] = fill;

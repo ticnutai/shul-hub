@@ -336,6 +336,8 @@ type FrameProps = {
   "data-edit"?: string;
   "data-own-fill"?: "";
   "data-own-line"?: "";
+  "data-own-image"?: "";
+  "data-shape"?: string;
   style?: CSSProperties;
 };
 

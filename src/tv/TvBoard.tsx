@@ -7,7 +7,7 @@ import { DAYS_HE } from "@community/lib/data";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { Settings } from "@community/lib/data";
-import { CORNER_SHAPE, logoCut, type TvConfig } from "./config";
+import { BOX_SHAPE_CUTS, CORNER_SHAPE, logoCut, type BoxShapeCut, type TvConfig } from "./config";
 import { layerVars } from "./layerCss";
 import { MedallionStage } from "./TvMedallion";
 import { BoardPreviewContext } from "./useDayCycle";
@@ -119,6 +119,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     let classes =
       (shape !== "auto" ? " has-frame-shape" : "") +
       (shape === "arch" ? " has-frame-arch" : "") +
+      (BOX_SHAPE_CUTS.includes(shape as BoxShapeCut) ? ` has-shape-${shape}` : "") +
       (top !== null || bottom !== null ? " has-frame-radius" : "");
 
     // The air around the panels, when the admin sets it instead of the layout.

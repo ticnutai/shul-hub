@@ -1,6 +1,20 @@
 import { isSafeCssValue } from "./themes";
 import { isSafeLayerFill } from "./layers";
 
+/** A box's own shape: square or round corners, or one of the whole-box shapes. */
+export type BoxShape = "square" | "round" | "pill" | "ellipse" | "hexagon" | "octagon";
+export const BOX_SHAPES: BoxShape[] = ["square", "round", "pill", "ellipse", "hexagon", "octagon"];
+
+/**
+ * A frame picture a box may wear: a ready one ("frame:<id>") or an uploaded
+ * one. By its form, as layers.ts checks FrameStyle.image: config.ts loads this
+ * file, and the end-to-end tests load config.ts, so it may not import the
+ * pictures themselves.
+ */
+export function isFramePicture(v: string): boolean {
+  return /^frame:[a-z0-9-]{1,40}$/.test(v) || /^https:\/\/[^\s"'()<>]{1,500}$/.test(v);
+}
+
 /**
  * One frame dressed differently from the rest.
  *
@@ -46,6 +60,10 @@ export interface FrameLook {
   line?: string;
   /** 0–6, as FrameStyle.lineWidth. */
   lineWidth?: number;
+  /** Its own shape, over the one every box has. */
+  shape?: BoxShape;
+  /** Its own frame picture, over the one every box has. */
+  image?: string;
 }
 
 export type FrameLooks = Partial<Record<FrameId, FrameLook>>;
@@ -71,6 +89,10 @@ export function normalizeFrameLooks(raw: unknown): FrameLooks {
       const value = (v as Record<string, unknown>)[f];
       if (typeof value === "number" && Number.isFinite(value)) look[f] = Math.round(Math.min(hi, Math.max(lo, value)) * 100) / 100;
     }
+    const shape = (v as Record<string, unknown>).shape;
+    if (typeof shape === "string" && (BOX_SHAPES as string[]).includes(shape)) look.shape = shape as BoxShape;
+    const image = (v as Record<string, unknown>).image;
+    if (typeof image === "string" && isFramePicture(image.trim())) look.image = image.trim();
     if (!look.bg) delete look.bgOpacity;
     if (!look.line) delete look.lineWidth;
     if (Object.keys(look).length) out[id] = look;

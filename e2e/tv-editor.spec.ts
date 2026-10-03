@@ -286,8 +286,9 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "frame");
 
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    await page.getByRole("button", { name: "זרקור זהב", exact: true }).click();
-    await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
+    // The board's background, from its gallery: a click puts it on.
+    await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
+    await expect(page.locator(".tv-frame .tv-root").first()).toHaveClass(/has-bg-gradient/);
     await expectNotFrozen(page, "gradient");
 
     await page.getByRole("button", { name: /תצוגת מסך שבת/ }).click();

@@ -28,7 +28,7 @@ test.describe("TV editor, by layer", () => {
   const bg = (el: import("@playwright/test").Locator) => el.evaluate((e) => getComputedStyle(e).backgroundColor);
 
   test("the design tab is backgrounds, frames and text; the layout tab is where things stand", async ({ page }) => {
-    for (const name of ["ערכות נושא ועיצובים", "רקעים", "מסגרות", "טקסט"]) await expect(heading(page, name)).toBeVisible();
+    for (const name of ["ערכות נושא ועיצובים", "רקעים", "תיבות ומסגרות", "טקסט"]) await expect(heading(page, name)).toBeVisible();
     await expect(page.getByTestId("layer-background")).toBeVisible();
     await expect(page.getByTestId("layer-frames")).toBeVisible();
     await expect(page.getByTestId("layer-text")).toBeVisible();
@@ -56,9 +56,11 @@ test.describe("TV editor, by layer", () => {
     await expectNotFrozen(page, "background sliders");
   });
 
-  test("every frame gets a background from the same library, and one frame its own", async ({ page }) => {
-    const layer = page.getByTestId("layer-background");
-    await layer.getByLabel("רקע של").selectOption("frames");
+  test("every box gets a background from the same gallery, and one box its own - beside its shape and line", async ({ page }) => {
+    // A box's background is with the rest of the box, not in a second place.
+    const frames = page.getByTestId("layer-frames");
+    const layer = frames.getByTestId("box-layer-background");
+    await expect(frames.getByTestId("box-background-gallery")).toBeVisible();
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#203a5c");
     const prayers = root(page).locator('[data-frame="prayers"]').first();
@@ -66,8 +68,8 @@ test.describe("TV editor, by layer", () => {
     await expect.poll(() => bg(prayers)).toBe("rgb(32, 58, 92)");
     await expect.poll(() => bg(zmanim)).toBe("rgb(32, 58, 92)");
 
-    // One frame apart: the zmanim in burgundy, the rest stay blue.
-    await layer.getByLabel("רקע של").selectOption("frame:zmanim");
+    // One box apart: the zmanim in burgundy, the rest stay blue.
+    await frames.getByLabel("מסגרות של").selectOption("frame:zmanim");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
     await expect.poll(() => bg(zmanim)).toBe("rgb(90, 26, 42)");
@@ -77,6 +79,32 @@ test.describe("TV editor, by layer", () => {
     await layer.getByLabel("אטימות").fill("0.5");
     await expect.poll(() => bg(zmanim)).toBe("rgba(90, 26, 42, 0.5)");
     await expectNotFrozen(page, "frame backgrounds");
+  });
+
+  test("boxes: a ready one, a shape of its own for one box, and a frame from the gallery", async ({ page }) => {
+    const frames = page.getByTestId("layer-frames");
+    // A ready box: a hexagon, its gold line drawn as a ring that follows the cut.
+    await frames.getByTestId("box-presets").getByRole("button", { name: "משושה זהב" }).click();
+    await expect(root(page)).toHaveClass(/has-shape-hexagon/);
+    const prayers = root(page).locator('[data-frame="prayers"]').first();
+    await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e).clipPath)).toContain("polygon");
+    await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e, "::after").clipPath)).toContain("evenodd");
+
+    // One box apart: the zmanim an ellipse, the others stay hexagons.
+    await frames.getByLabel("מסגרות של").selectOption("frame:zmanim");
+    await frames.getByTestId("box-shapes").getByRole("button", { name: "אליפסה" }).click();
+    const zmanim = root(page).locator('[data-frame="zmanim"]').first();
+    await expect(zmanim).toHaveAttribute("data-shape", "ellipse");
+    await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).clipPath)).toBe("none");
+    await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e).clipPath)).toContain("polygon");
+
+    // And a frame of its own from the gallery; a second click takes it off.
+    const pictures = frames.getByTestId("frame-pictures");
+    await pictures.getByRole("button", { name: "קו כפול זהב" }).click();
+    await expect(zmanim).toHaveAttribute("data-own-image", "");
+    await pictures.getByRole("button", { name: "קו כפול זהב" }).click();
+    await expect(zmanim).not.toHaveAttribute("data-own-image", "");
+    await expectNotFrozen(page, "boxes");
   });
 
   test("frames get a line, depth and the arch shape", async ({ page }) => {
@@ -105,8 +133,9 @@ test.describe("TV editor, by layer", () => {
     // A frame style reaches its frames, and one frame can stand apart.
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("skin-picker").getByRole("button").nth(1).click();
-    const layer = page.getByTestId("layer-background");
-    await layer.getByLabel("רקע של").selectOption("frame:clock");
+    const frames = page.getByTestId("layer-frames");
+    await frames.getByLabel("מסגרות של").selectOption("frame:clock");
+    const layer = frames.getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
     await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(90, 26, 42)");

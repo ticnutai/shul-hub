@@ -3,7 +3,8 @@ import { ImagePlus, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
-import { FRAME_IDS, FRAME_LABELS, setFrameLook, type FrameId } from "@/tv/frameLooks";
+import { BOX_SHAPES, FRAME_IDS, FRAME_LABELS, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
+import { BOX_PRESETS, applyBoxPreset, boxPresetCss, boxShapeCss, wearsBoxPreset } from "@/tv/boxPresets";
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
@@ -227,8 +228,22 @@ const flat = (c: string) => `linear-gradient(180deg, ${c}, ${c})`;
 
 type Source = "colour" | "gradient" | "picture" | "painted";
 
-export function BackgroundLayer({ config, saved, onEdit, setPreview, colourFields }: LayerProps) {
-  const [target, setTarget] = useState("board");
+export function BackgroundLayer({
+  config,
+  saved,
+  onEdit,
+  setPreview,
+  colourFields,
+  fixedTarget = "board",
+}: LayerProps & {
+  /**
+   * Whose background: "board" (its own section), "frames" or "frame:<id>"
+   * (a box's background, inside "תיבות ומסגרות" - with its shape, its line and
+   * its frame, rather than in a second place). One gallery either way.
+   */
+  fixedTarget?: string;
+}) {
+  const target = fixedTarget;
   const frame = frameOf(target);
   const onBoard = target === "board";
   const painted = config.screenLayout === "illustrated";
@@ -337,22 +352,9 @@ export function BackgroundLayer({ config, saved, onEdit, setPreview, colourField
     : { fill: picture ? null : current, picture: picture ? current : null, overlay: null, strength: saved.backgroundDim, tune: saved.backgroundTune };
 
   return (
-    <div className="space-y-3" data-testid="layer-background">
-      <TargetPicker
-        label="רקע של"
-        value={target}
-        onChange={(v) => {
-          setPreview(null);
-          setTarget(v);
-        }}
-        top={[
-          { value: "board", label: "כל הלוח" },
-          { value: "frames", label: "כל המסגרות" },
-        ]}
-        groups={[{ label: "מסגרת אחת", options: frameOptions(config) }]}
-      />
-
+    <div className="space-y-3" data-testid={onBoard ? "layer-background" : "box-layer-background"}>
       <BackgroundGallery
+        testIds={onBoard ? "" : "box-"}
         saved={saved}
         onEdit={onEdit}
         look={look}
@@ -367,7 +369,7 @@ export function BackgroundLayer({ config, saved, onEdit, setPreview, colourField
         }}
       />
 
-      <div className="space-y-3 rounded-lg border p-3" data-testid="background-now">
+      <div className="space-y-3 rounded-lg border p-3" data-testid={onBoard ? "background-now" : "box-background-now"}>
         <div className="text-sm font-medium">{onBoard ? "הרקע של הלוח עכשיו" : "הרקע עכשיו"}</div>
         <Segments label="סוג הרקע" value={source === "painted" ? "picture" : source} onChange={(v) => setSource(v as Source)} options={sources} />
 
@@ -498,7 +500,10 @@ function BackgroundGallery({
   onPick,
   onUpload,
   uploading,
+  testIds = "",
 }: {
+  /** Before its test ids: "" for the board's, "box-" for a box's. */
+  testIds?: string;
   saved: TvConfig;
   onEdit: Edit;
   look: Look;
@@ -532,7 +537,7 @@ function BackgroundGallery({
   };
 
   return (
-    <div className="space-y-2" data-testid="background-gallery">
+    <div className="space-y-2" data-testid={`${testIds}background-gallery`}>
       <div className="flex flex-wrap items-center gap-1.5">
         {GALLERY_FILTERS.map((f) => (
           <button
@@ -594,7 +599,7 @@ function BackgroundGallery({
         })}
       </div>
       {(!kept || changed) && Boolean(look.fill || look.picture) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-2 text-xs" data-testid="background-keep">
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-2 text-xs" data-testid={`${testIds}background-keep`}>
           <span>הרקע שעל הלוח עכשיו {changed && mine ? `שונה מ"${mine.name}"` : "לא שמור בגלריה"}:</span>
           {changed && mine && (
             <Button
@@ -691,21 +696,63 @@ function PictureLayer({ saved, onEdit }: { saved: TvConfig; onEdit: Edit }) {
 
 /* -------------------------------------------------------------- מסגרות -- */
 
-export function FramesLayer({ config, saved, onEdit, colourFields }: LayerProps) {
+/** A part of a section: a small heading over its controls. */
+function Part({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
+  return (
+    <div className="space-y-2 rounded-lg border p-3" data-testid={testId}>
+      <div className="text-sm font-medium">{title}</div>
+      {children}
+    </div>
+  );
+}
+
+const BOX_SHAPE_NAMES: Record<BoxShape, string> = {
+  square: "ישר",
+  round: "מעוגל",
+  pill: "כמוסה",
+  ellipse: "אליפסה",
+  hexagon: "משושה",
+  octagon: "מתומן",
+};
+
+/**
+ * Everything about the boxes, in one place: ready boxes, a shape, a
+ * background (from the same gallery as the board's), a line and how far they
+ * stand out, and a frame picture - for every box, or for one box apart.
+ * A box's background used to be under "רקעים" and its line here: two places
+ * for one box.
+ */
+export function FramesLayer(props: LayerProps) {
+  const { config, saved, onEdit, colourFields } = props;
   const [target, setTarget] = useState("frames");
   const frame = frameOf(target);
   const painted = config.screenLayout === "illustrated";
   const fs = saved.frameStyle;
+  const own = frame ? saved.frameLooks[frame] : undefined;
   const setFs = (patch: Partial<FrameStyle>) =>
     onEdit("layer-frames", (c) => ({ ...c, frameStyle: { ...c.frameStyle, ...patch } }));
+  const setOwn = (key: string, patch: Parameters<typeof setFrameLook>[2]) =>
+    frame && onEdit(`layer-frames:${frame}:${key}`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, patch) }));
+
+  /** The frame picture on every box, or on this one; null takes it off. */
+  const wearPicture = (ref: string | null) => {
+    if (frame) return setOwn("image", { image: ref });
+    const ready = FRAME_PICTURES.find((f) => framePictureRef(f.id) === ref);
+    setFs(ready ? { image: ref, imageSlice: ready.slice, imageWidth: ready.width } : { image: ref });
+  };
+  const wearing = frame ? own?.image ?? null : fs.image;
+
   const [uploading, setUploading] = useState(false);
   const uploadFrame = async (files: FileList | null) => {
     if (!files?.length) return;
     setUploading(true);
     try {
-      const [url] = await uploadImages(files);
-      if (url) setFs({ image: url });
-      toast.success("צורת המסגרת נוספה");
+      const urls = await uploadImages(files);
+      if (!urls.length) return;
+      // Kept in the gallery of frames, whether a box wears it or not.
+      onEdit("frame-uploads", (c) => ({ ...c, frameUploads: [...new Set([...urls, ...c.frameUploads])].slice(0, 40) }));
+      wearPicture(urls[0]!);
+      toast.success("המסגרת הועלתה ונשמרה בגלריה");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
     } finally {
@@ -713,48 +760,97 @@ export function FramesLayer({ config, saved, onEdit, colourFields }: LayerProps)
     }
   };
 
+  const pictures = [
+    ...FRAME_PICTURES.map((f) => ({ ref: framePictureRef(f.id), name: f.name, url: f.url, uploaded: false })),
+    ...saved.frameUploads.map((u, i) => ({ ref: u, name: `מסגרת שלי ${i + 1}`, url: u, uploaded: true })),
+  ];
+
   return (
     <div className="space-y-3" data-testid="layer-frames">
       <TargetPicker
         label="מסגרות של"
         value={target}
         onChange={setTarget}
-        top={[{ value: "frames", label: "כל המסגרות" }]}
-        groups={[{ label: "מסגרת אחת", options: frameOptions(config) }]}
+        top={[{ value: "frames", label: "כל התיבות" }]}
+        groups={[{ label: "תיבה אחת", options: frameOptions(config) }]}
       />
 
-      {frame ? (
-        <div className="space-y-2 rounded-lg border p-3">
-          <ColourChoice
-            label="קו מסביב"
-            value={saved.frameLooks[frame]?.line}
-            fallback="#c9a227"
-            unsetLabel="כמו כל המסגרות"
-            onChange={(v) => onEdit(`layer-frames:${frame}:line`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { line: v }) }))}
-          />
-          {saved.frameLooks[frame]?.line && (
-            <Range
-              label="עובי הקו"
-              value={saved.frameLooks[frame]?.lineWidth ?? 2}
-              min={0.5}
-              max={6}
-              step={0.5}
-              show={(v) => String(v)}
-              onChange={(v) => onEdit(`layer-frames:${frame}:w`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { lineWidth: v }) }))}
-            />
-          )}
-          <p className="text-[11px] text-muted-foreground">
-            הסגנון והצורה משותפים לכל המסגרות. הרקע של המסגרת הזו נבחר ב"רקעים", והטקסט שלה ב"טקסט".
-          </p>
+      <Part title="תיבות מוכנות" testId="box-presets">
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          {BOX_PRESETS.map((p) => {
+            const on = !painted && wearsBoxPreset(saved, p, frame);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                aria-pressed={on}
+                aria-label={p.name}
+                onClick={() => onEdit(`box-preset:${target}`, (c) => applyBoxPreset(c, p, frame))}
+                className={`rounded-lg border p-2 text-center transition ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+              >
+                <span className="mx-auto mb-1 block h-9 w-14" style={boxPresetCss(p)} aria-hidden />
+                <span className="block text-[11px] font-medium leading-tight">{p.name}</span>
+              </button>
+            );
+          })}
         </div>
+        <p className="text-[11px] text-muted-foreground">כל חלק אפשר לשנות אחר כך למטה, בנפרד.</p>
+      </Part>
+
+      <Part title="צורת התיבה" testId="box-shape">
+        {frame ? (
+          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7" data-testid="box-shapes">
+            {([null, ...BOX_SHAPES] as Array<BoxShape | null>).map((sh) => {
+              const on = (own?.shape ?? null) === sh;
+              return (
+                <button
+                  key={sh ?? "all"}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => setOwn("shape", { shape: sh })}
+                  className={`rounded-lg border p-1.5 text-center ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+                >
+                  <span
+                    className="mx-auto mb-1 block h-7 w-11 border-2 border-[#c9a227] bg-[#12243f]"
+                    style={sh ? boxShapeCss(sh) : { borderStyle: "dashed", borderRadius: 6 }}
+                    aria-hidden
+                  />
+                  <span className="block text-[11px] leading-tight">{sh ? BOX_SHAPE_NAMES[sh] : "כמו כולן"}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <>
+            <StylePicker config={config} onEdit={onEdit} />
+            <FrameCorners config={config} onEdit={onEdit} />
+          </>
+        )}
+      </Part>
+
+      <Part title="רקע התיבה" testId="box-background">
+        <BackgroundLayer key={target} {...props} fixedTarget={target} />
+      </Part>
+
+      {painted && !frame ? (
+        <PaintedFrameLook config={saved} onEdit={onEdit} />
       ) : (
-        <>
-          <StylePicker config={config} onEdit={onEdit} />
-          <FrameCorners config={config} onEdit={onEdit} />
-          {painted ? (
-            <PaintedFrameLook config={saved} onEdit={onEdit} />
+        <Part title="קו ובליטה" testId="frame-style">
+          {frame ? (
+            <>
+              <ColourChoice
+                label="קו מסביב"
+                value={own?.line}
+                fallback="#c9a227"
+                unsetLabel="כמו כל התיבות"
+                onChange={(v) => setOwn("line", { line: v })}
+              />
+              {own?.line && (
+                <Range label="עובי הקו" value={own.lineWidth ?? 2} min={0.5} max={6} step={0.5} show={(v) => String(v)} onChange={(v) => setOwn("w", { lineWidth: v })} />
+              )}
+            </>
           ) : (
-            <div className="space-y-2 rounded-lg border p-3" data-testid="frame-style">
+            <>
               <ColourChoice label="קו מסביב" value={fs.line} fallback="#c9a227" unsetLabel="לפי הסגנון" onChange={(v) => setFs({ line: v })} />
               {fs.line && (
                 <Range label="עובי הקו" value={fs.lineWidth} min={0.5} max={6} step={0.5} show={(v) => String(v)} onChange={(v) => setFs({ lineWidth: v })} />
@@ -768,65 +864,71 @@ export function FramesLayer({ config, saved, onEdit, colourFields }: LayerProps)
                 show={(v) => (v === 0 ? "לפי הסגנון" : pct(v))}
                 onChange={(v) => setFs({ depth: v })}
               />
-              <div className="space-y-2 border-t pt-2" data-testid="frame-pictures">
-                <div className="text-xs font-medium">מסגרת מתמונה</div>
-                <p className="text-[11px] leading-tight text-muted-foreground">
-                  הפינות נשמרות, הצלעות נמתחות לאורך כל מסגרת. מוכנות (מהלוחות המצוירים), או תמונה משלכם.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {FRAME_PICTURES.map((f) => {
-                    const on = fs.image === framePictureRef(f.id);
-                    return (
-                      <button
-                        key={f.id}
-                        type="button"
-                        aria-pressed={on}
-                        onClick={() =>
-                          setFs(on ? { image: null } : { image: framePictureRef(f.id), imageSlice: f.slice, imageWidth: f.width })
-                        }
-                        className={`w-24 overflow-hidden rounded-md border text-center text-[11px] ${
-                          on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
-                        }`}
-                      >
-                        <img src={f.url} alt="" className="aspect-square w-full object-cover" loading="lazy" />
-                        <span className="block py-0.5">{f.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
-                    <label className="cursor-pointer">
-                      <ImagePlus className="size-4" /> הוספת צורה משלכם
-                      <input type="file" accept="image/*" className="sr-only" onChange={(e) => void uploadFrame(e.target.files)} />
-                    </label>
-                  </Button>
-                  {fs.image && (
-                    <>
-                      <img src={framePictureUrl(fs.image) ?? ""} alt="" className="h-10 w-16 rounded object-contain" />
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setFs({ image: null })}>
-                        <Trash2 className="size-4" /> הסרה
-                      </Button>
-                    </>
-                  )}
-                </div>
-                {fs.image && (
-                  <>
-                    <Range label="עובי המסגרת" value={fs.imageWidth} min={0.5} max={6} step={0.25} show={(v) => String(v)} onChange={(v) => setFs({ imageWidth: v })} />
-                    <Range label="כמה מהתמונה היא המסגרת" value={fs.imageSlice} min={10} max={45} step={1} show={(v) => `${v}%`} onChange={(v) => setFs({ imageSlice: v })} />
-                  </>
+              <button type="button" className="text-xs underline" onClick={() => setFs({ ...DEFAULT_FRAME_STYLE, fill: fs.fill, fillOpacity: fs.fillOpacity })}>
+                איפוס הקו, הבליטה והמסגרת
+              </button>
+            </>
+          )}
+        </Part>
+      )}
+
+      <Part title="מסגרת מיוחדת" testId="frame-pictures">
+        <p className="text-[11px] leading-tight text-muted-foreground">
+          הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה או מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה.
+          {" "}בתיבה משושה או מתומנת המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה.
+        </p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+          <label
+            className={`flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-dashed text-[11px] hover:border-primary ${uploading ? "opacity-60" : ""}`}
+          >
+            <ImagePlus className="size-4" />
+            {uploading ? "מעלה…" : "העלאת מסגרת"}
+            <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={(e) => void uploadFrame(e.target.files)} />
+          </label>
+          {pictures.map((f) => {
+            const on = wearing === f.ref;
+            return (
+              <div key={f.ref} className="group relative">
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={f.name}
+                  onClick={() => wearPicture(on ? null : f.ref)}
+                  className={`block w-full overflow-hidden rounded-md border text-center text-[11px] ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+                >
+                  <span className="block aspect-square w-full bg-[#16304f] p-1">
+                    <img src={f.url} alt="" className="size-full object-contain" loading="lazy" />
+                  </span>
+                  <span className="block truncate py-0.5">{f.name}</span>
+                </button>
+                {f.uploaded && (
+                  <button
+                    type="button"
+                    aria-label={`מחיקת ${f.name} מהגלריה`}
+                    title="מחיקה מהגלריה"
+                    onClick={() => onEdit("frame-uploads:delete", (c) => ({ ...c, frameUploads: c.frameUploads.filter((u) => u !== f.ref) }))}
+                    className="absolute -left-1 -top-1 flex size-5 items-center justify-center rounded-full border bg-background text-[11px] opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100"
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
-              <button type="button" className="text-xs underline" onClick={() => setFs({ ...DEFAULT_FRAME_STYLE, fill: fs.fill, fillOpacity: fs.fillOpacity })}>
-                איפוס הקו, הבליטה והצורה
-              </button>
-            </div>
-          )}
-          <details className="rounded-md border p-2">
-            <summary className="cursor-pointer text-xs font-medium">צבעי המסגרות של ערכת הנושא</summary>
-            <div className="mt-2">{colourFields(THEME_VAR_LAYERS.frames)}</div>
-          </details>
-        </>
+            );
+          })}
+        </div>
+        {!frame && fs.image && (
+          <>
+            <Range label="עובי המסגרת" value={fs.imageWidth} min={0.5} max={6} step={0.25} show={(v) => String(v)} onChange={(v) => setFs({ imageWidth: v })} />
+            <Range label="כמה מהתמונה היא המסגרת" value={fs.imageSlice} min={10} max={45} step={1} show={(v) => `${v}%`} onChange={(v) => setFs({ imageSlice: v })} />
+          </>
+        )}
+      </Part>
+
+      {!frame && (
+        <details className="rounded-md border p-2">
+          <summary className="cursor-pointer text-xs font-medium">צבעי המסגרות של ערכת הנושא</summary>
+          <div className="mt-2">{colourFields(THEME_VAR_LAYERS.frames)}</div>
+        </details>
       )}
     </div>
   );

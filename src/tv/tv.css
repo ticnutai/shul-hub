@@ -5347,6 +5347,116 @@
   padding-top: calc(var(--u) * 3);
 }
 
+/* ---------------------------------------------------------- box shapes -- */
+/*
+ * The shape of the whole box (config.BOX_SHAPE_CUTS, frameLooks.BoxShape):
+ * for every box (has-shape-*) or for one (data-shape, which wins). Round ones
+ * are a radius, so the line, the depth and the skin follow them as they are.
+ * Cut ones are a clip path: a border would be cut off with the box, so their
+ * line is drawn again as a ring that follows the cut (::after, evenodd), and
+ * their text is set in from the cut so that it stays inside.
+ */
+.tv-root :is(.tv-panel, .tv-card)[data-shape="square"] {
+  border-radius: 0 !important;
+  corner-shape: round;
+}
+
+.tv-root :is(.tv-panel, .tv-card)[data-shape="round"] {
+  border-radius: calc(var(--u) * 2.2) !important;
+  corner-shape: round;
+}
+
+.tv-root.has-shape-pill :is(.tv-panel, .tv-card):not([data-shape]),
+.tv-root :is(.tv-panel, .tv-card)[data-shape="pill"] {
+  border-radius: 999px !important;
+  clip-path: none !important;
+  corner-shape: round;
+  padding-inline: calc(var(--u) * 4.5) !important;
+}
+
+.tv-root.has-shape-ellipse :is(.tv-panel, .tv-card):not([data-shape]),
+.tv-root :is(.tv-panel, .tv-card)[data-shape="ellipse"] {
+  border-radius: 50% !important;
+  clip-path: none !important;
+  corner-shape: round;
+  padding: 7% 13% !important;
+}
+
+.tv-root.has-shape-hexagon :is(.tv-panel, .tv-card):not([data-shape]),
+.tv-root :is(.tv-panel, .tv-card)[data-shape="hexagon"] {
+  --cut: min(14%, calc(var(--u) * 7));
+  position: relative;
+  border-radius: 0 !important;
+  border-image: none !important;
+  outline: none !important;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% 50%, calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 50%) !important;
+  padding-inline: calc(var(--cut) + var(--u) * 1.6) !important;
+}
+
+/* A skin's own edge or carving cannot follow the cut: off, unless it is the ring below. */
+.tv-root.has-shape-hexagon :is(.tv-panel, .tv-card):not([data-shape])::after,
+.tv-root :is(.tv-panel, .tv-card)[data-shape="hexagon"]::after {
+  content: none !important;
+}
+
+.tv-root.has-frame-line.has-shape-hexagon :is(.tv-panel, .tv-card):not([data-shape])::after,
+.tv-root.has-shape-hexagon :is(.tv-panel, .tv-card)[data-own-line]:not([data-shape])::after,
+.tv-root.has-frame-line :is(.tv-panel, .tv-card)[data-shape="hexagon"]::after,
+.tv-root :is(.tv-panel, .tv-card)[data-shape="hexagon"][data-own-line]::after {
+  --w: var(--frame-line-w, 3px);
+  content: "" !important;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border: 0;
+  border-radius: 0;
+  background: var(--frame-line) !important;
+  clip-path: polygon(evenodd, var(--cut) 0, calc(100% - var(--cut)) 0, 100% 50%, calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 50%, calc(var(--cut) + var(--w) * 0.6) var(--w), calc(100% - var(--cut) - var(--w) * 0.6) var(--w), calc(100% - var(--w)) 50%, calc(100% - var(--cut) - var(--w) * 0.6) calc(100% - var(--w)), calc(var(--cut) + var(--w) * 0.6) calc(100% - var(--w)), var(--w) 50%) !important;
+}
+
+.tv-root.has-shape-octagon :is(.tv-panel, .tv-card):not([data-shape]),
+.tv-root :is(.tv-panel, .tv-card)[data-shape="octagon"] {
+  --cut: min(20%, calc(var(--u) * 4.5));
+  position: relative;
+  border-radius: 0 !important;
+  border-image: none !important;
+  outline: none !important;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut)) !important;
+  padding-inline: calc(var(--cut) + var(--u) * 1.6) !important;
+}
+
+/* A skin's own edge or carving cannot follow the cut: off, unless it is the ring below. */
+.tv-root.has-shape-octagon :is(.tv-panel, .tv-card):not([data-shape])::after,
+.tv-root :is(.tv-panel, .tv-card)[data-shape="octagon"]::after {
+  content: none !important;
+}
+
+.tv-root.has-frame-line.has-shape-octagon :is(.tv-panel, .tv-card):not([data-shape])::after,
+.tv-root.has-shape-octagon :is(.tv-panel, .tv-card)[data-own-line]:not([data-shape])::after,
+.tv-root.has-frame-line :is(.tv-panel, .tv-card)[data-shape="octagon"]::after,
+.tv-root :is(.tv-panel, .tv-card)[data-shape="octagon"][data-own-line]::after {
+  --w: var(--frame-line-w, 3px);
+  content: "" !important;
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  border: 0;
+  border-radius: 0;
+  background: var(--frame-line) !important;
+  clip-path: polygon(evenodd, var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut), calc(var(--cut) + var(--w) * 0.4) var(--w), calc(100% - var(--cut) - var(--w) * 0.4) var(--w), calc(100% - var(--w)) calc(var(--cut) + var(--w) * 0.4), calc(100% - var(--w)) calc(100% - var(--cut) - var(--w) * 0.4), calc(100% - var(--cut) - var(--w) * 0.4) calc(100% - var(--w)), calc(var(--cut) + var(--w) * 0.4) calc(100% - var(--w)), var(--w) calc(100% - var(--cut) - var(--w) * 0.4), var(--w) calc(var(--cut) + var(--w) * 0.4)) !important;
+}
+
+/* One box's own frame picture (frameLooks.image), as every box's is drawn. */
+.tv-root .tv-panel[data-own-image],
+.tv-root .tv-card[data-own-image] {
+  border-style: solid !important;
+  border-color: transparent !important;
+  border-width: var(--frame-image-w) !important;
+  border-image: var(--frame-image) var(--frame-image-slice) fill / var(--frame-image-w) stretch !important;
+}
+
 /* ------------------------------------------------------- the medallion -- */
 /*
  * The painted boards' arrangement, built from ordinary frames (TvMedallion):

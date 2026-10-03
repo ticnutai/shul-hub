@@ -283,8 +283,17 @@ export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
  * corner, a corner scooped inwards, or a notch. They are CSS corner-shape
  * values; a browser without it still gets the roundness.
  */
-export type FrameShape = "auto" | "round" | "squircle" | "bevel" | "scoop" | "notch" | "arch";
-export const FRAME_SHAPES: FrameShape[] = ["auto", "round", "squircle", "bevel", "scoop", "notch", "arch"];
+export type FrameShape = "auto" | "round" | "squircle" | "bevel" | "scoop" | "notch" | "arch" | BoxShapeCut;
+/**
+ * Shapes of the whole box rather than of its corners: a capsule and an
+ * ellipse (round, so a line and a shadow follow them as they are), and a
+ * hexagon and an octagon (cut out, with the line drawn as a ring that
+ * follows the cut - a border would be cut off with it). Their text is set in
+ * from the cut so that it stays inside.
+ */
+export type BoxShapeCut = "pill" | "ellipse" | "hexagon" | "octagon";
+export const BOX_SHAPE_CUTS: BoxShapeCut[] = ["pill", "ellipse", "hexagon", "octagon"];
+export const FRAME_SHAPES: FrameShape[] = ["auto", "round", "squircle", "bevel", "scoop", "notch", "arch", ...BOX_SHAPE_CUTS];
 
 /** What each shape is in CSS. */
 export const CORNER_SHAPE: Record<Exclude<FrameShape, "auto">, string> = {
@@ -296,6 +305,11 @@ export const CORNER_SHAPE: Record<Exclude<FrameShape, "auto">, string> = {
   // The top as an arch, like the tablets: round corners, and its own radius
   // rule in tv.css (has-frame-arch), since no corner-shape draws an arch.
   arch: "round",
+  // The whole box's shape (has-shape-*), not its corners'.
+  pill: "round",
+  ellipse: "round",
+  hexagon: "round",
+  octagon: "round",
 };
 
 /** How round a corner may be set to, in --u units. */
@@ -527,6 +541,8 @@ export interface TvConfig {
   gradients: TvGradient[];
   /** The shul's own backgrounds, beside the ready-made ones in one gallery (backgrounds.ts). */
   backgrounds: SavedBackground[];
+  /** Frame pictures the shul uploaded, kept beside the ready-made ones whether a box wears them or not. */
+  frameUploads: string[];
   /** A gradient behind the whole board; null = the theme's own background. */
   backgroundGradient: string | null;
   font: TvFontId;
@@ -712,6 +728,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   designs: [],
   gradients: [],
   backgrounds: [],
+  frameUploads: [],
   backgroundGradient: null,
   styles: {},
   screenLayout: "rotate",
@@ -1177,6 +1194,13 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     designs,
     gradients: normalizeGradients(raw.gradients),
     backgrounds: normalizeBackgrounds(raw.backgrounds, normalizeGradients(raw.gradients)),
+    frameUploads: [
+      ...new Set(
+        (Array.isArray(raw.frameUploads) ? raw.frameUploads : [])
+          .filter((u): u is string => typeof u === "string" && /^https:\/\/[^\s"'()<>]{1,500}$/.test(u.trim()))
+          .map((u) => u.trim()),
+      ),
+    ].slice(0, 40),
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
