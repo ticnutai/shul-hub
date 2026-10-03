@@ -81,6 +81,16 @@ export function boardFramePieces(frame: BoardFrame, sides: BoardFrameTune["sides
   }
 }
 
+/**
+ * The handles a piece shows while the board is edited by hand: "size" on its
+ * inner edge (thicker, wider), "len-a" and "len-b" at its two ends (longer).
+ */
+export function pieceHandles(piece: string): string[] {
+  if (/tv-bf-(column|curtain|beam|drape)/.test(piece)) return ["size", "len-a", "len-b"];
+  if (/tv-bf-(carved|line is-outer)/.test(piece)) return ["size"];
+  return [];
+}
+
 /** The variables the pieces and the room around them are drawn from. */
 export function boardFrameVars(t: BoardFrameTune): Record<string, string> {
   return {
@@ -89,4 +99,75 @@ export function boardFrameVars(t: BoardFrameTune): Record<string, string> {
     "--bf-x": `calc(var(--u) * ${t.x})`,
     "--bf-y": `calc(var(--u) * ${t.y})`,
   };
+}
+
+/** The size a piece is drawn at when its thickness is 1, in --u (tv.css). */
+const PIECE_THICKNESS: Array<[RegExp, number]> = [
+  [/tv-bf-column/, 6.4],
+  [/tv-bf-curtain/, 8.5],
+  [/tv-bf-beam/, 1.6],
+  [/tv-bf-drape/, 9],
+  [/tv-bf-rod/, 1.1],
+  [/tv-bf-carved/, 2.4],
+  [/tv-bf-line/, 0.9],
+];
+
+/**
+ * A drag on a piece of the board's frame, as the knobs it moves.
+ *
+ * `dx`/`dy` are the pointer's travel in screen pixels and `u` one --u in the
+ * same pixels, so it lands the same at any preview scale. Without a handle
+ * the piece is moved; with one it is stretched - at an end it grows longer
+ * (and, being centred, its middle follows the end that moved), at its inner
+ * edge thicker. `fromRight`/`fromBottom` say where on the screen the drag
+ * started, which is what tells a frame around the screen which way is in.
+ */
+export function dragTune(
+  piece: string,
+  handle: string | null,
+  t0: BoardFrameTune,
+  move: { dx: number; dy: number; u: number; width: number; height: number; fromRight: boolean; fromBottom: boolean },
+): BoardFrameTune {
+  const { dx, dy, u, width, height } = move;
+  const upright = /tv-bf-(column|curtain)/.test(piece);
+  const lying = /tv-bf-(beam|drape|rod)/.test(piece);
+  const right = /is-right/.test(piece);
+  const bottom = /is-bottom/.test(piece);
+  const next = { ...t0 };
+  if (!handle) {
+    if (upright) {
+      next.x = t0.x + (right ? -dx : dx) / u;
+      next.y = t0.y + dy / u;
+    } else if (lying) {
+      next.y = t0.y + (bottom ? -dy : dy) / u;
+    } else {
+      next.x = t0.x + (move.fromRight ? -dx : dx) / u;
+      next.y = t0.y + (move.fromBottom ? -dy : dy) / u;
+    }
+  } else if (handle === "size") {
+    const thick = PIECE_THICKNESS.find(([re]) => re.test(piece))?.[1] ?? 1;
+    const inward = upright ? (right ? -dx : dx) : lying && bottom ? -dy : dy;
+    next.size = t0.size + inward / (thick * u);
+  } else if (upright) {
+    // The column's run is the board less a little at each end; a curtain's is all of it.
+    const run = /tv-bf-column/.test(piece) ? height - 1.2 * u : height;
+    next.length = t0.length + (handle === "len-b" ? dy : -dy) / run;
+    next.y = t0.y + dy / 2 / u;
+  } else if (lying) {
+    next.length = t0.length + (2 * (handle === "len-b" ? dx : -dx)) / width;
+  }
+  return normalizeBoardFrameTune(next);
+}
+
+/** The knobs as the board is drawing them now (its inline variables), so a drag starts from what is seen. */
+export function readTuneFrom(root: HTMLElement): BoardFrameTune {
+  const num = (name: string, re = /(-?[\d.]+)/) => Number(re.exec(root.style.getPropertyValue(name))?.[1] ?? NaN);
+  const sides = /is-bf-sides-(right|left)/.exec(root.className)?.[1] as BoardFrameTune["sides"] | undefined;
+  return normalizeBoardFrameTune({
+    size: num("--bf-s"),
+    length: num("--bf-l"),
+    x: num("--bf-x", /\*\s*(-?[\d.]+)/),
+    y: num("--bf-y", /\*\s*(-?[\d.]+)/),
+    sides: sides ?? "both",
+  });
 }

@@ -74,6 +74,46 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "board frame tuned");
   });
 
+  test("on the board itself, a column is dragged to move it and by its handles to stretch it", async ({ page }) => {
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await boardFrames(page).filter({ hasText: "עמודי זהב" }).click();
+    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+    const column = root(page).locator(".tv-bf-column.is-right");
+    await expect(column.locator("[data-bf-handle]")).toHaveCount(3);
+    const drag = async (from: { x: number; y: number }, by: { x: number; y: number }) => {
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(from.x + by.x / 2, from.y + by.y / 2, { steps: 4 });
+      await page.mouse.move(from.x + by.x, from.y + by.y, { steps: 4 });
+      await page.mouse.up();
+    };
+    const centre = async (l: import("@playwright/test").Locator) => {
+      const b = (await l.boundingBox())!;
+      return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+    };
+
+    // Wider: its inner handle, pulled toward the middle.
+    const w0 = (await column.boundingBox())!.width;
+    await drag(await centre(column.locator('[data-bf-handle="size"]')), { x: -30, y: 0 });
+    await expect.poll(async () => (await column.boundingBox())!.width).toBeGreaterThan(w0 + 15);
+
+    // Shorter: its lower end, pulled up.
+    const h0 = (await column.boundingBox())!.height;
+    await drag(await centre(column.locator('[data-bf-handle="len-b"]')), { x: 0, y: -60 });
+    await expect.poll(async () => (await column.boundingBox())!.height).toBeLessThan(h0 - 30);
+
+    // Moved: the column itself, toward the middle and down.
+    const before = (await column.boundingBox())!;
+    await drag({ x: before.x + before.width / 2, y: before.y + before.height * 0.3 }, { x: -25, y: 20 });
+    await expect.poll(async () => (await column.boundingBox())!.x).toBeLessThan(before.x - 10);
+    await expect.poll(async () => (await column.boundingBox())!.y).toBeGreaterThan(before.y + 8);
+
+    // What was dragged is in the controls too, and undo takes it back.
+    await page.getByRole("button", { name: "סיום עריכה בלוח" }).click();
+    await expect(page.getByTestId("board-frame-controls").getByLabel("רוחב העמודים", { exact: true })).not.toHaveValue("1");
+    await expectNotFrozen(page, "board frame dragged");
+  });
+
   test("a title style for every box, and one box apart", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("title-styles").first().getByRole("button", { name: "כותרת: סרט" }).click();

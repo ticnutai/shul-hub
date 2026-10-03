@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BOARD_FRAMES, normalizeTvConfig } from "./config";
-import { BOARD_FRAME_KNOBS, boardFramePieces, boardFrameVars, normalizeBoardFrameTune } from "./boardFrame";
+import { BOARD_FRAME_KNOBS, boardFramePieces, boardFrameVars, dragTune, normalizeBoardFrameTune } from "./boardFrame";
 
 describe("the board's frame, moved and sized by hand", () => {
   it("is as drawn until somebody moves it", () => {
@@ -34,5 +34,33 @@ describe("the board's frame, moved and sized by hand", () => {
     expect(boardFrameVars({ size: 1.5, length: 0.8, x: 2, y: -1, sides: "both" })).toEqual({
       "--bf-s": "1.5", "--bf-l": "0.8", "--bf-x": "calc(var(--u) * 2)", "--bf-y": "calc(var(--u) * -1)",
     });
+  });
+});
+
+describe("a drag on a piece of the board's frame", () => {
+  const t0 = { size: 1, length: 1, x: 0, y: 0, sides: "both" as const };
+  const at = { u: 10, width: 1600, height: 1000, fromRight: false, fromBottom: false };
+
+  it("moves a column: toward the middle is further from its side, and down is down", () => {
+    expect(dragTune("tv-bf-column is-right", null, t0, { ...at, dx: -40, dy: 30 })).toMatchObject({ x: 4, y: 3 });
+    expect(dragTune("tv-bf-column is-left", null, t0, { ...at, dx: 40, dy: 0 })).toMatchObject({ x: 4 });
+  });
+
+  it("widens a column by its inner edge, and lengthens it by an end", () => {
+    expect(dragTune("tv-bf-column is-right", "size", t0, { ...at, dx: -64, dy: 0 }).size).toBe(2);
+    const shorter = dragTune("tv-bf-column is-left", "len-b", t0, { ...at, dx: 0, dy: -198 });
+    expect(shorter.length).toBeCloseTo(0.8, 2);
+    // Its top stays where it was: the middle follows the end that moved.
+    expect(shorter.y).toBeCloseTo(-9.9, 1);
+  });
+
+  it("a beam moves away from its own edge, and grows along it", () => {
+    expect(dragTune("tv-bf-beam is-bottom", null, t0, { ...at, dx: 0, dy: -50 }).y).toBe(5);
+    expect(dragTune("tv-bf-beam is-top", "len-b", { ...t0, length: 0.5 }, { ...at, dx: 160, dy: 0 }).length).toBeCloseTo(0.7, 2);
+  });
+
+  it("stays inside the limits however far it is dragged", () => {
+    expect(dragTune("tv-bf-column is-right", "size", t0, { ...at, dx: -5000, dy: 0 }).size).toBe(2.5);
+    expect(dragTune("tv-bf-column is-right", null, t0, { ...at, dx: 5000, dy: 0 }).x).toBe(0);
   });
 });

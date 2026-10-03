@@ -8,6 +8,7 @@ import type { BoardSlide } from "@/tv/useBoardData";
 import { slideLabel, type useTvSlides } from "./tvPreviewData";
 import { DeviceFrame, DeviceToolbar } from "./DevicePreview";
 import { setElementStyle, styleTargetKey } from "@/tv/boardEdit";
+import { dragTune, readTuneFrom, type BoardFrameTune } from "@/tv/boardFrame";
 import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
 
@@ -232,9 +233,68 @@ export function TvDeviceStudio({
   // (cqw / cqh), which is what ElementStyle stores, so it lands in the same
   // relative place on every device - whatever scale the preview is drawn at.
   const drag = useRef<{ key: string; elementKey?: string; frame: DOMRect; startX: number; startY: number; x0: number; y0: number; moved: boolean } | null>(null);
+  // The board's frame - columns, beams, a curtain - is grabbed and stretched
+  // by hand: a drag on a piece moves it, a drag on one of its handles makes
+  // it longer or thicker (boardFrame.dragTune). The pointer is measured in
+  // --u of that board, so it means the same at any preview scale.
+  const frameDrag = useRef<{
+    piece: string;
+    handle: string | null;
+    root: HTMLElement;
+    t0: BoardFrameTune;
+    u: number;
+    width: number;
+    height: number;
+    fromRight: boolean;
+    fromBottom: boolean;
+    startX: number;
+    startY: number;
+    moved: boolean;
+  } | null>(null);
+  const startFrameDrag = (e: PointerEvent): boolean => {
+    const target = e.target instanceof Element ? e.target : null;
+    const piece = target?.closest<HTMLElement>(".tv-board-frame > i");
+    const root = piece?.closest<HTMLElement>(".tv-root");
+    if (!piece || !root) return false;
+    const box = root.getBoundingClientRect();
+    frameDrag.current = {
+      piece: piece.className,
+      handle: target?.closest<HTMLElement>("[data-bf-handle]")?.dataset.bfHandle ?? null,
+      root,
+      t0: readTuneFrom(root),
+      u: box.height / 100,
+      width: box.width,
+      height: box.height,
+      fromRight: e.clientX > box.left + box.width / 2,
+      fromBottom: e.clientY > box.top + box.height / 2,
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    };
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
+    e.preventDefault();
+    return true;
+  };
+  const moveFrameDrag = (e: PointerEvent): boolean => {
+    const d = frameDrag.current;
+    if (!d) return false;
+    const dx = e.clientX - d.startX;
+    const dy = e.clientY - d.startY;
+    if (!d.moved && Math.hypot(dx, dy) < 3) return true;
+    d.moved = true;
+    const next = dragTune(d.piece, d.handle, d.t0, { dx, dy, u: d.u, width: d.width, height: d.height, fromRight: d.fromRight, fromBottom: d.fromBottom });
+    onEdit!("board-frame-drag", (c) => ({ ...c, boardFrameTune: { ...next, sides: c.boardFrameTune.sides } }));
+    return true;
+  };
+
   const onPointerDown = (e: PointerEvent) => {
     // Alt + click is an ordinary click on the board (the skill's escape hatch).
     if (!editing || !onEdit || e.button !== 0 || e.altKey) return;
+    if (startFrameDrag(e)) return;
     const el = e.target instanceof Element ? e.target.closest<HTMLElement>("[data-edit]") : null;
     const frame = el?.closest<HTMLElement>(".tv-frame");
     if (!el || !frame) return;
@@ -249,6 +309,7 @@ export function TvDeviceStudio({
     drag.current = { key, elementKey: el.dataset.edit!, frame: frame.getBoundingClientRect(), startX: e.clientX, startY: e.clientY, x0: s?.x ?? 0, y0: s?.y ?? 0, moved: false };
   };
   const onPointerMove = (e: PointerEvent) => {
+    if (moveFrameDrag(e)) return;
     const d = drag.current;
     if (!d) return;
     const dx = e.clientX - d.startX;
@@ -268,6 +329,14 @@ export function TvDeviceStudio({
     onEdit!(`style:pos:${d.key}`, (c) => setElementStyle(c, d.key, { x: Math.max(-50, Math.min(50, x)), y: Math.max(-50, Math.min(50, y)) }));
   };
   const onPointerUp = (e: PointerEvent) => {
+    const f = frameDrag.current;
+    if (f) {
+      frameDrag.current = null;
+      if ((e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      // The click that ends a drag selects nothing; a click without one opens the board's own panel.
+      if (f.moved) suppressClick.current = true;
+      return;
+    }
     const d = drag.current;
     drag.current = null;
     if (!d) return;
@@ -304,6 +373,7 @@ export function TvDeviceStudio({
         onPointerUp,
         onPointerCancel: () => {
           drag.current = null;
+          frameDrag.current = null;
         },
         onMouseOver: (e: MouseEvent) => setHovered(keyAt(e.target)),
         onMouseLeave: () => setHovered(null),

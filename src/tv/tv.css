@@ -4055,6 +4055,42 @@
   border: max(1px, calc(var(--u) * 0.15 * var(--bf-s))) solid color-mix(in srgb, var(--tv-accent) 70%, transparent);
 }
 
+/* Edited by hand (the editor's "עריכה ישירה בלוח"): every piece can be
+   grabbed, and its handles stretch it. Never on a screen on the wall. */
+.tv-board-frame.is-editing > i {
+  pointer-events: auto;
+  cursor: move;
+  outline: 2px dashed rgba(96, 165, 250, 0.85);
+  outline-offset: 2px;
+}
+
+.tv-bf-handle {
+  position: absolute;
+  z-index: 2;
+  width: 14px;
+  height: 14px;
+  margin: -7px;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+}
+
+/* Upright pieces: the ends above and below, the inner edge toward the middle. */
+:is(.tv-bf-column, .tv-bf-curtain) > [data-bf-handle="len-a"] { top: 0; left: 50%; cursor: ns-resize; }
+:is(.tv-bf-column, .tv-bf-curtain) > [data-bf-handle="len-b"] { top: 100%; left: 50%; cursor: ns-resize; }
+:is(.tv-bf-column, .tv-bf-curtain).is-right > [data-bf-handle="size"] { top: 50%; left: 0; cursor: ew-resize; }
+:is(.tv-bf-column, .tv-bf-curtain).is-left > [data-bf-handle="size"] { top: 50%; left: 100%; cursor: ew-resize; }
+
+/* Lying pieces: the ends at the sides, the inner edge toward the middle. */
+:is(.tv-bf-beam, .tv-bf-drape) > [data-bf-handle="len-a"] { top: 50%; left: 0; cursor: ew-resize; }
+:is(.tv-bf-beam, .tv-bf-drape) > [data-bf-handle="len-b"] { top: 50%; left: 100%; cursor: ew-resize; }
+:is(.tv-bf-beam.is-top, .tv-bf-drape) > [data-bf-handle="size"] { top: 100%; left: 50%; cursor: ns-resize; }
+.tv-bf-beam.is-bottom > [data-bf-handle="size"] { top: 0; left: 50%; cursor: ns-resize; }
+
+/* A frame around the screen: its thickness, on the inside of its top edge. */
+:is(.tv-bf-carved, .tv-bf-line.is-outer) > [data-bf-handle="size"] { top: 0; left: 50%; cursor: ns-resize; }
+
 /* The room the content leaves: the frame's own size, where it stands. */
 .tv-root.is-board-frame-columns,
 .tv-root.is-board-frame-heichal {

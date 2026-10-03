@@ -19,7 +19,7 @@ import { SlideView } from "./TvSlides";
 import { OverflowContext } from "./overflowContext";
 import { ClockFace, DashboardStage, DashboardStrip, SplitSide } from "./TvLayouts";
 import { ClockContext } from "./clockContext";
-import { boardFramePieces, boardFrameVars } from "./boardFrame";
+import { boardFramePieces, boardFrameVars, pieceHandles } from "./boardFrame";
 import { TvShapes } from "./TvShapes";
 import { holyOccasionOn, type BoardData, type BoardSlide } from "./useBoardData";
 import { checkClock } from "./clock";
@@ -244,9 +244,12 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           )}
         </div>
         {config.boardFrame && (
-          <div className="tv-board-frame" data-frame={config.boardFrame} aria-hidden>
+          <div className={`tv-board-frame${editing ? " is-editing" : ""}`} data-frame={config.boardFrame} aria-hidden>
             {boardFramePieces(config.boardFrame, config.boardFrameTune.sides).map((piece) => (
-              <i key={piece} className={piece} />
+              <i key={piece} className={piece}>
+                {/* Editing by hand: grab it to move, its edges to stretch it (TvPreview). */}
+                {editing && pieceHandles(piece).map((h) => <b key={h} className="tv-bf-handle" data-bf-handle={h} />)}
+              </i>
             ))}
           </div>
         )}
