@@ -1,6 +1,7 @@
 import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
 import { normalizeBackgrounds, type SavedBackground } from "./backgroundItem";
+import { migratePainted } from "./paintedMigration";
 import { normalizeOccasions, type Occasion } from "./occasions";
 import {
   DEFAULT_BACKGROUND_TUNE,
@@ -1087,12 +1088,33 @@ function normalizeIllustratedStyle(raw: unknown): IllustratedStyle {
   };
 }
 
+/**
+ * A board read from storage, checked.
+ *
+ * There are no painted boards any more - a look is built from parts
+ * (backgrounds, boxes and frames, text) and every part can be changed. A board
+ * that still arrives painted (an old backup, a file from another shul) is put
+ * onto the ready design that rebuilds its painting from parts, with what was
+ * adjusted on the painting carried over (paintedMigration.ts); one whose
+ * painting has no design becomes the medallion, the same arrangement drawn
+ * with ordinary frames. A screen of its own that was painted, likewise.
+ */
 export function normalizeTvConfig(raw: unknown): TvConfig {
+  const c = normalizeStored(raw);
+  if (c.screenLayout !== "illustrated" && !Object.values(c.perDevice).some((o) => o?.screenLayout === "illustrated")) return c;
+  const moved = migratePainted(c);
+  const perDevice = Object.fromEntries(
+    Object.entries(moved.perDevice).map(([k, o]) => [k, o?.screenLayout === "illustrated" ? { ...o, screenLayout: "medallion" as const } : o]),
+  ) as TvConfig["perDevice"];
+  return { ...moved, screenLayout: moved.screenLayout === "illustrated" ? "medallion" : moved.screenLayout, perDevice };
+}
+
+function normalizeStored(raw: unknown): TvConfig {
   const d = DEFAULT_TV_CONFIG;
   if (!isObj(raw)) return structuredClone(d);
 
   const customThemes = normalizeCustomThemes(raw.customThemes);
-  const designs = normalizeDesigns(raw.designs, normalizeTvConfig);
+  const designs = normalizeDesigns(raw.designs, normalizeStored);
   const customIllustrations = normalizeCustomIllustrations(raw.customIllustrations);
   const theme =
     TV_THEMES.some((t) => t.id === raw.theme) || customThemes.some((t) => t.id === raw.theme) ? String(raw.theme) : d.theme;

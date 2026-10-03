@@ -133,19 +133,9 @@ const LAYOUT_CHOICES: Array<{
       </>
     ),
   },
-  {
-    id: "illustrated",
-    name: "תבנית מאוירת",
-    hint: "לוח מצויר (פרוכת, לוחות אבן, עץ מגולף) עם הזמנים של היום בתוך המסגרות",
-    sketch: (
-      <>
-        <i className="col-span-3 h-2 rounded-full bg-current opacity-60" />
-        <i className="row-span-3 rounded-t-full bg-current opacity-45" />
-        <i className="row-span-3 rounded-sm bg-current opacity-20" />
-        <i className="row-span-3 rounded-t-full bg-current opacity-45" />
-      </>
-    ),
-  },
+  // No painted template: a look is built from parts (backgrounds, boxes and
+  // frames, text), and a painted board that arrives is rebuilt from them
+  // (config.normalizeTvConfig). The medallion is its arrangement in frames.
 ];
 
 /**
@@ -184,7 +174,7 @@ import {
   type CustomIllustration,
   type PortableIllustration,
 } from "@/tv/illustrated";
-import { PaintedPresets, PaintedRows } from "./IllustratedLookEditor";
+import { PaintedRows } from "./IllustratedLookEditor";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
@@ -1457,7 +1447,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.
               </p>
             )}
-            {painted && <PaintedPresets onEdit={edit} />}
           </Section>
 
           <Section
@@ -1593,11 +1582,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </button>
               ))}
             </div>
-            {painted && (
-              <p className="text-xs text-muted-foreground">
-                איזה ציור, והקיר, המסגרות והטקסט שלו - בלשונית עיצוב.
-              </p>
-            )}
             {/* A painted board brings its own frames and their places. */}
             {!painted && <FrameSpacing config={view} onEdit={edit} />}
 

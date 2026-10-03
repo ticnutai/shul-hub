@@ -4,10 +4,17 @@ import { ILLUSTRATED_ROWS, ILLUSTRATION_DEFS, illustrationDef, rowWindow } from 
 import { prayerDaysOf } from "./useBoardData";
 
 describe("the illustrated layout's config", () => {
-  it("is a layout like the others, with a painted board to choose", () => {
+  it("is not kept: a painted board arrives built from parts, its painting's design on it", () => {
+    // No paintings any more: a look is parts the gabbai can change one by one.
     const c = normalizeTvConfig({ ...DEFAULT_TV_CONFIG, screenLayout: "illustrated", illustration: "wood" });
-    expect(c.screenLayout).toBe("illustrated");
-    expect(c.illustration).toBe("wood");
+    expect(c.screenLayout).not.toBe("illustrated");
+    expect(c.screenLayout).toBe("medallion");
+    // A screen of its own that was painted, likewise.
+    const screen = normalizeTvConfig({ ...DEFAULT_TV_CONFIG, perDevice: { tv: { screenLayout: "illustrated" } } });
+    expect(screen.perDevice.tv?.screenLayout).toBe("medallion");
+    // A board that was never painted is left exactly as it was.
+    const plain = normalizeTvConfig({ ...DEFAULT_TV_CONFIG, screenLayout: "dashboard" });
+    expect(plain.screenLayout).toBe("dashboard");
   });
 
   it("falls back to the curtain for anything it does not know", () => {

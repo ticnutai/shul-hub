@@ -6,8 +6,6 @@ import {
   type SpacingEdge,
   type TvConfig,
 } from "@/tv/config";
-import { ILLUSTRATION_DEFS } from "@/tv/illustrated";
-import { ILLUSTRATION_PICTURES } from "@/tv/illustrationPictures";
 import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
 import { leavingPainted } from "./leavingPainted";
 
@@ -263,73 +261,3 @@ export function FrameAndSpacing(props: { config: TvConfig; onEdit: Edit; compact
   );
 }
 
-/**
- * The painted boards, offered as frames: a curtain with gold frames, stone
- * tablets, carved wood. Each is one picture with its wall painted in, so
- * picking one also brings its wall - which is then adjusted under "רקע".
- * Picking one switches the board to the painted layout; picking a drawn
- * style (StylePicker) switches it back.
- */
-export function PaintedBoardsPicker({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
-  const painted = config.screenLayout === "illustrated";
-  const boards = [
-    ...ILLUSTRATION_DEFS.map((d) => ({
-      ...d,
-      picture: ILLUSTRATION_PICTURES[d.id as keyof typeof ILLUSTRATION_PICTURES],
-      custom: false,
-    })),
-    ...config.customIllustrations.map((d) => ({ ...d, picture: d.image, custom: true })),
-  ];
-  return (
-    <div className="space-y-2">
-      <div className="text-sm font-medium">מסגרות מצוירות · עם קיר משלהן</div>
-      <div data-testid="painted-boards" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {boards.map((d) => {
-          const on = painted && config.illustration === d.id;
-          return (
-            <div key={d.id} className="relative">
-              <button
-                type="button"
-                aria-pressed={on}
-                aria-label={`לוח מצויר: ${d.name}`}
-                onClick={() =>
-                  onEdit("illustration", (c) => ({ ...c, screenLayout: "illustrated", illustration: d.id }))
-                }
-                className={`w-full overflow-hidden rounded-lg border text-right transition ${
-                  on ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
-                }`}
-              >
-                <img src={d.picture} alt="" className="aspect-video w-full object-cover" loading="lazy" />
-                <span className="block px-2 pt-1 text-sm font-medium">{d.name}</span>
-                <span className="block px-2 pb-1.5 text-[11px] leading-tight text-muted-foreground">
-                  {d.custom ? d.hint || "יובאה מקובץ" : d.hint}
-                </span>
-              </button>
-              {d.custom && (
-                <button
-                  type="button"
-                  aria-label={`מחיקת ${d.name}`}
-                  title="מחיקה"
-                  onClick={() =>
-                    onEdit("illustration-delete", (c) => ({
-                      ...c,
-                      customIllustrations: c.customIllustrations.filter((i) => i.id !== d.id),
-                      ...(c.illustration === d.id ? { illustration: "curtain" } : {}),
-                    }))
-                  }
-                  className="absolute left-1 top-1 rounded-md bg-background/90 px-1.5 text-xs shadow hover:text-destructive"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <p className="text-xs text-muted-foreground">
-        הזמנים, התאריך והפרשה נכתבים בתוך המסגרות. כל ציור הוא תמונה אחת שהקיר מצויר בה, ולכן
-        הקיר שלו מכוונן תחת "רקע".
-      </p>
-    </div>
-  );
-}

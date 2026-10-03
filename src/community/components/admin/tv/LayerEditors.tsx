@@ -22,7 +22,7 @@ import {
   type BackgroundKind,
   type SavedBackground,
 } from "@/tv/backgrounds";
-import { FrameCorners, PaintedBoardsPicker, StylePicker } from "./BoardLook";
+import { FrameCorners, StylePicker } from "./BoardLook";
 import { leavingPainted } from "./leavingPainted";
 import { GradientStudio } from "./GradientStudio";
 import { PaintedFrameLook, PaintedText, PaintedWall } from "./IllustratedLookEditor";
