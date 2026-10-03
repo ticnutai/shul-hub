@@ -35,6 +35,18 @@ const PART_KEYS: Record<DesignPart, Array<keyof TvConfig>> = {
   layout: ["screenLayout", "illustration", "spacing", "clockStyle"],
 };
 
+/** Every setting a design can carry: what a design worn over the board may change. */
+export const DESIGN_KEYS: Array<keyof TvConfig> = [
+  ...new Set([
+    ...Object.values(PART_KEYS).flat(),
+    "theme",
+    "themeOverrides",
+    "frameStyle",
+    "frameLooks",
+    "illustratedStyle",
+  ] as Array<keyof TvConfig>),
+];
+
 /** The theme colours of each part (layout has none). */
 const PART_VARS: Record<DesignPart, ThemeVar[]> = {
   background: THEME_VAR_LAYERS.background,

@@ -172,3 +172,19 @@ describe("a special Shabbat", () => {
     expect(ids(activeOccasions(list, il("2026-09-19", 21), ctx))).toEqual([]);
   });
 });
+
+describe("an occasion's uploaded pictures", () => {
+  it("are kept as a gallery of https pictures, once each, whatever else was stored", () => {
+    const [o] = fromLegacy(normalizeTvConfig({})).slice(0, 1);
+    const c = normalizeTvConfig({
+      occasions: [
+        {
+          ...o,
+          uploads: ["https://x.test/a.jpg", "https://x.test/a.jpg", "javascript:alert(1)", "art:classic", 7, "https://x.test/b.jpg"],
+        },
+      ],
+    });
+    expect(c.occasions[0]!.uploads).toEqual(["https://x.test/a.jpg", "https://x.test/b.jpg"]);
+    expect(normalizeTvConfig({ occasions: [o] }).occasions[0]!.uploads).toEqual([]);
+  });
+});

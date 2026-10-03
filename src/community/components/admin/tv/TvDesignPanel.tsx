@@ -188,6 +188,7 @@ import { PaintedPresets, PaintedRows } from "./IllustratedLookEditor";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
+import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -447,6 +448,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
    */
   const [scope, setScope] = useState<DeviceScope>("all");
   const scopeDevice = scope === "all" ? null : scope;
+  /**
+   * An occasion whose own design this panel is working on (its 🎨 in
+   * "מועדים"), or null for the board. While one is chosen the controls read
+   * and change that occasion's design (occasionDesign.ts), on every screen.
+   */
+  const [occasionScope, setOccasionScope] = useState<string | null>(null);
 
   // The device strip over the preview is the only switcher; choosing a
   // device there is also choosing what these controls edit.
@@ -486,20 +493,20 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
    * screen actually does and the preview is that screen's board. With no
    * screen chosen it is the shared board itself, unchanged.
    */
-  const scoped = configForDevice(state.present, scopeDevice);
+  const scoped = occasionScope ? occasionLook(state.present, occasionScope) : configForDevice(state.present, scopeDevice);
   const view = preview ? { ...scoped, ...preview } : scoped;
 
   const edit = useCallback(
     (key: string, update: (c: TvConfig) => TvConfig) =>
       dispatch({
         type: "edit",
-        key: `${scope}:${key}`,
+        key: `${occasionScope ?? scope}:${key}`,
         // The controls are all (config) => config and none of them know that
-        // screens exist; this is the one place that decides where the change
-        // lands (see editForDevice).
-        update: (c) => editForDevice(c, scopeDevice, update),
+        // screens or occasions exist; this is the one place that decides where
+        // the change lands (see editForDevice, editOccasionDesign).
+        update: (c) => (occasionScope ? editOccasionDesign(c, occasionScope, update) : editForDevice(c, scopeDevice, update)),
       }),
-    [scope, scopeDevice],
+    [scope, scopeDevice, occasionScope],
   );
 
   // Keyboard undo/redo while the panel is open.
@@ -671,7 +678,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   // the board's own prayer-times setting.
   const [tab, setTab] = useState(() => {
     if (figmaHandoff) return "tools";
-    const panel = new URLSearchParams(window.location.search).get("panel");
+    const search = new URLSearchParams(window.location.search);
+    // The old "מועדים ואירועים" tab's links land on the occasions.
+    if (search.get("tvTab") === "events") return "occasions";
+    const panel = search.get("panel");
     return panel && ["design", "layout", "content", "occasions", "tools"].includes(panel) ? panel : "design";
   });
 
@@ -755,6 +765,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     setSimulatedNow(at);
     setPreviewIndex(0);
   };
+  /** Brings the board's preview into sight, from a control further down the page. */
+  const showPreview = () =>
+    // A timer rather than a frame, and a jump rather than a glide: a smooth
+    // scroll is cut short by the tab switch that 🎨 makes, and neither frames
+    // nor a glide run in a tab that is not in front.
+    window.setTimeout(() => document.querySelector("[data-board-preview]")?.scrollIntoView({ block: "center" }), 0);
   const toggleShabbatPreview = () => {
     if (shabbatPreview) {
       setShabbatPreview(false);
@@ -824,11 +840,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
     }
   };
 
+  // What is being edited: the board, one screen's, or one occasion's design.
   const themes = allThemes(draft.customThemes);
-  const theme = getTheme(draft.theme, draft.customThemes);
-  const isCustom = draft.customThemes.some((t) => t.id === draft.theme);
-  const hasOverrides = Object.keys(draft.themeOverrides).length > 0;
-  const painted = draft.screenLayout === "illustrated";
+  const theme = getTheme(scoped.theme, draft.customThemes);
+  const isCustom = draft.customThemes.some((t) => t.id === scoped.theme);
+  const hasOverrides = Object.keys(scoped.themeOverrides).length > 0;
+  const painted = scoped.screenLayout === "illustrated";
   const layerProps: LayerProps = {
     config: view,
     saved: scoped,
@@ -843,9 +860,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         <ColorField
           key={v}
           label={THEME_VAR_LABELS[v]}
-          value={draft.themeOverrides[v] ?? theme.vars[v]}
+          value={scoped.themeOverrides[v] ?? theme.vars[v]}
           themeValue={theme.vars[v]}
-          overridden={v in draft.themeOverrides}
+          overridden={v in scoped.themeOverrides}
           onChange={(value) =>
             edit(`color:${v}`, (c) => ({
               ...c,
@@ -865,7 +882,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   );
   /** The colours on screen now: the theme plus the live edits below. */
   const currentVars = () =>
-    ({ ...theme.vars, ...(draft.themeOverrides as Partial<Record<ThemeVar, string>>) } as Record<
+    ({ ...theme.vars, ...(scoped.themeOverrides as Partial<Record<ThemeVar, string>>) } as Record<
       ThemeVar,
       string
     >);
@@ -876,8 +893,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const applyThemeChoice = (id: string) =>
     edit("theme", (c) => ({ ...c, theme: id, themeOverrides: {} }));
   const pickTheme = (id: string) => {
-    if (id === draft.theme) return;
-    if (Object.keys(draft.themeOverrides).length) setThemeSwitch(id);
+    if (id === scoped.theme) return;
+    if (Object.keys(scoped.themeOverrides).length) setThemeSwitch(id);
     else applyThemeChoice(id);
   };
   const commitName = () => {
@@ -1174,7 +1191,32 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         </Button>
       </div>
 
-      <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
+      {occasionScope ? (
+        <div
+          role="status"
+          data-testid="occasion-design-banner"
+          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/50 bg-primary/5 p-3 text-sm"
+        >
+          <span>
+            🎨 עורכים עכשיו את העיצוב של <b>{readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? "המועד"}</b> - כל
+            שינוי כאן (רקע ותמונות, צבעים, מסגרות, גופן) נשמר לעיצוב שלו בלבד. הלוח הרגיל לא משתנה.
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setOccasionScope(null);
+              previewAt(null);
+              setPreviewScreen(null);
+            }}
+          >
+            חזרה לעיצוב הלוח
+          </Button>
+        </div>
+      ) : (
+        <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
+      )}
 
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
@@ -1189,7 +1231,23 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             title="שבת, חגים ומועדים"
             hint="מה מופיע על הלוח בשבת, בחגים ובימים שלכם - לכל מועד בנפרד, ובאיזה סדר חשיבות."
           >
-            <OccasionsEditor config={draft} onEdit={edit} onPreview={previewAt} />
+            <OccasionsEditor
+              config={draft}
+              onEdit={edit}
+              onPreview={(at, occasionId) => {
+                // Its day, on its own screen - and in sight: the list is far
+                // below the preview, and the eye seemed to do nothing at all.
+                previewAt(at);
+                setPreviewScreen(at && occasionId ? `occasion:${occasionId}` : null);
+                if (at) showPreview();
+              }}
+              onDesign={(occasionId) => {
+                setOccasionScope(occasionId);
+                setTab("design");
+                // Again once the tab has changed: switching it scrolls the page to the tabs.
+                window.setTimeout(showPreview, 200);
+              }}
+            />
           </Section>
         </TabsContent>
         <TabsContent
@@ -1207,14 +1265,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   <div
                     key={t.id}
                     className={`relative overflow-hidden rounded-lg border text-right transition ${
-                      draft.theme === t.id
+                      scoped.theme === t.id
                         ? "ring-2 ring-primary ring-offset-2"
                         : "hover:border-primary/50"
                     }`}
                   >
                     <button
                       type="button"
-                      aria-pressed={draft.theme === t.id}
+                      aria-pressed={scoped.theme === t.id}
                       onClick={() => pickTheme(t.id)}
                       className="block w-full text-right"
                     >
@@ -1274,7 +1332,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                                 deleteTheme(t.id);
                               }}
                             >
-                              {draft.theme === t.id ? "למחוק? הלוח יחזור לברירת המחדל" : "למחוק?"}
+                              {scoped.theme === t.id ? "למחוק? הלוח יחזור לברירת המחדל" : "למחוק?"}
                             </Button>
                             <Button
                               type="button"
@@ -1505,7 +1563,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 תפילות, שחרית לא תיחתך באמצע.
               </p>
             </div>
-            {(painted || draft.screenLayout === "medallion") && <PaintedRows config={draft} onEdit={edit} />}
+            {(painted || scoped.screenLayout === "medallion") && <PaintedRows config={scoped} onEdit={edit} />}
           </Section>
 
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים — המסכים שלו קובעים, גם בשבת.">
@@ -1514,10 +1572,10 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 <button
                   key={l.id}
                   type="button"
-                  aria-pressed={draft.screenLayout === l.id}
+                  aria-pressed={scoped.screenLayout === l.id}
                   onClick={() => edit("layout", (c) => ({ ...c, screenLayout: l.id }))}
                   className={`rounded-lg border p-2 text-right transition ${
-                    draft.screenLayout === l.id
+                    scoped.screenLayout === l.id
                       ? "ring-2 ring-primary ring-offset-2"
                       : "hover:border-primary/50"
                   }`}
@@ -1550,8 +1608,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   key={c.id}
                   type="button"
                   size="sm"
-                  variant={draft.clockStyle === c.id ? "default" : "outline"}
-                  aria-pressed={draft.clockStyle === c.id}
+                  variant={scoped.clockStyle === c.id ? "default" : "outline"}
+                  aria-pressed={scoped.clockStyle === c.id}
                   onClick={() => edit("clock", (cfg) => ({ ...cfg, clockStyle: c.id }))}
                 >
                   {c.name}
@@ -2143,7 +2201,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   }
 
   const studioView = (
-    <div className="w-full">
+    <div className="w-full" data-board-preview>
       <TvDeviceStudio
         onDeviceChange={onDeviceChange}
         preview={preview}

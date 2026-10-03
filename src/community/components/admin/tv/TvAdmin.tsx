@@ -6,8 +6,6 @@ import { formatDuration } from "@/tv/device";
 import { TvDesignPanel } from "./TvDesignPanel";
 import { TvDevicesPanel } from "./TvDevicesPanel";
 import { TvLogsPanel } from "./TvLogsPanel";
-import { SpecialDaysAdmin } from "@community/components/admin/SpecialDaysAdmin";
-import { useMinyanCategories, useMinyanim } from "@community/lib/data";
 import { deviceHealth, useTvDevices } from "./tvAdminData";
 
 /**
@@ -20,9 +18,8 @@ export default function TvAdmin() {
   // Lands on the displays, because that is what the tab is called and what
   // it is for. "מסכים מחוברים" is about the boxes on the walls - a different
   // question, asked far less often, and one that has its own alert above.
-  const tab = params.get("tvTab") ?? "design";
-  const { data: categories = [] } = useMinyanCategories();
-  const { data: minyanim = [] } = useMinyanim();
+  // "מועדים ואירועים" was a tab of its own; it is the board editor's "מועדים" now.
+  const tab = params.get("tvTab") === "events" ? "design" : params.get("tvTab") ?? "design";
   const devices = useTvDevices();
   const now = useNow(15_000).getTime();
   const offline = (devices.data ?? []).filter((d) => d.approved && !deviceHealth(d, now).online);
@@ -56,7 +53,6 @@ export default function TvAdmin() {
           className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
         >
           <TabsTrigger value="design">התצוגות והעיצוב</TabsTrigger>
-          <TabsTrigger value="events" data-testid="tv-events-tab">📅 מועדים ואירועים</TabsTrigger>
           <TabsTrigger value="screens">מסכים מחוברים</TabsTrigger>
           <TabsTrigger value="logs">דוחות ויומן{offline.length ? ` (${offline.length}!)` : ""}</TabsTrigger>
         </TabsList>
@@ -65,22 +61,6 @@ export default function TvAdmin() {
         </TabsContent>
         <TabsContent value="design" className="mt-5" data-focus-tight>
           <TvDesignPanel />
-        </TabsContent>
-        <TabsContent value="events" className="mt-5">
-          {/* What the board shows on a special day - its screen, its pictures,
-              everything of the day - and, per day, its own timetable (which
-              opens in "מניינים"). */}
-          <SpecialDaysAdmin
-            categories={categories}
-            minyanim={minyanim}
-            onOpen={(id) => {
-              const next = new URLSearchParams(params);
-              next.set("tab", "minyanim");
-              next.set("cat", id);
-              next.delete("tvTab");
-              setParams(next);
-            }}
-          />
         </TabsContent>
         <TabsContent value="logs" className="mt-5">
           <TvLogsPanel />

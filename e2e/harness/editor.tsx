@@ -10,6 +10,7 @@
  * Dev-only: nothing outside index.html is bundled by `vite build`.
  */
 import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster } from "sonner";
@@ -22,6 +23,7 @@ const queryClient = new QueryClient({
 });
 
 createRoot(document.getElementById("root")!).render(
+  <BrowserRouter>
   <QueryClientProvider client={queryClient}>
     {/* The app wraps everything in this; the harness has to as well. */}
     <DirectionProvider dir="rtl">
@@ -37,5 +39,6 @@ createRoot(document.getElementById("root")!).render(
     <Toaster position="top-center" />
     </CommunityProvider>
     </DirectionProvider>
-  </QueryClientProvider>,
+  </QueryClientProvider>
+  </BrowserRouter>,
 );

@@ -123,6 +123,12 @@ export interface Occasion {
   items: OccasionItem[];
   /** "art:<id>" (a Shabbat drawing), "style:<n>" (a built-in design), or an uploaded picture's https URL. */
   pictures: string[];
+  /**
+   * The pictures uploaded for it, shown or not (https URLs). The gallery was
+   * the pictures on show and the built-in ones, so an uploaded picture taken
+   * off the show was gone from it for good - one click, and no way back.
+   */
+  uploads?: string[];
   pictureSeconds: number;
   /** A design (designs.ts) worn while this is on. */
   design: string | null;
@@ -162,6 +168,8 @@ const CUSTOM_ID_RE = /^o_[a-z0-9]{4,16}$/;
 export const newOccasionId = () => `o_${Math.random().toString(36).slice(2, 10)}`;
 export const MAX_OCCASIONS = 120;
 export const MAX_OCCASION_PICTURES = 12;
+/** Uploaded pictures kept in an occasion's gallery, on show or not. */
+export const MAX_OCCASION_UPLOADS = 30;
 export const SHABBAT_BLESSING = "בּוֹאִי בְשָׁלוֹם עֲטֶרֶת בַּעְלָהּ, גַּם בְּשִׂמְחָה וּבְצָהֳלָה";
 
 /** The festivals kept from candle lighting to nightfall, like Shabbat. */
@@ -403,6 +411,13 @@ export function normalizeOccasions(
         .filter((p): p is string => typeof p === "string" && PICTURE_RE.test(p.trim()))
         .map((p) => p.trim())
         .slice(0, MAX_OCCASION_PICTURES),
+      uploads: [
+        ...new Set(
+          (Array.isArray(r.uploads) ? r.uploads : [])
+            .filter((p): p is string => typeof p === "string" && /^https:\/\//.test(p.trim()) && PICTURE_RE.test(p.trim()))
+            .map((p) => p.trim()),
+        ),
+      ].slice(0, MAX_OCCASION_UPLOADS),
       pictureSeconds: clamp(r.pictureSeconds, d.pictureSeconds, 5, 600),
       design: typeof r.design === "string" && /^d_[a-z0-9_]{2,20}$/.test(r.design) ? r.design : null,
       designOn: r.designOn === "board" ? "board" : "screen",

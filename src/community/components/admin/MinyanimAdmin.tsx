@@ -87,13 +87,14 @@ export function MinyanimAdmin() {
   const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
   const removeCategory = useDeleteRow("minyan_categories", "minyan_categories");
   const [categoryId, setCategoryId] = useState<string | null>(() => new URLSearchParams(window.location.search).get("cat"));
-  // A special day's own timetable is opened from "תצוגות → מועדים ואירועים"
+  // A special day's own timetable is opened from the board editor's "מועדים"
   // with ?cat=<its tab>; "back" returns there.
   const [searchParams, setSearchParams] = useSearchParams();
   const openSpecialDays = () => {
     const next = new URLSearchParams(searchParams);
     next.set("tab", "tv");
-    next.set("tvTab", "events");
+    next.set("tvTab", "design");
+    next.set("panel", "occasions");
     next.delete("cat");
     setSearchParams(next);
   };
@@ -124,7 +125,7 @@ export function MinyanimAdmin() {
   const formRef = useRef<HTMLFormElement>(null);
 
   // The ordinary tabs. A special day's tab (system_key "event:…") is reached
-  // from "מועדים ואירועים", not from this row.
+  // from the board editor's "מועדים", not from this row.
   const regularCategories = useMemo(() => categories.filter((c) => !isEventCategory(c)), [categories]);
   const selectedCategory =
     categories.find((category) => category.id === categoryId) ?? regularCategories[0];
@@ -560,7 +561,7 @@ export function MinyanimAdmin() {
             זמני התפילות של <b>{selectedCategory.name}</b> — ביום עצמו הם מחליפים באתר ובלוח את הזמנים הרגילים.
           </span>
           <Button size="sm" variant="ghost" onClick={() => openSpecialDays()}>
-            ← חזרה למועדים ואירועים
+            ← חזרה למועדים
           </Button>
         </div>
       )}

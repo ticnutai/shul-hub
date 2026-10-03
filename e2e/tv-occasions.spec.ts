@@ -72,6 +72,26 @@ test.describe("TV editor, occasions", () => {
     await expectNotFrozen(page, "shabbat previewed");
   });
 
+  test("👁 shows the day on its own screen, in sight; 🎨 edits its own design; its times on its line", async ({ page }) => {
+    const yk = row(page, "cal:yom_kippur");
+    // The old "מועדים ואירועים" tab is this list now: each day's timetable is on its line.
+    await expect(yk.getByTestId("timetable-create-yom_kippur")).toBeVisible();
+
+    // The eye was far below the preview and showed the board's first screen:
+    // it seemed to do nothing (אהל אברהם, 3.10.2026).
+    await yk.getByRole("button", { name: "תצוגה בתאריך הקרוב" }).click();
+    await expect(page.locator(".tv-frame .tv-event-title").first()).toContainText("יום כיפור", { timeout: 10_000 });
+    await expect(page.locator("[data-board-preview]")).toBeInViewport();
+
+    await yk.getByTestId("occasion-design").click();
+    const banner = page.getByTestId("occasion-design-banner");
+    await expect(banner).toContainText("יום כיפור");
+    await expect(page.getByRole("tab", { name: "עיצוב", exact: true })).toHaveAttribute("data-state", "active");
+    await banner.getByRole("button", { name: "חזרה לעיצוב הלוח" }).click();
+    await expect(banner).toHaveCount(0);
+    await expectNotFrozen(page, "occasion design");
+  });
+
   test("a day of the shul's own: a Hebrew date, a line of text, and it is on", async ({ page }) => {
     await page.getByRole("button", { name: "הוספת מועד משלכם" }).click();
     const dialog = page.getByTestId("occasion-dialog");
@@ -80,13 +100,65 @@ test.describe("TV editor, occasions", () => {
     await dialog.getByLabel("חודש", { exact: true }).selectOption("11");
     await dialog.getByRole("button", { name: "טקסט" }).click();
     await dialog.getByLabel("הטקסט").fill("סעודת הילולא אחרי ערבית");
+    // The preview is behind the dialog: asking for it closes the dialog, to show it.
     await dialog.getByRole("button", { name: "תצוגה בתאריך הקרוב" }).click();
-    await dialog.getByRole("button", { name: "סגירה" }).click();
+    await expect(dialog).toBeHidden();
     await expect(list(page)).toContainText("הילולת הרב");
     await expect(list(page)).toContainText("כל שנה, 15 בשבט");
     // Tu BiShvat is a day of its own in the list too; with both on, one screen
     // names them together (the calendar's day is higher in the list).
     await expect(page.locator(".tv-frame").getByText("סעודת הילולא אחרי ערבית")).toBeVisible({ timeout: 10_000 });
     await expectNotFrozen(page, "own day");
+  });
+});
+
+test.describe("TV editor, an occasion's pictures", () => {
+  test("an uploaded picture taken off the screen stays in the gallery; ✕ removes it", async ({ page }) => {
+    // One click on an uploaded picture took it off the screen and out of the
+    // gallery with it - gone, with no way back (אהל אברהם, 3.10.2026).
+    const photo = "https://example.com/hillula.jpg";
+    await serveEditor(page, {
+      occasions: [
+        {
+          id: "o_hillula1",
+          name: "הילולא",
+          title: null,
+          enabled: true,
+          when: { type: "hebrew", month: 11, day: 15 },
+          window: "day",
+          display: "turns",
+          banner: false,
+          overlap: "together",
+          seconds: 30,
+          elements: ["title", "pictures"],
+          blocks: [],
+          items: [],
+          pictures: [photo],
+          pictureSeconds: 30,
+          design: null,
+          screen: null,
+        },
+      ],
+    });
+    const res = await page.goto(HARNESS).catch(() => null);
+    test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
+    await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("tab", { name: "מועדים" }).click();
+    await page.getByTestId("occasions").locator('li[data-occasion="o_hillula1"]').getByRole("button", { name: "הגדרות" }).click();
+
+    const gallery = page.getByTestId("occasion-dialog").getByTestId("occasion-pictures");
+    const picture = gallery.locator("div", { has: page.locator(`img[src="${photo}"]`) }).getByRole("button").first();
+    await expect(picture).toHaveAttribute("aria-pressed", "true");
+    await picture.click();
+    await expect(picture).toHaveAttribute("aria-pressed", "false");
+    await expect(picture).toContainText("לא מוצגת");
+    await picture.click();
+    await expect(picture).toHaveAttribute("aria-pressed", "true");
+
+    await gallery.getByRole("button", { name: /^מחיקת .* מהגלריה$/ }).click();
+    await expect(gallery.locator(`img[src="${photo}"]`)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("occasion-dialog")).toBeHidden();
+    await expectNotFrozen(page, "pictures");
   });
 });

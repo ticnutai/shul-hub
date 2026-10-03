@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Eye, ImagePlus, Plus, Settings2, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, ImagePlus, Palette, Plus, Settings2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { jerusalemDateKey } from "@community/lib/minyan-time";
 import { specialDayByKey } from "@community/lib/specialDays";
 import { BLOCK_BY_ID } from "@/tv/blocks";
 import type { TvConfig } from "@/tv/config";
@@ -15,6 +16,7 @@ import {
   CARD_ELEMENT_LABELS,
   HEBREW_MONTHS,
   MAX_OCCASION_PICTURES,
+  MAX_OCCASION_UPLOADS,
   OCCASION_BLOCKS,
   SHABBAT_ID,
   describeWhen,
@@ -26,6 +28,7 @@ import {
 } from "@/tv/occasions";
 import { SHABBAT_ART } from "@/tv/shabbat";
 import { uploadImages } from "./uploadImages";
+import { TimetableButton, TimetableSection } from "./OccasionTimetable";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -65,11 +68,14 @@ export function OccasionsEditor({
   config,
   onEdit,
   onPreview,
+  onDesign,
 }: {
   config: TvConfig;
   onEdit: Edit;
-  /** Show the preview at this moment (null: back to now). */
-  onPreview: (at: Date | null) => void;
+  /** Edit this occasion's own design in the board's design tab. */
+  onDesign?: (occasionId: string) => void;
+  /** Show the preview at this moment (null: back to now) - on this occasion's screen, when one is named. */
+  onPreview: (at: Date | null, occasionId?: string) => void;
 }) {
   const list = useMemo(() => readOccasions(config), [config]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -126,7 +132,8 @@ export function OccasionsEditor({
   const preview = (o: Occasion) => {
     const d = next[o.id];
     if (!d) return toast.error("לא נמצא תאריך קרוב למועד הזה");
-    onPreview(new Date(Date.parse(`${d.toISOString().slice(0, 10)}T11:00:00+03:00`)));
+    // The day in Israel: toISOString's is UTC, the day before from midnight to 03:00.
+    onPreview(new Date(Date.parse(`${jerusalemDateKey(d)}T11:00:00+03:00`)), o.id);
     if (!o.enabled) toast.warning(`"${o.name}" כבוי - הוא לא יופיע עד שתפעילו אותו.`);
   };
 
@@ -205,9 +212,27 @@ export function OccasionsEditor({
                   {o.design && " · עם עיצוב"}
                 </div>
               </button>
+              {o.when.type === "calendar" && specialDayByKey(o.when.key) && <TimetableButton def={specialDayByKey(o.when.key)!} />}
               <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => preview(o)} title="תצוגה בתאריך הקרוב">
                 <Eye className="size-4" />
               </Button>
+              {onDesign && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    // Its day, on its screen, and the design tab working on it.
+                    preview(o);
+                    onDesign(o.id);
+                  }}
+                  title="עיצוב המסך של המועד, בעורך העיצוב הרגיל"
+                  data-testid="occasion-design"
+                >
+                  <Palette className="size-4" />
+                </Button>
+              )}
               <Button type="button" size="sm" variant="outline" className="h-7 px-2" onClick={() => setOpenId(o.id)}>
                 <Settings2 className="size-4" /> הגדרות
               </Button>
@@ -226,7 +251,11 @@ export function OccasionsEditor({
             change(`delete:${open.id}`, (l) => l.filter((o) => o.id !== open.id));
             setOpenId(null);
           }}
-          onPreview={() => preview(open)}
+          onPreview={() => {
+            // The dialog covers the preview: close it, to show what was asked for.
+            setOpenId(null);
+            preview(open);
+          }}
         />
       )}
     </div>
@@ -266,7 +295,10 @@ function OccasionDialog({
     setBusy(true);
     try {
       const urls = await uploadImages(files);
-      onPatch({ pictures: [...o.pictures, ...urls].slice(0, MAX_OCCASION_PICTURES) });
+      onPatch({
+        pictures: [...o.pictures, ...urls].slice(0, MAX_OCCASION_PICTURES),
+        uploads: [...new Set([...urls, ...(o.uploads ?? [])])].slice(0, MAX_OCCASION_UPLOADS),
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "העלאת התמונה נכשלה");
     } finally {
@@ -289,6 +321,8 @@ function OccasionDialog({
               <b>פעיל</b> - מופיע לבד כשהיום שלו מגיע
             </span>
           </label>
+
+          {def && <TimetableSection def={def} />}
 
           <section className="space-y-2">
             <h3 className="font-medium">שם</h3>
@@ -551,31 +585,54 @@ function OccasionDialog({
 
           <section className="space-y-2">
             <h3 className="font-medium">תמונות ברקע</h3>
-            <p className="text-[11px] text-muted-foreground">מתחלפות לפי הסדר. לחיצה מוסיפה או מסירה.</p>
-            <div className="flex flex-wrap gap-2">
-              {[...new Set([...o.pictures, ...builtins])].map((p) => {
+            <p className="text-[11px] text-muted-foreground">
+              מתחלפות לפי הסדר. לחיצה מוסיפה או מסירה מהמסך; תמונה שהעליתם נשארת כאן גם כשהיא לא מוצגת, ו-✕ מוחק אותה מהגלריה.
+            </p>
+            <div className="flex flex-wrap gap-2" data-testid="occasion-pictures">
+              {[...new Set([...o.pictures, ...(o.uploads ?? []), ...builtins])].map((p) => {
                 const on = o.pictures.includes(p);
                 const info = pictureInfo(p);
+                const uploaded = p.startsWith("https://");
                 return (
-                  <button
-                    key={p}
-                    type="button"
-                    aria-pressed={on}
-                    onClick={() => {
-                      const pictures = on ? o.pictures.filter((x) => x !== p) : [...o.pictures, p].slice(0, MAX_OCCASION_PICTURES);
-                      onPatch({ pictures });
-                    }}
-                    className={`w-24 overflow-hidden rounded-md border text-center text-[11px] ${
-                      on ? "ring-2 ring-primary ring-offset-1" : "opacity-70 hover:opacity-100"
-                    }`}
-                  >
-                    {info.thumb ? (
-                      <img src={info.thumb} alt="" className="aspect-video w-full object-cover" loading="lazy" />
-                    ) : (
-                      <span className="flex aspect-video w-full items-center justify-center bg-muted">🎨</span>
+                  <div key={p} className="relative">
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      aria-label={info.label}
+                      onClick={() => {
+                        if (!on) return onPatch({ pictures: [...o.pictures, p].slice(0, MAX_OCCASION_PICTURES) });
+                        // Off the screen, still in the gallery: an uploaded picture
+                        // (one from before there was a gallery too) is kept.
+                        onPatch({
+                          pictures: o.pictures.filter((x) => x !== p),
+                          ...(uploaded ? { uploads: [...new Set([p, ...(o.uploads ?? [])])].slice(0, MAX_OCCASION_UPLOADS) } : {}),
+                        });
+                      }}
+                      className={`block w-24 overflow-hidden rounded-md border text-center text-[11px] ${
+                        on ? "ring-2 ring-primary ring-offset-1" : "opacity-60 hover:opacity-100"
+                      }`}
+                    >
+                      {info.thumb ? (
+                        <img src={info.thumb} alt="" className="aspect-video w-full object-cover" loading="lazy" />
+                      ) : (
+                        <span className="flex aspect-video w-full items-center justify-center bg-muted">🎨</span>
+                      )}
+                      <span className="block truncate px-1 py-0.5">{on ? info.label : `${info.label} · לא מוצגת`}</span>
+                    </button>
+                    {uploaded && (
+                      <button
+                        type="button"
+                        aria-label={`מחיקת ${info.label} מהגלריה`}
+                        title="מחיקה מהגלריה"
+                        onClick={() =>
+                          onPatch({ pictures: o.pictures.filter((x) => x !== p), uploads: (o.uploads ?? []).filter((x) => x !== p) })
+                        }
+                        className="absolute -left-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-[11px] shadow hover:bg-destructive hover:text-destructive-foreground"
+                      >
+                        ✕
+                      </button>
                     )}
-                    <span className="block truncate px-1 py-0.5">{info.label}</span>
-                  </button>
+                  </div>
                 );
               })}
             </div>
