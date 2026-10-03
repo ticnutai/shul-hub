@@ -155,6 +155,19 @@ describe("an edit aimed at one screen", () => {
     expect(configForDevice(next, "tv").texts["header.title"]).toBe("בית הכנסת אושר של יהודי");
   });
 
+  it("is the board's for what no screen has of its own: a kept background, a saved design, the slides", () => {
+    // With the television chosen, a background kept in the gallery was dropped
+    // here while the editor said it was saved.
+    const c = base();
+    const item = { id: "b_kept1", name: "שלי", fill: "linear-gradient(180deg, #123456, #123456)", picture: null, overlay: null, strength: 0.55, tune: c.backgroundTune };
+    const next = editForDevice(c, "tv", (x) => ({ ...x, backgrounds: [item, ...x.backgrounds], textScale: 1.2 }));
+    expect(next.backgrounds[0]?.id).toBe("b_kept1");
+    expect((next.perDevice.tv as Record<string, unknown> | undefined)?.backgrounds).toBeUndefined();
+    // ...while what a screen may have of its own stays its own.
+    expect(next.textScale).toBe(c.textScale);
+    expect(configForDevice(next, "tv").textScale).toBe(1.2);
+  });
+
   it("keeps only what differs, not a copy of the whole board", () => {
     const c = base();
     const next = editForDevice(c, "mobile", (x) => ({ ...x, textScale: 1.4 }));

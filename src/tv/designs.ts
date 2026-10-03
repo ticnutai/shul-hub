@@ -92,6 +92,10 @@ function frameLooksFor(c: TvConfig, parts: DesignPart[]): TvConfig["frameLooks"]
     const kept = {
       ...(parts.includes("background") && look.bg ? { bg: look.bg, ...(look.bgOpacity !== undefined ? { bgOpacity: look.bgOpacity } : {}) } : {}),
       ...(parts.includes("frames") && look.line ? { line: look.line, ...(look.lineWidth !== undefined ? { lineWidth: look.lineWidth } : {}) } : {}),
+      // One box's own shape and frame picture are its frames too: a design
+      // (and an occasion's, edited in its 🎨 scope) dropped them.
+      ...(parts.includes("frames") && look.shape ? { shape: look.shape } : {}),
+      ...(parts.includes("frames") && look.image ? { image: look.image } : {}),
       ...(parts.includes("text") && look.text ? { text: look.text } : {}),
       ...(parts.includes("text") && look.accent ? { accent: look.accent } : {}),
     };

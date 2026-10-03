@@ -32,13 +32,27 @@ export function fillCss(fill: string | null | undefined, opacity = 1): string | 
   if (!fill) return null;
   const v = fill.trim();
   const a = Math.min(1, Math.max(0, opacity));
+  // Any colour, in any form: rgba() and hsl() were returned whole, so after a
+  // ready box like "זכוכית" the slider moved and nothing faded.
+  const fade = (c: string) => (a >= 1 ? c : `color-mix(in srgb, ${c} ${Math.round(a * 1000) / 10}%, transparent)`);
   if (HEX6.test(v)) return a >= 1 ? v : rgba(v, a);
-  if (isSafeCssValue(v)) return v;
-  if (isSafeGradient(v)) return a >= 1 ? v : v.replace(/#[0-9a-f]{6}\b/gi, (h) => rgba(h, a));
+  if (isSafeCssValue(v)) return fade(v);
+  if (isSafeGradient(v))
+    return a >= 1 ? v : v.replace(/(rgba?|hsla?)\([^)]*\)/gi, (c) => fade(c)).replace(/#[0-9a-f]{6}\b/gi, (h) => rgba(h, a));
   const url = backdropUrl(v);
   return url && (url.startsWith("/") || url.startsWith("data:") || isSafeUrl(url))
     ? `url("${url}") center / cover no-repeat`
     : null;
+}
+
+/**
+ * A box with no background of its own, see-through: the theme's own panel
+ * colour faded. Without it the default box could not be made see-through at
+ * all - the slider only showed once a colour had been chosen.
+ */
+function themePanelFaded(opacity: number): string | null {
+  const a = Math.min(1, Math.max(0, opacity));
+  return a >= 1 ? null : `color-mix(in srgb, var(--tv-panel) ${Math.round(a * 1000) / 10}%, transparent)`;
 }
 
 /** Whether a fill is a picture (so the opacity slider has nothing to fade). */
@@ -79,7 +93,7 @@ export function layerVars(tune: BackgroundTune, frames: FrameStyle): { vars: Rec
     vars["--tv-bg-filter"] = filter;
     classes += " has-bg-tune";
   }
-  const fill = fillCss(frames.fill, frames.fillOpacity);
+  const fill = fillCss(frames.fill, frames.fillOpacity) ?? themePanelFaded(frames.fillOpacity);
   if (fill) {
     vars["--frame-fill"] = fill;
     classes += " has-frame-fill";
@@ -128,7 +142,7 @@ export function frameLookProps(look: FrameLook | undefined): {
     css["--frame-image-w"] = `calc(var(--u) * ${ready?.width ?? 2.5})`;
     out["data-own-image"] = "";
   }
-  const fill = fillCss(look.bg, look.bgOpacity ?? 1);
+  const fill = fillCss(look.bg, look.bgOpacity ?? 1) ?? themePanelFaded(look.bgOpacity ?? 1);
   if (fill) {
     css["--frame-fill"] = fill;
     if (HEX6.test(look.bg ?? "") || isSafeCssValue(look.bg ?? "")) css["--tv-panel"] = fill;

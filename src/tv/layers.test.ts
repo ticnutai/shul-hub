@@ -43,6 +43,20 @@ describe("the layers: background adjustments and every frame's dress", () => {
     expect(isPictureFill("#ffffff")).toBe(false);
   });
 
+  it("fade a colour in any form, and a box with no colour of its own", () => {
+    // After "זכוכית" (rgba) the slider moved and nothing changed.
+    expect(fillCss("rgba(255, 255, 255, 0.12)", 0.5)).toBe("color-mix(in srgb, rgba(255, 255, 255, 0.12) 50%, transparent)");
+    expect(fillCss("linear-gradient(180deg, rgba(0, 0, 0, 0.2), #ffffff)", 0.5)).toBe(
+      "linear-gradient(180deg, color-mix(in srgb, rgba(0, 0, 0, 0.2) 50%, transparent), rgba(255, 255, 255, 0.5))",
+    );
+    expect(fillCss("rgba(255, 255, 255, 0.12)", 1)).toBe("rgba(255, 255, 255, 0.12)");
+    // The theme's own box colour, see-through, for every box and for one.
+    const all = layerVars(DEFAULT_BACKGROUND_TUNE, { ...DEFAULT_FRAME_STYLE, fillOpacity: 0.4 });
+    expect(all.vars["--frame-fill"]).toBe("color-mix(in srgb, var(--tv-panel) 40%, transparent)");
+    expect(all.classes).toContain("has-frame-fill");
+    expect(layerVars(DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE).classes).not.toContain("has-frame-fill");
+  });
+
   it("switch each rule on only when it is set", () => {
     const { vars, classes } = layerVars(
       { ...DEFAULT_BACKGROUND_TUNE, brightness: 1.2, blur: 4 },

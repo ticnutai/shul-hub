@@ -93,7 +93,8 @@ export function normalizeFrameLooks(raw: unknown): FrameLooks {
     if (typeof shape === "string" && (BOX_SHAPES as string[]).includes(shape)) look.shape = shape as BoxShape;
     const image = (v as Record<string, unknown>).image;
     if (typeof image === "string" && isFramePicture(image.trim())) look.image = image.trim();
-    if (!look.bg) delete look.bgOpacity;
+    // A box with no colour of its own may still be see-through (the theme's colour, faded).
+    if (look.bgOpacity === 1) delete look.bgOpacity;
     if (!look.line) delete look.lineWidth;
     if (Object.keys(look).length) out[id] = look;
   }

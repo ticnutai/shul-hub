@@ -1377,9 +1377,18 @@ export function editForDevice(
   const perDevice = { ...config.perDevice };
   if (Object.keys(layer).length === 0) delete perDevice[device];
   else perDevice[device] = layer;
-  // Only the overlay moves; the shared board and the editor-only record
-  // edits are the board's, whichever screen is being looked at.
-  return { ...config, perDevice, _records: after._records };
+  // What a screen may have of its own goes into its overlay; everything else
+  // is the board's, whichever screen is being looked at - the libraries (a
+  // background kept, a design saved, an upload), the slides, the occasions,
+  // the logos. Those were dropped here, silently, while the editor said
+  // "נשמר": with the television chosen, a background kept in the gallery
+  // was gone.
+  const shared: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(after)) {
+    if (k in DEVICE_OVERLAY_KEYS || k === "perDevice") continue;
+    shared[k] = v;
+  }
+  return { ...config, ...(shared as Partial<TvConfig>), perDevice, _records: after._records };
 }
 
 /** What `after` says that the shared board does not. */

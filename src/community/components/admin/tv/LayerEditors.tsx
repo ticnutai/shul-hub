@@ -426,11 +426,13 @@ export function BackgroundLayer({
             איפוס הסליידרים
           </button>
         </div>
-      ) : current && !picture ? (
+      ) : !picture ? (
+        // Always for a box, also on the theme's own colour: how much of what is
+        // behind it shows through. 100% blocks it; less lets the background in.
         <Range
-          label="אטימות"
+          label="אטימות - 100% חוסם, פחות = רואים דרך התיבה"
           value={frame ? saved.frameLooks[frame]?.bgOpacity ?? 1 : saved.frameStyle.fillOpacity}
-          min={0.05}
+          min={0}
           max={1}
           step={0.05}
           show={pct}

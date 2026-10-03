@@ -48,6 +48,16 @@ describe("editing an occasion's own design in the design tab", () => {
     expect(occasionLook(forked, RH).themeOverrides["--tv-bg-a"]).toBe("#123456");
   });
 
+  it("keeps one box's own shape and frame picture in the occasion's design", () => {
+    // Edited in the occasion's 🎨 scope, a box's shape was dropped from its design.
+    const after = editOccasionDesign(board(), YK, (c) => ({
+      ...c,
+      frameLooks: { ...c.frameLooks, zmanim: { shape: "hexagon", image: "frame:double-gold" } },
+    }));
+    expect(occasionLook(after, YK).frameLooks.zmanim).toEqual({ shape: "hexagon", image: "frame:double-gold" });
+    expect(after.frameLooks.zmanim).toBeUndefined();
+  });
+
   it("what is not the look (a text) lands on the board, and makes no design", () => {
     const before = board();
     const after = editOccasionDesign(before, YK, (c) => ({ ...c, texts: { ...c.texts, "dash.zmanim": "זמנים" } }));

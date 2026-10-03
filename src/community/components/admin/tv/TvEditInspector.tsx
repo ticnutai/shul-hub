@@ -46,7 +46,8 @@ import {
   toggleFlip,
 } from "@/tv/boardEdit";
 import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
-import { allGradients, allThemes, duplicateTheme } from "@/tv/themes";
+import { duplicateTheme } from "@/tv/themes";
+import { applyBackground, galleryOf, tileOf, wears } from "@/tv/backgrounds";
 import { FrameAndSpacing, StylePicker } from "./BoardLook";
 import { getTheme, isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
@@ -294,8 +295,16 @@ function flatColour(gradient: string | null): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * The board's background, from a click on the board: the same gallery as
+ * "רקעים" (the ready colours, gradients and pictures and the shul's own),
+ * written the same way - a colour after a picture takes the picture off,
+ * "לפי הערכה" takes everything off. It wrote the gradient alone, so over a
+ * picture nothing changed. The themes are chosen in one place, "עיצוב".
+ */
 function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
-  const gradients = allGradients(config.gradients);
+  const gallery = galleryOf(config);
+  const own = !config.backgroundGradient && !config.backgroundImage;
   return (
     <div className="space-y-3" data-testid="board-background">
       <StylePicker config={config} onEdit={onEdit} compact />
@@ -303,41 +312,14 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
       <FrameAndSpacing config={config} onEdit={onEdit} compact />
 
       <div className="space-y-1.5">
-        <div className="text-xs font-medium text-muted-foreground">ערכת נושא</div>
-        <div className="flex flex-wrap gap-1.5">
-          {allThemes(config.customThemes).map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              aria-pressed={config.theme === t.id}
-              title={t.description || t.name}
-              onClick={() => onEdit("theme", (c) => ({ ...c, theme: t.id }))}
-              className={`flex h-8 items-center gap-1 rounded-md border px-2 text-[11px] transition ${
-                config.theme === t.id ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
-              }`}
-            >
-              <span
-                className="size-3.5 rounded-full border"
-                style={{ background: t.vars["--tv-accent"] }}
-                aria-hidden
-              />
-              {t.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">רקע הלוח</div>
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
-            aria-pressed={!config.backgroundGradient}
-            title="הרקע של ערכת הנושא, או של הסגנון"
-            onClick={() => onEdit("bg.gradient", (c) => ({ ...c, backgroundGradient: null }))}
-            className={`h-8 rounded-md border px-2 text-[11px] transition ${
-              !config.backgroundGradient ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"
-            }`}
+            aria-pressed={own}
+            title="הרקע של ערכת הנושא"
+            onClick={() => onEdit("bg.gallery", (c) => ({ ...c, backgroundGradient: null, backgroundImage: null, backgroundOverlay: null }))}
+            className={`h-8 rounded-md border px-2 text-[11px] transition ${own ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
           >
             לפי הערכה
           </button>
@@ -349,39 +331,42 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
             <input
               type="color"
               aria-label="צבע רקע אחיד"
-              value={flatColour(config.backgroundGradient) ?? "#0b1628"}
+              value={(!config.backgroundImage && flatColour(config.backgroundGradient)) || "#0b1628"}
               onChange={(e) =>
                 onEdit("bg.colour", (c) => ({
                   ...c,
                   backgroundGradient: `linear-gradient(180deg, ${e.target.value}, ${e.target.value})`,
+                  backgroundImage: null,
+                  backgroundOverlay: null,
                 }))
               }
               className="size-5 cursor-pointer border-0 bg-transparent p-0"
             />
           </label>
-          {gradients.map((g) => (
-            <button
-              key={g.id}
-              type="button"
-              aria-pressed={config.backgroundGradient === g.value}
-              title={g.name}
-              onClick={() =>
-                onEdit("bg.gradient", (c) => ({ ...c, backgroundGradient: g.value }))
-              }
-              className={`h-8 w-12 rounded-md border transition ${
-                config.backgroundGradient === g.value
-                  ? "ring-2 ring-primary ring-offset-1"
-                  : "hover:border-primary/50"
-              }`}
-              style={{ backgroundImage: g.value }}
-            >
-              <span className="sr-only">{g.name}</span>
-            </button>
-          ))}
+        </div>
+        <div className="grid max-h-40 grid-cols-6 gap-1 overflow-y-auto p-0.5" data-testid="board-background-gallery">
+          {gallery.map((b) => {
+            const t = tileOf(b);
+            const on = wears(config, b);
+            return (
+              <button
+                key={b.id}
+                type="button"
+                aria-pressed={on}
+                aria-label={b.name}
+                title={b.name}
+                onClick={() => onEdit("bg.gallery", (c) => applyBackground(c, b))}
+                className={`relative aspect-video overflow-hidden rounded border transition ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+                style={{ backgroundImage: t.fill ?? undefined, backgroundColor: "#0b1628" }}
+              >
+                {t.thumb && <img src={t.thumb} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />}
+                {t.picture && t.overlay && <span className="absolute inset-0" style={{ background: t.overlay, opacity: t.strength }} />}
+              </button>
+            );
+          })}
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
-          הבחירה כאן חלה על הלוח עצמו - בטלוויזיה, בלפטופ ובנייד כאחד - וגוברת על הרקע של
-          הסגנון. "לפי הערכה" מחזיר אותו. צבעי הטקסט וההדגשה נערכים בלשונית "עיצוב".
+          כמו ב"רקעים": לחיצה מלבישה את הרקע על הלוח כולו. העלאה, שכבה מעל תמונה וסליידרים - בלשונית "עיצוב".
         </p>
       </div>
     </div>
