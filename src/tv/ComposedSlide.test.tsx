@@ -61,6 +61,16 @@ describe("drawing a composed screen", () => {
     expect(screen.getByText("זמני התפילות")).toBeTruthy();
   });
 
+  it("makes every block a box, so a shape, a background and a frame reach it", () => {
+    // Reported: the box shape changed the zmanim and left the prayer times
+    // alone, because the prayer times were drawn with no box around them.
+    const { container } = draw([
+      { id: "a", name: "הלוח", seconds: 0, blocks: [{ block: "prayers" }, { block: "zmanim" }] },
+    ]);
+    expect(container.querySelector('.tv-composed-cell.tv-panel[data-frame="prayers"]')).toBeTruthy();
+    expect(container.querySelector('.tv-panel[data-frame="zmanim"]')).toBeTruthy();
+  });
+
   it("does not show the zmanim twice when the screen has both blocks", () => {
     // The first thing a composed screen drew had two zmanim panels on it: the
     // prayer panel carries its own in most layouts, and the zmanim block drew

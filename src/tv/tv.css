@@ -311,6 +311,19 @@
   overflow: hidden;
 }
 
+/* A block that is a box of its own (TvSlides.CELL_FRAME): the cell is the
+   box, so what is inside it draws no second frame and no second background. */
+.tv-composed-cell.is-cell-box {
+  padding: calc(var(--u) * 1.6);
+}
+
+.tv-composed-cell.is-cell-box .tv-slide {
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+
 /* Inside a cell the slide is already placed; it must not animate in again
    on every rotation, or a screen of four blocks flickers four times. */
 .tv-composed-cell .tv-slide {

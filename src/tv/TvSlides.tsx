@@ -7,7 +7,8 @@ import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM, useBoardEdit, type BoardEditApi } from "./boardEdit";
 import { specialZmanim } from "@community/lib/specialDays";
-import type { FlipArea } from "./config";
+import type { BlockId, FlipArea } from "./config";
+import type { FrameId } from "./frameLooks";
 import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
 import { composedLayout, jerusalemMinutes, minyanNow, shiurMinutes, type BoardSlide } from "./useBoardData";
 import { tracks } from "./grid";
@@ -111,6 +112,19 @@ export function SlideView({
  * arrangement, which comes from `place()` - the one rule shared with the
  * composer's sketch, so what the admin arranged is what the wall shows.
  */
+/**
+ * The blocks that are a box of their own on a composed screen. Their views
+ * draw a list with no box around it, so a shape, a background or a frame had
+ * nothing to land on: on the boards built in the composer, only the zmanim -
+ * which draw their own panel - changed. Now the cell is the box.
+ */
+const CELL_FRAME: Partial<Record<BlockId, FrameId>> = {
+  prayers: "prayers",
+  announcements: "announcements",
+  shiurim: "shiurim",
+  learning: "learning",
+};
+
 function ComposedSlide({
   slide,
   now,
@@ -123,6 +137,7 @@ function ComposedSlide({
   paused: boolean;
 }) {
   const rows = composedLayout(slide.parts, slide.screen.grid);
+  const edit = useBoardEdit();
   return (
     <section
       className="tv-slide tv-composed"
@@ -131,8 +146,14 @@ function ComposedSlide({
     >
       {rows.map((row, i) => (
         <div key={i} className="tv-composed-row" style={{ gridTemplateColumns: tracks(row.widths) }}>
-          {row.parts.map((part, j) => (
-            <div key={`${part.block}-${j}`} className="tv-composed-cell">
+          {row.parts.map((part, j) => {
+            const frame = CELL_FRAME[part.block];
+            return (
+            <div
+              key={`${part.block}-${j}`}
+              className={`tv-composed-cell${frame ? " tv-panel is-cell-box" : ""}`}
+              {...(frame ? edit.frame(frame) : {})}
+            >
               <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
                 {part.block === "zmanim" ? (
                   <ZmanimPanel zmanim={zmanim} now={now} />
@@ -143,7 +164,8 @@ function ComposedSlide({
                 ) : null}
               </AutoScroll>
             </div>
-          ))}
+            );
+          })}
         </div>
       ))}
     </section>
