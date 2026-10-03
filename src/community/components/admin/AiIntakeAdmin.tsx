@@ -12,6 +12,7 @@ import { ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { jerusalemDateKey } from "@community/lib/minyan-time";
 import { presetAnnouncementStyle } from "@community/lib/announcement-style";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
+import { eventSystemKey, specialDayByKey } from "@community/lib/specialDays";
 import { analyzeDirect, getPersonalKey, looksLikeApiKey, maskKey, setPersonalKey } from "@community/lib/aiIntakeDirect";
 
 /**
@@ -29,6 +30,11 @@ type MinyanProposal = {
   existing_id: string | null;
   category_id: string | null;
   new_category_name: string | null;
+  /** A special day's own tab (specialDays.ts key), standing in for the ordinary tabs on its day. */
+  new_category_event: string | null;
+  /** The dates the new tab is for (YYYY-MM-DD); null for an everyday tab. */
+  new_category_from: string | null;
+  new_category_until: string | null;
   prayer: string;
   label: string;
   time_mode: "fixed" | "relative";
@@ -299,10 +305,24 @@ export function AiIntakeAdmin() {
         if (!categoryId && m.new_category_name) {
           const name = m.new_category_name.trim();
           categoryId = newCats.get(name) ?? null;
+          // A festival's own tab when the shul has one already: its times join it, not a second one.
+          const event = m.new_category_event && specialDayByKey(m.new_category_event) ? m.new_category_event : null;
+          if (!categoryId && event) categoryId = categories.find((c) => c.system_key === eventSystemKey(event))?.id ?? null;
           if (!categoryId) {
+            // A timetable for a festival or for some dates is not an everyday tab: it
+            // carries its dates, and a special day's tab its key - the way the
+            // שמחת תורה notice of אהל אברהם was entered by hand (2.10.2026).
             const { data, error } = await supabase
               .from("minyan_categories")
-              .insert({ community_id: cid, name, active: true, sort_order: 100 + newCats.size * 10 } as never)
+              .insert({
+                community_id: cid,
+                name,
+                active: true,
+                sort_order: 100 + newCats.size * 10,
+                system_key: event ? eventSystemKey(event) : null,
+                visible_from: m.new_category_from || null,
+                visible_until: m.new_category_until || m.new_category_from || null,
+              } as never)
               .select("id")
               .single();
             if (error || !data) {
@@ -563,7 +583,15 @@ export function AiIntakeAdmin() {
                     <span className={`rounded px-1.5 text-xs ${m.action === "update" ? "bg-amber-100 text-amber-900" : "bg-emerald-100 text-emerald-900"}`}>
                       {m.action === "update" ? "עדכון" : "חדש"}
                     </span>
-                    <span className="text-xs text-muted-foreground">{catName(m.category_id, m.new_category_name)}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {catName(m.category_id, m.new_category_name)}
+                      {!m.category_id && m.new_category_event && specialDayByKey(m.new_category_event)
+                        ? ` · ${specialDayByKey(m.new_category_event)!.name}`
+                        : ""}
+                      {!m.category_id && m.new_category_from
+                        ? ` · ${m.new_category_from}${m.new_category_until && m.new_category_until !== m.new_category_from ? `–${m.new_category_until}` : ""}`
+                        : ""}
+                    </span>
                     <input aria-label="שם" value={m.label} onChange={(e) => set({ label: e.target.value })} className={`${input} w-32`} />
                     <select aria-label="סוג שעה" value={m.time_mode} onChange={(e) => set({ time_mode: e.target.value as MinyanProposal["time_mode"] })} className={input}>
                       <option value="fixed">שעה קבועה</option>

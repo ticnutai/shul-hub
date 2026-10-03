@@ -5,6 +5,20 @@
 export const AI_INTAKE_MODEL = "claude-opus-5-5";
 
 const RELATIVE = ["alot", "misheyakir", "sunrise", "chatzot", "mincha_gedola", "plag", "candle", "sunset", "tzeit"];
+/**
+ * The special days a new tab can stand for (specialDays.ts SPECIAL_DAYS, less
+ * the state's days). Written out, not imported - this file runs in Deno too;
+ * a test keeps the two lists the same.
+ */
+export const AI_INTAKE_EVENT_KEYS = [
+  "yom_kippur", "erev_yom_kippur", "rosh_hashana", "erev_rosh_hashana", "shabbat_shuva", "tisha_bav", "erev_tisha_bav",
+  "tzom_gedaliah", "asara_btevet", "taanit_esther", "shiva_asar_btamuz", "taanit_bechorot", "sukkot", "erev_sukkot",
+  "hoshana_raba", "chol_hamoed_sukkot", "shmini_atzeret", "pesach", "shvii_shel_pesach", "erev_pesach", "chol_hamoed_pesach",
+  "shavuot", "erev_shavuot", "purim", "erev_purim", "shushan_purim", "chanukah", "purim_katan", "shabbat_hagadol",
+  "shabbat_zachor", "shabbat_parah", "shabbat_hachodesh", "shabbat_shekalim", "shabbat_chazon", "shabbat_nachamu",
+  "shabbat_shirah", "lag_baomer", "tu_bishvat", "tu_bav", "pesach_sheni", "rosh_chodesh",
+];
+
 const nullable = (schema: Record<string, unknown>) => ({ anyOf: [schema, { type: "null" }] });
 const obj = (properties: Record<string, unknown>) => ({
   type: "object",
@@ -24,6 +38,9 @@ export const AI_INTAKE_SCHEMA = obj({
       existing_id: nullable({ type: "string" }),
       category_id: nullable({ type: "string" }),
       new_category_name: nullable({ type: "string" }),
+      new_category_event: nullable({ type: "string", enum: AI_INTAKE_EVENT_KEYS }),
+      new_category_from: nullable({ type: "string", format: "date" }),
+      new_category_until: nullable({ type: "string", format: "date" }),
       prayer: { type: "string" },
       label: { type: "string" },
       time_mode: { type: "string", enum: ["fixed", "relative"] },
@@ -83,6 +100,13 @@ The data:
 - Minyanim belong to a category (a tab such as ימות החול / יום שישי / שבת). Use the category ids you
   are given. If no category fits (for example the input is about Shabbat and there is no Shabbat
   category), set category_id to null and new_category_name to the tab to create ("שבת").
+  A timetable for a festival, a fast or particular dates is not an everyday tab: give its new tab
+  new_category_from / new_category_until (the dates it is for), and new_category_event when the tab
+  is a special day's own (shmini_atzeret, yom_kippur ...) - on that day it then stands in place of
+  the ordinary tabs. A day's prayers belong to the date they are said on, by the clock: the eve's
+  mincha and the evening's arvit go on the eve's date (a tab of its own, dated to that day, with no
+  new_category_event), and the morning onwards goes on the festival's date. Leave all three null for
+  an ordinary tab. Do not list candle lighting or other zmanim as minyanim - the site works them out.
   "prayer" is one of the category's subcategory ids when it has them, otherwise one of
   shacharit / mincha / arvit / other. "label" is the name shown ("שחרית א'", "מנחה גדולה").
   A time is either fixed (HH:MM, 24-hour) or relative to a zman: alot, misheyakir, sunrise, chatzot,
