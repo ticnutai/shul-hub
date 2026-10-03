@@ -375,6 +375,16 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
 
 /* ------------------------------------------ size, colour and position -- */
 
+/** The text weights, one list wherever a weight is chosen (700 and 800 both, for what was stored before). */
+export const TEXT_WEIGHTS: Array<{ value: number; label: string }> = [
+  { value: 300, label: "דק" },
+  { value: 400, label: "רגיל" },
+  { value: 600, label: "בינוני" },
+  { value: 700, label: "מודגש" },
+  { value: 800, label: "מודגש מאוד" },
+  { value: 900, label: "שחור" },
+];
+
 function NumStep({
   label,
   value,
@@ -441,7 +451,25 @@ function NumStep({
  * rendered the same way on the TV (boardEdit.elementStyleCss). Dragging the
  * element in the preview edits the same x / y.
  */
-function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdit: Edit }) {
+/**
+ * How one element looks - its size, colour, weight, background and
+ * see-through, for itself or its family, in every theme or one - and, on the
+ * board, where it stands. One editor for it, reached two ways: clicking the
+ * element on the board, and "טקסט ← אזור על הלוח". They were two editors
+ * writing the same setting with different weights and different names.
+ */
+export function ElementLook({
+  k,
+  config,
+  onEdit,
+  position = true,
+}: {
+  k: string;
+  config: TvConfig;
+  onEdit: Edit;
+  /** Where it stands (the joystick, the arrow keys): on the board only. */
+  position?: boolean;
+}) {
   // Which entry the controls write to: this element, or its family.
   const target = styleTargetKey(config, k);
   const fk = familyKey(k);
@@ -490,6 +518,7 @@ function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdi
   const stepRef = useRef(step);
   stepRef.current = step;
   useEffect(() => {
+    if (!position) return;
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
@@ -507,7 +536,7 @@ function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdi
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [position]);
 
   return (
     <div className="space-y-2 border-t pt-3">
@@ -659,11 +688,11 @@ function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdi
             className="h-8 rounded-md border bg-background px-2 text-sm"
           >
             <option value="">כמו בעיצוב</option>
-            <option value="300">דק</option>
-            <option value="400">רגיל</option>
-            <option value="600">בינוני</option>
-            <option value="800">מודגש</option>
-            <option value="900">שחור</option>
+            {TEXT_WEIGHTS.map((w) => (
+              <option key={w.value} value={w.value}>
+                {w.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="flex items-center gap-2">
@@ -700,6 +729,7 @@ function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdi
           />
         </label>
       </div>
+      {position && (
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <Joystick onNudge={nudge} step={step} onReset={() => set({ x: 0, y: 0 }, "pos")} />
         <div className="space-y-2">
@@ -731,6 +761,7 @@ function ElementLook({ k, config, onEdit }: { k: string; config: TvConfig; onEdi
           </p>
         </div>
       </div>
+      )}
     </div>
   );
 }

@@ -51,7 +51,6 @@ import {
   normalizeTvConfig,
   type AlertEvent,
   configForDevice,
-  deviceHasOverrides,
   editForDevice,
   type TvConfig,
 } from "@/tv/config";
@@ -65,7 +64,6 @@ import {
   THEME_VAR_LABELS,
   TV_THEMES,
   type ThemeVar,
-  type TvTheme,
 } from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
 import { nextCandleLighting } from "@/tv/shabbat";
@@ -174,7 +172,7 @@ import {
   type CustomIllustration,
   type PortableIllustration,
 } from "@/tv/illustrated";
-import { PaintedRows } from "./IllustratedLookEditor";
+import { MedallionRows } from "./MedallionRows";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
@@ -835,7 +833,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const theme = getTheme(scoped.theme, draft.customThemes);
   const isCustom = draft.customThemes.some((t) => t.id === scoped.theme);
   const hasOverrides = Object.keys(scoped.themeOverrides).length > 0;
-  const painted = scoped.screenLayout === "illustrated";
   const layerProps: LayerProps = {
     config: view,
     saved: scoped,
@@ -998,8 +995,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           parts.length ? `יובאו ${parts.join(" ו-")}` : "",
           // Shape from the tablets editor: style, corners, spacing, text size, name
           incoming.board ? "הוחל מבנה הלוח (סגנון, פינות, מרווחים, גודל טקסט ושם)" : "",
-          plan.builtin.length ? `${plan.builtin.length} תבניות מאוירות כבר קיימות כאן ולא הועלו שוב` : "",
-          uploaded.length || plan.builtin.length ? "לבחירה: פריסה ← תבנית מאוירת" : "",
           failed ? `${failed} תמונות לא הועלו` : "",
           incoming.skipped ? `${incoming.skipped} פריטים לא תקינים דולגו` : "",
         ]
@@ -1476,7 +1471,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             hint="כמה מסכים, ומה מופיע בכל אחד. מסך אחד — הלוח עומד; כמה — הוא מתחלף ביניהם."
           >
             <ScreenComposer
-              config={draft}
+              config={scoped}
               current={composerScreen}
               onSelect={(i, s) => {
                 setComposerScreen(i);
@@ -1552,7 +1547,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 תפילות, שחרית לא תיחתך באמצע.
               </p>
             </div>
-            {(painted || scoped.screenLayout === "medallion") && <PaintedRows config={scoped} onEdit={edit} />}
+            {scoped.screenLayout === "medallion" && <MedallionRows config={scoped} onEdit={edit} />}
           </Section>
 
           <Section title="פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים — המסכים שלו קובעים, גם בשבת.">
@@ -1582,8 +1577,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </button>
               ))}
             </div>
-            {/* A painted board brings its own frames and their places. */}
-            {!painted && <FrameSpacing config={view} onEdit={edit} />}
+            <FrameSpacing config={view} onEdit={edit} />
 
             <div className="flex flex-wrap items-center gap-2 text-sm">
               שעון:
@@ -1658,7 +1652,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           <Section title="ראש המסך">
             <label className="flex items-center gap-3">
               <Switch
-                checked={draft.header.logo}
+                checked={scoped.header.logo}
                 onCheckedChange={(on) =>
                   edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))
                 }
@@ -1667,7 +1661,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </label>
             <label className="flex items-center gap-3">
               <Switch
-                checked={draft.header.parasha}
+                checked={scoped.header.parasha}
                 onCheckedChange={(on) =>
                   edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))
                 }
@@ -1676,7 +1670,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </label>
             <label className="flex items-center gap-3">
               <Switch
-                checked={draft.header.dafYomi}
+                checked={scoped.header.dafYomi}
                 onCheckedChange={(on) =>
                   edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))
                 }
@@ -1883,7 +1877,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           >
             <label className="flex items-center gap-3">
               <Switch
-                checked={draft.countdown.enabled}
+                checked={scoped.countdown.enabled}
                 onCheckedChange={(on) =>
                   edit("cd-on", (c) => ({ ...c, countdown: { ...c.countdown, enabled: on } }))
                 }
@@ -1898,7 +1892,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           >
             <label className="flex items-center gap-3">
               <Switch
-                checked={draft.ticker.enabled}
+                checked={scoped.ticker.enabled}
                 onCheckedChange={(on) =>
                   edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))
                 }
@@ -1906,7 +1900,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               הצגת סרגל
             </label>
             <Textarea
-              value={draft.ticker.text}
+              value={scoped.ticker.text}
               maxLength={400}
               placeholder="למשל: ברוכים הבאים · שיעור העמוד היומי בכל יום ב-16:15"
               onChange={(e) =>

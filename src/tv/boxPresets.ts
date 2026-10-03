@@ -60,7 +60,6 @@ export function applyBoxPreset(c: TvConfig, p: BoxPreset, frame: FrameId | null)
     };
   return {
     ...c,
-    ...(c.screenLayout === "illustrated" ? { screenLayout: "dashboard" as const } : {}),
     frame: { ...c.frame, shape: SHAPE_FOR_ALL[p.shape] },
     frameStyle: {
       ...c.frameStyle,

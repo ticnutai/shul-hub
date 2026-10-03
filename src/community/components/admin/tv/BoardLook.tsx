@@ -7,7 +7,6 @@ import {
   type TvConfig,
 } from "@/tv/config";
 import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
-import { leavingPainted } from "./leavingPainted";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -46,7 +45,6 @@ export function StylePicker({
   onEdit: Edit;
   compact?: boolean;
 }) {
-  const painted = config.screenLayout === "illustrated";
   return (
     <div className="space-y-2">
       <div className={compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium"}>
@@ -64,13 +62,13 @@ export function StylePicker({
           <button
             key={sk.id}
             type="button"
-            aria-pressed={!painted && config.skin === sk.id}
+            aria-pressed={config.skin === sk.id}
             title={sk.hint}
             onClick={() =>
-              onEdit("skin", (c) => ({ ...c, skin: sk.id, ...leavingPainted(c) }))
+              onEdit("skin", (c) => ({ ...c, skin: sk.id }))
             }
             className={`rounded-lg border p-1.5 text-right transition ${
-              !painted && config.skin === sk.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
+              config.skin === sk.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
             }`}
           >
             <span

@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Download, Plus, RotateCcw, Trash2, Upload, X } from "lucide-react";
-import { toast } from "sonner";
+import { Check, Download, RotateCcw, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -16,11 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { TvConfig } from "@/tv/config";
 import {
-  allGradients,
   isSafeGradient,
-  newGradientId,
-  TV_GRADIENTS,
-  type TvGradient,
 } from "@/tv/themes";
 
 /**
@@ -77,16 +72,9 @@ export function GradientStudio({
   onApply,
   onPreview,
   current,
-  library = true,
 }: {
   config: TvConfig;
   onEdit: Edit;
-  /**
-   * Its own swatches and "שמירה בספרייה". Off inside the backgrounds, where
-   * the ready-made gradients and the saved ones are the gallery above it -
-   * one place for them, not two.
-   */
-  library?: boolean;
   applyLabel: string;
   onApply: (value: string | null) => void;
   /**
@@ -103,7 +91,6 @@ export function GradientStudio({
   const [to, setTo] = useState(simple?.to ?? "#1b3054");
   // Anything the two-colour controls cannot express is kept verbatim here.
   const [advanced, setAdvanced] = useState(current && !simple ? current : "");
-  const [name, setName] = useState("");
 
   // Follow the board when the gradient changes elsewhere (a preset, an undo).
   useEffect(() => {
@@ -119,30 +106,6 @@ export function GradientStudio({
 
   const built = advanced.trim() ? advanced.trim() : build(kind, angle, from, to);
   const valid = isSafeGradient(built);
-  const saved = config.gradients;
-
-  /**
-   * Loads a ready-made gradient into the controls.
-   *
-   * The label under these says "לחיצה בוחרת" - clicking chooses - and now
-   * that is what it does. It used to apply on the spot, which made the
-   * choice and the commitment the same act: you could not look at one on
-   * the board without already having taken it.
-   */
-  const pick = (value: string) => {
-    setTouched(true);
-    const parsed = parseSimple(value);
-    if (parsed) {
-      setKind(parsed.kind);
-      setAngle(parsed.angle);
-      setFrom(parsed.from);
-      setTo(parsed.to);
-      setAdvanced("");
-    } else {
-      setAdvanced(value);
-    }
-  };
-
   // Every turn of a dial reaches the board. Nothing is written down: this
   // is the board wearing it, so the judgement is made on the wall and not
   // on a twenty-pixel strip in a side panel.
@@ -163,21 +126,6 @@ export function GradientStudio({
 
   // Leaving the control puts the board back to what is actually saved.
   useEffect(() => () => onPreview?.(null), [onPreview]);
-
-  const saveToLibrary = () => {
-    const clean = name.trim().slice(0, 40);
-    if (!clean) return toast.error("צריך לתת שם לגרדיאנט");
-    if (!valid) return toast.error("הגרדיאנט אינו תקין");
-    const existing = saved.find((g) => g.name === clean);
-    onEdit("gradient-save", (c) => ({
-      ...c,
-      gradients: existing
-        ? c.gradients.map((g) => (g.id === existing.id ? { ...g, value: built } : g))
-        : [...c.gradients, { id: newGradientId(), name: clean, value: built }].slice(0, 40),
-    }));
-    toast.success(existing ? `הגרדיאנט "${clean}" עודכן` : `הגרדיאנט "${clean}" נשמר בספרייה`);
-    setName("");
-  };
 
   return (
     <div className="space-y-3">
@@ -282,76 +230,6 @@ export function GradientStudio({
           </label>
         )}
       </div>
-
-      {/* ready-made and saved gradients */}
-      {library && (
-      <div>
-        <div className="mb-1.5 text-xs font-medium text-muted-foreground">
-          מוכנים לשימוש · לחיצה בוחרת
-        </div>
-        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-          {allGradients(saved).map((g) => {
-            const mine = !TV_GRADIENTS.some((b) => b.id === g.id);
-            return (
-              <div key={g.id} className="group relative">
-                <button
-                  type="button"
-                  title={g.name}
-                  aria-label={g.name}
-                  onClick={() => pick(g.value)}
-                  className={`block w-full overflow-hidden rounded-md border transition hover:ring-2 hover:ring-primary ${
-                    current === g.value ? "ring-2 ring-primary ring-offset-1" : ""
-                  }`}
-                >
-                  <GradientSwatch value={g.value} className="h-9 w-full border-0" />
-                  <span className="block truncate bg-background/95 px-1 py-0.5 text-[10px]">
-                    {g.name}
-                  </span>
-                </button>
-                {mine && (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="secondary"
-                    className="absolute end-0.5 top-0.5 size-5 opacity-0 transition group-hover:opacity-100"
-                    aria-label={`מחיקת ${g.name}`}
-                    onClick={() =>
-                      onEdit("gradient-del", (c) => ({
-                        ...c,
-                        gradients: c.gradients.filter((x) => x.id !== g.id),
-                      }))
-                    }
-                  >
-                    <Trash2 className="size-3" />
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      )}
-
-      {/* keep it */}
-      {library && (
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="שם לשמירה בספרייה"
-          maxLength={40}
-          aria-label="שם הגרדיאנט"
-          className="h-8 w-48"
-        />
-        <Button type="button" size="sm" variant="outline" onClick={saveToLibrary} disabled={!valid}>
-          <Plus className="size-4" /> שמירה בספרייה
-        </Button>
-        <span className="text-xs text-muted-foreground">
-          שם קיים מעדכן את הגרדיאנט השמור. מחיקה מהספרייה לא משנה לוח שכבר משתמש בו.
-        </span>
-      </div>
-      )}
 
       {/* raw CSS, for anything the controls above cannot express */}
       <details className="rounded-md border bg-muted/40 p-2">

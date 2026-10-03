@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ImagePlus, RotateCcw, Trash2 } from "lucide-react";
+import { ImagePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
@@ -8,7 +8,7 @@ import { BOX_PRESETS, applyBoxPreset, boxPresetCss, boxShapeCss, wearsBoxPreset 
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
-import { FRAME_PICTURES, framePictureRef, framePictureUrl } from "@/tv/framePictures";
+import { FRAME_PICTURES, framePictureRef } from "@/tv/framePictures";
 import { THEME_VAR_LAYERS, TV_FONTS, isSafeGradient, type ThemeVar } from "@/tv/themes";
 import {
   MAX_BACKGROUNDS,
@@ -23,9 +23,7 @@ import {
   type SavedBackground,
 } from "@/tv/backgrounds";
 import { FrameCorners, StylePicker } from "./BoardLook";
-import { leavingPainted } from "./leavingPainted";
 import { GradientStudio } from "./GradientStudio";
-import { PaintedFrameLook, PaintedText, PaintedWall } from "./IllustratedLookEditor";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
 import { uploadImages } from "./uploadImages";
@@ -226,7 +224,7 @@ const flat = (c: string) => `linear-gradient(180deg, ${c}, ${c})`;
 
 /* --------------------------------------------------------------- רקעים -- */
 
-type Source = "colour" | "gradient" | "picture" | "painted";
+type Source = "colour" | "gradient" | "picture";
 
 export function BackgroundLayer({
   config,
@@ -246,7 +244,6 @@ export function BackgroundLayer({
   const target = fixedTarget;
   const frame = frameOf(target);
   const onBoard = target === "board";
-  const painted = config.screenLayout === "illustrated";
 
   /** What this target's background is now: a colour, a gradient or a picture, or nothing. */
   const currentOf = (c: TvConfig): string | null =>
@@ -258,10 +255,10 @@ export function BackgroundLayer({
   const current = currentOf(saved);
   const kind = (v: string | null): Source =>
     !v ? "gradient" : isPictureFill(v) ? "picture" : isSafeGradient(v) && !FLAT.test(v) ? "gradient" : "colour";
-  const [source, setSource] = useState<Source>(() => (painted ? "painted" : kind(current)));
+  const [source, setSource] = useState<Source>(() => kind(current));
   useEffect(() => {
     // A new target starts on the kind of background it has.
-    setSource(onBoard && painted ? "painted" : kind(currentOf(saved)));
+    setSource(kind(currentOf(saved)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target]);
 
@@ -271,8 +268,8 @@ export function BackgroundLayer({
       if (target === "board") {
         if (value === null) return { ...c, backgroundGradient: null, backgroundImage: null };
         // A background of its own replaces the painting (which is its own wall).
-        if (isPictureFill(value)) return { ...c, ...leavingPainted(c), backgroundImage: value };
-        return { ...c, ...leavingPainted(c), backgroundGradient: value, backgroundImage: null };
+        if (isPictureFill(value)) return { ...c, backgroundImage: value };
+        return { ...c, backgroundGradient: value, backgroundImage: null };
       }
       const id = frameOf(target);
       if (id) return { ...c, frameLooks: setFrameLook(c.frameLooks, id, { bg: value }) };
@@ -360,18 +357,18 @@ export function BackgroundLayer({
         look={look}
         uploading={uploading}
         onUpload={(files) => void upload(files)}
-        isOn={(b) => (onBoard ? !painted && wears(saved, b) : current === (b.picture ?? b.fill))}
+        isOn={(b) => (onBoard ? wears(saved, b) : current === (b.picture ?? b.fill))}
         onPick={(b) => {
           setPreview(null);
           setSource(kindOf(b));
-          if (onBoard) onEdit("layer-bg:board", (c) => ({ ...applyBackground(c, b), ...leavingPainted(c) }));
+          if (onBoard) onEdit("layer-bg:board", (c) => applyBackground(c, b));
           else apply(b.picture ?? b.fill);
         }}
       />
 
       <div className="space-y-3 rounded-lg border p-3" data-testid={onBoard ? "background-now" : "box-background-now"}>
         <div className="text-sm font-medium">{onBoard ? "הרקע של הלוח עכשיו" : "הרקע עכשיו"}</div>
-        <Segments label="סוג הרקע" value={source === "painted" ? "picture" : source} onChange={(v) => setSource(v as Source)} options={sources} />
+        <Segments label="סוג הרקע" value={source} onChange={(v) => setSource(v as Source)} options={sources} />
 
         {source === "colour" && (
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -390,14 +387,13 @@ export function BackgroundLayer({
             key={target}
             config={config}
             onEdit={onEdit}
-            library={false}
             applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${FRAME_LABELS[frame]}` : "החלה על כל המסגרות"}
             current={current && isSafeGradient(current) ? current : null}
             onPreview={preview}
             onApply={apply}
           />
         )}
-        {(source === "picture" || source === "painted") && (
+        {source === "picture" && (
           <div className="space-y-2">
             {picture && shown ? (
               <img src={shown} alt="" className="h-16 w-28 rounded object-cover" />
@@ -410,9 +406,7 @@ export function BackgroundLayer({
       </div>
 
       {/* The sliders of this target's background. */}
-      {onBoard && painted ? (
-        <PaintedWall config={saved} onEdit={onEdit} />
-      ) : onBoard ? (
+      {onBoard ? (
         <div className="space-y-2 rounded-lg border p-3" data-testid="background-tune">
           <Range label="בהירות" value={tune.brightness} min={0.6} max={1.4} step={0.05} show={pct} onChange={(v) => setTune({ brightness: v })} />
           <Range label="רוויית צבע" value={tune.saturation} min={0} max={2} step={0.05} show={pct} onChange={(v) => setTune({ saturation: v })} />
@@ -728,7 +722,6 @@ export function FramesLayer(props: LayerProps) {
   const { config, saved, onEdit, colourFields } = props;
   const [target, setTarget] = useState("frames");
   const frame = frameOf(target);
-  const painted = config.screenLayout === "illustrated";
   const fs = saved.frameStyle;
   const own = frame ? saved.frameLooks[frame] : undefined;
   const setFs = (patch: Partial<FrameStyle>) =>
@@ -780,7 +773,7 @@ export function FramesLayer(props: LayerProps) {
       <Part title="תיבות מוכנות" testId="box-presets">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {BOX_PRESETS.map((p) => {
-            const on = !painted && wearsBoxPreset(saved, p, frame);
+            const on = wearsBoxPreset(saved, p, frame);
             return (
               <button
                 key={p.id}
@@ -834,9 +827,7 @@ export function FramesLayer(props: LayerProps) {
         <BackgroundLayer key={target} {...props} fixedTarget={target} />
       </Part>
 
-      {painted && !frame ? (
-        <PaintedFrameLook config={saved} onEdit={onEdit} />
-      ) : (
+      {(
         <Part title="קו ובליטה" testId="frame-style">
           {frame ? (
             <>
@@ -942,7 +933,6 @@ export function TextLayer({ config, saved, onEdit, colourFields }: LayerProps) {
   const [target, setTarget] = useState("board");
   const frame = frameOf(target);
   const area = target.startsWith("area:") ? target.slice(5) : null;
-  const painted = config.screenLayout === "illustrated";
 
   return (
     <div className="space-y-3" data-testid="layer-text">
@@ -963,11 +953,6 @@ export function TextLayer({ config, saved, onEdit, colourFields }: LayerProps) {
       {area ? (
         <>
           <TextAreaControls config={config} onEdit={onEdit} areaKey={area} />
-          {painted && (
-            <p className="text-[11px] text-muted-foreground">
-              בלוח המצויר הטקסט נכתב בצבעי הציור (תחת "כל הלוח"). אזורים חלים על הלוחות הרגילים.
-            </p>
-          )}
         </>
       ) : frame ? (
         <div className="space-y-2 rounded-lg border p-3">
@@ -988,7 +973,6 @@ export function TextLayer({ config, saved, onEdit, colourFields }: LayerProps) {
         </div>
       ) : (
         <>
-          {painted && <PaintedText config={saved} onEdit={onEdit} />}
           <label className="flex items-center gap-2 text-xs">
             <span className="shrink-0">גופן</span>
             <select
@@ -1004,7 +988,7 @@ export function TextLayer({ config, saved, onEdit, colourFields }: LayerProps) {
               ))}
             </select>
           </label>
-          {!painted && (
+          {(
             <Range
               label="גודל הטקסט"
               value={saved.textScale}
@@ -1032,7 +1016,7 @@ export function TextLayer({ config, saved, onEdit, colourFields }: LayerProps) {
             )}
           </div>
           <div className="text-xs font-medium text-muted-foreground">
-            {painted ? "צבעי הטקסט בלוחות הרגילים" : "צבעי הטקסט"}
+            צבעי הטקסט
           </div>
           {colourFields(THEME_VAR_LAYERS.text)}
         </>

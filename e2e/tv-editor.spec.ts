@@ -307,7 +307,7 @@ test.describe("TV editor", () => {
     await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
     await expectNotFrozen(page, "saved");
   });
-  test("the board itself is editable from the board: style, frame, theme, colour", async ({ page }) => {
+  test("the board itself is editable from the board: style, frame, a background from the gallery, colour", async ({ page }) => {
     // Clicking an empty part of the board selects the board, and everything
     // about its look is then in one panel - the way the live editor is used.
     await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
@@ -321,14 +321,15 @@ test.describe("TV editor", () => {
     await expect.poll(() => root(page).getAttribute("class")).toContain("is-skin-stone");
     await expectNotFrozen(page, "style from the board");
 
-    // A theme, from the same panel - imported ones are listed here too.
-    await panel.getByRole("button", { name: "ירוק שבת", exact: true }).click();
-    await expect.poll(() => cssVar(page, "--tv-bg-a")).toBe(TV_THEMES[2].vars["--tv-bg-a"]);
-    await expectNotFrozen(page, "theme from the board");
+    // A background from the same gallery as "רקעים" (the themes are chosen in one place, "עיצוב").
+    await panel.getByTestId("board-background-gallery").getByRole("button", { name: "שמיים בערב", exact: true }).click();
+    await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-image");
+    await expectNotFrozen(page, "background from the board");
 
-    // A flat colour for the whole background, which beats the style's wall.
+    // A flat colour for the whole background, which beats the style's wall - and takes the picture off.
     await panel.getByLabel("צבע רקע אחיד").fill("#123456");
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
+    await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-bg-image");
     await expect
       .poll(() => root(page).locator(".tv-bg").evaluate((el) => getComputedStyle(el).backgroundImage))
       .toContain("rgb(18, 52, 86)");

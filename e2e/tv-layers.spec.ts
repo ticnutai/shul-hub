@@ -166,10 +166,12 @@ test.describe("TV editor, by layer", () => {
     await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).color)).toBe("rgb(255, 238, 170)");
 
     await layer.getByLabel("טקסט של").selectOption("area:header.title");
-    await layer.getByLabel("גודל הטקסט באזור").fill("1.5");
+    // The same editor as a click on the board: size in steps, weight from one list.
+    const bigger = layer.getByRole("button", { name: "הגדלת גודל טקסט של הרכיב" });
+    for (let i = 0; i < 10; i++) await bigger.click();
     const title = root(page).locator("h1.tv-title").first();
     await expect.poll(() => title.evaluate((e) => getComputedStyle(e).getPropertyValue("--es").trim())).toBe("1.5");
-    await layer.getByRole("button", { name: "מודגש" }).click();
+    await layer.getByLabel("עובי הגופן של הרכיב").selectOption("700");
     await expect.poll(() => title.evaluate((e) => getComputedStyle(e).fontWeight)).toBe("700");
     await expectNotFrozen(page, "text layers");
   });
