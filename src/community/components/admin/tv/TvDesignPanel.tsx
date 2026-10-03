@@ -156,6 +156,8 @@ import type { DeviceMode } from "./devices";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { FrameSpacing } from "./BoardLook";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
+import { BlankBoardStarter, BuildGuide, type BuildStep } from "./BlankBoardStarter";
+import { blankBoard } from "@/tv/blankBoard";
 import { uploadImages } from "./uploadImages";
 import { DesignLibrary } from "./DesignLibrary";
 import { captureDesign, findDesign, MAX_DESIGNS } from "@/tv/designs";
@@ -505,6 +507,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const [occasionScope, setOccasionScope] = useState<string | null>(null);
   /** Every box ("frames") or one ("frame:<id>"): what the parts 2-5 of the design tab are about. */
   const [partTarget, setPartTarget] = useState("frames");
+  // After "התחלה מאפס": the steps left, and the ones already visited.
+  const [guide, setGuide] = useState<BuildStep[] | null>(null);
+  const goToStep = (step: BuildStep) => {
+    setGuide((g) => (g && !g.includes(step) ? [...g, step] : g));
+    setTab(step === "arrange" ? "layout" : "design");
+    // Once the tab is drawn; instant, as a smooth scroll stops in a background window.
+    window.setTimeout(() => document.getElementById(step === "arrange" ? "layout-screens" : step)?.scrollIntoView({ block: "start" }), 80);
+  };
 
   // The device strip over the preview is the only switcher; choosing a
   // device there is also choosing what these controls edit.
@@ -1225,6 +1235,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
       )}
 
+      {guide && <BuildGuide done={guide} onStep={goToStep} onClose={() => setGuide(null)} />}
+
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="design">עיצוב</TabsTrigger>
@@ -1298,6 +1310,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             title="1. ערכות מוכנות"
             hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
           >
+            <BlankBoardStarter
+              onCreate={(blocks) => {
+                edit("blank-board", (c) => blankBoard(c, blocks));
+                setComposerScreen(0);
+                setGuide([]);
+              }}
+            />
             <DesignLibrary config={view} onEdit={edit} />
           </Section>
 
@@ -1346,6 +1365,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
           <Section
+            id="layout-screens"
             title="מסכים ומה עליהם"
             hint="כמה מסכים, ומה מופיע בכל אחד. מסך אחד — הלוח עומד; כמה — הוא מתחלף ביניהם."
           >

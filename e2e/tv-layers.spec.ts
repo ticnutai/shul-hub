@@ -56,6 +56,31 @@ test.describe("TV editor, by layer", () => {
     await expectNotFrozen(page, "layout tab");
   });
 
+  test("a board from nothing: what is on it first, then a guide through the steps", async ({ page }) => {
+    const starter = page.getByTestId("blank-board");
+    await starter.getByRole("button", { name: "התחלה מאפס - לוח ריק" }).click();
+    // The common ones are ticked to begin with; the shiurim are added, the zmanim taken off.
+    await starter.getByRole("checkbox", { name: /שיעורים/ }).check();
+    await starter.getByRole("checkbox", { name: /זמני היום/ }).uncheck();
+    await starter.getByRole("button", { name: "יצירת לוח ריק עם מה שבחרתי" }).click();
+
+    // The board shows what was ticked, and nothing it was not.
+    await expect(root(page).locator(".tv-board-frame")).toHaveCount(0);
+    await expect(root(page)).not.toHaveClass(/has-bg-image|has-bg-gradient/);
+    await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
+
+    // The guide: the arrangement first, in the layout tab, then the look.
+    const guide = page.getByTestId("build-guide");
+    await guide.getByRole("button", { name: /סידור על המסך/ }).click();
+    await expect(page.getByRole("tab", { name: "פריסה" })).toHaveAttribute("aria-selected", "true");
+    await expect.poll(() => page.locator("#layout-screens").evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThan(300);
+    await guide.getByRole("button", { name: /תיבות/ }).click();
+    await expect(page.getByRole("tab", { name: "עיצוב" })).toHaveAttribute("aria-selected", "true");
+    await expect.poll(() => page.locator("#design-boxes").evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThan(300);
+    await expect(guide.getByRole("button", { name: /✓ סידור על המסך/ })).toBeVisible();
+    await expectNotFrozen(page, "blank board");
+  });
+
   test("the board's background has sliders of its own", async ({ page }) => {
     const layer = page.getByTestId("layer-background");
     await layer.getByLabel("בהירות").fill("1.3");
