@@ -30,7 +30,7 @@ test.describe("TV editor, by layer", () => {
   test("the design tab is its parts, each in its own place; the layout tab is where things stand", async ({ page }) => {
     // The look in its parts: the board's background, then the boxes' shape,
     // background, frames and text - for every box or one, chosen once.
-    for (const name of ["ערכות נושא ועיצובים", "1. רקע הלוח", "2. צורת התיבה", "3. רקע התיבה", "4. מסגרות", "5. טקסט"])
+    for (const name of ["ערכות - נקודת התחלה שממלאת את החלקים", "1. רקע הלוח", "2. צורת התיבה", "3. רקע התיבה", "4. מסגרות", "5. טקסט"])
       await expect(heading(page, name)).toBeVisible();
     await expect(page.getByTestId("layer-background")).toBeVisible();
     await expect(page.getByTestId("parts-scope")).toBeVisible();
@@ -89,7 +89,7 @@ test.describe("TV editor, by layer", () => {
 
   test("boxes: a ready one, a shape of its own for one box, and a frame from the gallery", async ({ page }) => {
     // A ready box: a hexagon, its gold line drawn as a ring that follows the cut.
-    await page.getByTestId("box-presets").getByRole("button", { name: "משושה זהב" }).click();
+    await page.getByTestId("box-presets").getByRole("button", { name: "משושה זהב", exact: true }).click();
     await expect(root(page)).toHaveClass(/has-shape-hexagon/);
     const prayers = root(page).locator('[data-frame="prayers"]').first();
     await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e).clipPath)).toContain("polygon");
@@ -105,9 +105,9 @@ test.describe("TV editor, by layer", () => {
 
     // And a frame of its own from the gallery; a second click takes it off.
     const pictures = page.getByTestId("frame-pictures");
-    await pictures.getByRole("button", { name: "קו כפול זהב" }).click();
+    await pictures.getByRole("button", { name: "קו כפול זהב", exact: true }).click();
     await expect(zmanim).toHaveAttribute("data-own-image", "");
-    await pictures.getByRole("button", { name: "קו כפול זהב" }).click();
+    await pictures.getByRole("button", { name: "קו כפול זהב", exact: true }).click();
     await expect(zmanim).not.toHaveAttribute("data-own-image", "");
     await expectNotFrozen(page, "boxes");
   });
@@ -149,13 +149,13 @@ test.describe("TV editor, by layer", () => {
   });
 
   test("a ready design puts a whole look on the board, built from parts", async ({ page }) => {
-    await page.getByTestId("builtin-designs").getByRole("button", { name: "וילון כחול וזהב" }).click();
+    await page.getByTestId("builtin-designs").getByRole("button", { name: /^וילון כחול וזהב/ }).click();
     const med = root(page).locator(".tv-med");
     await expect(med).toBeVisible();
     await expect(root(page)).toHaveClass(/has-frame-image/);
     await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(27, 52, 148)");
     // And every part stays its own: another background leaves the frames alone.
-    await page.getByTestId("builtin-designs").getByRole("button", { name: "לוחות הברית מאבן" }).click();
+    await page.getByTestId("builtin-designs").getByRole("button", { name: /^לוחות הברית מאבן/ }).click();
     await expect(root(page)).toHaveClass(/has-frame-arch/);
     await expect(root(page)).not.toHaveClass(/has-frame-image/);
     await expectNotFrozen(page, "ready designs");

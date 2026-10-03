@@ -10,8 +10,11 @@ import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
 import { FRAME_PICTURES, framePictureRef } from "@/tv/framePictures";
 import { THEME_VAR_LAYERS, TV_FONTS, isSafeGradient, type ThemeVar } from "@/tv/themes";
+import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import {
   MAX_BACKGROUNDS,
+  hiddenBackgrounds,
   applyBackground,
   backgroundOf,
   galleryOf,
@@ -576,24 +579,24 @@ function BackgroundGallery({
                 <BackgroundTile b={b} />
                 <span className="block truncate bg-background/95 px-1.5 py-0.5 text-[11px]">{b.name}</span>
               </button>
-              {own && (
-                <button
-                  type="button"
-                  aria-label={`מחיקת ${b.name} מהגלריה`}
-                  title="מחיקה מהגלריה (לוח שמשתמש בו לא ישתנה)"
-                  onClick={() => {
-                    onEdit("bg-gallery:delete", (c) => ({ ...c, backgrounds: c.backgrounds.filter((x) => x.id !== b.id) }));
-                    if (from === b.id) setFrom(null);
-                  }}
-                  className="absolute -left-1 -top-1 flex size-5 items-center justify-center rounded-full border bg-background text-[11px] opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100"
-                >
-                  ✕
-                </button>
-              )}
+              <TileRemove
+                name={b.name}
+                ready={!own}
+                onClick={() => {
+                  if (own) onEdit("bg-gallery:delete", (c) => ({ ...c, backgrounds: c.backgrounds.filter((x) => x.id !== b.id) }));
+                  else onEdit("bg-gallery:hide", (c) => hideReady(c, "bg", b.id));
+                  if (from === b.id) setFrom(null);
+                }}
+              />
             </div>
           );
         })}
       </div>
+      <HiddenShelf
+        testId={`${testIds}background-hidden`}
+        items={hiddenBackgrounds(saved).map((b) => ({ key: b.id, name: b.name }))}
+        onRestore={(id) => onEdit("bg-gallery:show", (c) => showReady(c, "bg", id))}
+      />
       {(!kept || changed) && Boolean(look.fill || look.picture) && (
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-2 text-xs" data-testid={`${testIds}background-keep`}>
           <span>הרקע שעל הלוח עכשיו {changed && mine ? `שונה מ"${mine.name}"` : "לא שמור בגלריה"}:</span>
@@ -778,7 +781,12 @@ export function FramesLayer(
   };
 
   const pictures = [
-    ...FRAME_PICTURES.map((f) => ({ ref: framePictureRef(f.id), name: f.name, url: f.url, uploaded: false })),
+    ...FRAME_PICTURES.filter((f) => !isHiddenReady(saved, "frame", framePictureRef(f.id))).map((f) => ({
+      ref: framePictureRef(f.id),
+      name: f.name,
+      url: f.url,
+      uploaded: false,
+    })),
     ...saved.frameUploads.map((u, i) => ({ ref: u, name: `מסגרת שלי ${i + 1}`, url: u, uploaded: true })),
   ];
 
@@ -797,9 +805,11 @@ export function FramesLayer(
       {show("presets") && (
       <Part title="תיבות מוכנות" testId="box-presets">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {BOX_PRESETS.map((p) => {
+          {BOX_PRESETS.filter((p) => !isHiddenReady(saved, "box", p.id)).map((p) => {
             const on = wearsBoxPreset(saved, p, frame);
             return (
+              <div key={p.id} className="group relative">
+              <TileRemove name={p.name} ready onClick={() => onEdit("box-preset:hide", (c) => hideReady(c, "box", p.id))} />
               <button
                 key={p.id}
                 type="button"
@@ -811,9 +821,15 @@ export function FramesLayer(
                 <span className="mx-auto mb-1 block h-9 w-14" style={boxPresetCss(p)} aria-hidden />
                 <span className="block text-[11px] font-medium leading-tight">{p.name}</span>
               </button>
+              </div>
             );
           })}
         </div>
+        <HiddenShelf
+          testId="box-hidden"
+          items={BOX_PRESETS.filter((p) => isHiddenReady(saved, "box", p.id)).map((p) => ({ key: p.id, name: p.name }))}
+          onRestore={(id) => onEdit("box-preset:show", (c) => showReady(c, "box", id))}
+        />
         <p className="text-[11px] text-muted-foreground">כל חלק אפשר לשנות אחר כך למטה, בנפרד.</p>
       </Part>
       )}
@@ -932,21 +948,27 @@ export function FramesLayer(
                   </span>
                   <span className="block truncate py-0.5">{f.name}</span>
                 </button>
-                {f.uploaded && (
-                  <button
-                    type="button"
-                    aria-label={`מחיקת ${f.name} מהגלריה`}
-                    title="מחיקה מהגלריה"
-                    onClick={() => onEdit("frame-uploads:delete", (c) => ({ ...c, frameUploads: c.frameUploads.filter((u) => u !== f.ref) }))}
-                    className="absolute -left-1 -top-1 flex size-5 items-center justify-center rounded-full border bg-background text-[11px] opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100"
-                  >
-                    ✕
-                  </button>
-                )}
+                <TileRemove
+                  name={f.name}
+                  ready={!f.uploaded}
+                  onClick={() =>
+                    f.uploaded
+                      ? onEdit("frame-uploads:delete", (c) => ({ ...c, frameUploads: c.frameUploads.filter((u) => u !== f.ref) }))
+                      : onEdit("frame-pictures:hide", (c) => hideReady(c, "frame", f.ref))
+                  }
+                />
               </div>
             );
           })}
         </div>
+        <HiddenShelf
+          testId="frame-hidden"
+          items={FRAME_PICTURES.filter((f) => isHiddenReady(saved, "frame", framePictureRef(f.id))).map((f) => ({
+            key: framePictureRef(f.id),
+            name: f.name,
+          }))}
+          onRestore={(ref) => onEdit("frame-pictures:show", (c) => showReady(c, "frame", ref))}
+        />
         {!frame && fs.image && (
           <>
             <Range label="עובי המסגרת" value={fs.imageWidth} min={0.5} max={6} step={0.25} show={(v) => String(v)} onChange={(v) => setFs({ imageWidth: v })} />

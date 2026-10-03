@@ -2,6 +2,7 @@ import type { TvConfig } from "./config";
 import { TV_BACKDROPS, backdropRef, backdropUrl, findBackdrop } from "./backdrops";
 import { DEFAULT_BACKGROUND_TUNE } from "./layers";
 import { TV_GRADIENTS, type TvGradient } from "./themes";
+import { isHiddenReady } from "./readyItems";
 
 /**
  * Backgrounds, in one place.
@@ -114,9 +115,14 @@ export function wearsExactly(c: TvConfig, b: SavedBackground): boolean {
   return same({ ...now, strength: b.picture ? now.strength : look.strength }, look);
 }
 
-/** The gallery: the shul's own first (newest first), then the ready-made examples. */
-export function galleryOf(c: Pick<TvConfig, "backgrounds">): SavedBackground[] {
-  return [...c.backgrounds, ...builtinBackgrounds()];
+/** The gallery: the shul's own first (newest first), then the ready-made examples it has not hidden. */
+export function galleryOf(c: Pick<TvConfig, "backgrounds" | "hiddenReady">): SavedBackground[] {
+  return [...c.backgrounds, ...builtinBackgrounds().filter((b) => !isHiddenReady(c, "bg", b.id))];
+}
+
+/** The ready-made backgrounds this board hid (to bring back). */
+export function hiddenBackgrounds(c: Pick<TvConfig, "hiddenReady">): SavedBackground[] {
+  return builtinBackgrounds().filter((b) => isHiddenReady(c, "bg", b.id));
 }
 
 /** What a tile shows: the picture's URL (or null) and the fill/overlay to paint. */

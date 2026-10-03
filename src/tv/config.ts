@@ -544,6 +544,13 @@ export interface TvConfig {
   backgrounds: SavedBackground[];
   /** Frame pictures the shul uploaded, kept beside the ready-made ones whether a box wears them or not. */
   frameUploads: string[];
+  /**
+   * Ready-made items this shul took off its lists (readyItems.ts): a design,
+   * a theme, a background, a frame, a ready box - "design:<id>", "theme:<id>",
+   * "bg:<id>", "frame:<id>", "box:<id>". Anything that can be added can be
+   * deleted; a ready one is hidden rather than lost, and can be brought back.
+   */
+  hiddenReady: string[];
   /** A gradient behind the whole board; null = the theme's own background. */
   backgroundGradient: string | null;
   font: TvFontId;
@@ -730,6 +737,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   gradients: [],
   backgrounds: [],
   frameUploads: [],
+  hiddenReady: [],
   backgroundGradient: null,
   styles: {},
   screenLayout: "rotate",
@@ -1216,6 +1224,13 @@ function normalizeStored(raw: unknown): TvConfig {
     designs,
     gradients: normalizeGradients(raw.gradients),
     backgrounds: normalizeBackgrounds(raw.backgrounds, normalizeGradients(raw.gradients)),
+    hiddenReady: [
+      ...new Set(
+        (Array.isArray(raw.hiddenReady) ? raw.hiddenReady : []).filter(
+          (k): k is string => typeof k === "string" && /^(design|theme|bg|frame|box):[a-z0-9_-]{1,60}$/i.test(k),
+        ),
+      ),
+    ].slice(0, 300),
     frameUploads: [
       ...new Set(
         (Array.isArray(raw.frameUploads) ? raw.frameUploads : [])

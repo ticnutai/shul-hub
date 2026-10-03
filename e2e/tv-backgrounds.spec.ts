@@ -59,8 +59,38 @@ test("a picture with a layer over it, kept in the gallery, changed, and removed 
   await expect(keep).toHaveCount(0);
 
   // Removed from the gallery: the board keeps wearing it.
-  await gallery.getByRole("button", { name: "מחיקת שמיים בבורדו מהגלריה" }).click();
+  await gallery.getByRole("button", { name: "מחיקת שמיים בבורדו" }).click();
   await expect(mine).toHaveCount(0);
   await expect(root).toHaveClass(/has-bg-overlay/);
   await expectNotFrozen(page, "backgrounds");
+});
+
+test("whatever can be added can be removed: a ready background and a ready design hidden and brought back, a design copied", async ({
+  page,
+}) => {
+  await serveEditor(page);
+  const res = await page.goto(HARNESS).catch(() => null);
+  test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
+  await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
+
+  // A ready background: hidden from the list, not lost - and back.
+  const gallery = page.getByTestId("background-gallery");
+  await gallery.getByRole("button", { name: "הסתרת שחר", exact: true }).click();
+  await expect(gallery.getByRole("button", { name: "שחר", exact: true })).toHaveCount(0);
+  const shelf = page.getByTestId("background-hidden");
+  await shelf.locator("summary").click();
+  await shelf.getByRole("button", { name: "החזרת שחר" }).click();
+  await expect(gallery.getByRole("button", { name: "שחר", exact: true })).toBeVisible();
+
+  // A ready design: hidden and brought back, and copied into one's own to edit.
+  const designs = page.getByTestId("builtin-designs");
+  await designs.getByRole("button", { name: "הסתרת לוחות הברית מאבן" }).click();
+  await expect(designs.getByText("לוחות הברית מאבן")).toHaveCount(0);
+  const designShelf = page.getByTestId("designs-hidden");
+  await designShelf.locator("summary").click();
+  await designShelf.getByRole("button", { name: "החזרת לוחות הברית מאבן" }).click();
+  await expect(designs.getByText("לוחות הברית מאבן")).toBeVisible();
+  await designs.locator("div", { hasText: "וילון כחול וזהב" }).getByRole("button", { name: "שכפול לעריכה" }).first().click();
+  await expect(page.getByTestId("design-library").getByText("וילון כחול וזהב (שלי)")).toBeVisible();
+  await expectNotFrozen(page, "ready items");
 });

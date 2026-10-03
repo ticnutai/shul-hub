@@ -173,6 +173,8 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { MedallionRows } from "./MedallionRows";
+import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { FRAME_IDS, FRAME_LABELS } from "@/tv/frameLooks";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
@@ -1243,21 +1245,25 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
           <Section
-            title="ערכות נושא ועיצובים"
-            hint="ערכה היא בסיס הצבעים; עיצוב הוא מראה שבניתם ושמרתם - כולו או רק חלקים ממנו (רקע, מסגרות, טקסט, פריסה). ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה."
+            title="ערכות - נקודת התחלה שממלאת את החלקים"
+            hint="ערכת צבעים - בסיס הצבעים. עיצוב - צירוף של חלקים (רקע, צורה, מסגרות, טקסט, פריסה) שממלא אותם בלחיצה אחת; אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; פריט מוכן - מסתירים ב-✕ ומחזירים מתי שרוצים. ערכות בהירות מתאימות למסכי LCD; על מסך OLED עדיף כהה."
           >
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {themes.map((t) => {
+              {themes.filter((t) => !isHiddenReady(draft, "theme", t.id) || t.id === scoped.theme).map((t) => {
                 const custom = !TV_THEMES.some((b) => b.id === t.id);
                 return (
                   <div
                     key={t.id}
-                    className={`relative overflow-hidden rounded-lg border text-right transition ${
+                    className={`group relative overflow-hidden rounded-lg border text-right transition ${
                       scoped.theme === t.id
                         ? "ring-2 ring-primary ring-offset-2"
                         : "hover:border-primary/50"
                     }`}
                   >
+                    {/* A ready theme can be taken off the list too - not the one the board wears. */}
+                    {!custom && scoped.theme !== t.id && (
+                      <TileRemove name={t.name} ready onClick={() => edit("theme-hide", (c) => hideReady(c, "theme", t.id))} />
+                    )}
                     <button
                       type="button"
                       aria-pressed={scoped.theme === t.id}
@@ -1440,6 +1446,14 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </span>
               </div>
             )}
+            <HiddenShelf
+              testId="themes-hidden"
+              items={TV_THEMES.filter((t) => isHiddenReady(draft, "theme", t.id) && t.id !== scoped.theme).map((t) => ({
+                key: t.id,
+                name: t.name,
+              }))}
+              onRestore={(id) => edit("theme-show", (c) => showReady(c, "theme", id))}
+            />
             {hasOverrides && (
               <p className="text-xs text-muted-foreground">
                 בחירת ערכה אחרת מאפסת את התאמות הצבע שלמטה.

@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import type { TvConfig } from "@/tv/config";
 import { findBackdrop } from "@/tv/backdrops";
 import { framePictureUrl } from "@/tv/framePictures";
+import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
+import { HiddenShelf, TileRemove } from "./ReadyShelf";
 import {
   BUILTIN_DESIGNS,
   DESIGN_PARTS,
@@ -13,6 +15,7 @@ import {
   MAX_DESIGNS,
   applyDesign,
   captureDesign,
+  newDesignId,
   coloursOnScreen,
   type DesignPart,
   type SavedDesign,
@@ -55,17 +58,21 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
   return (
     <div className="space-y-2" data-testid="design-library">
       <div className="text-sm font-medium">עיצובים מוכנים</div>
+      <p className="text-[11px] leading-tight text-muted-foreground">
+        לחיצה ממלאת את החלקים שכתובים מתחת לעיצוב - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.
+      </p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="builtin-designs">
-        {BUILTIN_DESIGNS.map((d) => {
+        {BUILTIN_DESIGNS.filter((d) => !isHiddenReady(config, "design", d.id)).map((d) => {
           const wall = findBackdrop(d.values.backgroundImage ?? null);
           const frame = framePictureUrl(d.values.frameStyle?.image ?? null);
           return (
+            <div key={d.id} className="group relative overflow-hidden rounded-lg border text-right">
+            <TileRemove name={d.name} ready onClick={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))} />
             <button
-              key={d.id}
               type="button"
               onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
-              className="overflow-hidden rounded-lg border text-right hover:border-primary/50"
-              title="רקע, מסגרות, צבעי טקסט ופריסת מדליון - וכל חלק ניתן אחר כך לשינוי בנפרד"
+              className="block w-full text-right hover:bg-muted/40"
+              title="ממלא את החלקים שכתובים מתחתיו - וכל חלק ניתן אחר כך לשינוי בנפרד"
             >
               <span
                 className="flex aspect-video items-center justify-center gap-1 p-2"
@@ -88,11 +95,34 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
                   />
                 ))}
               </span>
-              <span className="block p-2 text-sm font-medium">{d.name}</span>
+              <span className="block px-2 pt-2 text-sm font-medium">{d.name}</span>
+              <span className="block px-2 pb-1 text-[11px] leading-tight text-muted-foreground">
+                ממלא: {d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}
+              </span>
             </button>
+            <button
+              type="button"
+              className="mx-2 mb-2 text-[11px] text-primary underline"
+              onClick={() => {
+                // A copy of one's own: renamed, changed, updated and deleted like any.
+                onEdit("design-copy", (cfg) => ({
+                  ...cfg,
+                  designs: [...cfg.designs, { ...structuredClone(d), id: newDesignId(), name: `${d.name} (שלי)` }].slice(0, MAX_DESIGNS),
+                }));
+                toast.success(`נוצר עותק: "${d.name} (שלי)" - ב"העיצובים שלי"`);
+              }}
+            >
+              שכפול לעריכה
+            </button>
+            </div>
           );
         })}
       </div>
+      <HiddenShelf
+        testId="designs-hidden"
+        items={BUILTIN_DESIGNS.filter((d) => isHiddenReady(config, "design", d.id)).map((d) => ({ key: d.id, name: d.name }))}
+        onRestore={(id) => onEdit("design-show", (cfg) => showReady(cfg, "design", id))}
+      />
       {designs.length > 0 && (
         <>
           <div className="text-sm font-medium">העיצובים שלי</div>
