@@ -59,7 +59,7 @@ test.describe("TV editor, by layer", () => {
   test("every frame gets a background from the same library, and one frame its own", async ({ page }) => {
     const layer = page.getByTestId("layer-background");
     await layer.getByLabel("רקע של").selectOption("frames");
-    await layer.getByRole("radio", { name: "צבע" }).click();
+    await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#203a5c");
     const prayers = root(page).locator('[data-frame="prayers"]').first();
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
@@ -68,7 +68,7 @@ test.describe("TV editor, by layer", () => {
 
     // One frame apart: the zmanim in burgundy, the rest stay blue.
     await layer.getByLabel("רקע של").selectOption("frame:zmanim");
-    await layer.getByRole("radio", { name: "צבע" }).click();
+    await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
     await expect.poll(() => bg(zmanim)).toBe("rgb(90, 26, 42)");
     expect(await bg(prayers)).toBe("rgb(32, 58, 92)");
@@ -107,7 +107,7 @@ test.describe("TV editor, by layer", () => {
     await page.getByTestId("skin-picker").getByRole("button").nth(1).click();
     const layer = page.getByTestId("layer-background");
     await layer.getByLabel("רקע של").selectOption("frame:clock");
-    await layer.getByRole("radio", { name: "צבע" }).click();
+    await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
     await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(90, 26, 42)");
     // The plaque's text stays above whatever the style draws behind it.

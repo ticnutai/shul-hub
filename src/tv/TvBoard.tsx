@@ -91,6 +91,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         textScale: config.textScale,
         backgroundImage: backdropUrl(config.backgroundImage),
         backgroundGradient: config.backgroundGradient,
+        backgroundOverlay: config.backgroundOverlay,
         backgroundDim: config.backgroundDim,
       }),
     [
@@ -102,6 +103,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       config.textScale,
       config.backgroundImage,
       config.backgroundGradient,
+      config.backgroundOverlay,
       config.backgroundDim,
     ],
   );
@@ -222,6 +224,8 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           // and some things that read on navy vanish on parchment.
           getTheme(config.theme, config.customThemes).light ? " is-light" : ""
         }${config.backgroundImage ? " has-bg-image" : ""}${
+          config.backgroundImage && config.backgroundOverlay ? " has-bg-overlay" : ""
+        }${
           config.backgroundGradient ? " has-bg-gradient" : ""
         }${frame.classes}`}
         style={{ ...style, ...frame.vars }}

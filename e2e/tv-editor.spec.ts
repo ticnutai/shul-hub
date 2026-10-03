@@ -90,16 +90,23 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "frame radius");
   });
 
-  test("a gradient reaches the board and can be kept in the library", async ({ page }) => {
-    await page.getByRole("button", { name: "בורדו מלכותי", exact: true }).click();
-    await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
+  test("a gradient from the gallery reaches the board, and a changed one is kept in it", async ({ page }) => {
+    const gallery = page.getByTestId("background-gallery");
+    await gallery.getByRole("button", { name: "בורדו מלכותי", exact: true }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
     await expect.poll(() => cssVar(page, "--tv-bg-gradient")).toContain("gradient");
+    // A ready one, as it is: nothing to keep.
+    await expect(page.getByTestId("background-keep")).toHaveCount(0);
     await expectNotFrozen(page, "gradient applied");
 
-    await page.getByPlaceholder("שם לשמירה בספרייה").fill("בדיקה");
-    await page.getByRole("button", { name: "שמירה בספרייה" }).click();
-    await expect(page.getByRole("button", { name: "בדיקה" }).first()).toBeVisible();
+    // Built further and taken: it is not in the gallery yet, and can be kept there.
+    const now = page.getByTestId("background-now");
+    await now.getByLabel("צבע ראשון").fill("#112233");
+    await now.getByRole("button", { name: "החלה על רקע הלוח" }).click();
+    const keep = page.getByTestId("background-keep");
+    await keep.getByLabel("שם לרקע בגלריה").fill("בדיקה");
+    await keep.getByRole("button", { name: "שמירה כרקע חדש" }).click();
+    await expect(gallery.getByRole("button", { name: "בדיקה", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expectNotFrozen(page, "gradient saved");
   });
 
@@ -115,9 +122,11 @@ test.describe("TV editor", () => {
   }) => {
     const gradient = () => cssVar(page, "--tv-bg-gradient");
     const before = await gradient();
+    const now = page.getByTestId("background-now");
+    await now.getByRole("radio", { name: "מעבר צבעים", exact: true }).click();
 
     // Turning a dial reaches the board immediately.
-    await page.getByRole("button", { name: "בורדו מלכותי", exact: true }).click();
+    await now.getByLabel("צבע ראשון").fill("#5a1a2a");
     await expect.poll(gradient).not.toBe(before);
     const shown = await gradient();
     expect(shown).toContain("gradient");
@@ -133,9 +142,10 @@ test.describe("TV editor", () => {
 
     // Now the same thing, kept this time.
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    await page.getByRole("button", { name: "בורדו מלכותי", exact: true }).click();
+    await now.getByRole("radio", { name: "מעבר צבעים", exact: true }).click();
+    await now.getByLabel("צבע ראשון").fill("#5a1a2a");
     await expect.poll(gradient).not.toBe(before);
-    await page.getByRole("button", { name: "החלה על רקע הלוח" }).click();
+    await now.getByRole("button", { name: "החלה על רקע הלוח" }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
 
     // It survives leaving the control, because now it is the board's.
@@ -145,37 +155,24 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "gradient kept");
   });
 
-  test("a ready-made background shows on the board before it is taken", async ({ page }) => {
-    // Pictures are one kind of background among colour and gradient.
-    await page.getByTestId("layer-background").getByRole("radio", { name: "תמונה" }).click();
-    const picker = page.getByTestId("backdrop-picker");
+  test("a ready picture from the gallery goes on the board at once, as a draft until it is sent", async ({ page }) => {
+    const gallery = page.getByTestId("background-gallery");
     const bgImage = () =>
       root(page)
         .locator(".tv-bg")
         .first()
-        .evaluate((el) => getComputedStyle(el).backgroundImage);
-
-    await expect(picker).toBeVisible();
+        .evaluate((el) => getComputedStyle(el, "::before").backgroundImage);
     const before = await bgImage();
 
-    // Clicking one puts it on the board at once.
-    await picker.getByRole("button", { name: "ליל כוכבים" }).click();
-    await expect.poll(bgImage).not.toBe(before);
-    await expect(page.getByText(/עוד לא נשמר/)).toBeVisible();
-
-    // Nothing was written down: leaving the control puts the board back.
-    await page.getByRole("tab", { name: "תוכן" }).click();
-    await page.waitForTimeout(400);
-    await expect.poll(bgImage).toBe(before);
-
-    // Taking it keeps it.
-    await page.getByRole("tab", { name: "עיצוב" }).click();
-    // Back on the tab, the background opens on the kind it has (none yet: gradient).
-    await page.getByTestId("layer-background").getByRole("radio", { name: "תמונה" }).click();
-    await picker.getByRole("button", { name: "אבן ירושלים" }).click();
-    await page.getByRole("button", { name: "החלת הרקע הנבחר" }).click();
+    // Pictures are one kind of background among colour and gradient, in the same gallery.
+    await gallery.getByRole("button", { name: "תמונות", exact: true }).click();
+    await gallery.getByRole("button", { name: "ליל כוכבים", exact: true }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-image");
+    await expect.poll(bgImage).not.toBe(before);
+    // On the board in the editor; on the screens only after "שמור ושדר".
+    await expect(page.getByText("יש שינויים שלא נשמרו").first()).toBeVisible();
 
+    // It stays when the control is left: it is the draft's now.
     await page.getByRole("tab", { name: "תוכן" }).click();
     await page.waitForTimeout(400);
     await expect.poll(bgImage).not.toBe(before);

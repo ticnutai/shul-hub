@@ -77,9 +77,16 @@ export function GradientStudio({
   onApply,
   onPreview,
   current,
+  library = true,
 }: {
   config: TvConfig;
   onEdit: Edit;
+  /**
+   * Its own swatches and "שמירה בספרייה". Off inside the backgrounds, where
+   * the ready-made gradients and the saved ones are the gallery above it -
+   * one place for them, not two.
+   */
+  library?: boolean;
   applyLabel: string;
   onApply: (value: string | null) => void;
   /**
@@ -277,6 +284,7 @@ export function GradientStudio({
       </div>
 
       {/* ready-made and saved gradients */}
+      {library && (
       <div>
         <div className="mb-1.5 text-xs font-medium text-muted-foreground">
           מוכנים לשימוש · לחיצה בוחרת
@@ -323,7 +331,10 @@ export function GradientStudio({
         </div>
       </div>
 
+      )}
+
       {/* keep it */}
+      {library && (
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={name}
@@ -340,6 +351,7 @@ export function GradientStudio({
           שם קיים מעדכן את הגרדיאנט השמור. מחיקה מהספרייה לא משנה לוח שכבר משתמש בו.
         </span>
       </div>
+      )}
 
       {/* raw CSS, for anything the controls above cannot express */}
       <details className="rounded-md border bg-muted/40 p-2">

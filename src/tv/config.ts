@@ -1,5 +1,6 @@
 import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
+import { normalizeBackgrounds, type SavedBackground } from "./backgroundItem";
 import { normalizeOccasions, type Occasion } from "./occasions";
 import {
   DEFAULT_BACKGROUND_TUNE,
@@ -361,6 +362,7 @@ export interface DeviceOverlay {
   themeOverrides?: Record<string, string>;
   backgroundGradient?: string | null;
   backgroundImage?: string | null;
+  backgroundOverlay?: string | null;
   backgroundDim?: number;
   font?: TvFontId;
   textScale?: number;
@@ -521,8 +523,10 @@ export interface TvConfig {
    * like the themes and gradients, so not something one screen may differ in.
    */
   designs: SavedDesign[];
-  /** Gradients the admin saved, offered anywhere a background is chosen. */
+  /** Gradients the admin saved, before there was a gallery; read into `backgrounds` once. */
   gradients: TvGradient[];
+  /** The shul's own backgrounds, beside the ready-made ones in one gallery (backgrounds.ts). */
+  backgrounds: SavedBackground[];
   /** A gradient behind the whole board; null = the theme's own background. */
   backgroundGradient: string | null;
   font: TvFontId;
@@ -541,6 +545,11 @@ export interface TvConfig {
   /** Live-editor colour overrides on top of the theme (CSS var -> colour). */
   themeOverrides: Record<string, string>;
   backgroundImage: string | null;
+  /**
+   * A colour or a gradient laid over the picture, at backgroundDim; null: the
+   * theme's own colour, as the picture was always darkened.
+   */
+  backgroundOverlay: string | null;
   backgroundDim: number;
   slides: TvSlideConfig[];
   /**
@@ -673,6 +682,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   tracking: null,
   themeOverrides: {},
   backgroundImage: null,
+  backgroundOverlay: null,
   backgroundDim: 0.55,
   slides: [
     { kind: "prayer", enabled: true, seconds: 20, layout: "split" },
@@ -701,6 +711,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   customThemes: [],
   designs: [],
   gradients: [],
+  backgrounds: [],
   backgroundGradient: null,
   styles: {},
   screenLayout: "rotate",
@@ -1118,6 +1129,10 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
       (raw.backgroundImage.startsWith("https://") || isBackdropRef(raw.backgroundImage))
         ? raw.backgroundImage
         : null,
+    backgroundOverlay:
+      typeof raw.backgroundOverlay === "string" && (isSafeGradient(raw.backgroundOverlay) || isSafeCssValue(raw.backgroundOverlay))
+        ? raw.backgroundOverlay.trim()
+        : null,
     backgroundDim: num(raw.backgroundDim, d.backgroundDim, 0, 0.95),
     slides,
     header: {
@@ -1161,6 +1176,7 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
     customThemes,
     designs,
     gradients: normalizeGradients(raw.gradients),
+    backgrounds: normalizeBackgrounds(raw.backgrounds, normalizeGradients(raw.gradients)),
     backgroundGradient: typeof raw.backgroundGradient === "string" && isSafeGradient(raw.backgroundGradient) ? raw.backgroundGradient.trim() : null,
     styles: normalizeStyles(raw.styles, [...TV_THEMES.map((t) => t.id), ...customThemes.map((t) => t.id)]),
     screenLayout: SCREEN_LAYOUTS.includes(raw.screenLayout as ScreenLayout) ? (raw.screenLayout as ScreenLayout) : d.screenLayout,
@@ -1246,7 +1262,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
 /** Guards normalizePerDevice against a stray key from an older board. */
 const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
   screenLayout: true, clockStyle: true, skin: true, frame: true, spacing: true,
-  theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true,
+  theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true, backgroundOverlay: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,
   illustration: true, illustratedStyle: true, frameLooks: true, backgroundTune: true, frameStyle: true,

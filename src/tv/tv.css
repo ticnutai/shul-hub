@@ -138,6 +138,12 @@
   background: color-mix(in srgb, var(--tv-bg-a) calc(var(--tv-bg-dim) * 100%), transparent);
 }
 
+/* A colour or a gradient of the admin's own over the picture, as strong as the dim. */
+.tv-root.has-bg-image.has-bg-overlay .tv-bg::after {
+  background: var(--tv-bg-overlay);
+  opacity: var(--tv-bg-dim);
+}
+
 /* ---------------------------------------------------------------- header - */
 
 .tv-header {

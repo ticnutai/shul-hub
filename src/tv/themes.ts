@@ -286,6 +286,8 @@ export function themeStyle(options: {
   backgroundImage?: string | null;
   /** A gradient behind everything, instead of the theme's own background. */
   backgroundGradient?: string | null;
+  /** A colour or a gradient over the picture, at backgroundDim (backgrounds.ts). */
+  backgroundOverlay?: string | null;
   backgroundDim?: number;
 }): CSSProperties {
   const theme = getTheme(options.theme, options.customThemes);
@@ -304,6 +306,8 @@ export function themeStyle(options: {
   vars["--tv-bg-dim"] = String(clamp(options.backgroundDim ?? 0.55, 0, 0.95));
   vars["--tv-bg-gradient"] =
     options.backgroundGradient && isSafeGradient(options.backgroundGradient) ? options.backgroundGradient : "none";
+  const overlay = options.backgroundOverlay?.trim();
+  if (overlay && (isSafeGradient(overlay) || isSafeCssValue(overlay))) vars["--tv-bg-overlay"] = overlay;
   return vars as CSSProperties;
 }
 

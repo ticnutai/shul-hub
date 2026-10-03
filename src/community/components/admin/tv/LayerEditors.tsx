@@ -9,7 +9,18 @@ import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
 import { FRAME_PICTURES, framePictureRef, framePictureUrl } from "@/tv/framePictures";
 import { THEME_VAR_LAYERS, TV_FONTS, isSafeGradient, type ThemeVar } from "@/tv/themes";
-import { BackdropPicker } from "./BackdropPicker";
+import {
+  MAX_BACKGROUNDS,
+  applyBackground,
+  backgroundOf,
+  galleryOf,
+  kindOf,
+  newBackgroundId,
+  tileOf,
+  wears,
+  type BackgroundKind,
+  type SavedBackground,
+} from "@/tv/backgrounds";
 import { FrameCorners, PaintedBoardsPicker, StylePicker } from "./BoardLook";
 import { leavingPainted } from "./leavingPainted";
 import { GradientStudio } from "./GradientStudio";
@@ -282,9 +293,25 @@ export function BackgroundLayer({ config, saved, onEdit, setPreview, colourField
     if (!files?.length) return;
     setUploading(true);
     try {
-      const [url] = await uploadImages(files);
-      if (url) apply(url);
-      toast.success("התמונה הועלתה");
+      const urls = await uploadImages(files);
+      if (!urls.length) return;
+      // Every uploaded picture is kept in the gallery - an upload used to
+      // replace the one before it, which was then gone from every list.
+      onEdit("bg-gallery:upload", (c) => {
+        const items = urls.map((url, i) => ({
+          id: newBackgroundId(),
+          name: `תמונה שלי ${c.backgrounds.length + i + 1}`,
+          fill: null,
+          picture: url,
+          overlay: null,
+          strength: c.backgroundDim,
+          tune: DEFAULT_BACKGROUND_TUNE,
+        }));
+        return { ...c, backgrounds: [...items, ...c.backgrounds].slice(0, MAX_BACKGROUNDS) };
+      });
+      setSource("picture");
+      apply(urls[0]!);
+      toast.success(urls.length > 1 ? `${urls.length} תמונות הועלו ונשמרו בגלריה` : "התמונה הועלתה ונשמרה בגלריה");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
     } finally {
@@ -301,10 +328,13 @@ export function BackgroundLayer({ config, saved, onEdit, setPreview, colourField
 
   const sources: Array<{ id: Source; name: string }> = [
     { id: "colour", name: "צבע" },
-    { id: "gradient", name: "גרדיאנט" },
+    { id: "gradient", name: "מעבר צבעים" },
     { id: "picture", name: "תמונה" },
-    ...(onBoard ? [{ id: "painted" as const, name: "ציור" }] : []),
   ];
+  /** What this target wears now, as a gallery item would hold it. */
+  const look = onBoard
+    ? backgroundOf(saved)
+    : { fill: picture ? null : current, picture: picture ? current : null, overlay: null, strength: saved.backgroundDim, tune: saved.backgroundTune };
 
   return (
     <div className="space-y-3" data-testid="layer-background">
@@ -322,46 +352,60 @@ export function BackgroundLayer({ config, saved, onEdit, setPreview, colourField
         groups={[{ label: "מסגרת אחת", options: frameOptions(config) }]}
       />
 
-      <Segments label="סוג הרקע" value={source} onChange={(v) => setSource(v as Source)} options={sources} />
+      <BackgroundGallery
+        saved={saved}
+        onEdit={onEdit}
+        look={look}
+        uploading={uploading}
+        onUpload={(files) => void upload(files)}
+        isOn={(b) => (onBoard ? !painted && wears(saved, b) : current === (b.picture ?? b.fill))}
+        onPick={(b) => {
+          setPreview(null);
+          setSource(kindOf(b));
+          if (onBoard) onEdit("layer-bg:board", (c) => ({ ...applyBackground(c, b), ...leavingPainted(c) }));
+          else apply(b.picture ?? b.fill);
+        }}
+      />
 
-      {source === "colour" && (
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <input
-            type="color"
-            aria-label="צבע הרקע"
-            value={flatNow ?? "#0b1628"}
-            onChange={(e) => apply(onBoard ? flat(e.target.value) : e.target.value)}
-            className="h-9 w-12 cursor-pointer rounded border"
-          />
-          <span className="text-muted-foreground">צבע אחיד. לחיצה פותחת בוחר צבעים.</span>
-        </div>
-      )}
-      {source === "gradient" && (
-        <GradientStudio
-          key={target}
-          config={config}
-          onEdit={onEdit}
-          applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${FRAME_LABELS[frame]}` : "החלה על כל המסגרות"}
-          current={current && isSafeGradient(current) ? current : null}
-          onPreview={preview}
-          onApply={apply}
-        />
-      )}
-      {source === "picture" && (
-        <div className="space-y-2">
-          <BackdropPicker key={target} config={config} current={current} onPreview={preview} onApply={apply} />
-          <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
-              <label className="cursor-pointer">
-                <ImagePlus className="size-4" /> הוספת תמונה משלכם
-                <input type="file" accept="image/*" className="sr-only" onChange={(e) => void upload(e.target.files)} />
-              </label>
-            </Button>
-            {picture && shown && <img src={shown} alt="" className="h-10 w-16 rounded object-cover" />}
+      <div className="space-y-3 rounded-lg border p-3" data-testid="background-now">
+        <div className="text-sm font-medium">{onBoard ? "הרקע של הלוח עכשיו" : "הרקע עכשיו"}</div>
+        <Segments label="סוג הרקע" value={source === "painted" ? "picture" : source} onChange={(v) => setSource(v as Source)} options={sources} />
+
+        {source === "colour" && (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <input
+              type="color"
+              aria-label="צבע הרקע"
+              value={flatNow ?? "#0b1628"}
+              onChange={(e) => apply(onBoard ? flat(e.target.value) : e.target.value)}
+              className="h-9 w-12 cursor-pointer rounded border"
+            />
+            <span className="text-muted-foreground">צבע אחיד. לחיצה פותחת בוחר צבעים.</span>
           </div>
-        </div>
-      )}
-      {source === "painted" && onBoard && <PaintedBoardsPicker config={saved} onEdit={onEdit} />}
+        )}
+        {source === "gradient" && (
+          <GradientStudio
+            key={target}
+            config={config}
+            onEdit={onEdit}
+            library={false}
+            applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${FRAME_LABELS[frame]}` : "החלה על כל המסגרות"}
+            current={current && isSafeGradient(current) ? current : null}
+            onPreview={preview}
+            onApply={apply}
+          />
+        )}
+        {(source === "picture" || source === "painted") && (
+          <div className="space-y-2">
+            {picture && shown ? (
+              <img src={shown} alt="" className="h-16 w-28 rounded object-cover" />
+            ) : (
+              <p className="text-xs text-muted-foreground">בחרו תמונה בגלריה למעלה, או העלו תמונה משלכם - היא נשמרת בגלריה.</p>
+            )}
+            {onBoard && picture && <PictureLayer saved={saved} onEdit={onEdit} />}
+          </div>
+        )}
+      </div>
 
       {/* The sliders of this target's background. */}
       {onBoard && painted ? (
@@ -372,17 +416,6 @@ export function BackgroundLayer({ config, saved, onEdit, setPreview, colourField
           <Range label="רוויית צבע" value={tune.saturation} min={0} max={2} step={0.05} show={pct} onChange={(v) => setTune({ saturation: v })} />
           <Range label="גוון" value={tune.hue} min={-180} max={180} step={5} show={(v) => `${v}°`} onChange={(v) => setTune({ hue: v })} />
           <Range label="טשטוש" value={tune.blur} min={0} max={10} step={0.5} show={(v) => (v ? String(v) : "ללא")} onChange={(v) => setTune({ blur: v })} />
-          {saved.backgroundImage && (
-            <Range
-              label="החשכת התמונה"
-              value={saved.backgroundDim}
-              min={0}
-              max={0.95}
-              step={0.05}
-              show={pct}
-              onChange={(v) => onEdit("dim", (c) => ({ ...c, backgroundDim: v }))}
-            />
-          )}
           <ColourChoice label="צבע מעל הרקע" value={tune.tint} fallback="#c08a4a" unsetLabel="ללא" onChange={(v) => setTune({ tint: v })} />
           {tune.tint && (
             <Range label="עוצמת הצבע" value={tune.tintStrength} min={0.05} max={1} step={0.05} show={pct} onChange={(v) => setTune({ tintStrength: v })} />
@@ -422,6 +455,236 @@ export function BackgroundLayer({ config, saved, onEdit, setPreview, colourField
           <div className="mt-2">{colourFields(THEME_VAR_LAYERS.background)}</div>
         </details>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------- the background gallery -- */
+
+type Look = Omit<SavedBackground, "id" | "name">;
+type GalleryFilter = "all" | BackgroundKind | "mine";
+const GALLERY_FILTERS: Array<{ id: GalleryFilter; name: string }> = [
+  { id: "all", name: "הכול" },
+  { id: "colour", name: "צבעים" },
+  { id: "gradient", name: "מעברי צבע" },
+  { id: "picture", name: "תמונות" },
+  { id: "mine", name: "שלי" },
+];
+const KIND_NAMES: Record<BackgroundKind, string> = { colour: "צבע שלי", gradient: "מעבר צבעים שלי", picture: "תמונה שלי" };
+
+/** A background as a small picture of itself: its fill, its picture, the layer over the picture. */
+function BackgroundTile({ b }: { b: Look }) {
+  const t = tileOf(b);
+  return (
+    <span className="relative block aspect-video w-full overflow-hidden bg-[#0b1628]" style={{ backgroundImage: t.fill ?? undefined }}>
+      {t.thumb && <img src={t.thumb} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />}
+      {t.picture && t.overlay && <span className="absolute inset-0" style={{ background: t.overlay, opacity: t.strength }} />}
+    </span>
+  );
+}
+
+/**
+ * Every background, in one place: the ready-made colours, gradients and
+ * pictures and the shul's own, side by side. A click puts one on (it is a
+ * draft until "שמור ושדר", and undo takes it back); what is on now can be
+ * kept as a new one, or written back into the one of the shul's own it came
+ * from. An uploaded picture lands here by itself.
+ */
+function BackgroundGallery({
+  saved,
+  onEdit,
+  look,
+  isOn,
+  onPick,
+  onUpload,
+  uploading,
+}: {
+  saved: TvConfig;
+  onEdit: Edit;
+  look: Look;
+  isOn: (b: SavedBackground) => boolean;
+  onPick: (b: SavedBackground) => void;
+  onUpload: (files: FileList | null) => void;
+  uploading: boolean;
+}) {
+  const [filter, setFilter] = useState<GalleryFilter>("all");
+  const [from, setFrom] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const all = galleryOf(saved);
+  const shown = all.filter((b) =>
+    filter === "all" ? true : filter === "mine" ? saved.backgrounds.includes(b) : kindOf(b) === filter,
+  );
+  const mine = saved.backgrounds.find((b) => b.id === from) ?? null;
+  const sameLook = (b: SavedBackground) => {
+    const { id: _id, name: _name, ...rest } = b;
+    return JSON.stringify(rest) === JSON.stringify(look);
+  };
+  const kept = all.some((b) => isOn(b) && (!b.id.startsWith("b_") || sameLook(b)));
+  const changed = Boolean(mine && !sameLook(mine));
+
+  const keep = () => {
+    const clean = name.trim().slice(0, 40) || KIND_NAMES[kindOf(look)];
+    const id = newBackgroundId();
+    onEdit("bg-gallery:keep", (c) => ({ ...c, backgrounds: [{ id, name: clean, ...look }, ...c.backgrounds].slice(0, MAX_BACKGROUNDS) }));
+    setFrom(id);
+    setName("");
+    toast.success(`"${clean}" נשמר בגלריה`);
+  };
+
+  return (
+    <div className="space-y-2" data-testid="background-gallery">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {GALLERY_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            aria-pressed={filter === f.id}
+            onClick={() => setFilter(f.id)}
+            className={`h-7 rounded-full border px-3 text-xs ${filter === f.id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
+          >
+            {f.name}
+            {f.id === "mine" && saved.backgrounds.length ? ` (${saved.backgrounds.length})` : ""}
+          </button>
+        ))}
+      </div>
+      <div className="grid max-h-80 grid-cols-3 gap-1.5 overflow-y-auto p-0.5 sm:grid-cols-5">
+        <label
+          className={`flex aspect-video cursor-pointer flex-col items-center justify-center gap-0.5 self-start rounded-md border border-dashed text-[11px] hover:border-primary ${uploading ? "opacity-60" : ""}`}
+          title="העלאת תמונה משלכם - נשמרת בגלריה"
+        >
+          <ImagePlus className="size-4" />
+          {uploading ? "מעלה…" : "העלאת תמונה"}
+          <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading} onChange={(e) => onUpload(e.target.files)} />
+        </label>
+        {shown.map((b) => {
+          const on = isOn(b);
+          const own = b.id.startsWith("b_");
+          return (
+            <div key={b.id} className="group relative">
+              <button
+                type="button"
+                aria-pressed={on}
+                aria-label={b.name}
+                title={b.name}
+                onClick={() => {
+                  onPick(b);
+                  setFrom(own ? b.id : null);
+                }}
+                className={`block w-full overflow-hidden rounded-md border text-start transition hover:ring-2 hover:ring-primary ${on ? "ring-2 ring-primary ring-offset-1" : ""}`}
+              >
+                <BackgroundTile b={b} />
+                <span className="block truncate bg-background/95 px-1.5 py-0.5 text-[11px]">{b.name}</span>
+              </button>
+              {own && (
+                <button
+                  type="button"
+                  aria-label={`מחיקת ${b.name} מהגלריה`}
+                  title="מחיקה מהגלריה (לוח שמשתמש בו לא ישתנה)"
+                  onClick={() => {
+                    onEdit("bg-gallery:delete", (c) => ({ ...c, backgrounds: c.backgrounds.filter((x) => x.id !== b.id) }));
+                    if (from === b.id) setFrom(null);
+                  }}
+                  className="absolute -left-1 -top-1 flex size-5 items-center justify-center rounded-full border bg-background text-[11px] opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {(!kept || changed) && Boolean(look.fill || look.picture) && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-2 text-xs" data-testid="background-keep">
+          <span>הרקע שעל הלוח עכשיו {changed && mine ? `שונה מ"${mine.name}"` : "לא שמור בגלריה"}:</span>
+          {changed && mine && (
+            <Button
+              type="button"
+              size="sm"
+              className="h-7"
+              onClick={() => {
+                onEdit("bg-gallery:update", (c) => ({ ...c, backgrounds: c.backgrounds.map((x) => (x.id === mine.id ? { ...x, ...look } : x)) }));
+                toast.success(`"${mine.name}" עודכן`);
+              }}
+            >
+              עדכון "{mine.name}"
+            </Button>
+          )}
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={KIND_NAMES[kindOf(look)]}
+            maxLength={40}
+            aria-label="שם לרקע בגלריה"
+            className="h-7 w-36 rounded-md border bg-background px-2"
+          />
+          <Button type="button" size="sm" variant="outline" className="h-7" onClick={keep}>
+            שמירה כרקע חדש
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const TWO_STOPS = /^linear-gradient\((\d{1,3})deg, (#[0-9a-f]{6}), (#[0-9a-f]{6})\)$/i;
+
+/**
+ * What lies over the picture: the theme's own colour (as the board always
+ * darkened a picture), a colour of its own, or a gradient - and how strongly.
+ */
+function PictureLayer({ saved, onEdit }: { saved: TvConfig; onEdit: Edit }) {
+  const overlay = saved.backgroundOverlay;
+  const two = overlay ? TWO_STOPS.exec(overlay) : null;
+  const mode: "theme" | "colour" | "gradient" = !overlay ? "theme" : isSafeGradient(overlay) ? "gradient" : "colour";
+  const set = (v: string | null) => onEdit("bg-overlay", (c) => ({ ...c, backgroundOverlay: v }));
+  const angle = two ? Number(two[1]) : 180;
+  const a = two?.[2] ?? "#0b1628";
+  const b = two?.[3] ?? "#1b3054";
+  const gradient = (deg: number, x: string, y: string) => `linear-gradient(${deg}deg, ${x}, ${y})`;
+  const hex = overlay && /^#[0-9a-f]{6}$/i.test(overlay) ? overlay : "#0b1628";
+  return (
+    <div className="space-y-2 rounded-md bg-muted/40 p-2" data-testid="picture-layer">
+      <Segments
+        label="שכבה מעל התמונה"
+        value={mode}
+        onChange={(v) => set(v === "theme" ? null : v === "colour" ? hex : gradient(angle, a, b))}
+        options={[
+          { id: "theme", name: "צבע הערכה" },
+          { id: "colour", name: "צבע" },
+          { id: "gradient", name: "מעבר צבעים" },
+        ]}
+      />
+      {mode === "colour" && (
+        <label className="flex items-center gap-2 text-xs">
+          צבע השכבה
+          <input type="color" aria-label="צבע השכבה" value={hex} onChange={(e) => set(e.target.value)} className="h-8 w-11 cursor-pointer rounded border" />
+        </label>
+      )}
+      {mode === "gradient" && (
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <label className="flex items-center gap-1">
+            מ־
+            <input type="color" aria-label="צבע ראשון של השכבה" value={a} onChange={(e) => set(gradient(angle, e.target.value, b))} className="h-8 w-11 cursor-pointer rounded border" />
+          </label>
+          <label className="flex items-center gap-1">
+            אל
+            <input type="color" aria-label="צבע שני של השכבה" value={b} onChange={(e) => set(gradient(angle, a, e.target.value))} className="h-8 w-11 cursor-pointer rounded border" />
+          </label>
+          <label className="flex items-center gap-1">
+            כיוון
+            <input type="range" aria-label="כיוון השכבה" min={0} max={360} step={5} value={angle} onChange={(e) => set(gradient(Number(e.target.value), a, b))} className="w-24" />
+          </label>
+        </div>
+      )}
+      <Range
+        label="עוצמת השכבה"
+        value={saved.backgroundDim}
+        min={0}
+        max={0.95}
+        step={0.05}
+        show={pct}
+        onChange={(v) => onEdit("dim", (c) => ({ ...c, backgroundDim: v }))}
+      />
     </div>
   );
 }
