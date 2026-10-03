@@ -46,7 +46,7 @@ import {
 } from "@/tv/boardEdit";
 import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
 import { applyBackground, galleryOf, tileOf, wears } from "@/tv/backgrounds";
-import { FrameAndSpacing, StylePicker } from "./BoardLook";
+import { BoardFramePicker, FrameAndSpacing } from "./BoardLook";
 import { getTheme, isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
@@ -305,7 +305,10 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
   const own = !config.backgroundGradient && !config.backgroundImage;
   return (
     <div className="space-y-3" data-testid="board-background">
-      <StylePicker config={config} onEdit={onEdit} compact />
+      <div className="space-y-1.5">
+        <div className="text-xs font-medium text-muted-foreground">מסגרת ללוח כולו</div>
+        <BoardFramePicker config={config} onEdit={onEdit} compact />
+      </div>
 
       <FrameAndSpacing config={config} onEdit={onEdit} compact />
 

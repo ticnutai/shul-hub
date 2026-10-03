@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { BOARD_SKINS } from "../src/tv/config";
+import { BOARD_FRAMES } from "../src/tv/config";
 import { expectNotFrozen, serveEditor, type EditorServer } from "./support/tvEditor";
 import { chooseDevice } from "./support/deviceMenu";
 
@@ -29,46 +29,56 @@ test.describe("TV editor", () => {
     await expect(page.locator(".tv-frame .tv-root")).toBeVisible({ timeout: 20_000 });
   });
 
-  /** The board's own root, which carries the theme variables and the skin. */
+  /** The board's own root, which carries the theme variables and the board's frame. */
   const root = (page: import("@playwright/test").Page) => page.locator(".tv-frame .tv-root").first();
 
   const cssVar = (page: import("@playwright/test").Page, name: string) =>
     root(page).evaluate((el, v) => getComputedStyle(el).getPropertyValue(v).trim(), name);
 
-  test("every style in the picker applies, and they are all the board's own", async ({ page }) => {
+  /** Which frame for the whole board is on, "none" without one. */
+  const boardFrameOf = async (page: import("@playwright/test").Page) =>
+    /is-board-frame-([a-z-]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? "none";
+  const boardFrames = (page: import("@playwright/test").Page) => page.getByTestId("board-frames").first().getByRole("button");
+
+  test("every frame for the whole board applies, and each is the board's own", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
-    const count = await skins.count();
-    expect(count).toBe(BOARD_SKINS.length);
+    const count = await boardFrames(page).count();
+    expect(count).toBe(BOARD_FRAMES.length + 1);
 
     const applied: string[] = [];
     for (let i = 0; i < count; i++) {
-      await skins.nth(i).click();
-      const className = await root(page).getAttribute("class");
-      const match = /is-skin-([a-z]+)/.exec(className ?? "");
-      expect(match, `style #${i + 1} set no skin`).toBeTruthy();
-      applied.push(match![1]);
-      await expectNotFrozen(page, `style ${match![1]}`);
+      await boardFrames(page).nth(i).click();
+      const frame = await boardFrameOf(page);
+      applied.push(frame);
+      if (frame !== "none") await expect(root(page).locator(`.tv-board-frame[data-frame="${frame}"]`)).toHaveCount(1);
+      await expectNotFrozen(page, `board frame ${frame}`);
     }
-    expect([...applied].sort()).toEqual([...BOARD_SKINS].sort());
+    expect([...applied].sort()).toEqual(["none", ...BOARD_FRAMES].sort());
+  });
+
+  test("a title style for every box, and one box apart", async ({ page }) => {
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await page.getByTestId("title-styles").first().getByRole("button", { name: "כותרת: סרט" }).click();
+    await expect(root(page)).toHaveAttribute("data-title-style", "ribbon");
+    await expectNotFrozen(page, "title style");
   });
 
   test("every frame shape applies, and the roundness sliders work", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    const shapes = ["לפי הסגנון", "מעוגל", "רך", "קטום", "מגורע", "מדורג"];
+    const shapes = ["רגיל", "מעוגל", "רך", "קטום", "מגורע", "מדורג", "כיפה", "כיפת בצל", "קשת מחודדת", "מסולסל"];
     const frames = page.getByTestId("frame-shapes");
     for (const shape of shapes) {
       await frames.getByRole("button", { name: shape, exact: true }).click();
       const className = (await root(page).getAttribute("class")) ?? "";
-      if (shape === "לפי הסגנון") expect(className).not.toContain("has-frame-shape");
+      if (shape === "רגיל") expect(className).not.toContain("has-frame-shape");
       else expect(className).toContain("has-frame-shape");
       await expectNotFrozen(page, `frame ${shape}`);
     }
 
     // The roundness of the top, set by hand, reaches the board.
-    // The two sliders start on "לפי הסגנון"; the button beside one turns it on.
+    // The two sliders start on "רגיל"; the button beside one turns it on.
     const topRow = page.locator("div", { has: page.getByLabel("עיגול למעלה", { exact: true }) }).last();
-    await topRow.getByRole("button", { name: "לפי הסגנון" }).click();
+    await topRow.getByRole("button", { name: "רגיל" }).click();
     await page.getByLabel("עיגול למעלה", { exact: true }).fill("8");
     await expect.poll(() => cssVar(page, "--frame-top")).not.toBe("");
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-frame-radius");
@@ -263,8 +273,9 @@ test.describe("TV editor", () => {
     // Style, frame, gradient, a slide, the Shabbat screen, and save -
     // one after another, checking after each that the page still answers.
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    await page.getByTestId("skin-picker").getByRole("button").nth(12).click();
-    await expectNotFrozen(page, "style");
+    await boardFrames(page).filter({ hasText: "היכל" }).click();
+    await expect(root(page)).toHaveClass(/is-board-frame-heichal/);
+    await expectNotFrozen(page, "board frame");
     await page.getByTestId("frame-shapes").getByRole("button", { name: "קטום" }).click();
     await expectNotFrozen(page, "frame");
 
@@ -290,7 +301,7 @@ test.describe("TV editor", () => {
     await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
     await expectNotFrozen(page, "saved");
   });
-  test("the board itself is editable from the board: style, frame, a background from the gallery, colour", async ({ page }) => {
+  test("the board itself is editable from the board: its frame, a background from the gallery, colour", async ({ page }) => {
     // Clicking an empty part of the board selects the board, and everything
     // about its look is then in one panel - the way the live editor is used.
     await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
@@ -298,11 +309,11 @@ test.describe("TV editor", () => {
     await expect(page.getByText("רקע הלוח, סגנון ומסגרות")).toBeVisible();
     await expectNotFrozen(page, "board selected");
 
-    // A style, chosen from the board's own panel.
+    // A frame for the whole board, chosen from the board's own panel.
     const panel = page.getByTestId("board-background");
-    await panel.getByRole("button", { name: "אבני ירושלים" }).first().click();
-    await expect.poll(() => root(page).getAttribute("class")).toContain("is-skin-stone");
-    await expectNotFrozen(page, "style from the board");
+    await panel.getByTestId("board-frames").getByRole("button", { name: "עמודי זהב" }).click();
+    await expect.poll(() => root(page).getAttribute("class")).toContain("is-board-frame-columns");
+    await expectNotFrozen(page, "board frame from the board");
 
     // A background from the same gallery as "רקעים" (the themes are chosen in one place, "עיצוב").
     await panel.getByTestId("board-background-gallery").getByRole("button", { name: "שמיים בערב", exact: true }).click();
@@ -323,20 +334,18 @@ test.describe("TV editor", () => {
     await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-bg-gradient");
     await expectNotFrozen(page, "back to the style");
   });
-  test("no style cuts a row off the board", async ({ page }) => {
-    // The chrome a style adds - a carved border, a crown, a curtain over the
-    // top - is paid for out of the panels below it. Four styles were caught
-    // cutting the last line of the day-times panel this way, so every style
-    // is now measured: content taller than its panel means a lost row.
+  test("no frame for the board cuts a row off it", async ({ page }) => {
+    // What a frame adds - columns at the sides, a curtain over the top, a
+    // carved border - is paid for out of the panels inside it. Every one is
+    // measured: content taller than its panel means a lost row.
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    const skins = page.getByTestId("skin-picker").getByRole("button");
-    const count = await skins.count();
+    const count = await boardFrames(page).count();
     const clipped: string[] = [];
 
     for (let i = 0; i < count; i++) {
-      await skins.nth(i).click();
+      await boardFrames(page).nth(i).click();
       await page.waitForTimeout(150);
-      const skin = /is-skin-([a-z]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? `#${i}`;
+      const frame = await boardFrameOf(page);
       const over = await page.evaluate(() =>
         [...document.querySelectorAll(".tv-frame .tv-panel, .tv-frame .tv-card-text")]
           .map((el) => ({
@@ -348,10 +357,10 @@ test.describe("TV editor", () => {
           }))
           .filter((o) => o.cut > 2),
       );
-      if (over.length) clipped.push(`${skin}: ${over.map((o) => `${o.title} -${o.cut}px`).join(", ")}`);
+      if (over.length) clipped.push(`${frame}: ${over.map((o) => `${o.title} -${o.cut}px`).join(", ")}`);
     }
 
-    expect(clipped, `styles that cut a row: ${clipped.join(" | ")}`).toEqual([]);
+    expect(clipped, `frames that cut a row: ${clipped.join(" | ")}`).toEqual([]);
   });
   test("a long notice is shrunk to fit, not cut off", async ({ page }) => {
     // The fixture carries a deliberately long notice. On the notices slide it
@@ -384,9 +393,9 @@ test.describe("TV editor", () => {
     const before = (await panel.boundingBox())?.height ?? 0;
     expect(before).toBeGreaterThan(0);
 
-    // Turn the slider on (it starts on "לפי הסגנון") and close the gap.
+    // Turn the slider on (it starts on "רגיל") and close the gap.
     const row = page.locator("div", { has: page.getByLabel("מרווח עליון", { exact: true }) }).last();
-    await row.getByRole("button", { name: "לפי הסגנון" }).click();
+    await row.getByRole("button", { name: "רגיל" }).click();
     await page.getByLabel("מרווח עליון", { exact: true }).fill("0");
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-space-top");
 
@@ -396,7 +405,7 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "spacing");
 
     // And back to what the layout draws.
-    await row.getByRole("button", { name: "לפי הסגנון" }).click();
+    await row.getByRole("button", { name: "רגיל" }).click();
     await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-space-top");
     await expect.poll(async () => (await panel.boundingBox())?.height ?? 0).toBe(before);
   });
@@ -521,8 +530,7 @@ test.describe("TV editor", () => {
       await chooseDevice(page, name);
       await page.waitForTimeout(400);
     };
-    const skinOf = async () =>
-      /is-skin-([a-z]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? null;
+    const frameOf = () => boardFrameOf(page);
 
     // The one switcher says, in words, what it currently means.
     await look("כל המסכים");
@@ -530,7 +538,7 @@ test.describe("TV editor", () => {
     await expect(banner).toContainText("כל התצוגות");
 
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
+    const skins = boardFrames(page);
     await skins.nth(1).click();
     await page.waitForTimeout(300);
 
@@ -538,27 +546,27 @@ test.describe("TV editor", () => {
     await look("מובייל");
     await expect(banner).toHaveAttribute("data-scope", "mobile");
     await expect(banner).toContainText("עורך עכשיו: מובייל");
-    const shared = await skinOf();
+    const shared = await frameOf();
 
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await skins.nth(4).click();
     await page.waitForTimeout(400);
-    const phone = await skinOf();
+    const phone = await frameOf();
     expect(phone).not.toBe(shared);
 
     // A tablet is held like a phone, so it edits the same screen.
     await look("טאבלט");
     await expect(banner).toHaveAttribute("data-scope", "mobile");
-    expect(await skinOf()).toBe(phone);
+    expect(await frameOf()).toBe(phone);
 
     // A laptop is a computer, and the computer never moved.
     await look("לפטופ");
     await expect(banner).toHaveAttribute("data-scope", "desktop");
-    expect(await skinOf()).toBe(shared);
+    expect(await frameOf()).toBe(shared);
 
     await look("Android TV");
     await expect(banner).toHaveAttribute("data-scope", "tv");
-    expect(await skinOf()).toBe(shared);
+    expect(await frameOf()).toBe(shared);
 
     // The way back is one click, and it is offered where the trouble is.
     await expect(banner).toContainText("מוגדר בנפרד");
@@ -567,7 +575,7 @@ test.describe("TV editor", () => {
     await expect(banner).not.toContainText("מוגדר בנפרד");
 
     await look("מובייל");
-    expect(await skinOf()).toBe(shared);
+    expect(await frameOf()).toBe(shared);
     await expectNotFrozen(page, "one switcher");
   });
 
@@ -576,7 +584,7 @@ test.describe("TV editor", () => {
     await chooseDevice(page, "מובייל");
     await page.waitForTimeout(350);
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    const skins = page.locator("button", { has: page.locator("span.aspect-\\[16\\/10\\]") });
+    const skins = boardFrames(page);
     await skins.nth(5).click();
     await page.waitForTimeout(400);
 
@@ -588,7 +596,7 @@ test.describe("TV editor", () => {
     const skins_shown = await page
       .locator(".tv-frame .tv-root")
       .evaluateAll((els) =>
-        els.map((el) => /is-skin-([a-z]+)/.exec(el.className)?.[1] ?? null),
+        els.map((el) => /is-board-frame-([a-z-]+)/.exec(el.className)?.[1] ?? "none"),
       );
     // Five frames, and the two that are phone-shaped show the phone's board.
     expect(skins_shown.length).toBeGreaterThanOrEqual(5);

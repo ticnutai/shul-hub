@@ -22,8 +22,8 @@ describe("a file from the tablets editor", () => {
     expect(r.skipped).toBe(0);
     expect(r.board).toEqual({
       // arched tablets on a stone wall
-      skin: "tablets",
-      frame: { shape: "auto", top: null, bottom: null },
+      backgroundImage: "backdrop:wall",
+      frame: { shape: "arch", top: null, bottom: null },
       // the editor's default spacing leaves this board's own alone
       spacing: { top: null, bottom: null, sides: null, gap: null },
       textScale: 1,
@@ -34,7 +34,8 @@ describe("a file from the tablets editor", () => {
   it("lands on the board as a normal, validated config", () => {
     const r = parseImport(text, newCustomThemeId, newGradientId);
     const next = applyImport(DEFAULT_TV_CONFIG, r);
-    expect(next.skin).toBe("tablets");
+    expect(next.frame.shape).toBe("arch");
+    expect(next.backgroundImage).toBe("backdrop:wall");
     expect(next.spacing).toEqual({ top: null, bottom: null, sides: null, gap: null });
     expect(next.texts["header.title"]).toBe("בית הכנסת אוהל יצחק");
     expect(next.customThemes.map((t) => t.name)).toEqual(["אבן ירושלים (2)"]);
@@ -45,7 +46,8 @@ describe("a file from the tablets editor", () => {
     const r = parseImport(JSON.stringify(example), newCustomThemeId, newGradientId);
     expect(r.board).toBeNull();
     const next = applyImport(DEFAULT_TV_CONFIG, r);
-    expect(next.skin).toBe(DEFAULT_TV_CONFIG.skin);
+    expect(next.frame).toEqual(DEFAULT_TV_CONFIG.frame);
+    expect(next.backgroundImage).toBe(DEFAULT_TV_CONFIG.backgroundImage);
     expect(next.spacing).toEqual(DEFAULT_TV_CONFIG.spacing);
     expect(next.texts).toEqual(DEFAULT_TV_CONFIG.texts);
   });
@@ -63,28 +65,31 @@ describe("a file from the tablets editor", () => {
 });
 
 describe("the translation table", () => {
-  it("turns a flat curve into a corner radius on the wall's own skin", () => {
+  it("turns a flat curve into a corner radius, on the wall's own background", () => {
     const b = boardFromTablets({
       layout: { archRadius: 10, tabletWidth: 40, tabletsGap: 2, topOffset: 12 },
       appearance: { wallTexture: "wood", rowSize: 2.28 },
     })!;
-    expect(b.skin).toBe("wood");
+    expect(b.backgroundImage).toBe("backdrop:wood");
     expect(b.frame).toEqual({ shape: "round", top: 7, bottom: 1 });
     expect(b.spacing).toEqual({ top: 2.2, bottom: null, sides: 9, gap: 0.7 });
     expect(b.textScale).toBe(1.2);
   });
 
   it("maps every wall", () => {
-    const skin = (wall: string, archRadius = 0) =>
-      boardFromTablets({ layout: { archRadius }, appearance: { wallTexture: wall } })!.skin;
-    expect([skin("jerusalem-stone"), skin("smooth-marble"), skin("dark-velvet"), skin("wood")]).toEqual([
-      "stone",
-      "crown",
-      "velvet",
-      "wood",
+    const wallOf = (wall: string) => boardFromTablets({ layout: { archRadius: 0 }, appearance: { wallTexture: wall } })!.backgroundImage;
+    expect([wallOf("jerusalem-stone"), wallOf("smooth-marble"), wallOf("dark-velvet"), wallOf("wood")]).toEqual([
+      "backdrop:wall",
+      "backdrop:marble",
+      "backdrop:velvet",
+      "backdrop:wood",
     ]);
-    expect(skin("smooth-marble", 50)).toBe("arch");
-    expect(skin("dark-velvet", 50)).toBe("tablets");
+    expect(boardFromTablets({ layout: { archRadius: 50 } })!.frame.shape).toBe("arch");
+    // and back: every wall comes out as the wall it went in as
+    for (const wall of ["jerusalem-stone", "smooth-marble", "dark-velvet", "wood"]) {
+      const b = boardFromTablets({ layout: { archRadius: 0 }, appearance: { wallTexture: wall } })!;
+      expect(tabletsFromBoard(applyBoardLayout(DEFAULT_TV_CONFIG, b)).appearance.wallTexture).toBe(wall);
+    }
   });
 
   it("clamps and ignores what it cannot trust", () => {
@@ -95,7 +100,8 @@ describe("the translation table", () => {
     })!;
     expect(b.spacing.gap).toBe(10);
     expect(b.spacing.top).toBe(0);
-    expect(b.skin).toBe("tablets");
+    expect(b.frame.shape).toBe("arch");
+    expect(b.backgroundImage).toBe("backdrop:wall");
     expect(b.textScale).toBe(1.3);
     expect(b.title).toBeNull();
     const next = applyBoardLayout(DEFAULT_TV_CONFIG, b);
@@ -110,7 +116,7 @@ describe("the translation table", () => {
 });
 
 describe("spacing that fits", () => {
-  it("never gives the tablets skin more air than the editor asked for", () => {
+  it("never gives the tablets more air than the editor asked for", () => {
     // A modest change in the editor stays a modest change here: the default
     // gap mapped to the maximum once, and the short panels lost their last rows.
     const b = boardFromTablets({ layout: { tabletsGap: 7.5, tabletWidth: 39, topOffset: 15 } })!;
@@ -140,7 +146,7 @@ describe("exporting the shape", () => {
     expect(file.board?.header.shulName).toBe("בית הכנסת אוהל יצחק");
 
     const again = applyImport(DEFAULT_TV_CONFIG, parseImport(JSON.stringify(file), newCustomThemeId, newGradientId));
-    expect(again.skin).toBe(board.skin);
+    expect(again.backgroundImage).toBe(board.backgroundImage);
     expect(again.frame).toEqual(board.frame);
     expect(again.spacing).toEqual(board.spacing);
     expect(again.textScale).toBe(board.textScale);

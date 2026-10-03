@@ -84,7 +84,6 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     () =>
       themeStyle({
         theme: config.theme,
-        skin: config.skin,
         customThemes: config.customThemes,
         overrides: config.themeOverrides,
         font: config.font,
@@ -96,7 +95,6 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       }),
     [
       config.theme,
-      config.skin,
       config.customThemes,
       config.themeOverrides,
       config.font,
@@ -220,7 +218,10 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       <OverflowContext.Provider value={overflow}>
     <div className={`tv-frame${className ? ` ${className}` : ""}`}>
       <div
-        className={`tv-root is-layout-${layout} is-skin-${config.skin}${
+        className={`tv-root is-layout-${layout}${
+          // A frame for the whole board: room is made for it (tv.css, .tv-board-frame).
+          config.boardFrame ? ` has-board-frame is-board-frame-${config.boardFrame}` : ""
+        }${
           // A light board is a different contrast problem from a dark one,
           // and some things that read on navy vanish on parchment.
           getTheme(config.theme, config.customThemes).light ? " is-light" : ""
@@ -230,6 +231,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           config.backgroundGradient ? " has-bg-gradient" : ""
         }${frame.classes}`}
         style={{ ...style, ...frame.vars }}
+        data-title-style={config.titleStyle !== "plain" ? config.titleStyle : undefined}
         {...edit.attr("board.background")}
       >
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }}>
@@ -238,6 +240,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             <div className="tv-bg-tint" style={{ background: tint, opacity: config.backgroundTune.tintStrength }} />
           )}
         </div>
+        {config.boardFrame && <div className="tv-board-frame" data-frame={config.boardFrame} aria-hidden />}
         <TvShapes />
         {!ownHeader && (bars.header || bars.clock || (bars.logo && config.logos.length > 0)) && (
           <TvHeader

@@ -1,4 +1,4 @@
-import { FRAME_RADIUS_MAX, SPACING_MAX, normalizeTvConfig, type BoardSkin, type TvConfig } from "./config";
+import { BACKDROP_PREFIX, FRAME_RADIUS_MAX, SPACING_MAX, normalizeTvConfig, type TvConfig } from "./config";
 
 /**
  * The shape of a board, carried in a design-tokens file beside the colours.
@@ -11,9 +11,9 @@ import { FRAME_RADIUS_MAX, SPACING_MAX, normalizeTvConfig, type BoardSkin, type 
  *
  *   editor                          this board
  *   ─────────────────────────────   ─────────────────────────────────────
- *   arched tablets (archRadius≥35)  skin "tablets" ("arch" on marble)
+ *   arched tablets (archRadius≥35)  frame: the arch shape
  *   flat / rounded tablets          frame: round corners, radius in --u
- *   wallTexture                     skin (stone / velvet / wood / crown)
+ *   wallTexture                     a background from the gallery (stone / marble / velvet / wood)
  *   tabletsGap (% width)            spacing.gap   (scaled, see below)
  *   outer margin (% width)          spacing.sides (scaled)
  *   topOffset (% height)            spacing.top   (scaled)
@@ -27,7 +27,7 @@ import { FRAME_RADIUS_MAX, SPACING_MAX, normalizeTvConfig, type BoardSkin, type 
  * defaults stand for "as the style draws it" (null), and a change in the
  * editor moves the board's own default by the same proportion - half the
  * gap there is half the gap here. The defaults were measured on the
- * dashboard layout with the tablets skin.
+ * dashboard layout with arched panels.
  *
  * The clock, wreath, gold stroke, row gap and colours of the tablets have no
  * counterpart here and are not carried. Prayer times are not design: they
@@ -39,7 +39,8 @@ import { FRAME_RADIUS_MAX, SPACING_MAX, normalizeTvConfig, type BoardSkin, type 
 
 /** The board knobs a file can set. */
 export interface BoardLayoutPatch {
-  skin: BoardSkin;
+  /** The wall, as a ready background ("backdrop:<id>"). */
+  backgroundImage: string;
   frame: TvConfig["frame"];
   spacing: TvConfig["spacing"];
   textScale: number;
@@ -79,29 +80,31 @@ const BASE_ROW_SIZE = 1.9;
 /** From this curve on, the tablets are arches, not rounded boxes. */
 const ARCH_FROM = 35;
 
-const WALL_SKIN: Record<WallTexture, BoardSkin> = {
-  "jerusalem-stone": "stone",
-  "smooth-marble": "crown",
+const WALL_BACKDROP: Record<WallTexture, string> = {
+  "jerusalem-stone": "wall",
+  "smooth-marble": "marble",
   "dark-velvet": "velvet",
   wood: "wood",
 };
 
-const SKIN_WALL: Partial<Record<BoardSkin, WallTexture>> = {
+/** The gallery's backgrounds back in the editor's four walls. */
+const BACKDROP_WALL: Record<string, WallTexture> = {
+  wall: "jerusalem-stone",
   stone: "jerusalem-stone",
-  tablets: "jerusalem-stone",
+  "stone-rough": "jerusalem-stone",
   parchment: "jerusalem-stone",
-  crown: "smooth-marble",
-  arch: "smooth-marble",
-  heichal: "smooth-marble",
-  pillars: "smooth-marble",
+  "parchment-aged": "jerusalem-stone",
+  marble: "smooth-marble",
+  "marble-dark": "smooth-marble",
   velvet: "dark-velvet",
-  hall: "dark-velvet",
-  curtain: "dark-velvet",
+  royal: "dark-velvet",
+  "velvet-nap": "dark-velvet",
   wood: "wood",
+  walnut: "wood",
 };
 
-/** Skins whose panels are already arched tablets. */
-const ARCHED_SKINS: BoardSkin[] = ["tablets", "arch", "dome"];
+/** Box shapes that are arched tablets already. */
+const ARCHED_SHAPES: string[] = ["arch", "dome", "onion", "lancet"];
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
@@ -140,14 +143,12 @@ export function boardFromTablets(entry: unknown): BoardLayoutPatch | null {
   const width = num(L?.tabletWidth, 40, 15, 48);
   const top = num(L?.topOffset, 14, 0, 50);
   const archRadius = num(L?.archRadius, 50, 0, 50);
-  const wall = (typeof A?.wallTexture === "string" && A.wallTexture in WALL_SKIN ? A.wallTexture : "jerusalem-stone") as WallTexture;
+  const wall = (typeof A?.wallTexture === "string" && A.wallTexture in WALL_BACKDROP ? A.wallTexture : "jerusalem-stone") as WallTexture;
   const arched = archRadius >= ARCH_FROM;
 
-  // A real arch is drawn by the skins made of arches; a flatter curve
-  // becomes a corner radius on whatever skin the wall calls for.
-  const skin: BoardSkin = arched ? (wall === "smooth-marble" ? "arch" : "tablets") : WALL_SKIN[wall];
+  // A real arch is the arch shape; a flatter curve becomes a corner radius.
   const frame: TvConfig["frame"] = arched
-    ? { shape: "auto", top: null, bottom: null }
+    ? { shape: "arch", top: null, bottom: null }
     : {
         shape: "round",
         top: clamp(Math.round((archRadius / 100) * width * WIDTH_TO_U), 0, FRAME_RADIUS_MAX),
@@ -156,7 +157,7 @@ export function boardFromTablets(entry: unknown): BoardLayoutPatch | null {
 
   const title = typeof H?.shulName === "string" ? H.shulName.trim().slice(0, 300) : "";
   return {
-    skin,
+    backgroundImage: BACKDROP_PREFIX + WALL_BACKDROP[wall],
     frame,
     spacing: L
       ? {
@@ -176,7 +177,9 @@ export function boardFromTablets(entry: unknown): BoardLayoutPatch | null {
 export function applyBoardLayout(config: TvConfig, patch: BoardLayoutPatch): TvConfig {
   return normalizeTvConfig({
     ...config,
-    skin: patch.skin,
+    backgroundImage: patch.backgroundImage,
+    // The wall is the file's: a gradient of the board's own would cover it.
+    backgroundGradient: null,
     frame: patch.frame,
     spacing: patch.spacing,
     textScale: patch.textScale,
@@ -194,7 +197,7 @@ export function tabletsFromBoard(config: TvConfig): TabletsLayout {
   const gap = clamp(unscaled(config.spacing.gap, EDITOR.gap, BOARD.gap), 0, 40);
   const margin = unscaled(config.spacing.sides, EDITOR.margin, BOARD.sides);
   const width = round1(clamp(50 - gap / 2 - margin, 15, 48));
-  const arched = config.frame.top == null && ARCHED_SKINS.includes(config.skin);
+  const arched = config.frame.top == null && ARCHED_SHAPES.includes(config.frame.shape);
   const archRadius = arched
     ? 50
     : config.frame.top != null
@@ -210,7 +213,9 @@ export function tabletsFromBoard(config: TvConfig): TabletsLayout {
     },
     header: config.texts["header.title"] ? { shulName: config.texts["header.title"] } : {},
     appearance: {
-      wallTexture: SKIN_WALL[config.skin] ?? "jerusalem-stone",
+      wallTexture:
+        (config.backgroundImage?.startsWith(BACKDROP_PREFIX) && BACKDROP_WALL[config.backgroundImage.slice(BACKDROP_PREFIX.length)]) ||
+        "jerusalem-stone",
       rowSize: round1(config.textScale * BASE_ROW_SIZE),
       titleSize: round1(config.textScale * 2.1),
     },

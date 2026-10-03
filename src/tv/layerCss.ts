@@ -129,11 +129,13 @@ export function frameLookProps(look: FrameLook | undefined): {
   "data-own-line"?: "";
   "data-own-image"?: "";
   "data-shape"?: string;
+  "data-title-style"?: string;
 } {
   if (!look) return {};
   const css: Record<string, string> = {};
-  const out: { style?: CSSProperties; "data-own-fill"?: ""; "data-own-line"?: ""; "data-own-image"?: ""; "data-shape"?: string } = {};
+  const out: ReturnType<typeof frameLookProps> = {};
   if (look.shape) out["data-shape"] = look.shape;
+  if (look.titleStyle) out["data-title-style"] = look.titleStyle;
   const picture = framePictureUrl(look.image);
   if (picture) {
     const ready = FRAME_PICTURES.find((f) => look.image === framePictureRef(f.id));

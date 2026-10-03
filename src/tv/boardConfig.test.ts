@@ -16,20 +16,20 @@ const now = new Date("2026-09-29T12:00:00+03:00"); // a weekday in chol hamoed, 
 const ohelAvraham: TvConfig = {
   ...structuredClone(DEFAULT_TV_CONFIG),
   theme: "navy",
-  skin: "plain",
+  boardFrame: null,
   screenLayout: "rotate",
-  perDevice: { tv: { skin: "sky", theme: "forest", screenLayout: "split", clockStyle: "both" } },
+  perDevice: { tv: { boardFrame: "columns", theme: "forest", screenLayout: "split", clockStyle: "both" } },
 } as TvConfig;
 
 describe("the board a screen draws", () => {
   it("on the TV, has the TV's own settings", () => {
     const c = boardConfig(ohelAvraham, { deviceClass: "tv", now, settings: null });
-    expect([c.skin, c.theme, c.screenLayout, c.clockStyle]).toEqual(["sky", "forest", "split", "both"]);
+    expect([c.boardFrame, c.theme, c.screenLayout, c.clockStyle]).toEqual(["columns", "forest", "split", "both"]);
   });
 
   it("on a computer, has the board as saved", () => {
     const c = boardConfig(ohelAvraham, { deviceClass: "desktop", now, settings: null });
-    expect([c.skin, c.theme, c.screenLayout]).toEqual(["plain", "navy", "rotate"]);
+    expect([c.boardFrame, c.theme, c.screenLayout]).toEqual([null, "navy", "rotate"]);
   });
 
   it("takes a theme chosen from the remote, and ignores one that no longer exists", () => {

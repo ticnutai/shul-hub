@@ -6,7 +6,7 @@ import { getTheme } from "./themes";
 const board = () =>
   normalizeTvConfig({
     theme: "navy",
-    skin: "gold",
+    boardFrame: "columns",
     font: "classic",
     backgroundGradient: "linear-gradient(180deg, #102040, #203060)",
     backgroundTune: { brightness: 1.2 },
@@ -22,7 +22,7 @@ describe("saved designs", () => {
     expect(d.parts).toEqual(["background"]);
     expect(d.values.backgroundGradient).toContain("#102040");
     expect(d.values.backgroundTune?.brightness).toBe(1.2);
-    expect(d.values.skin).toBeUndefined();
+    expect(d.values.boardFrame).toBeUndefined();
     expect(d.values.font).toBeUndefined();
     expect(d.values.frameStyle?.fill).toBe("#1c2f52");
     expect(d.values.frameStyle?.line).toBeNull();
@@ -35,7 +35,7 @@ describe("saved designs", () => {
     const d = captureDesign(board(), "רקע לילה", ["background"]);
     const other = normalizeTvConfig({
       theme: "forest",
-      skin: "stone",
+      boardFrame: "beams",
       font: "modern",
       frameStyle: { line: "#ffffff" },
       frameLooks: { zmanim: { text: "#000000" } },
@@ -49,7 +49,7 @@ describe("saved designs", () => {
     expect(after.frameStyle.fill).toBe("#1c2f52");
     expect(coloursOnScreen(after)["--tv-bg-a"]).toBe("#010203");
     // ...and nothing else.
-    expect(after.skin).toBe("stone");
+    expect(after.boardFrame).toBe("beams");
     expect(after.font).toBe("modern");
     expect(after.screenLayout).toBe("rotate");
     expect(after.frameStyle.line).toBe("#ffffff");

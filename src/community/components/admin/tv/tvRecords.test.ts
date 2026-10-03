@@ -138,7 +138,7 @@ describe("options that must stay off until somebody turns them on", () => {
   it("a board saved before the countdown existed does not grow one", () => {
     // The whole promise of an option is that boards which never heard of it
     // keep looking exactly as they did.
-    const old = normalizeTvConfig({ skin: "plain", theme: "navy" });
+    const old = normalizeTvConfig({ theme: "navy" });
     expect(old.countdown.enabled).toBe(false);
   });
 
@@ -151,16 +151,18 @@ describe("options that must stay off until somebody turns them on", () => {
     expect(normalizeTvConfig({ countdown: { enabled: "yes" } }).countdown.enabled).toBe(false);
   });
 
-  it("the printed skin is a choice, not the new default", () => {
-    expect(normalizeTvConfig({}).skin).toBe("plain");
-    expect(normalizeTvConfig({ skin: "printed" }).skin).toBe("printed");
+  it("a frame for the board and a style for the titles are choices, not the new default", () => {
+    expect(normalizeTvConfig({}).boardFrame).toBeNull();
+    expect(normalizeTvConfig({}).titleStyle).toBe("plain");
+    expect(normalizeTvConfig({ boardFrame: "columns", titleStyle: "ribbon" })).toMatchObject({ boardFrame: "columns", titleStyle: "ribbon" });
+    expect(normalizeTvConfig({ boardFrame: "rubbish", titleStyle: 4 })).toMatchObject({ boardFrame: null, titleStyle: "plain" });
   });
 });
 
 describe("letter spacing in titles", () => {
   it("is 'as the skin draws it' until somebody moves it", () => {
     expect(normalizeTvConfig({}).tracking).toBeNull();
-    expect(normalizeTvConfig({ skin: "printed" }).tracking).toBeNull();
+    expect(normalizeTvConfig({ titleStyle: "underline" }).tracking).toBeNull();
   });
 
   it("keeps a value that was chosen", () => {

@@ -88,6 +88,10 @@ describe("ready-made frame pictures", () => {
       "ornate-corners",
       "stepped",
       "rope",
+      "carved-gold",
+      "rosette-corners",
+      "fan-corners",
+      "braid",
     ]);
     // The drawn ones are pictures too: an SVG, transparent inside.
     for (const f of FRAME_PICTURES.slice(2)) {

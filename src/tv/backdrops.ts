@@ -54,6 +54,21 @@ import wood from "./assets/backdrops/wood.jpg";
 import woodThumb from "./assets/backdrops/wood-thumb.jpg";
 import hall from "./assets/backdrops/hall.jpg";
 import hallThumb from "./assets/backdrops/hall-thumb.jpg";
+// The materials of the old designed frames (scripts/tv-textures.mjs).
+import marble from "./assets/tex-marble.jpg";
+import marbleThumb from "./assets/tex-marble-thumb.jpg";
+import marbleDark from "./assets/tex-marble-dark.jpg";
+import marbleDarkThumb from "./assets/tex-marble-dark-thumb.jpg";
+import gold from "./assets/tex-gold.jpg";
+import goldThumb from "./assets/tex-gold-thumb.jpg";
+import walnut from "./assets/tex-walnut.jpg";
+import walnutThumb from "./assets/tex-walnut-thumb.jpg";
+import stoneRough from "./assets/tex-stone.jpg";
+import stoneRoughThumb from "./assets/tex-stone-thumb.jpg";
+import parchmentAged from "./assets/tex-parchment.jpg";
+import parchmentAgedThumb from "./assets/tex-parchment-thumb.jpg";
+import velvetNap from "./assets/tex-velvet.jpg";
+import velvetNapThumb from "./assets/tex-velvet-thumb.jpg";
 
 export interface Backdrop {
   id: string;
@@ -85,6 +100,14 @@ export const TV_BACKDROPS: Backdrop[] = [
   { id: "wall", name: "קיר אבנים", note: "אבן ירושלמית חתוכה, שורה על שורה", light: true, url: wall, thumb: wallThumb },
   { id: "wood", name: "עץ אגוז", note: "עץ כהה וחם", light: false, url: wood, thumb: woodThumb },
   { id: "hall", name: "אולם כהה", note: "כהה, קשתות בצדדים ואור חם למטה", light: false, url: hall, thumb: hallThumb },
+  // Materials, for a box as much as for the board.
+  { id: "marble", name: "שיש לבן", note: "שיש קרם עם עורקים אפורים", light: true, url: marble, thumb: marbleThumb },
+  { id: "marble-dark", name: "שיש כחול", note: "שיש כחול כהה, לטקסט בהיר", light: false, url: marbleDark, thumb: marbleDarkThumb },
+  { id: "gold-leaf", name: "זהב מוברש", note: "מתכת זהב, לכותרות ולמסגרות", light: true, url: gold, thumb: goldThumb },
+  { id: "walnut", name: "עץ מלוטש", note: "עץ אגוז כהה עם סיבים", light: false, url: walnut, thumb: walnutThumb },
+  { id: "stone-rough", name: "אבן מחוספסת", note: "אבן ירושלים מחוספסת", light: true, url: stoneRough, thumb: stoneRoughThumb },
+  { id: "parchment-aged", name: "קלף ישן", note: "קלף עתיק וחם", light: true, url: parchmentAged, thumb: parchmentAgedThumb },
+  { id: "velvet-nap", name: "קטיפה אדומה", note: "קטיפה עמוקה עם ברק רך", light: false, url: velvetNap, thumb: velvetNapThumb },
 ];
 
 const PREFIX = BACKDROP_PREFIX;

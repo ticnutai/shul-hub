@@ -33,15 +33,15 @@ export const BOX_PRESETS: BoxPreset[] = [
   { id: "ornate", name: "מסגרת מעוטרת", shape: "round", line: null, lineWidth: 2, depth: 0.3, fill: null, image: framePictureRef("gold-ornate") },
   { id: "double-gold", name: "קו כפול", shape: "round", line: null, lineWidth: 2, depth: 0.2, fill: null, image: framePictureRef("double-gold") },
   { id: "stepped", name: "פינות מדורגות", shape: "round", line: null, lineWidth: 2, depth: 0.2, fill: null, image: framePictureRef("stepped") },
+  // The silhouettes of the old designed frames, now a box like any other.
+  { id: "dome-gold", name: "כיפה זהב", shape: "dome", line: "#c9a227", lineWidth: 3, depth: 0, fill: null, image: null },
+  { id: "onion-gold", name: "כיפת בצל", shape: "onion", line: "#d9b45a", lineWidth: 3, depth: 0, fill: null, image: null },
+  { id: "scallop-gold", name: "צלחת מסולסלת", shape: "scallop", line: "#c9a227", lineWidth: 3, depth: 0, fill: null, image: null },
+  { id: "arch-carved", name: "קשת מגולפת", shape: "arch", line: null, lineWidth: 2, depth: 0.3, fill: null, image: framePictureRef("carved-gold") },
 ];
 
-const SHAPE_FOR_ALL: Record<BoxPreset["shape"], FrameShape> = {
-  round: "round",
-  pill: "pill",
-  ellipse: "ellipse",
-  hexagon: "hexagon",
-  octagon: "octagon",
-};
+/** Every box's shape is the same word as one box's (config.FRAME_SHAPES holds them all). */
+const SHAPE_FOR_ALL = (shape: BoxPreset["shape"]): FrameShape => shape;
 
 /** The preset on every box, or on one (`frame`); the board leaves a painting it was. */
 export function applyBoxPreset(c: TvConfig, p: BoxPreset, frame: FrameId | null): TvConfig {
@@ -60,7 +60,7 @@ export function applyBoxPreset(c: TvConfig, p: BoxPreset, frame: FrameId | null)
     };
   return {
     ...c,
-    frame: { ...c.frame, shape: SHAPE_FOR_ALL[p.shape] },
+    frame: { ...c.frame, shape: SHAPE_FOR_ALL(p.shape) },
     frameStyle: {
       ...c.frameStyle,
       fill: p.fill,
@@ -81,7 +81,7 @@ export function wearsBoxPreset(c: TvConfig, p: BoxPreset, frame: FrameId | null)
     return Boolean(l) && l!.shape === p.shape && (l!.line ?? null) === p.line && (l!.bg ?? null) === p.fill && (l!.image ?? null) === p.image;
   }
   const f = c.frameStyle;
-  return c.frame.shape === SHAPE_FOR_ALL[p.shape] && f.line === p.line && f.fill === p.fill && f.image === p.image && f.depth === p.depth;
+  return c.frame.shape === SHAPE_FOR_ALL(p.shape) && f.line === p.line && f.fill === p.fill && f.image === p.image && f.depth === p.depth;
 }
 
 /** A small box drawn as the preset would draw it, for its tile. */
@@ -97,6 +97,14 @@ export function boxShapeCss(shape: BoxShape | FrameShape): CSSProperties {
       return { borderRadius: 0, clipPath: "polygon(14% 0, 86% 0, 100% 50%, 86% 100%, 14% 100%, 0 50%)" };
     case "octagon":
       return { borderRadius: 0, clipPath: "polygon(18% 0, 82% 0, 100% 22%, 100% 78%, 82% 100%, 18% 100%, 0 78%, 0 22%)" };
+    case "arch":
+      return { borderRadius: "50% 50% 4px 4px / 45% 45% 4px 4px" };
+    // The silhouettes are the board's own clip paths (TvShapes.tsx), which the preview beside it draws.
+    case "dome":
+    case "onion":
+    case "lancet":
+    case "scallop":
+      return { borderRadius: 0, clipPath: `url(#tv-shape-${shape})` };
     default:
       return { borderRadius: 8 };
   }
@@ -105,7 +113,7 @@ export function boxShapeCss(shape: BoxShape | FrameShape): CSSProperties {
 export function boxPresetCss(p: BoxPreset): CSSProperties {
   const picture = framePictureUrl(p.image);
   const def = FRAME_PICTURES.find((f) => framePictureRef(f.id) === p.image);
-  const cut = p.shape === "hexagon" || p.shape === "octagon";
+  const cut = !["round", "pill", "ellipse", "arch"].includes(p.shape);
   return {
     ...boxShapeCss(p.shape),
     background: p.fill ?? "#16304f",

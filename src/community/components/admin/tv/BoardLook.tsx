@@ -6,21 +6,23 @@ import {
   type SpacingEdge,
   type TvConfig,
 } from "@/tv/config";
-import { FRAME_CHOICES, SKIN_CHOICES } from "./tvChoices";
+import type { ReactNode } from "react";
+import { setFrameLook, type FrameId, type TitleStyle } from "@/tv/frameLooks";
+import { BOARD_FRAME_CHOICES, FRAME_CHOICES, TITLE_STYLE_CHOICES } from "./tvChoices";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
 /**
- * The frames of the board - their style, the shape of their corners - and
- * the air around them.
+ * The frames of the board - a frame for the whole board, the shape of the
+ * boxes' corners, how their names are set - and the air around them.
  *
  * One set of controls, rendered in two places - the editor's own tab and the
  * panel that opens when the board itself is clicked - so the two can never
  * drift apart. `compact` is the second of those: the same controls, sized for
  * a floating window on a second screen.
  *
- * The style and the corners are how the frames look, and sit under "עיצוב ›
- * מסגרות"; the spacing is where they stand, and sits under "פריסה".
+ * The frames and the corners are how the boxes look, and sit under "עיצוב";
+ * the spacing is where they stand, and sits under "פריסה".
  */
 
 /**
@@ -36,66 +38,79 @@ const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
   gap: { name: "מרווח בין הלוחות", hint: "המרווח בין לוח ללוח" },
 };
 
-export function StylePicker({
-  config,
-  onEdit,
-  compact = false,
-}: {
-  config: TvConfig;
-  onEdit: Edit;
-  compact?: boolean;
-}) {
+/**
+ * A frame for the whole board: columns at its sides, beams, a פרוכת, a carved
+ * frame around the screen. One of them or none - not a frame for a box.
+ */
+export function BoardFramePicker({ config, onEdit, compact = false }: { config: TvConfig; onEdit: Edit; compact?: boolean }) {
   return (
-    <div className="space-y-2">
-      <div className={compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium"}>
-        {compact ? "סגנון תצוגה" : "מסגרות מעוצבות · על כל רקע"}
-      </div>
-      <div
-        data-testid="skin-picker"
-        className={
-          compact
-            ? "grid grid-cols-4 gap-1.5"
-            : "grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-3 xl:grid-cols-5"
-        }
-      >
-        {SKIN_CHOICES.map((sk) => (
+    <div
+      data-testid="board-frames"
+      className={compact ? "grid grid-cols-4 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-4"}
+    >
+      {BOARD_FRAME_CHOICES.map((f) => {
+        const on = config.boardFrame === f.id;
+        return (
           <button
-            key={sk.id}
+            key={f.id ?? "none"}
             type="button"
-            aria-pressed={config.skin === sk.id}
-            title={sk.hint}
-            onClick={() =>
-              onEdit("skin", (c) => ({ ...c, skin: sk.id }))
-            }
-            className={`rounded-lg border p-1.5 text-right transition ${
-              config.skin === sk.id ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"
-            }`}
+            aria-pressed={on}
+            title={f.hint}
+            onClick={() => onEdit("board-frame", (c) => ({ ...c, boardFrame: f.id }))}
+            className={`rounded-lg border p-1.5 text-right transition ${on ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`}
           >
-            <span
-              className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]"
-              aria-hidden
-            >
-              {sk.preview}
+            <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]" aria-hidden>
+              {f.preview}
             </span>
-            <span
-              className={`block text-center font-medium ${compact ? "text-[10px] leading-tight" : "text-xs"}`}
-            >
-              {sk.name}
-            </span>
+            <span className={`block text-center font-medium ${compact ? "text-[10px] leading-tight" : "text-xs"}`}>{f.name}</span>
           </button>
-        ))}
-      </div>
-      {!compact && (
-        <p className="text-xs text-muted-foreground">
-          הסגנון מתלבש על כל רקע, כל ערכת נושא וכל פריסה. "לוחות אבן" ו"קלף" הופכים את הלוחות
-          לבהירים, והטקסט שבתוכם מתכהה בהתאם.
-        </p>
-      )}
+        );
+      })}
     </div>
   );
 }
 
-/** A slider with a "לפי הסגנון" way back to the default. */
+/**
+ * How a box's name is set - for every box, or for one (`frame`), where
+ * "כמו כולן" leaves it to every box's.
+ */
+export function TitleStylePicker({ config, onEdit, frame }: { config: TvConfig; onEdit: Edit; frame?: FrameId | null }) {
+  const current = frame ? (config.frameLooks[frame]?.titleStyle ?? null) : config.titleStyle;
+  const choices: Array<{ id: TitleStyle | null; name: string; preview: ReactNode }> = frame
+    ? [{ id: null, name: "כמו כולן", preview: <span className="text-white/60">—</span> }, ...TITLE_STYLE_CHOICES]
+    : TITLE_STYLE_CHOICES;
+  const pick = (id: TitleStyle | null) =>
+    frame
+      ? onEdit(`title-style:${frame}`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { titleStyle: id }) }))
+      : onEdit("title-style", (c) => ({ ...c, titleStyle: id ?? "plain" }));
+  return (
+    <div className="space-y-1.5">
+      <div className="text-xs font-medium">סגנון הכותרת של התיבה</div>
+      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4" data-testid="title-styles">
+        {choices.map((t) => {
+          const on = current === t.id;
+          return (
+            <button
+              key={t.id ?? "all"}
+              type="button"
+              aria-pressed={on}
+              aria-label={`כותרת: ${t.name}`}
+              onClick={() => pick(t.id)}
+              className={`rounded-lg border p-1.5 text-center ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+            >
+              <span className="mb-1 flex h-8 items-center justify-center rounded bg-[#12243f] text-[11px]" aria-hidden>
+                {t.preview}
+              </span>
+              <span className="block text-[11px] leading-tight">{t.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** A slider with a "רגיל" way back to the default. */
 function AutoSlider({
   label,
   hint,
@@ -138,7 +153,7 @@ function AutoSlider({
         aria-pressed={value === null}
         onClick={() => onChange(value === null ? fallback : null)}
       >
-        לפי הסגנון
+        רגיל
       </Button>
     </div>
   );

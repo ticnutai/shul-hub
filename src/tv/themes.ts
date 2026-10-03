@@ -258,28 +258,8 @@ const FALLBACK = FONT_FALLBACK;
  * theme; anything not a known variable is ignored so a bad saved value cannot
  * inject arbitrary CSS.
  */
-/**
- * The palette on a skin that paints the board light.
- *
- * Every theme is dark: near-white text and a pale gold accent, meant for
- * navy. On these four boards that is no text at all, so the skin restates
- * the palette - the accent keeps its hue and is only darkened until it can
- * be read (skinContrast.test.ts holds every value to its floor).
- *
- * Applied over the theme and under the gabbai's own colours: his explicit
- * choice still wins, the theme's accident does not.
- */
-export const LIGHT_BOARD_PALETTE: Readonly<Record<string, Partial<Record<ThemeVar, string>>>> = {
-  sky: { "--tv-text": "#1c2b3a", "--tv-text-dim": "#3d5a75", "--tv-accent": "#7d6418", "--tv-accent-2": "#5c4b12" },
-  crown: { "--tv-text": "#2a2213", "--tv-text-dim": "#5c5140", "--tv-accent": "#816819", "--tv-accent-2": "#604e13" },
-  medallion: { "--tv-text": "#2a2213", "--tv-text-dim": "#5a4f3c", "--tv-accent": "#806318", "--tv-accent-2": "#5b4611" },
-  pillars: { "--tv-text": "#2a2418", "--tv-text-dim": "#6b5f48", "--tv-accent": "#7d6418", "--tv-accent-2": "#584711" },
-};
-
 export function themeStyle(options: {
   theme: string;
-  /** The board's skin; a light one brings its own palette (LIGHT_BOARD_PALETTE). */
-  skin?: string | null;
   customThemes?: readonly TvTheme[] | null;
   overrides?: Record<string, string> | null;
   font: string;
@@ -293,7 +273,7 @@ export function themeStyle(options: {
 }): CSSProperties {
   const theme = getTheme(options.theme, options.customThemes);
   const font = getFont(options.font);
-  const vars: Record<string, string> = { ...theme.vars, ...(LIGHT_BOARD_PALETTE[options.skin ?? ""] ?? {}) };
+  const vars: Record<string, string> = { ...theme.vars };
   for (const [key, value] of Object.entries(options.overrides ?? {})) {
     if ((THEME_VARS as readonly string[]).includes(key) && isSafeCssValue(value)) vars[key] = value;
   }

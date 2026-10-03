@@ -41,7 +41,7 @@ test.describe("TV editor, by layer", () => {
     await expect(page.getByTestId("painted-boards")).toHaveCount(0);
 
     await page.getByRole("tab", { name: "פריסה" }).click();
-    await expect(page.getByTestId("skin-picker")).toHaveCount(0);
+    await expect(page.getByTestId("board-frames")).toHaveCount(0);
     await expect(page.getByTestId("frame-shapes")).toHaveCount(0);
     await expect(page.getByLabel("מרווח עליון", { exact: true })).toBeVisible();
     await expectNotFrozen(page, "layout tab");
@@ -137,7 +137,7 @@ test.describe("TV editor, by layer", () => {
 
     // A frame style reaches its frames, and one frame can stand apart.
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    await page.getByTestId("skin-picker").getByRole("button").nth(1).click();
+    await page.getByTestId("board-frames").first().getByRole("button").nth(1).click();
     await page.getByLabel("התיבות והטקסט של").selectOption("frame:clock");
     const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();

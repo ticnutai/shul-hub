@@ -25,7 +25,7 @@ import {
   type BackgroundKind,
   type SavedBackground,
 } from "@/tv/backgrounds";
-import { FrameCorners, StylePicker } from "./BoardLook";
+import { BoardFramePicker, FrameCorners, TitleStylePicker } from "./BoardLook";
 import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
@@ -446,7 +446,7 @@ export function BackgroundLayer({
       {current && (
         <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => apply(null)}>
           <RotateCcw className="size-3.5" />
-          {onBoard ? "רקע הלוח לפי צבעי הבסיס" : frame ? `${FRAME_LABELS[frame]}: רקע כמו כל התיבות` : "התיבות: רקע לפי הסגנון"}
+          {onBoard ? "רקע הלוח לפי צבעי הבסיס" : frame ? `${FRAME_LABELS[frame]}: רקע כמו כל התיבות` : "התיבות: הרקע הרגיל"}
         </Button>
       )}
 
@@ -717,10 +717,15 @@ function TitledPart({ title, children, testId }: { title: string; children: Reac
 const BOX_SHAPE_NAMES: Record<BoxShape, string> = {
   square: "ישר",
   round: "מעוגל",
+  arch: "קשת",
   pill: "כמוסה",
   ellipse: "אליפסה",
   hexagon: "משושה",
   octagon: "מתומן",
+  dome: "כיפה",
+  onion: "כיפת בצל",
+  lancet: "קשת מחודדת",
+  scallop: "מסולסל",
 };
 
 /**
@@ -859,10 +864,7 @@ export function FramesLayer(
             })}
           </div>
         ) : (
-          <>
-            <StylePicker config={config} onEdit={onEdit} />
-            <FrameCorners config={config} onEdit={onEdit} />
-          </>
+          <FrameCorners config={config} onEdit={onEdit} />
         )}
       </Part>
 
@@ -878,6 +880,14 @@ export function FramesLayer(
           </details>
         )}
       </Part>
+      )}
+
+      {/* Not a box's frame: one for the whole board - columns, beams, a פרוכת, a frame around the screen. */}
+      {show("frames") && (
+        <Part title="מסגרת ללוח כולו" testId="board-frame">
+          <BoardFramePicker config={config} onEdit={onEdit} />
+          <p className="text-[11px] text-muted-foreground">חלה על כל המסך, לא על תיבה אחת. הצבעים והחומרים של התיבות נשארים כפי שבחרתם.</p>
+        </Part>
       )}
 
       {show("frames") && (
@@ -897,7 +907,7 @@ export function FramesLayer(
             </>
           ) : (
             <>
-              <ColourChoice label="קו מסביב" value={fs.line} fallback="#c9a227" unsetLabel="לפי הסגנון" onChange={(v) => setFs({ line: v })} />
+              <ColourChoice label="קו מסביב" value={fs.line} fallback="#c9a227" unsetLabel="בלי קו" onChange={(v) => setFs({ line: v })} />
               {fs.line && (
                 <Range label="עובי הקו" value={fs.lineWidth} min={0.5} max={6} step={0.5} show={(v) => String(v)} onChange={(v) => setFs({ lineWidth: v })} />
               )}
@@ -907,7 +917,7 @@ export function FramesLayer(
                 min={0}
                 max={1}
                 step={0.05}
-                show={(v) => (v === 0 ? "לפי הסגנון" : pct(v))}
+                show={(v) => (v === 0 ? "רגיל" : pct(v))}
                 onChange={(v) => setFs({ depth: v })}
               />
               <button type="button" className="text-xs underline" onClick={() => setFs({ ...DEFAULT_FRAME_STYLE, fill: fs.fill, fillOpacity: fs.fillOpacity })}>
@@ -922,7 +932,7 @@ export function FramesLayer(
       <Part title="מסגרת מיוחדת" testId="frame-pictures">
         <p className="text-[11px] leading-tight text-muted-foreground">
           הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה או מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה.
-          {" "}בתיבה משושה או מתומנת המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה.
+          {" "}בתיבה בצורה חתוכה (משושה, מתומן, כיפה, מגן...) המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה.
         </p>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           <label
@@ -1089,6 +1099,7 @@ export function TextLayer({
               onEdit(`layer-text:${frame}:scale`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { textScale: v === 1 ? null : v }) }))
             }
           />
+          <TitleStylePicker config={saved} onEdit={onEdit} frame={frame} />
         </div>
       ) : (
         <>
@@ -1118,6 +1129,7 @@ export function TextLayer({
               onChange={(v) => onEdit("scale", (c) => ({ ...c, textScale: v }))}
             />
           )}
+          <TitleStylePicker config={saved} onEdit={onEdit} />
           <div className="space-y-1">
             <Range
               label="מרווח אותיות בכותרות"
@@ -1125,12 +1137,12 @@ export function TextLayer({
               min={0}
               max={0.24}
               step={0.01}
-              show={(v) => (saved.tracking === null ? "לפי הסגנון" : `${v.toFixed(2)}em`)}
+              show={(v) => (saved.tracking === null ? "רגיל" : `${v.toFixed(2)}em`)}
               onChange={(v) => onEdit("track", (c) => ({ ...c, tracking: v }))}
             />
             {saved.tracking !== null && (
               <button type="button" className="text-xs underline" onClick={() => onEdit("track", (c) => ({ ...c, tracking: null }))}>
-                מרווח לפי הסגנון
+                מרווח רגיל
               </button>
             )}
           </div>

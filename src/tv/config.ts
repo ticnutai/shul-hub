@@ -1,7 +1,8 @@
-import { normalizeFrameLooks, type FrameLooks } from "./frameLooks";
+import { normalizeFrameLooks, TITLE_STYLES, type FrameLooks, type TitleStyle } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
 import { normalizeBackgrounds, type SavedBackground } from "./backgroundItem";
 import { migratePainted } from "./paintedMigration";
+import { skinToParts } from "./skinMigration";
 import { normalizeOccasions, type Occasion } from "./occasions";
 import {
   DEFAULT_BACKGROUND_TUNE,
@@ -231,48 +232,28 @@ export type IllustrationId = (typeof ILLUSTRATIONS)[number];
 export type ClockStyle = "digital" | "analog" | "both";
 
 /**
- * The decorative dress of the board: how panels are framed, over whatever
- * theme is chosen. Inspired by the printed synagogue boards - gold frames,
- * stone tablets, parchment - and drawn entirely in CSS, so it stays sharp at
- * any size and costs the TV nothing.
+ * The designed frames ("skins") that once dressed a whole board at a stroke
+ * are gone: what they were made of is a part of its own now - a frame for the
+ * whole board (BOARD_FRAMES), a shape for the boxes, a background from the
+ * gallery, a frame picture, a style for the titles (TITLE_STYLES). A board
+ * saved with one is turned into those parts when it is read (skinToParts).
  */
-export type BoardSkin =
-  | "plain"
-  | "gold"
-  | "tablets"
-  | "parchment"
-  | "velvet"
-  | "pillars"
-  | "curtain"
-  | "sky"
-  | "wood"
-  | "arch"
-  | "hall"
-  | "crown"
-  | "heichal"
-  | "dome"
-  | "stone"
-  | "medallion"
-  | "printed";
-export const BOARD_SKINS: BoardSkin[] = [
-  "plain",
-  "gold",
-  "tablets",
-  "parchment",
-  "velvet",
-  "pillars",
-  "curtain",
-  "sky",
-  "wood",
-  "arch",
-  "hall",
-  "crown",
-  "heichal",
-  "dome",
-  "stone",
-  "medallion",
-  "printed",
-];
+export const LEGACY_SKINS = [
+  "gold", "tablets", "parchment", "velvet", "pillars", "curtain", "sky", "wood",
+  "arch", "hall", "crown", "heichal", "dome", "stone", "medallion", "printed",
+] as const;
+
+/**
+ * A frame for the whole board, not for a box: columns at its sides, beams
+ * above and below, a valance hung over it, a carved frame around the screen.
+ * Drawn behind the boxes (tv.css, .tv-board-frame), with room made for it.
+ */
+export type BoardFrame = "columns" | "beams" | "heichal" | "parochet" | "curtain" | "carved" | "double-line";
+export const BOARD_FRAMES: BoardFrame[] = ["columns", "beams", "heichal", "parochet", "curtain", "carved", "double-line"];
+
+// How the name of a box is set - for every box (TvConfig.titleStyle) or one (frameLooks).
+export { TITLE_STYLES, type TitleStyle };
+
 export const CLOCK_STYLES: ClockStyle[] = ["digital", "analog", "both"];
 
 /**
@@ -292,8 +273,11 @@ export type FrameShape = "auto" | "round" | "squircle" | "bevel" | "scoop" | "no
  * follows the cut - a border would be cut off with it). Their text is set in
  * from the cut so that it stays inside.
  */
-export type BoxShapeCut = "pill" | "ellipse" | "hexagon" | "octagon";
-export const BOX_SHAPE_CUTS: BoxShapeCut[] = ["pill", "ellipse", "hexagon", "octagon"];
+export type BoxShapeCut =
+  | "pill" | "ellipse" | "hexagon" | "octagon"
+  // Silhouettes from TvShapes.tsx: a dome, an onion dome, a pointed arch, a scalloped plate.
+  | "dome" | "onion" | "lancet" | "scallop";
+export const BOX_SHAPE_CUTS: BoxShapeCut[] = ["pill", "ellipse", "hexagon", "octagon", "dome", "onion", "lancet", "scallop"];
 export const FRAME_SHAPES: FrameShape[] = ["auto", "round", "squircle", "bevel", "scoop", "notch", "arch", ...BOX_SHAPE_CUTS];
 
 /** What each shape is in CSS. */
@@ -311,6 +295,10 @@ export const CORNER_SHAPE: Record<Exclude<FrameShape, "auto">, string> = {
   ellipse: "round",
   hexagon: "round",
   octagon: "round",
+  dome: "round",
+  onion: "round",
+  lancet: "round",
+  scallop: "round",
 };
 
 /** How round a corner may be set to, in --u units. */
@@ -352,7 +340,8 @@ export function isBackdropRef(value: string | null | undefined): boolean {
 export interface DeviceOverlay {
   screenLayout?: ScreenLayout;
   clockStyle?: ClockStyle;
-  skin?: BoardSkin;
+  boardFrame?: BoardFrame | null;
+  titleStyle?: TitleStyle;
   /**
    * The painted board: which painting, and everything the panel beside it
    * writes - type size, minyanim per frame, the three inks, the picture
@@ -499,7 +488,10 @@ export interface TvConfig {
    */
   eventCombine: "one" | "separate";
   clockStyle: ClockStyle;
-  skin: BoardSkin;
+  /** A frame for the whole board (BOARD_FRAMES); null - none. */
+  boardFrame: BoardFrame | null;
+  /** How every box's name is set (TITLE_STYLES); a box can have its own (frameLooks). */
+  titleStyle: TitleStyle;
   /**
    * The corners of every panel, when the admin wants to decide instead of
    * the skin. `top`/`bottom` are in --u units; null means "as the skin
@@ -763,7 +755,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   frameLooks: {},
   backgroundTune: DEFAULT_BACKGROUND_TUNE,
   frameStyle: DEFAULT_FRAME_STYLE,
-  skin: "plain",
+  boardFrame: null,
+  titleStyle: "plain",
 };
 
 const KINDS = Object.keys(SLIDE_LAYOUTS) as SlideKind[];
@@ -1117,8 +1110,10 @@ export function normalizeTvConfig(raw: unknown): TvConfig {
   return { ...moved, screenLayout: moved.screenLayout === "illustrated" ? "medallion" : moved.screenLayout, perDevice };
 }
 
-function normalizeStored(raw: unknown): TvConfig {
+function normalizeStored(stored: unknown): TvConfig {
   const d = DEFAULT_TV_CONFIG;
+  // An old designed frame ("skin") becomes the parts it was made of.
+  const raw = skinToParts(stored);
   if (!isObj(raw)) return structuredClone(d);
 
   const customThemes = normalizeCustomThemes(raw.customThemes);
@@ -1277,7 +1272,8 @@ function normalizeStored(raw: unknown): TvConfig {
         ? String(raw.illustration)
         : d.illustration,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
-    skin: BOARD_SKINS.includes(raw.skin as BoardSkin) ? (raw.skin as BoardSkin) : d.skin,
+    boardFrame: BOARD_FRAMES.includes(raw.boardFrame as BoardFrame) ? (raw.boardFrame as BoardFrame) : d.boardFrame,
+    titleStyle: TITLE_STYLES.includes(raw.titleStyle as TitleStyle) ? (raw.titleStyle as TitleStyle) : d.titleStyle,
     frame: normalizeFrame(raw.frame, d.frame),
     spacing: normalizeSpacing(raw.spacing),
     perDevice: normalizePerDevice(raw.perDevice),
@@ -1322,7 +1318,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
 
 /** Guards normalizePerDevice against a stray key from an older board. */
 const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
-  screenLayout: true, clockStyle: true, skin: true, frame: true, spacing: true,
+  screenLayout: true, clockStyle: true, boardFrame: true, titleStyle: true, frame: true, spacing: true,
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true, backgroundOverlay: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,

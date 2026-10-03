@@ -30,8 +30,8 @@ export const DESIGN_PART_LABELS: Record<DesignPart, string> = {
 /** Which settings each part is made of - the same split as the editor's layers. */
 const PART_KEYS: Record<DesignPart, Array<keyof TvConfig>> = {
   background: ["backgroundGradient", "backgroundImage", "backgroundOverlay", "backgroundDim", "backgroundTune"],
-  frames: ["skin", "frame"],
-  text: ["font", "textScale", "tracking", "styles"],
+  frames: ["boardFrame", "frame"],
+  text: ["font", "textScale", "tracking", "styles", "titleStyle"],
   layout: ["screenLayout", "illustration", "spacing", "clockStyle"],
 };
 
@@ -100,6 +100,7 @@ function frameLooksFor(c: TvConfig, parts: DesignPart[]): TvConfig["frameLooks"]
       ...(parts.includes("text") && look.accent ? { accent: look.accent } : {}),
       ...(parts.includes("text") && look.font ? { font: look.font } : {}),
       ...(parts.includes("text") && look.textScale ? { textScale: look.textScale } : {}),
+      ...(parts.includes("text") && look.titleStyle ? { titleStyle: look.titleStyle } : {}),
     };
     if (Object.keys(kept).length) out[id] = kept;
   }
@@ -274,7 +275,6 @@ export const BUILTIN_DESIGNS: SavedDesign[] = [
     colours: { ...text("#1f2d5c", "#4a5578", "#8a5a12"), "--tv-panel": "#f5ecd7" },
     values: {
       ...background("backdrop:royal"),
-      skin: "plain",
       frame: { shape: "auto", top: null, bottom: null },
       frameStyle: frames({ image: "frame:gold-ornate", imageSlice: 32, imageWidth: 3 }),
       // The medallion in blue with a white clock, as in the painting.
@@ -290,7 +290,6 @@ export const BUILTIN_DESIGNS: SavedDesign[] = [
     colours: { ...text("#3a2a12", "#6b5a3b", "#8a5d12"), "--tv-panel": "#f3e7cc" },
     values: {
       ...background("backdrop:wall"),
-      skin: "plain",
       frame: { shape: "arch", top: null, bottom: null },
       frameStyle: frames({ fill: "#f3e7cc", line: "#b08d3a", lineWidth: 2.5, depth: 0.6 }),
       frameLooks: {},
@@ -305,7 +304,6 @@ export const BUILTIN_DESIGNS: SavedDesign[] = [
     colours: { ...text("#2b1d0c", "#5a4630", "#7a3e10"), "--tv-panel": "#f3e4c4" },
     values: {
       ...background("backdrop:wood"),
-      skin: "plain",
       frame: { shape: "auto", top: null, bottom: null },
       frameStyle: frames({ image: "frame:carved-wood", imageSlice: 24, imageWidth: 3 }),
       frameLooks: { clock: { bg: "#f3e4c4", line: "#7a4a1c", lineWidth: 3 } },
@@ -320,7 +318,6 @@ export const BUILTIN_DESIGNS: SavedDesign[] = [
     colours: { ...text("#f3f5f8", "#c9cdd6", "#e6c27a", "#0b1628"), "--tv-panel": "rgba(255, 255, 255, 0.06)" },
     values: {
       ...background("backdrop:hall"),
-      skin: "plain",
       frame: { shape: "round", top: 2.4, bottom: 2.4 },
       frameStyle: frames({ fill: "#ffffff", fillOpacity: 0.07, line: "#c9a24a", lineWidth: 1.5, depth: 0.45 }),
       frameLooks: {},

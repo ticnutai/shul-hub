@@ -2,8 +2,20 @@ import { TV_FONTS, isSafeCssValue, type TvFontId } from "./themes";
 import { isSafeLayerFill } from "./layers";
 
 /** A box's own shape: square or round corners, or one of the whole-box shapes. */
-export type BoxShape = "square" | "round" | "pill" | "ellipse" | "hexagon" | "octagon";
-export const BOX_SHAPES: BoxShape[] = ["square", "round", "pill", "ellipse", "hexagon", "octagon"];
+export type BoxShape =
+  | "square" | "round" | "arch" | "pill" | "ellipse" | "hexagon" | "octagon"
+  | "dome" | "onion" | "lancet" | "scallop";
+export const BOX_SHAPES: BoxShape[] = [
+  "square", "round", "arch", "pill", "ellipse", "hexagon", "octagon", "dome", "onion", "lancet", "scallop",
+];
+
+/**
+ * How a box's name is set: on a ribbon notched at both ends, in a capsule, on
+ * a gold plate over the box's edge, over a rule, or on a shield. Here rather
+ * than in config.ts, which loads this file.
+ */
+export type TitleStyle = "plain" | "ribbon" | "pill" | "plate" | "underline" | "shield";
+export const TITLE_STYLES: TitleStyle[] = ["plain", "ribbon", "pill", "plate", "underline", "shield"];
 
 /**
  * A frame picture a box may wear: a ready one ("frame:<id>") or an uploaded
@@ -68,6 +80,8 @@ export interface FrameLook {
   font?: TvFontId;
   /** Its text's own size, as a share of the board's (1 = as the board). */
   textScale?: number;
+  /** How its name is set, over the way every box's is. */
+  titleStyle?: TitleStyle;
 }
 
 export type FrameLooks = Partial<Record<FrameId, FrameLook>>;
@@ -98,6 +112,8 @@ export function normalizeFrameLooks(raw: unknown): FrameLooks {
     const font = (v as Record<string, unknown>).font;
     if (typeof font === "string" && TV_FONTS.some((f) => f.id === font)) look.font = font as TvFontId;
     if (look.textScale === 1) delete look.textScale;
+    const titleStyle = (v as Record<string, unknown>).titleStyle;
+    if (typeof titleStyle === "string" && (TITLE_STYLES as string[]).includes(titleStyle)) look.titleStyle = titleStyle as TitleStyle;
     const image = (v as Record<string, unknown>).image;
     if (typeof image === "string" && isFramePicture(image.trim())) look.image = image.trim();
     // A box with no colour of its own may still be see-through (the theme's colour, faded).
