@@ -203,13 +203,71 @@ import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdmi
 
 /* --------------------------------------------------------- small inputs -- */
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+function Section({ title, hint, children, id }: { title: string; hint?: string; children: ReactNode; id?: string }) {
   return (
-    <section className="rounded-xl border bg-card p-4 shadow-sm">
+    <section id={id} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
       <h3 className="text-base font-semibold">{title}</h3>
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       <div className="mt-3 space-y-3">{children}</div>
     </section>
+  );
+}
+
+/** A heading inside a section, over one of its parts. */
+function PartTitle({ children }: { children: ReactNode }) {
+  return <h4 className="border-b pb-1 text-sm font-semibold">{children}</h4>;
+}
+
+/**
+ * The design tab's topics, side by side at the top: a click jumps to its
+ * section. Which one is on screen is marked as the page scrolls.
+ */
+const DESIGN_TOPICS = [
+  { id: "design-sets", label: "ערכות מוכנות" },
+  { id: "design-background", label: "רקע" },
+  { id: "design-boxes", label: "תיבות" },
+  { id: "design-frames", label: "מסגרות" },
+  { id: "design-text", label: "טקסט" },
+] as const;
+
+function DesignTopics() {
+  const [current, setCurrent] = useState<string>(DESIGN_TOPICS[0].id);
+  useEffect(() => {
+    const seen = new Map<string, boolean>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) seen.set(e.target.id, e.isIntersecting);
+        const first = DESIGN_TOPICS.find((t) => seen.get(t.id));
+        if (first) setCurrent(first.id);
+      },
+      { rootMargin: "-180px 0px -45% 0px" },
+    );
+    for (const t of DESIGN_TOPICS) {
+      const el = document.getElementById(t.id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <nav aria-label="נושאי העיצוב" className="flex flex-wrap gap-1.5" data-testid="design-topics">
+      {DESIGN_TOPICS.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          aria-current={current === t.id ? "true" : undefined}
+          onClick={() => {
+            setCurrent(t.id);
+            // Instant: a smooth scroll does not run while the window is in the background.
+            document.getElementById(t.id)?.scrollIntoView({ block: "start" });
+          }}
+          className={`h-9 flex-1 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition ${
+            current === t.id ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/50"
+          }`}
+        >
+          {t.label}
+        </button>
+      ))}
+    </nav>
   );
 }
 
@@ -1203,35 +1261,18 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <Section
-            title="ערכות - נקודת התחלה שממלאת את החלקים"
-            hint="עיצוב הוא צירוף של חלקים (רקע, צורה, מסגרות, צבעים וטקסט, פריסה) שממלא אותם בלחיצה אחת; אחר כך כל חלק - וכל צבע - משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; פריט מוכן - מסתירים ב-✕ ומחזירים מתי שרוצים."
-          >
-            <DesignLibrary config={view} onEdit={edit} />
-            {/* A ready box is a bundle - a shape, a background and a frame
-                together - so it is among the sets, not among the parts. */}
-            <FramesLayer {...layerProps} target={partTarget} part="presets" />
-          </Section>
-
           {/*
-            The look in its parts, each in its own place: the board's
-            background, then the boxes' shape, background, frames and text -
-            for every box or for one, chosen once here rather than in three
-            pickers of their own.
+            The topics side by side, always in sight: a click jumps to its
+            section. With them, which box the boxes, frames and text are for -
+            chosen once here rather than in three pickers of their own.
           */}
-          <Section
-            title="1. רקע הלוח"
-            hint="מה שמאחורי הלוח, ממקום אחד: צבע, מעבר צבעים או תמונה (מוכנה או שלכם, עם צבע או מעבר מעליה), סליידרים לכל אחד, ושמירה בגלריה."
-          >
-            <BackgroundLayer {...layerProps} />
-          </Section>
-
           <div
-            className="sticky top-16 z-[5] rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur min-[1700px]:col-span-2"
+            className="sticky top-16 z-[5] space-y-2 rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur min-[1700px]:col-span-2"
             data-testid="parts-scope"
           >
+            <DesignTopics />
             <label className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold">התיבות והטקסט של:</span>
+              <span className="font-semibold">התיבות, המסגרות והטקסט של:</span>
               <select
                 aria-label="התיבות והטקסט של"
                 value={partTarget}
@@ -1249,27 +1290,54 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </optgroup>
               </select>
             </label>
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              חל על 2-5 למטה: צורה, רקע, מסגרות וטקסט. "•" - לתיבה יש עיצוב משלה.
-            </p>
+            <p className="text-[11px] text-muted-foreground">"•" - לתיבה יש עיצוב משלה.</p>
           </div>
 
-          <Section title="2. צורת התיבה" hint="הצורה של תיבת הטקסט: פינות, קשת, כמוסה, אליפסה, משושה, מתומן.">
-            <FramesLayer {...layerProps} target={partTarget} part="shape" />
+          <Section
+            id="design-sets"
+            title="1. ערכות מוכנות"
+            hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
+          >
+            <DesignLibrary config={view} onEdit={edit} />
           </Section>
 
           <Section
-            title="3. רקע התיבה"
-            hint="צבע, מעבר צבעים או תמונה מאותה גלריה של הרקעים - ו'אטימות': 100% חוסם, פחות - רואים את רקע הלוח דרך התיבה."
+            id="design-background"
+            title="2. רקע"
+            hint="מה שמאחורי הלוח: צבע, מעבר צבעים או תמונה (מוכנה או שלכם, עם צבע או מעבר מעליה), סליידרים לכל אחד, ושמירה בגלריה."
           >
+            <BackgroundLayer {...layerProps} />
+          </Section>
+
+          <Section
+            id="design-boxes"
+            title="3. תיבות"
+            hint="תיבות מוכנות, הצורה של התיבה והרקע שלה - לכל התיבות או לתיבה שנבחרה למעלה."
+          >
+            <PartTitle>תיבות מוכנות</PartTitle>
+            <FramesLayer {...layerProps} target={partTarget} part="presets" />
+            <PartTitle>צורת התיבה</PartTitle>
+            <FramesLayer {...layerProps} target={partTarget} part="shape" />
+            <PartTitle>רקע התיבה</PartTitle>
+            <p className="text-[11px] text-muted-foreground">
+              צבע, מעבר צבעים או תמונה מאותה גלריה של הרקעים - ו"אטימות": 100% חוסם, פחות - רואים את רקע הלוח דרך התיבה.
+            </p>
             <FramesLayer {...layerProps} target={partTarget} part="background" />
           </Section>
 
-          <Section title="4. מסגרות" hint="קו מסביב לתיבה, כמה היא בולטת, ומסגרת מיוחדת מהגלריה (או מסגרת משלכם).">
+          <Section
+            id="design-frames"
+            title="4. מסגרות"
+            hint="מסגרת ללוח כולו (עמודים, פרוכת...), קו מסביב לתיבה וכמה היא בולטת, ומסגרת מיוחדת לתיבה מהגלריה (או מסגרת משלכם)."
+          >
             <FramesLayer {...layerProps} target={partTarget} part="frames" />
           </Section>
 
-          <Section title="5. טקסט" hint="גופן, גודל וצבעים - לכל הלוח או לתיבה שנבחרה למעלה, ואם רוצים - לחלק מסוים בה (השעה, כותרת...).">
+          <Section
+            id="design-text"
+            title="5. טקסט"
+            hint="גופן, גודל, צבעים וסגנון הכותרת - לכל הלוח או לתיבה שנבחרה למעלה, ואם רוצים - לחלק מסוים בה (השעה, כותרת...)."
+          >
             <TextLayer {...layerProps} target={partTarget} />
           </Section>
         </TabsContent>

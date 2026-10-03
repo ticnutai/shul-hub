@@ -28,16 +28,25 @@ test.describe("TV editor, by layer", () => {
   const bg = (el: import("@playwright/test").Locator) => el.evaluate((e) => getComputedStyle(e).backgroundColor);
 
   test("the design tab is its parts, each in its own place; the layout tab is where things stand", async ({ page }) => {
-    // The look in its parts: the board's background, then the boxes' shape,
-    // background, frames and text - for every box or one, chosen once.
-    for (const name of ["ערכות - נקודת התחלה שממלאת את החלקים", "1. רקע הלוח", "2. צורת התיבה", "3. רקע התיבה", "4. מסגרות", "5. טקסט"])
+    // The look in its parts: ready sets, the background, the boxes, their
+    // frames and the text - for every box or one, chosen once.
+    for (const name of ["1. ערכות מוכנות", "2. רקע", "3. תיבות", "4. מסגרות", "5. טקסט"])
       await expect(heading(page, name)).toBeVisible();
     await expect(page.getByTestId("layer-background")).toBeVisible();
     await expect(page.getByTestId("parts-scope")).toBeVisible();
     for (const part of ["shape", "background", "frames"]) await expect(page.getByTestId(`box-part-${part}`)).toBeVisible();
     await expect(page.getByTestId("layer-text")).toBeVisible();
-    // A ready box is a bundle: among the sets, not among the parts.
-    await expect(page.getByTestId("box-part-presets").getByTestId("box-presets")).toBeVisible();
+    // The ready boxes are with the boxes, not with the sets of the whole board.
+    await expect(page.locator("#design-boxes").getByTestId("box-presets")).toBeVisible();
+    await expect(page.locator("#design-sets").getByTestId("box-presets")).toHaveCount(0);
+
+    // The topics side by side: a click brings its section to the top.
+    const topics = page.getByTestId("design-topics");
+    for (const [label, id] of [["טקסט", "design-text"], ["תיבות", "design-boxes"], ["ערכות מוכנות", "design-sets"]] as const) {
+      await topics.getByRole("button", { name: label, exact: true }).click();
+      await expect.poll(() => page.locator(`#${id}`).evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThan(300);
+      await expect(topics.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-current", "true");
+    }
     await expect(page.getByTestId("painted-boards")).toHaveCount(0);
 
     await page.getByRole("tab", { name: "פריסה" }).click();

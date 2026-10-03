@@ -172,7 +172,7 @@ export function FrameCorners({
   const heading = compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium";
   return (
     <div className="space-y-2">
-      <div className={heading}>{compact ? "מסגרות" : "צורת המסגרות"}</div>
+      <div className={heading}>{compact ? "צורת התיבות" : "צורה ופינות"}</div>
       <div
         data-testid="frame-shapes"
         className={compact ? "grid grid-cols-6 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-6"}
@@ -217,8 +217,7 @@ export function FrameCorners({
       ))}
       {!compact && (
         <p className="text-xs text-muted-foreground">
-          כשקובעים עיגול, הצורה של הסגנון (כיפה, קשת, קצה מסולסל) מוחלפת בפינה שנבחרה; החומרים
-          והצבעים נשארים.
+          כמה מעוגלות הפינות למעלה ולמטה. בצורות חתוכות (כיפה, משושה, מסולסל...) הצורה עצמה קובעת.
         </p>
       )}
     </div>
