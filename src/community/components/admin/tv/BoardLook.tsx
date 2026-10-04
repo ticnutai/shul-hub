@@ -31,6 +31,11 @@ type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
  */
 export const SPACING_FALLBACK: Record<SpacingEdge, number> = { top: 2.6, bottom: 1.6, sides: 3, gap: 2 };
 
+/** The same, for a layout: the medallion leaves its own air above and below (tv.css). */
+export function spacingFallback(layout: TvConfig["screenLayout"]): Record<SpacingEdge, number> {
+  return layout === "medallion" ? { ...SPACING_FALLBACK, top: 2.4, bottom: 2.4 } : SPACING_FALLBACK;
+}
+
 const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
   top: { name: "מרווח עליון", hint: "בין שורת הכותרת לבין התיבות. פחות מרווח = תיבות גבוהות יותר" },
   bottom: { name: "מרווח תחתון", hint: "בין התיבות לבין השורה התחתונה (הפרשה והנרות)" },
@@ -244,7 +249,7 @@ export function FrameSpacing({
           hint={SPACING_LABELS[edge].hint}
           value={config.spacing[edge]}
           max={SPACING_MAX}
-          fallback={SPACING_FALLBACK[edge]}
+          fallback={spacingFallback(config.screenLayout)[edge]}
           compact={compact}
           onChange={(next) =>
             onEdit(`spacing.${edge}`, (c) => ({ ...c, spacing: { ...c.spacing, [edge]: next } }))

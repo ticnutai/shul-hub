@@ -20,7 +20,7 @@
  * fall out of step with the first, because pinned and automatic are the same
  * field present or absent.
  */
-import { SPACING_FALLBACK } from "./BoardLook";
+import { spacingFallback } from "./BoardLook";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { BookmarkPlus, CalendarDays, Plus, RotateCcw, X } from "lucide-react";
 
@@ -519,10 +519,7 @@ export function ScreenComposer({
                   top: config.spacing.top,
                   bottom: config.spacing.bottom,
                   // What the board leaves when nothing is set (tv.css).
-                  fallback:
-                    config.screenLayout === "medallion"
-                      ? { top: 2.4, bottom: 2.4 }
-                      : { top: SPACING_FALLBACK.top, bottom: SPACING_FALLBACK.bottom },
+                  fallback: spacingFallback(config.screenLayout),
                 }}
                 onSpacing={(edge, value) =>
                   onEdit(`spacing.${edge}`, (c) => ({

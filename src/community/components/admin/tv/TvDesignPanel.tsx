@@ -1345,7 +1345,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   {allFrameIds(draft.customBoxes).map((id) => (
                     <option key={id} value={`frame:${id}`}>
                       {frameLabel(id, draft.customBoxes)}
-                      {draft.frameLooks[id] ? " •" : ""}
+                      {scoped.frameLooks[id] ? " •" : ""}
                     </option>
                   ))}
                 </optgroup>
