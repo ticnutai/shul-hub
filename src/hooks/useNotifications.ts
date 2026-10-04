@@ -190,9 +190,12 @@ async function scheduleNativeNotifications(reminders: SingleReminder[]) {
   if (!Capacitor.isNativePlatform()) return;
   try {
     await ensureNotificationChannel();
+    // Only its own (ids 1..99): the Omer's (3100+) and the synagogue's
+    // reminders (300000+) are scheduled by others and must stay.
     const pending = await LocalNotifications.getPending();
-    if (pending.notifications.length > 0) {
-      await LocalNotifications.cancel(pending);
+    const ours = pending.notifications.filter((n) => n.id >= 1 && n.id < 100);
+    if (ours.length > 0) {
+      await LocalNotifications.cancel({ notifications: ours });
     }
 
     const enabled = reminders.filter((r) => r.enabled);
