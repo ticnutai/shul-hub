@@ -3,10 +3,20 @@ import {
   FRAME_RADIUS_MAX,
   SPACING_EDGES,
   SPACING_MAX,
+  MAX_MY_BOARD_FRAMES,
+  newMyBoardFrameId,
+  type BoardFrame,
+  type MyBoardFrame,
   type SpacingEdge,
   type TvConfig,
 } from "@/tv/config";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { ImagePlus } from "lucide-react";
+import { toast } from "sonner";
+import { DEFAULT_BOARD_FRAME_TUNE, type BoardFrameTune } from "@/tv/boardFrame";
+import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
+import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { uploadImages } from "./uploadImages";
 import { setFrameLook, type FrameId, type TitleStyle } from "@/tv/frameLooks";
 import { BOARD_FRAME_CHOICES, FRAME_CHOICES, TITLE_STYLE_CHOICES } from "./tvChoices";
 
@@ -45,32 +55,175 @@ const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
 
 /**
  * A frame for the whole board: columns at its sides, beams, a פרוכת, a carved
- * frame around the screen. One of them or none - not a frame for a box.
+ * frame around the screen - or one of the shul's own: a ready one kept as it
+ * was set (its size, place, sides), or a picture it uploaded. Like every
+ * gallery here: a ready one is hidden with ✕ and brought back below; the
+ * shul's own are saved, renamed, updated and deleted. `compact` (the board's
+ * own panel) offers the choosing only.
  */
 export function BoardFramePicker({ config, onEdit, compact = false }: { config: TvConfig; onEdit: Edit; compact?: boolean }) {
+  const [naming, setNaming] = useState<{ id: string | null; value: string } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const ready = BOARD_FRAME_CHOICES.filter((f) => f.id === null || !isHiddenReady(config, "boardframe", f.id));
+  const wears = (m: MyBoardFrame) =>
+    config.boardFrame === m.frame &&
+    (m.frame !== "picture" || config.boardFrameImage === m.image) &&
+    JSON.stringify(config.boardFrameTune) === JSON.stringify(m.tune);
+  const worn = config.myBoardFrames.find(wears) ?? null;
+  const put = (key: string, m: { frame: BoardFrame | null; tune?: BoardFrameTune; image?: string | null }) =>
+    onEdit(key, (c) => ({
+      ...c,
+      boardFrame: m.frame,
+      ...(m.tune ? { boardFrameTune: structuredClone(m.tune) } : {}),
+      ...(m.image !== undefined ? { boardFrameImage: m.image } : {}),
+    }));
+  const tile = (on: boolean) =>
+    `block w-full rounded-lg border p-1.5 text-right transition ${on ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`;
+  const label = compact ? "text-[10px] leading-tight" : "text-xs";
+  const previewOf = (m: MyBoardFrame) =>
+    m.frame === "picture" && m.image ? (
+      <img src={m.image} alt="" className="size-full object-contain" loading="lazy" />
+    ) : (
+      BOARD_FRAME_CHOICES.find((f) => f.id === m.frame)?.preview
+    );
+
+  const upload = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    try {
+      const [url] = await uploadImages(files);
+      if (!url) return;
+      const mine: MyBoardFrame = { id: newMyBoardFrameId(), name: "מסגרת שהעליתי", frame: "picture", tune: DEFAULT_BOARD_FRAME_TUNE, image: url };
+      onEdit("board-frame:upload", (c) => ({
+        ...c,
+        myBoardFrames: [...c.myBoardFrames, mine].slice(0, MAX_MY_BOARD_FRAMES),
+        boardFrame: "picture",
+        boardFrameImage: url,
+        boardFrameTune: structuredClone(DEFAULT_BOARD_FRAME_TUNE),
+      }));
+      toast.success("המסגרת הועלתה ונשמרה ב\"המסגרות שלי\"");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const save = () => {
+    const name = (naming?.value ?? "").trim().slice(0, 40);
+    if (!name || !config.boardFrame) return;
+    const id = naming?.id;
+    onEdit(`board-frame:${id ? "rename" : "save"}`, (c) =>
+      id
+        ? { ...c, myBoardFrames: c.myBoardFrames.map((m) => (m.id === id ? { ...m, name } : m)) }
+        : {
+            ...c,
+            myBoardFrames: [
+              ...c.myBoardFrames,
+              { id: newMyBoardFrameId(), name, frame: c.boardFrame!, tune: structuredClone(c.boardFrameTune), image: c.boardFrame === "picture" ? c.boardFrameImage : null },
+            ].slice(0, MAX_MY_BOARD_FRAMES),
+          },
+    );
+    setNaming(null);
+  };
+
   return (
-    <div
-      data-testid="board-frames"
-      className={compact ? "grid grid-cols-4 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-4"}
-    >
-      {BOARD_FRAME_CHOICES.map((f) => {
-        const on = config.boardFrame === f.id;
-        return (
-          <button
-            key={f.id ?? "none"}
-            type="button"
-            aria-pressed={on}
-            title={f.hint}
-            onClick={() => onEdit("board-frame", (c) => ({ ...c, boardFrame: f.id }))}
-            className={`rounded-lg border p-1.5 text-right transition ${on ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`}
+    <div className="space-y-3">
+      <div data-testid="board-frames" className={compact ? "grid grid-cols-4 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-4"}>
+        {ready.map((f) => {
+          const on = config.boardFrame === f.id;
+          return (
+            <div key={f.id ?? "none"} className="group relative">
+              {!compact && f.id && !on && (
+                <TileRemove name={f.name} ready onClick={() => onEdit("board-frame:hide", (c) => hideReady(c, "boardframe", f.id!))} />
+              )}
+              <button type="button" aria-pressed={on} title={f.hint} onClick={() => put("board-frame", { frame: f.id })} className={tile(on)}>
+                <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]" aria-hidden>
+                  {f.preview}
+                </span>
+                <span className={`block text-center font-medium ${label}`}>{f.name}</span>
+              </button>
+            </div>
+          );
+        })}
+        {config.myBoardFrames.map((m) => {
+          const on = wears(m);
+          return (
+            <div key={m.id} className="group relative" data-testid="my-board-frame">
+              {!compact && (
+                <TileRemove name={m.name} ready={false} onClick={() => onEdit("board-frame:delete", (c) => ({ ...c, myBoardFrames: c.myBoardFrames.filter((x) => x.id !== m.id) }))} />
+              )}
+              <button type="button" aria-pressed={on} onClick={() => put(`board-frame:mine:${m.id}`, m)} className={tile(on)}>
+                <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]" aria-hidden>
+                  {previewOf(m)}
+                </span>
+                <span className={`block truncate text-center font-medium ${label}`}>{m.name}</span>
+              </button>
+            </div>
+          );
+        })}
+        {!compact && (
+          <label
+            className={`flex aspect-[16/12] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[11px] hover:border-primary ${uploading ? "opacity-60" : ""}`}
           >
-            <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]" aria-hidden>
-              {f.preview}
-            </span>
-            <span className={`block text-center font-medium ${compact ? "text-[10px] leading-tight" : "text-xs"}`}>{f.name}</span>
-          </button>
-        );
-      })}
+            <ImagePlus className="size-4" />
+            {uploading ? "מעלה…" : "העלאת מסגרת ללוח"}
+            <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={(e) => void upload(e.target.files)} />
+          </label>
+        )}
+      </div>
+
+      {!compact && (
+        <>
+          <HiddenShelf
+            testId="board-frames-hidden"
+            items={BOARD_FRAME_CHOICES.filter((f) => f.id && isHiddenReady(config, "boardframe", f.id)).map((f) => ({ key: f.id!, name: f.name }))}
+            onRestore={(id) => onEdit("board-frame:show", (c) => showReady(c, "boardframe", id))}
+          />
+          {naming ? (
+            <form
+              className="flex flex-wrap items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                save();
+              }}
+            >
+              <input
+                aria-label="שם המסגרת"
+                value={naming.value}
+                maxLength={40}
+                autoFocus
+                onChange={(e) => setNaming({ ...naming, value: e.target.value })}
+                className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+              />
+              <Button type="submit" size="sm" disabled={!naming.value.trim()}>
+                {naming.id ? "שינוי השם" : "שמירת המסגרת"}
+              </Button>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(null)}>
+                ביטול
+              </Button>
+            </form>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {config.boardFrame && !worn && (
+                <Button type="button" size="sm" variant="outline" onClick={() => setNaming({ id: null, value: "" })}>
+                  שמירה כמסגרת שלי
+                </Button>
+              )}
+              {worn && (
+                <Button type="button" size="sm" variant="outline" onClick={() => setNaming({ id: worn.id, value: worn.name })}>
+                  שינוי שם ל«{worn.name}»
+                </Button>
+              )}
+              <span className="text-muted-foreground">
+                {config.boardFrame
+                  ? "כיוונתם גודל ומקום? שומרים בשם, והמסגרת נשמרת עם הכוונון."
+                  : "בחרו מסגרת, או העלו תמונה משלכם."}
+              </span>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
