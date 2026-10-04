@@ -101,3 +101,34 @@ test("one tile marked: the shul's own frame being worn, not the ready one it was
   await expect(frames.getByRole("button", { name: "עמוד ימני רחב", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(frames.getByRole("button", { name: "עמודי זהב", exact: true })).toHaveAttribute("aria-pressed", "false");
 });
+
+test("a column is pulled to the screen's very edge: to the side, to the top and to the bottom", async ({ page }) => {
+  await open(page, { boardFrame: "columns" });
+  await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+  const column = root(page).locator(".tv-bf-column.is-right");
+  await expect(column.locator("[data-bf-handle]")).toHaveCount(3);
+  const drag = async (from: { x: number; y: number }, by: { x: number; y: number }) => {
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(from.x + by.x / 2, from.y + by.y / 2, { steps: 4 });
+    await page.mouse.move(from.x + by.x, from.y + by.y, { steps: 4 });
+    await page.mouse.up();
+  };
+  const centre = async (l: import("@playwright/test").Locator) => {
+    const b = (await l.boundingBox())!;
+    return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
+  };
+  const screen = (await root(page).boundingBox())!;
+
+  // Toward the side, a little past the edge: caught on it.
+  const b0 = (await column.boundingBox())!;
+  await drag({ x: b0.x + b0.width / 2, y: b0.y + b0.height * 0.4 }, { x: screen.x + screen.width - (b0.x + b0.width) + 1, y: 0 });
+  await expect.poll(async () => Math.abs((await column.boundingBox())!.x + (await column.boundingBox())!.width - (screen.x + screen.width))).toBeLessThan(1.5);
+
+  // Its ends, out to the top and the bottom of the screen.
+  await drag(await centre(column.locator('[data-bf-handle="len-a"]')), { x: 0, y: -12 });
+  await drag(await centre(column.locator('[data-bf-handle="len-b"]')), { x: 0, y: 12 });
+  await expect.poll(async () => (await column.boundingBox())!.y).toBeLessThanOrEqual(screen.y + 1.5);
+  await expect.poll(async () => { const b = (await column.boundingBox())!; return b.y + b.height; }).toBeGreaterThanOrEqual(screen.y + screen.height - 1.5);
+  await expectNotFrozen(page, "column at the edge");
+});

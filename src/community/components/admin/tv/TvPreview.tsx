@@ -8,7 +8,7 @@ import type { BoardSlide } from "@/tv/useBoardData";
 import { slideLabel, type useTvSlides } from "./tvPreviewData";
 import { DeviceFrame, DeviceToolbar } from "./DevicePreview";
 import { setElementStyle, styleTargetKey } from "@/tv/boardEdit";
-import { boardFrameVars, dragTune, readTuneFrom, type BoardFrameTune } from "@/tv/boardFrame";
+import { boardFrameVars, dragTune, pieceEdges, readTuneFrom, type BoardFrameTune } from "@/tv/boardFrame";
 import { snapOffset, snapTune } from "@/tv/snap";
 import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
@@ -340,7 +340,7 @@ export function TvDeviceStudio({
     if (!d.moved && Math.hypot(dx, dy) < 3) return true;
     d.moved = true;
     const raw = dragTune(d.piece, d.handle, d.t0, { dx, dy, u: d.u, width: d.width, height: d.height, fromRight: d.fromRight, fromBottom: d.fromBottom });
-    const next = e.ctrlKey ? raw : snapTune(raw);
+    const next = e.ctrlKey ? raw : snapTune(raw, pieceEdges(d.piece, d.height, d.u));
     d.last = next;
     for (const r of d.roots) for (const [k, v] of Object.entries(boardFrameVars(next))) r.style.setProperty(k, v);
     return true;

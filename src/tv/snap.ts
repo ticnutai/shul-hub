@@ -29,15 +29,28 @@ export function snapOffset(value: number, natural: number): { value: number; lin
   return { value: Math.round(value * 2) / 2, line: null };
 }
 
-/** A piece of the board's frame, on round numbers and back on its usual size when close. */
-export function snapTune(t: BoardFrameTune): BoardFrameTune {
+/** A piece of the board's frame, on round numbers, back on its usual size and place when close - or on the screen's edge (boardFrame.pieceEdges). */
+export function snapTune(
+  t: BoardFrameTune,
+  edge: { x?: number | null; y?: number | null; length?: number | null } = {},
+): BoardFrameTune {
   const half = (v: number) => Math.round(v * 2) / 2;
   const step = (v: number) => Math.round(v * 20) / 20;
+  // Caught by the nearer of its usual place and the screen's edge, else on the grid.
+  const nearest = (v: number, targets: Array<number | null | undefined>, within: number) =>
+    targets
+      .filter((to): to is number => to != null && Math.abs(v - to) < within)
+      .sort((p, q) => Math.abs(v - p) - Math.abs(v - q))[0];
+  const place = (v: number, at: number | null | undefined) => nearest(v, [0, at], 0.5) ?? half(v);
+  const run = (v: number) => {
+    const to = nearest(v, [1, edge.length], 0.04);
+    return to === undefined ? step(v) : Math.round(to * 1000) / 1000;
+  };
   return {
     ...t,
-    x: Math.abs(t.x) < 0.5 ? 0 : half(t.x),
-    y: Math.abs(t.y) < 0.5 ? 0 : half(t.y),
+    x: place(t.x, edge.x),
+    y: place(t.y, edge.y),
     size: Math.abs(t.size - 1) < 0.05 ? 1 : step(t.size),
-    length: t.length > 0.96 ? 1 : step(t.length),
+    length: Math.min(run(t.length), 1.1),
   };
 }

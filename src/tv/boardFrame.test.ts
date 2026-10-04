@@ -12,7 +12,7 @@ describe("the board's frame, moved and sized by hand", () => {
       size: 1.6, length: 0.5, x: 4, y: -3, sides: "right",
     });
     expect(normalizeBoardFrameTune({ size: 99, length: 0, x: -5, y: "up", sides: "middle" })).toEqual({
-      size: 2.5, length: 0.2, x: 0, y: 0, sides: "both",
+      size: 2.5, length: 0.2, x: -2, y: 0, sides: "both",
     });
   });
 
@@ -61,7 +61,7 @@ describe("a drag on a piece of the board's frame", () => {
 
   it("stays inside the limits however far it is dragged", () => {
     expect(dragTune("tv-bf-column is-right", "size", t0, { ...at, dx: -5000, dy: 0 }).size).toBe(2.5);
-    expect(dragTune("tv-bf-column is-right", null, t0, { ...at, dx: 5000, dy: 0 }).x).toBe(0);
+    expect(dragTune("tv-bf-column is-right", null, t0, { ...at, dx: 5000, dy: 0 }).x).toBe(-2);
   });
 });
 

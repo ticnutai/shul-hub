@@ -24,8 +24,9 @@ export const DEFAULT_BOARD_FRAME_TUNE: BoardFrameTune = { size: 1, length: 1, x:
 
 export const BOARD_FRAME_LIMITS = {
   size: [0.4, 2.5],
-  length: [0.2, 1],
-  x: [0, 20],
+  length: [0.2, 1.1],
+  // Below 0 the piece goes on to the screen's very edge (pieceEdges) and a little past it.
+  x: [-2, 20],
   y: [-20, 20],
 } as const;
 
@@ -92,6 +93,21 @@ export function pieceHandles(piece: string): string[] {
   if (/tv-bf-(column|curtain|beam|drape)/.test(piece)) return ["size", "len-a", "len-b"];
   if (/tv-bf-(carved|picture|line is-outer)/.test(piece)) return ["size"];
   return [];
+}
+
+/**
+ * Where a piece touches the screen's edge, in its own knobs: x (and y, for a
+ * frame around the screen) at which it stands on the edge, and the length at
+ * which a column or curtain runs from the top of the screen to its bottom.
+ * `height` and `u` in the same pixels. A drag is caught there (snap.snapTune).
+ */
+export function pieceEdges(piece: string, height: number, u: number): { x: number | null; y: number | null; length: number | null } {
+  if (/tv-bf-column/.test(piece)) return { x: -0.8, y: null, length: height > 1.2 * u ? height / (height - 1.2 * u) : null };
+  if (/tv-bf-curtain/.test(piece)) return { x: 0, y: null, length: 1 };
+  if (/tv-bf-(beam|drape|rod)/.test(piece)) return { x: null, y: 0, length: 1 };
+  if (/tv-bf-(carved|picture)/.test(piece)) return { x: -0.8, y: -0.8, length: null };
+  if (/tv-bf-line/.test(piece)) return { x: -1, y: -1, length: null };
+  return { x: null, y: null, length: null };
 }
 
 /** The variables the pieces and the room around them are drawn from. */
