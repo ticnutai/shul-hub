@@ -42,7 +42,7 @@ test.describe("TV editor, by layer", () => {
 
     // The topics side by side: a click brings its section to the top.
     const topics = page.getByTestId("design-topics");
-    for (const [label, id] of [["טקסט", "design-text"], ["תיבות", "design-boxes"], ["ערכות מוכנות", "design-sets"]] as const) {
+    for (const [label, id] of [["טקסט", "design-text"], ["תיבות", "design-boxes"], ["ערכות", "design-sets"]] as const) {
       await topics.getByRole("button", { name: label, exact: true }).click();
       await expect.poll(() => page.locator(`#${id}`).evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThan(300);
       await expect(topics.getByRole("button", { name: label, exact: true })).toHaveAttribute("aria-current", "true");
