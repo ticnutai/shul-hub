@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.ticnutai.bsr3synagogue',
-  appName: 'בית כנסת בסר 3',
+  appName: 'ספרי קודש וזמני תפילות לבית הכנסת',
   // Live builds carry only the offline page (the app itself comes from the site).
   // CAP_STORE=1: the Google Play build, the site packed without the TV board (scripts/android-store.mjs).
   webDir: process.env.CAP_LIVE === '1' ? 'dist-live' : process.env.CAP_STORE === '1' ? 'dist-store' : 'dist',

@@ -58,8 +58,8 @@ export default defineConfig(({ mode }) => ({
       },
       includeAssets: ['favicon.ico', 'robots.txt'],
       manifest: {
-        name: 'בית כנסת בסר 3 - תורה וקהילה',
-        short_name: 'בית כנסת בסר 3',
+        name: 'ספרי קודש וזמני תפילות לבית הכנסת',
+        short_name: 'ספרי קודש וזמני תפילות לבית הכנסת',
         description: 'זמני תפילות, קהילה וספריית תורה עם שאלות ופירושים',
         theme_color: '#1e3a5f',
         background_color: '#ffffff',
