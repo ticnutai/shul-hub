@@ -131,7 +131,8 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
     <div className="space-y-3">
       <div data-testid="board-frames" className={compact ? "grid grid-cols-4 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-4"}>
         {ready.map((f) => {
-          const on = config.boardFrame === f.id;
+          // A frame of the shul's own being worn is marked there, not on the ready one it was made from.
+          const on = config.boardFrame === f.id && !worn;
           return (
             <div key={f.id ?? "none"} className="group relative">
               {!compact && f.id && !on && (

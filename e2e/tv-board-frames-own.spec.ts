@@ -89,3 +89,15 @@ test("shapes and title styles: a ready one hidden and brought back", async ({ pa
   await expect(titles.getByRole("button", { name: "כותרת: סרט" })).toHaveCount(1);
   await expectNotFrozen(page, "hidden shapes and titles");
 });
+
+test("one tile marked: the shul's own frame being worn, not the ready one it was made from", async ({ page }) => {
+  await open(page, {
+    boardFrame: "columns",
+    boardFrameTune: { size: 1.8, length: 1, x: 0, y: 0, sides: "right" },
+    myBoardFrames: [{ id: "bf_abcd1234", name: "עמוד ימני רחב", frame: "columns", tune: { size: 1.8, length: 1, x: 0, y: 0, sides: "right" }, image: null }],
+  });
+  const frames = page.getByTestId("board-frames").first();
+  await expect(frames.locator('button[aria-pressed="true"]')).toHaveCount(1);
+  await expect(frames.getByRole("button", { name: "עמוד ימני רחב", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(frames.getByRole("button", { name: "עמודי זהב", exact: true })).toHaveAttribute("aria-pressed", "false");
+});
