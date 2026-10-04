@@ -30,7 +30,7 @@ test.describe("TV editor, by layer", () => {
   test("the design tab is its parts, each in its own place; the layout tab is where things stand", async ({ page }) => {
     // The look in its parts: ready sets, the background, the boxes, their
     // frames and the text - for every box or one, chosen once.
-    for (const name of ["1. ערכות מוכנות", "2. רקע", "3. תיבות", "4. מסגרות", "5. טקסט"])
+    for (const name of ["1. ערכות", "2. רקע", "3. תיבות", "4. מסגרות", "5. טקסט"])
       await expect(heading(page, name)).toBeVisible();
     await expect(page.getByTestId("layer-background")).toBeVisible();
     await expect(page.getByTestId("parts-scope")).toBeVisible();
@@ -90,7 +90,7 @@ test.describe("TV editor, by layer", () => {
       .toContain("brightness(1.3)");
     await layer.getByRole("button", { name: "הוספת צבע מעל הרקע" }).click();
     await expect(root(page).locator(".tv-bg-tint")).toHaveCount(1);
-    await layer.getByRole("button", { name: "איפוס הסליידרים" }).click();
+    await layer.getByRole("button", { name: "איפוס הכוונון" }).click();
     await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-bg-tune");
     await expectNotFrozen(page, "background sliders");
   });
