@@ -198,7 +198,7 @@ test.describe("TV editor, by layer", () => {
 
     // A frame style reaches its frames, and one frame can stand apart.
     await page.getByRole("tab", { name: "עיצוב" }).click();
-    await page.getByTestId("board-frames").first().getByRole("button").nth(1).click();
+    await page.getByTestId("board-frames").first().locator("button[aria-pressed]").nth(1).click();
     await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:clock");
     const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();

@@ -38,7 +38,7 @@ test.describe("TV editor", () => {
   /** Which frame for the whole board is on, "none" without one. */
   const boardFrameOf = async (page: import("@playwright/test").Page) =>
     /is-board-frame-([a-z-]+)/.exec((await root(page).getAttribute("class")) ?? "")?.[1] ?? "none";
-  const boardFrames = (page: import("@playwright/test").Page) => page.getByTestId("board-frames").first().getByRole("button");
+  const boardFrames = (page: import("@playwright/test").Page) => page.getByTestId("board-frames").first().locator("button[aria-pressed]");
 
   test("every frame for the whole board applies, and each is the board's own", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
@@ -383,7 +383,7 @@ test.describe("TV editor", () => {
     await boardFrames(page).filter({ hasText: "היכל" }).click();
     await expect(root(page)).toHaveClass(/is-board-frame-heichal/);
     await expectNotFrozen(page, "board frame");
-    await page.getByTestId("frame-shapes").getByRole("button", { name: "קטום" }).click();
+    await page.getByTestId("frame-shapes").getByRole("button", { name: "קטום", exact: true }).click();
     await expectNotFrozen(page, "frame");
 
     await page.getByRole("tab", { name: "עיצוב" }).click();
