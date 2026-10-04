@@ -128,7 +128,8 @@ test("a dragged part lines up: back on its own place when close, with a guide wh
   await page.mouse.move(from.x + 2, from.y + 4, { steps: 6 });
   await expect(page.getByTestId("snap-guide").first()).toBeVisible();
   await page.mouse.up();
-  await expect(page.getByTestId("snap-guide")).toHaveCount(0);
+  await expect(page.getByTestId("snap-guide").first()).toBeHidden();
+  await expect(page.getByTestId("snap-guide").last()).toBeHidden();
   const after = await boxOf(page, ".tv-med-plaque.is-date");
   expect(Math.abs(after.y - date.y)).toBeLessThan(1.5);
   expect(Math.abs(after.x - date.x)).toBeLessThan(1.5);

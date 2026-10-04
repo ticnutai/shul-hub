@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
 import "./tvEdit.css";
 import { configForDevice, type TvConfig } from "@/tv/config";
 import { applyDayLook } from "@/tv/dayLooks";
@@ -8,7 +8,7 @@ import type { BoardSlide } from "@/tv/useBoardData";
 import { slideLabel, type useTvSlides } from "./tvPreviewData";
 import { DeviceFrame, DeviceToolbar } from "./DevicePreview";
 import { setElementStyle, styleTargetKey } from "@/tv/boardEdit";
-import { dragTune, readTuneFrom, type BoardFrameTune } from "@/tv/boardFrame";
+import { boardFrameVars, dragTune, readTuneFrom, type BoardFrameTune } from "@/tv/boardFrame";
 import { snapOffset, snapTune } from "@/tv/snap";
 import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
@@ -97,27 +97,13 @@ export function SlideStrip({
   );
 }
 
-/** The lines a dragged element snapped to, drawn over the board while the drag lasts. */
-function SnapGuides({ frame, x, y }: { frame: DOMRect; x: number | null; y: number | null }) {
+/** The lines a dragged element snapped to: hidden, and placed and shown directly during a drag. */
+function SnapGuides({ xRef, yRef }: { xRef: RefObject<HTMLDivElement>; yRef: RefObject<HTMLDivElement> }) {
   const line = "pointer-events-none fixed z-[70] border-pink-500";
   return (
     <>
-      {x !== null && (
-        <div
-          aria-hidden
-          data-testid="snap-guide"
-          className={`${line} border-l-2 border-dashed`}
-          style={{ left: frame.left + (frame.width * x) / 100, top: frame.top, height: frame.height }}
-        />
-      )}
-      {y !== null && (
-        <div
-          aria-hidden
-          data-testid="snap-guide"
-          className={`${line} border-t-2 border-dashed`}
-          style={{ top: frame.top + (frame.height * y) / 100, left: frame.left, width: frame.width }}
-        />
-      )}
+      <div ref={xRef} aria-hidden data-testid="snap-guide" className={`${line} border-l-2 border-dashed`} style={{ display: "none" }} />
+      <div ref={yRef} aria-hidden data-testid="snap-guide" className={`${line} border-t-2 border-dashed`} style={{ display: "none" }} />
     </>
   );
 }
@@ -270,9 +256,31 @@ export function TvDeviceStudio({
     cx: number;
     cy: number;
     moved: boolean;
+    /** The element on every board in sight, moved directly while the drag lasts. */
+    nodes: HTMLElement[];
+    /** Where it is now, written to the board on release. */
+    last: { x: number; y: number } | null;
   } | null>(null);
-  /** The lines an element snapped to while it is dragged (snap.ts), in percent of the board. */
-  const [guides, setGuides] = useState<{ frame: DOMRect; x: number | null; y: number | null } | null>(null);
+  /**
+   * The lines an element snapped to while it is dragged (snap.ts). Drawn
+   * directly, like the move itself: a state change here re-rendered every
+   * board in the studio on every move, and a drag ran at some 20 frames a
+   * second (measured, 50 ms a move).
+   */
+  const guideX = useRef<HTMLDivElement>(null);
+  const guideY = useRef<HTMLDivElement>(null);
+  const showGuides = (g: { frame: DOMRect; x: number | null; y: number | null } | null) => {
+    const vx = guideX.current;
+    const vy = guideY.current;
+    if (vx) {
+      vx.style.display = g && g.x !== null ? "block" : "none";
+      if (g && g.x !== null) Object.assign(vx.style, { left: `${g.frame.left + (g.frame.width * g.x) / 100}px`, top: `${g.frame.top}px`, height: `${g.frame.height}px` });
+    }
+    if (vy) {
+      vy.style.display = g && g.y !== null ? "block" : "none";
+      if (g && g.y !== null) Object.assign(vy.style, { top: `${g.frame.top + (g.frame.height * g.y) / 100}px`, left: `${g.frame.left}px`, width: `${g.frame.width}px` });
+    }
+  };
   // The board's frame - columns, beams, a curtain - is grabbed and stretched
   // by hand: a drag on a piece moves it, a drag on one of its handles makes
   // it longer or thicker (boardFrame.dragTune). The pointer is measured in
@@ -290,6 +298,9 @@ export function TvDeviceStudio({
     startX: number;
     startY: number;
     moved: boolean;
+    /** Every board in sight, whose frame follows the drag directly. */
+    roots: HTMLElement[];
+    last: BoardFrameTune | null;
   } | null>(null);
   const startFrameDrag = (e: PointerEvent): boolean => {
     const target = e.target instanceof Element ? e.target : null;
@@ -310,6 +321,8 @@ export function TvDeviceStudio({
       startX: e.clientX,
       startY: e.clientY,
       moved: false,
+      roots: [...(e.currentTarget as HTMLElement).querySelectorAll<HTMLElement>(".tv-root.has-board-frame")],
+      last: null,
     };
     try {
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -328,7 +341,8 @@ export function TvDeviceStudio({
     d.moved = true;
     const raw = dragTune(d.piece, d.handle, d.t0, { dx, dy, u: d.u, width: d.width, height: d.height, fromRight: d.fromRight, fromBottom: d.fromBottom });
     const next = e.ctrlKey ? raw : snapTune(raw);
-    onEdit!("board-frame-drag", (c) => ({ ...c, boardFrameTune: { ...next, sides: c.boardFrameTune.sides } }));
+    d.last = next;
+    for (const r of d.roots) for (const [k, v] of Object.entries(boardFrameVars(next))) r.style.setProperty(k, v);
     return true;
   };
 
@@ -349,6 +363,7 @@ export function TvDeviceStudio({
     // wrapper, and a plain click must still select the element under it.
     const box = frame.getBoundingClientRect();
     const own = el.getBoundingClientRect();
+    const studio = e.currentTarget as HTMLElement;
     const x0 = s?.x ?? 0;
     const y0 = s?.y ?? 0;
     drag.current = {
@@ -362,6 +377,8 @@ export function TvDeviceStudio({
       cx: ((own.left + own.width / 2 - box.left) / box.width) * 100 - x0,
       cy: ((own.top + own.height / 2 - box.top) / box.height) * 100 - y0,
       moved: false,
+      nodes: [...studio.querySelectorAll<HTMLElement>(`[data-edit="${CSS.escape(el.dataset.edit!)}"]`)],
+      last: null,
     };
   };
   const onPointerMove = (e: PointerEvent) => {
@@ -388,24 +405,35 @@ export function TvDeviceStudio({
       const sy = snapOffset(y, d.cy);
       x = sx.value;
       y = sy.value;
-      setGuides({ frame: d.frame, x: sx.line, y: sy.line });
-    } else setGuides(null);
-    onEdit!(`style:pos:${d.key}`, (c) => setElementStyle(c, d.key, { x: Math.max(-50, Math.min(50, x)), y: Math.max(-50, Math.min(50, y)) }));
+      showGuides({ frame: d.frame, x: sx.line, y: sy.line });
+    } else showGuides(null);
+    x = Math.max(-50, Math.min(50, x));
+    y = Math.max(-50, Math.min(50, y));
+    d.last = { x, y };
+    // On the page only, every frame of it at once; the board is written on release.
+    for (const n of d.nodes) n.style.transform = x || y ? `translate(${x}cqw, ${y}cqh)` : "";
   };
   const onPointerUp = (e: PointerEvent) => {
-    setGuides(null);
+    showGuides(null);
     const f = frameDrag.current;
     if (f) {
       frameDrag.current = null;
       if ((e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
       // The click that ends a drag selects nothing; a click without one opens the board's own panel.
       if (f.moved) suppressClick.current = true;
+      // Written once, where it was let go: one step to undo.
+      const t = f.last;
+      if (t) onEdit!("board-frame-drag", (c) => ({ ...c, boardFrameTune: { ...t, sides: c.boardFrameTune.sides } }));
       return;
     }
     const d = drag.current;
     drag.current = null;
     if (!d) return;
     if ((e.currentTarget as HTMLElement).hasPointerCapture?.(e.pointerId)) (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    if (d.moved && d.last) {
+      const { x, y } = d.last;
+      onEdit!(`style:pos:${d.key}`, (c) => setElementStyle(c, d.key, { x, y }));
+    }
     if (d.moved) {
       // The click that ends a drag must not change the selection; selection
       // is by element, even when the drag wrote to the family rule.
@@ -439,7 +467,7 @@ export function TvDeviceStudio({
         onPointerCancel: () => {
           drag.current = null;
           frameDrag.current = null;
-          setGuides(null);
+          showGuides(null);
         },
         onMouseOver: (e: MouseEvent) => setHovered(keyAt(e.target)),
         onMouseLeave: () => setHovered(null),
@@ -450,7 +478,7 @@ export function TvDeviceStudio({
     return (
       <div className={`fixed inset-0 z-[60] bg-black${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
         {editing && <EditHighlight hovered={hovered} selected={selected} />}
-        {guides && <SnapGuides {...guides} />}
+        {editing && <SnapGuides xRef={guideX} yRef={guideY} />}
         <BoardInFrame {...props} editing={editing} />
       </div>
     );
@@ -459,7 +487,7 @@ export function TvDeviceStudio({
   return (
     <div className={`space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
       {editing && <EditHighlight hovered={hovered} selected={selected} />}
-      {guides && <SnapGuides {...guides} />}
+      {editing && <SnapGuides xRef={guideX} yRef={guideY} />}
       <div className="flex flex-wrap items-center gap-2">
         <DeviceToolbar
           compare={compare}
