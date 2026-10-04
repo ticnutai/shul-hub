@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { FRAME_CHOICES } from "./tvChoices";
 import { ImagePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -27,7 +26,7 @@ import {
   type BackgroundKind,
   type SavedBackground,
 } from "@/tv/backgrounds";
-import { BoardFramePicker, FrameCorners, TitleStylePicker } from "./BoardLook";
+import { BoardFramePicker, FrameCorners, TitleStylePicker, shownShapes } from "./BoardLook";
 import { BOARD_FRAME_KNOBS, BOARD_FRAME_LIMITS, DEFAULT_BOARD_FRAME_TUNE, type BoardFrameTune } from "@/tv/boardFrame";
 import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
@@ -778,7 +777,7 @@ export function FramesLayer(
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" data-testid="box-shapes">
             {[
               { id: null as BoxShape | null, name: "כמו כולן", hint: "הצורה של כל התיבות", css: { borderStyle: "dashed", borderRadius: 6 } as CSSProperties },
-              ...FRAME_CHOICES.map((c) => ({ id: (c.id === "auto" ? "round" : c.id) as BoxShape | null, name: c.name, hint: c.hint, css: c.css })),
+              ...shownShapes(saved, own?.shape === "round" ? "auto" : own?.shape).map((c) => ({ id: (c.id === "auto" ? "round" : c.id) as BoxShape | null, name: c.name, hint: c.hint, css: c.css })),
             ].map((choice) => {
               const on = (own?.shape ?? null) === choice.id;
               return (

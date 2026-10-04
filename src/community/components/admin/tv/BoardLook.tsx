@@ -234,9 +234,10 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
  */
 export function TitleStylePicker({ config, onEdit, frame }: { config: TvConfig; onEdit: Edit; frame?: FrameId | null }) {
   const current = frame ? (config.frameLooks[frame]?.titleStyle ?? null) : config.titleStyle;
+  const shown = TITLE_STYLE_CHOICES.filter((t) => t.id === "plain" || t.id === current || !isHiddenReady(config, "title", t.id));
   const choices: Array<{ id: TitleStyle | null; name: string; preview: ReactNode }> = frame
-    ? [{ id: null, name: "כמו כולן", preview: <span className="text-white/60">—</span> }, ...TITLE_STYLE_CHOICES]
-    : TITLE_STYLE_CHOICES;
+    ? [{ id: null, name: "כמו כולן", preview: <span className="text-white/60">—</span> }, ...shown]
+    : shown;
   const pick = (id: TitleStyle | null) =>
     frame
       ? onEdit(`title-style:${frame}`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { titleStyle: id }) }))
@@ -247,22 +248,31 @@ export function TitleStylePicker({ config, onEdit, frame }: { config: TvConfig; 
         {choices.map((t) => {
           const on = current === t.id;
           return (
-            <button
-              key={t.id ?? "all"}
-              type="button"
-              aria-pressed={on}
-              aria-label={`כותרת: ${t.name}`}
-              onClick={() => pick(t.id)}
-              className={`rounded-lg border p-1.5 text-center ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
-            >
-              <span className="mb-1 flex h-8 items-center justify-center rounded bg-[#12243f] text-[11px]" aria-hidden>
-                {t.preview}
-              </span>
-              <span className="block text-[11px] leading-tight">{t.name}</span>
-            </button>
+            <div key={t.id ?? "all"} className="group relative">
+              {t.id && t.id !== "plain" && !on && (
+                <TileRemove name={t.name} ready onClick={() => onEdit("title-style:hide", (c) => hideReady(c, "title", t.id!))} />
+              )}
+              <button
+                type="button"
+                aria-pressed={on}
+                aria-label={`כותרת: ${t.name}`}
+                onClick={() => pick(t.id)}
+                className={`block w-full rounded-lg border p-1.5 text-center ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+              >
+                <span className="mb-1 flex h-8 items-center justify-center rounded bg-[#12243f] text-[11px]" aria-hidden>
+                  {t.preview}
+                </span>
+                <span className="block text-[11px] leading-tight">{t.name}</span>
+              </button>
+            </div>
           );
         })}
       </div>
+      <HiddenShelf
+        testId="title-styles-hidden"
+        items={TITLE_STYLE_CHOICES.filter((t) => isHiddenReady(config, "title", t.id)).map((t) => ({ key: t.id, name: t.name }))}
+        onRestore={(id) => onEdit("title-style:show", (c) => showReady(c, "title", id))}
+      />
     </div>
   );
 }
@@ -317,6 +327,11 @@ function AutoSlider({
 }
 
 /** The shape of the frames' corners and how round they are (עיצוב › מסגרות). */
+/** The shapes on offer: those not hidden, "רגיל", and whichever is worn now (BoardLook and one box's list). */
+export function shownShapes(config: Pick<TvConfig, "hiddenReady">, current: string | null | undefined) {
+  return FRAME_CHOICES.filter((f) => f.id === "auto" || f.id === current || !isHiddenReady(config, "shape", f.id));
+}
+
 export function FrameCorners({
   config,
   onEdit,
@@ -334,14 +349,17 @@ export function FrameCorners({
         data-testid="frame-shapes"
         className={compact ? "grid grid-cols-6 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-6"}
       >
-        {FRAME_CHOICES.map((fr) => (
+        {shownShapes(config, config.frame.shape).map((fr) => (
+          <div key={fr.id} className="group relative">
+          {!compact && fr.id !== "auto" && config.frame.shape !== fr.id && (
+            <TileRemove name={fr.name} ready onClick={() => onEdit("frame.shape:hide", (c) => hideReady(c, "shape", fr.id))} />
+          )}
           <button
-            key={fr.id}
             type="button"
             aria-pressed={config.frame.shape === fr.id}
             title={fr.hint}
             onClick={() => onEdit("frame.shape", (c) => ({ ...c, frame: { ...c.frame, shape: fr.id } }))}
-            className={`rounded-lg border p-1.5 text-center transition ${
+            className={`block w-full rounded-lg border p-1.5 text-center transition ${
               config.frame.shape === fr.id
                 ? "ring-2 ring-primary ring-offset-2"
                 : "hover:border-primary/50"
@@ -356,8 +374,16 @@ export function FrameCorners({
             />
             <span className="block text-[11px] font-medium leading-tight">{fr.name}</span>
           </button>
+          </div>
         ))}
       </div>
+      {!compact && (
+        <HiddenShelf
+          testId="frame-shapes-hidden"
+          items={FRAME_CHOICES.filter((f) => isHiddenReady(config, "shape", f.id)).map((f) => ({ key: f.id, name: f.name }))}
+          onRestore={(id) => onEdit("frame.shape:show", (c) => showReady(c, "shape", id))}
+        />
+      )}
 
       {(["top", "bottom"] as const).map((edge) => (
         <AutoSlider
