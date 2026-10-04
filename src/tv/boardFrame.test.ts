@@ -64,3 +64,29 @@ describe("a drag on a piece of the board's frame", () => {
     expect(dragTune("tv-bf-column is-right", null, t0, { ...at, dx: 5000, dy: 0 }).x).toBe(0);
   });
 });
+
+describe("frames for the whole board of the shul's own", () => {
+  it("keeps a ready one as it was set, and a picture only when it is a safe address", () => {
+    const c = normalizeTvConfig({
+      myBoardFrames: [
+        { id: "bf_abcd1234", name: "עמודים רחבים", frame: "columns", tune: { size: 1.6, length: 1, x: 2, y: 0, sides: "right" }, image: null },
+        { id: "bf_pic12345", name: "שלי", frame: "picture", tune: {}, image: "https://x.test/frame.png" },
+        { id: "bf_bad12345", name: "רעה", frame: "picture", tune: {}, image: "javascript:alert(1)" },
+        { id: "nope", name: "x", frame: "columns", tune: {}, image: null },
+      ],
+    });
+    expect(c.myBoardFrames.map((m) => m.name)).toEqual(["עמודים רחבים", "שלי"]);
+    expect(c.myBoardFrames[0].tune).toMatchObject({ size: 1.6, sides: "right" });
+  });
+
+  it("wears a picture only with its picture", () => {
+    expect(normalizeTvConfig({ boardFrame: "picture", boardFrameImage: "https://x.test/f.png" }).boardFrame).toBe("picture");
+    expect(normalizeTvConfig({ boardFrame: "picture" }).boardFrame).toBeNull();
+    expect(boardFramePieces("picture", "both")).toEqual(["tv-bf-picture"]);
+  });
+
+  it("a ready frame, shape or title style can be hidden and brought back", () => {
+    const c = normalizeTvConfig({ hiddenReady: ["boardframe:columns", "shape:hexagon", "title:ribbon", "boardframe:<x>"] });
+    expect(c.hiddenReady).toEqual(["boardframe:columns", "shape:hexagon", "title:ribbon"]);
+  });
+});
