@@ -275,8 +275,26 @@ export const LEGACY_SKINS = [
  * above and below, a valance hung over it, a carved frame around the screen.
  * Drawn behind the boxes (tv.css, .tv-board-frame), with room made for it.
  */
-export type BoardFrame = "columns" | "beams" | "heichal" | "parochet" | "curtain" | "carved" | "double-line";
+export type BoardFrame = "columns" | "beams" | "heichal" | "parochet" | "curtain" | "carved" | "double-line" | "picture";
+/** The ready ones; "picture" is a picture of the shul's own around the screen (boardFrameImage). */
 export const BOARD_FRAMES: BoardFrame[] = ["columns", "beams", "heichal", "parochet", "curtain", "carved", "double-line"];
+
+/**
+ * A frame for the whole board the shul made its own: a ready one as it was
+ * set (its size, place and sides), or a picture it uploaded - kept under a
+ * name, renamed, updated and deleted like any of its own things.
+ */
+export interface MyBoardFrame {
+  id: string;
+  name: string;
+  frame: BoardFrame;
+  tune: BoardFrameTune;
+  /** The picture, for a "picture" frame. */
+  image: string | null;
+}
+export const MAX_MY_BOARD_FRAMES = 20;
+const MY_BOARD_FRAME_ID = /^bf_[a-z0-9]{4,16}$/;
+export const newMyBoardFrameId = () => `bf_${Math.random().toString(36).slice(2, 10)}`;
 
 // How the name of a box is set - for every box (TvConfig.titleStyle) or one (frameLooks).
 export { TITLE_STYLES, type TitleStyle };
@@ -369,6 +387,7 @@ export interface DeviceOverlay {
   clockStyle?: ClockStyle;
   boardFrame?: BoardFrame | null;
   boardFrameTune?: BoardFrameTune;
+  boardFrameImage?: string | null;
   titleStyle?: TitleStyle;
   /**
    * The painted board: which painting, and everything the panel beside it
@@ -520,6 +539,10 @@ export interface TvConfig {
   boardFrame: BoardFrame | null;
   /** Where the board's frame stands and how big it is (boardFrame.ts). */
   boardFrameTune: BoardFrameTune;
+  /** The picture of a "picture" frame: one the shul uploaded. */
+  boardFrameImage: string | null;
+  /** Frames for the whole board the shul made its own (MyBoardFrame). */
+  myBoardFrames: MyBoardFrame[];
   /** How every box's name is set (TITLE_STYLES); a box can have its own (frameLooks). */
   titleStyle: TitleStyle;
   /**
@@ -790,6 +813,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   frameStyle: DEFAULT_FRAME_STYLE,
   boardFrame: null,
   boardFrameTune: DEFAULT_BOARD_FRAME_TUNE,
+  boardFrameImage: null,
+  myBoardFrames: [],
   titleStyle: "plain",
 };
 
@@ -867,6 +892,25 @@ function normalizeGrid(raw: unknown): ScreenRow[] | undefined {
     if (blocks.length) rows.push({ blocks, widths, height: num(r.height, 1, 0.3, 4) });
   }
   return rows.length ? rows : undefined;
+}
+
+function normalizeMyBoardFrames(raw: unknown): MyBoardFrame[] {
+  const out: MyBoardFrame[] = [];
+  for (const f of Array.isArray(raw) ? raw : []) {
+    if (!isObj(f) || typeof f.id !== "string" || !MY_BOARD_FRAME_ID.test(f.id) || out.some((o) => o.id === f.id)) continue;
+    const image = typeof f.image === "string" && isSafeUrl(f.image) ? f.image : null;
+    const frame = BOARD_FRAMES.includes(f.frame as BoardFrame) ? (f.frame as BoardFrame) : f.frame === "picture" && image ? "picture" : null;
+    if (!frame) continue;
+    out.push({
+      id: f.id,
+      name: (typeof f.name === "string" ? f.name.trim().slice(0, 40) : "") || "מסגרת שלי",
+      frame,
+      tune: normalizeBoardFrameTune(f.tune),
+      image,
+    });
+    if (out.length >= MAX_MY_BOARD_FRAMES) break;
+  }
+  return out;
 }
 
 function normalizeCustomBoxes(raw: unknown): CustomBox[] {
@@ -1307,7 +1351,7 @@ function normalizeStored(stored: unknown): TvConfig {
     hiddenReady: [
       ...new Set(
         (Array.isArray(raw.hiddenReady) ? raw.hiddenReady : []).filter(
-          (k): k is string => typeof k === "string" && /^(design|theme|bg|frame|box):[a-z0-9_-]{1,60}$/i.test(k),
+          (k): k is string => typeof k === "string" && /^(design|theme|bg|frame|box|boardframe|shape|title):[a-z0-9_-]{1,60}$/i.test(k),
         ),
       ),
     ].slice(0, 300),
@@ -1358,7 +1402,13 @@ function normalizeStored(stored: unknown): TvConfig {
         ? String(raw.illustration)
         : d.illustration,
     clockStyle: CLOCK_STYLES.includes(raw.clockStyle as ClockStyle) ? (raw.clockStyle as ClockStyle) : d.clockStyle,
-    boardFrame: BOARD_FRAMES.includes(raw.boardFrame as BoardFrame) ? (raw.boardFrame as BoardFrame) : d.boardFrame,
+    boardFrame:
+      BOARD_FRAMES.includes(raw.boardFrame as BoardFrame) ||
+      (raw.boardFrame === "picture" && typeof raw.boardFrameImage === "string" && isSafeUrl(raw.boardFrameImage))
+        ? (raw.boardFrame as BoardFrame)
+        : d.boardFrame,
+    boardFrameImage: typeof raw.boardFrameImage === "string" && isSafeUrl(raw.boardFrameImage) ? raw.boardFrameImage : null,
+    myBoardFrames: normalizeMyBoardFrames(raw.myBoardFrames),
     titleStyle: TITLE_STYLES.includes(raw.titleStyle as TitleStyle) ? (raw.titleStyle as TitleStyle) : d.titleStyle,
     boardFrameTune: normalizeBoardFrameTune(raw.boardFrameTune),
     frame: normalizeFrame(raw.frame, d.frame),
@@ -1407,7 +1457,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
 
 /** Guards normalizePerDevice against a stray key from an older board. */
 const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
-  screenLayout: true, clockStyle: true, boardFrame: true, boardFrameTune: true, titleStyle: true, frame: true, spacing: true,
+  screenLayout: true, clockStyle: true, boardFrame: true, boardFrameTune: true, boardFrameImage: true, titleStyle: true, frame: true, spacing: true,
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true, backgroundOverlay: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,
   flipped: true, styles: true, header: true, ticker: true, countdown: true,

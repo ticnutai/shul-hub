@@ -30,7 +30,7 @@ export const DESIGN_PART_LABELS: Record<DesignPart, string> = {
 /** Which settings each part is made of - the same split as the editor's layers. */
 const PART_KEYS: Record<DesignPart, Array<keyof TvConfig>> = {
   background: ["backgroundGradient", "backgroundImage", "backgroundOverlay", "backgroundDim", "backgroundTune"],
-  frames: ["boardFrame", "boardFrameTune", "frame"],
+  frames: ["boardFrame", "boardFrameTune", "boardFrameImage", "frame"],
   text: ["font", "textScale", "tracking", "styles", "titleStyle"],
   layout: ["screenLayout", "illustration", "spacing", "clockStyle"],
 };

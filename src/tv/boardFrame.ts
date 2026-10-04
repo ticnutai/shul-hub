@@ -57,6 +57,7 @@ export const BOARD_FRAME_KNOBS: Record<
   curtain: { size: "רוחב הווילונות", length: "גובה הווילונות", x: "מרחק מהצד", y: "הזזה למעלה / למטה", sides: true },
   carved: { size: "עובי המסגרת", length: null, x: "מרחק מהצדדים", y: "מרחק מלמעלה ולמטה", sides: false },
   "double-line": { size: "עובי הקווים", length: null, x: "מרחק מהצדדים", y: "מרחק מלמעלה ולמטה", sides: false },
+  picture: { size: "עובי המסגרת", length: null, x: "מרחק מהצדדים", y: "מרחק מלמעלה ולמטה", sides: false },
 };
 
 /** The pieces a frame is drawn from (tv.css, .tv-bf-*), on the sides chosen. */
@@ -78,6 +79,8 @@ export function boardFramePieces(frame: BoardFrame, sides: BoardFrameTune["sides
       return ["tv-bf-carved"];
     case "double-line":
       return ["tv-bf-line is-outer", "tv-bf-line is-inner"];
+    case "picture":
+      return ["tv-bf-picture"];
   }
 }
 
@@ -87,7 +90,7 @@ export function boardFramePieces(frame: BoardFrame, sides: BoardFrameTune["sides
  */
 export function pieceHandles(piece: string): string[] {
   if (/tv-bf-(column|curtain|beam|drape)/.test(piece)) return ["size", "len-a", "len-b"];
-  if (/tv-bf-(carved|line is-outer)/.test(piece)) return ["size"];
+  if (/tv-bf-(carved|picture|line is-outer)/.test(piece)) return ["size"];
   return [];
 }
 
@@ -109,6 +112,7 @@ const PIECE_THICKNESS: Array<[RegExp, number]> = [
   [/tv-bf-drape/, 9],
   [/tv-bf-rod/, 1.1],
   [/tv-bf-carved/, 2.4],
+  [/tv-bf-picture/, 2.4],
   [/tv-bf-line/, 0.9],
 ];
 

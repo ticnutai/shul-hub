@@ -4123,6 +4123,13 @@
   border-image: var(--orn-frame) 30 stretch;
 }
 
+/* A picture of the shul's own around the screen: its corners kept, its edges stretched. */
+.tv-bf-picture {
+  inset: calc(var(--u) * 0.8 + var(--bf-y)) calc(var(--u) * 0.8 + var(--bf-x));
+  border: calc(var(--u) * 2.4 * var(--bf-s)) solid transparent;
+  border-image: var(--bf-image) 25% stretch;
+}
+
 /* Two lines around the screen, in the accent colour. */
 .tv-bf-line.is-outer {
   inset: calc(var(--u) * 1 + var(--bf-y)) calc(var(--u) * 1 + var(--bf-x));
@@ -4197,7 +4204,7 @@
   padding-top: calc(var(--tv-safe-y) + var(--u) * 7.5 * var(--bf-s) + max(0px, var(--bf-y)));
 }
 
-.tv-root.is-board-frame-carved {
+.tv-root:is(.is-board-frame-carved, .is-board-frame-picture) {
   padding: calc(var(--tv-safe-y) + var(--u) * 2 * var(--bf-s) + var(--bf-y)) calc(var(--tv-safe-x) + var(--u) * 2 * var(--bf-s) + var(--bf-x));
 }
 

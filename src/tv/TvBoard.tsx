@@ -233,7 +233,13 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         }${
           config.backgroundGradient ? " has-bg-gradient" : ""
         }${frame.classes}`}
-        style={{ ...style, ...frame.vars, ...(config.boardFrame ? boardFrameVars(config.boardFrameTune) : {}) }}
+        style={{
+          ...style,
+          ...frame.vars,
+          ...(config.boardFrame ? boardFrameVars(config.boardFrameTune) : {}),
+          // A picture frame of the shul's own (checked when the board was read).
+          ...(config.boardFrame === "picture" && config.boardFrameImage ? { "--bf-image": `url("${config.boardFrameImage}")` } : {}),
+        }}
         data-title-style={config.titleStyle !== "plain" ? config.titleStyle : undefined}
         {...edit.attr("board.background")}
       >
