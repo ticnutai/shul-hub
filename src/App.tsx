@@ -35,6 +35,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EditModeProvider } from "@community/lib/edit-mode";
 import { LiveDesignProvider } from "@/lib/live-design";
 import { GlobalAppShell } from "@/components/GlobalAppShell";
+import { wantsServiceWorker } from "@/lib/swPolicy";
 
 const communityQueryClient = new QueryClient({
   defaultOptions: {
@@ -184,7 +185,7 @@ const App = () => {
                       <Toaster />
                       <Sonner />
                       {/* The app carries its own files; a service worker is the website's. */}
-                      {!Capacitor.isNativePlatform() && <PWAReloadPrompt />}
+                      {wantsServiceWorker() && <PWAReloadPrompt />}
                       <OfflineBanner />
                       {reminderHookEnabled && <DeferredReminderPopup />}
                       <Router
