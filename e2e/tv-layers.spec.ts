@@ -118,7 +118,34 @@ test.describe("TV editor, by layer", () => {
     // Half see-through.
     await layer.getByLabel("אטימות").fill("0.5");
     await expect.poll(() => bg(zmanim)).toBe("rgba(90, 26, 42, 0.5)");
+
+    // Its whole design, copied to the prayers in one click.
+    const copy = page.getByTestId("copy-box-look");
+    await copy.getByLabel("העתקה אל").selectOption("prayers");
+    await copy.getByRole("button", { name: "העתקה" }).click();
+    await expect.poll(() => bg(prayers)).toBe("rgba(90, 26, 42, 0.5)");
     await expectNotFrozen(page, "frame backgrounds");
+  });
+
+  test("text too faint for its box is pointed out, and a click goes to that box's text", async ({ page }) => {
+    // The board as it comes reads well: nothing to say.
+    await page.waitForTimeout(1200);
+    await expect(page.getByTestId("readability")).toHaveCount(0);
+
+    // Pale text's own box made pale too.
+    await page.getByLabel("התיבות והטקסט של").selectOption("frame:zmanim");
+    const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
+    await layer.getByRole("radio", { name: "צבע", exact: true }).click();
+    await layer.getByLabel("צבע הרקע").fill("#eeeeee");
+    const note = page.getByTestId("readability");
+    await expect(note).toBeVisible({ timeout: 5000 });
+    await note.getByRole("button", { name: /בדיקת קריאוּת/ }).click();
+    await expect(note).toContainText("זמני היום");
+
+    await page.getByLabel("התיבות והטקסט של").selectOption("frames");
+    await note.getByRole("button", { name: "לתיקון" }).first().click();
+    await expect(page.getByLabel("התיבות והטקסט של")).toHaveValue("frame:zmanim");
+    await expectNotFrozen(page, "readability");
   });
 
   test("boxes: a ready one, a shape of its own for one box, and a frame from the gallery", async ({ page }) => {

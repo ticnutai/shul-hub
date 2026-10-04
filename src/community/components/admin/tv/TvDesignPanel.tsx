@@ -153,6 +153,7 @@ import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./Laye
 import { BlankBoardStarter, BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { blankBoard } from "@/tv/blankBoard";
 import { uploadImages } from "./uploadImages";
+import { ReadabilityNote } from "./ReadabilityNote";
 import { TvVersions } from "./TvVersions";
 import { DesignLibrary } from "./DesignLibrary";
 import { findDesign } from "@/tv/designs";
@@ -170,7 +171,7 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { MedallionRows } from "./MedallionRows";
-import { FRAME_IDS, FRAME_LABELS } from "@/tv/frameLooks";
+import { FRAME_IDS, FRAME_LABELS, type FrameId } from "@/tv/frameLooks";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
@@ -205,6 +206,58 @@ function Section({ title, hint, children, id }: { title: string; hint?: string; 
       {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       <div className="mt-3 space-y-3">{children}</div>
     </section>
+  );
+}
+
+/**
+ * One box's whole design - its shape, background, frame and text - put on
+ * another box, or on all of them, in one click. A box with no design of its
+ * own passes that on: the others go back to looking like every box.
+ */
+function CopyBoxLook({
+  from,
+  looks,
+  onCopy,
+}: {
+  from: FrameId;
+  looks: TvConfig["frameLooks"];
+  onCopy: (to: FrameId[], from: FrameId) => void;
+}) {
+  const others = FRAME_IDS.filter((id) => id !== from);
+  const [to, setTo] = useState<string>("all");
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-xs" data-testid="copy-box-look">
+      <span className="font-medium">העתקת העיצוב של {FRAME_LABELS[from]} אל:</span>
+      <select
+        aria-label="העתקה אל"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        className="h-8 rounded-md border bg-background px-2 text-xs"
+      >
+        <option value="all">כל שאר התיבות</option>
+        {others.map((id) => (
+          <option key={id} value={id}>
+            {FRAME_LABELS[id]}
+            {looks[id] ? " •" : ""}
+          </option>
+        ))}
+      </select>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-8"
+        onClick={() => {
+          const targets = to === "all" ? others : [to as FrameId];
+          onCopy(targets, from);
+          toast.success(
+            `העיצוב של ${FRAME_LABELS[from]} הועתק ${to === "all" ? "לכל שאר התיבות" : `ל${FRAME_LABELS[to as FrameId]}`}.`,
+          );
+        }}
+      >
+        העתקה
+      </Button>
+    </div>
   );
 }
 
@@ -1312,6 +1365,23 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               </select>
             </label>
             <p className="text-[11px] text-muted-foreground">"•" - לתיבה יש עיצוב משלה.</p>
+            {partTarget.startsWith("frame:") && (
+              <CopyBoxLook
+                from={partTarget.slice(6) as FrameId}
+                looks={scoped.frameLooks}
+                onCopy={(to, from) =>
+                  edit(`copy-look:${from}:${to.join(",")}`, (c) => {
+                    const look = c.frameLooks[from];
+                    const frameLooks = { ...c.frameLooks };
+                    for (const id of to) {
+                      if (look) frameLooks[id] = structuredClone(look);
+                      else delete frameLooks[id];
+                    }
+                    return { ...c, frameLooks };
+                  })
+                }
+              />
+            )}
           </div>
 
           <Section
@@ -2150,6 +2220,16 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         onResize={fullscreen ? undefined : resizeBoard}
         onResizeReset={resetBoardSize}
       />
+      {!comparing && (
+        <ReadabilityNote
+          watch={state.present}
+          onFix={(frame) => {
+            if (frame) setPartTarget(`frame:${frame}`);
+            setTab("design");
+            window.setTimeout(() => document.getElementById("design-text")?.scrollIntoView({ block: "start" }), 80);
+          }}
+        />
+      )}
     </div>
   );
 
