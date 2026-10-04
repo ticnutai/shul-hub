@@ -40,6 +40,7 @@ public class ShulAlarmPlugin extends Plugin {
         JSObject r = new JSObject();
         r.put("exact", AlarmScheduler.canExact(getContext()));
         r.put("fullScreen", canFullScreen(getContext()));
+        r.put("fullScreenOffered", fullScreenDeclared(getContext()));
         call.resolve(r);
     }
 
@@ -111,7 +112,26 @@ public class ShulAlarmPlugin extends Plugin {
         call.resolve();
     }
 
+    /**
+     * Whether this build may ring on the whole screen at all: the one from
+     * Google Play leaves the permission out (Play keeps it for alarm-clock
+     * and calling apps) and rings as a notification that keeps ringing.
+     */
+    static boolean fullScreenDeclared(Context ctx) {
+        try {
+            String[] asked = ctx.getPackageManager()
+                    .getPackageInfo(ctx.getPackageName(), android.content.pm.PackageManager.GET_PERMISSIONS)
+                    .requestedPermissions;
+            if (asked == null) return false;
+            for (String p : asked) if ("android.permission.USE_FULL_SCREEN_INTENT".equals(p)) return true;
+        } catch (Exception ignored) {
+            // not known: say no
+        }
+        return false;
+    }
+
     static boolean canFullScreen(Context ctx) {
+        if (!fullScreenDeclared(ctx)) return false;
         if (Build.VERSION.SDK_INT < 34) return true;
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         return nm != null && nm.canUseFullScreenIntent();

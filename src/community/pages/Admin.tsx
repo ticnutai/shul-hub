@@ -16,6 +16,7 @@ import { ChavrutaRequestsAdmin } from "@community/components/admin/ChavrutaReque
 import { DataExportImportAdmin } from "@community/components/admin/DataExportImportAdmin";
 import { QrCodesAdmin } from "@community/components/admin/QrCodesAdmin";
 import { AppDownloadsAdmin } from "@community/components/admin/AppDownloadsAdmin";
+import { useIsStoreApp } from "@/lib/storeApp";
 import { AiIntakeAdmin } from "@community/components/admin/AiIntakeAdmin";
 import { ApiKeysAdmin } from "@community/components/admin/ApiKeysAdmin";
 import { QuickAddButton } from "@community/components/QuickAddButton";
@@ -41,9 +42,12 @@ export function AdminPage() {
   // "בתי כנסת", the site header and themes to "תצוגת דף הבית". An old link
   // or bookmark to it lands where the details are now.
   const requestedTab = searchParams.get("tab") === "settings" ? "communities" : searchParams.get("tab");
+  // The app from Google Play has no TV boards (storeApp.ts): run from the website.
+  const storeApp = useIsStoreApp();
   const activeTab = [
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
-    "messages", "widgets", "users", "data", "qr", "apps", "ai", "api", "tv", "communities",
+    "messages", "widgets", "users", "data", "qr", "ai", "api", "communities",
+    ...(storeApp ? [] : ["apps", "tv"]),
   ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
@@ -153,10 +157,14 @@ export function AdminPage() {
               <TabsTrigger value="users">משתמשים</TabsTrigger>
               <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
               <TabsTrigger value="qr">קודי QR</TabsTrigger>
-              <TabsTrigger value="apps">הורדת אפליקציות</TabsTrigger>
-              <TabsTrigger value="tv">
-                <Tv className="size-4" /> תצוגות
-              </TabsTrigger>
+              {!storeApp && (
+                <>
+                  <TabsTrigger value="apps">הורדת אפליקציות</TabsTrigger>
+                  <TabsTrigger value="tv">
+                    <Tv className="size-4" /> תצוגות
+                  </TabsTrigger>
+                </>
+              )}
             </TabsList>
 
             <TabsContent value="communities" className="mt-6">
@@ -206,14 +214,18 @@ export function AdminPage() {
             <TabsContent value="api" className="mt-6">
               <ApiKeysAdmin />
             </TabsContent>
-            <TabsContent value="apps" className="mt-6">
-              <AppDownloadsAdmin />
-            </TabsContent>
-            <TabsContent value="tv" className="mt-6">
-              <Suspense fallback={<p className="p-6 text-center text-muted-foreground">טוען את מרכז הבקרה…</p>}>
-                <TvAdmin />
-              </Suspense>
-            </TabsContent>
+            {!storeApp && (
+              <>
+                <TabsContent value="apps" className="mt-6">
+                  <AppDownloadsAdmin />
+                </TabsContent>
+                <TabsContent value="tv" className="mt-6">
+                  <Suspense fallback={<p className="p-6 text-center text-muted-foreground">טוען את מרכז הבקרה…</p>}>
+                    <TvAdmin />
+                  </Suspense>
+                </TabsContent>
+              </>
+            )}
           </Tabs>
         )}
         <QuickAddButton />

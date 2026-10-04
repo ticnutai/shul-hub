@@ -28,7 +28,7 @@ const native = Capacitor.isNativePlatform();
  * browser, or before it is known.
  */
 function usePhoneAllows(open: boolean) {
-  const [allows, setAllows] = useState<{ exact: boolean; fullScreen: boolean } | null>(null);
+  const [allows, setAllows] = useState<{ exact: boolean; fullScreen: boolean; fullScreenOffered?: boolean } | null>(null);
   const refresh = useCallback(async () => {
     if (!native) return;
     try {
@@ -195,9 +195,11 @@ export function NotificationCenter() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  על כל המסך, גם כשהטלפון נעול, עד שלוחצים "עצירה". לא בשבת ובחג.
+                  {allows?.fullScreenOffered === false
+                    ? "מצלצל עד שלוחצים על ההתראה. לא בשבת ובחג."
+                    : 'על כל המסך, גם כשהטלפון נעול, עד שלוחצים "עצירה". לא בשבת ובחג.'}
                 </p>
-                {preferences.alarm && allows && !allows.fullScreen && (
+                {preferences.alarm && allows && allows.fullScreenOffered !== false && !allows.fullScreen && (
                   <Button type="button" size="sm" variant="outline" onClick={() => void ShulAlarm.openFullScreenSettings()}>
                     לאשר צלצול על כל המסך
                   </Button>

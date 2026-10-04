@@ -4,7 +4,8 @@ const config: CapacitorConfig = {
   appId: 'com.ticnutai.bsr3synagogue',
   appName: 'בית כנסת בסר 3',
   // Live builds carry only the offline page (the app itself comes from the site).
-  webDir: process.env.CAP_LIVE === '1' ? 'dist-live' : 'dist',
+  // CAP_STORE=1: the Google Play build, the site packed without the TV board (scripts/android-store.mjs).
+  webDir: process.env.CAP_LIVE === '1' ? 'dist-live' : process.env.CAP_STORE === '1' ? 'dist-store' : 'dist',
   // CAP_LIVE=1: the app shows the website itself, so every publish reaches the
   // phone without a new APK. No service worker in the app (src/lib/swPolicy.ts):
   // offline.html is shown when the site cannot be reached. The Play build is

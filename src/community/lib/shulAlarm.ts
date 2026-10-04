@@ -11,7 +11,8 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
  */
 export interface ShulAlarmPlugin {
   schedule(options: { alarms: Array<{ id: number; at: number; title: string; body: string }> }): Promise<void>;
-  status(): Promise<{ exact: boolean; fullScreen: boolean }>;
+  /** fullScreenOffered: false in the Play build, which rings as a notification instead. */
+  status(): Promise<{ exact: boolean; fullScreen: boolean; fullScreenOffered?: boolean }>;
   openExactSettings(): Promise<void>;
   openFullScreenSettings(): Promise<void>;
   configureNotices(options: {

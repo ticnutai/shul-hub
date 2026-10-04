@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The build for Google Play: no ring on the whole screen. Play keeps that
+  permission for alarm-clock and calling apps; here a minyan rings as a
+  notification that keeps ringing until it is opened (AlarmReceiver).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" tools:node="remove" />
+</manifest>
