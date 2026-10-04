@@ -32,9 +32,12 @@ describe("the board a screen draws", () => {
     expect([c.boardFrame, c.theme, c.screenLayout]).toEqual([null, "navy", "rotate"]);
   });
 
-  it("takes a theme chosen from the remote, and ignores one that no longer exists", () => {
-    expect(boardConfig(ohelAvraham, { deviceClass: "tv", themeOverride: "royal", now, settings: null }).theme).toBe("royal");
-    expect(boardConfig(ohelAvraham, { deviceClass: "tv", themeOverride: "gone", now, settings: null }).theme).toBe("forest");
+  it("wears a set chosen from the remote for its look, and ignores one that no longer exists", () => {
+    const worn = boardConfig(ohelAvraham, { deviceClass: "tv", lookOverride: "d_curtain", now, settings: null });
+    expect(worn.theme).toBe("royal");
+    // Its look only: what stands where on this screen is the screen's own.
+    expect(worn.screenLayout).toBe("split");
+    expect(boardConfig(ohelAvraham, { deviceClass: "tv", lookOverride: "gone", now, settings: null }).theme).toBe("forest");
   });
 
   it("ends Shabbat when the synagogue says it does", () => {

@@ -24,10 +24,12 @@ const { ScreenMenu } = await import("./ScreenMenu");
 const MAIN = { id: "c9a6", slug: "main", name: "בית הכנסת אושר של יהודי", active: true };
 const TORAH = { id: "4433", slug: "torah-veahavata", name: "תורה ואהבתה", active: false };
 
-const THEMES = [
-  { id: "royal", name: "מלכותי" },
-  { id: "parchment", name: "קלף" },
-] as never[];
+const { DEFAULT_TV_CONFIG } = await import("./config");
+const LOOKS = [
+  { id: null, name: "העיצוב של הלוח", config: DEFAULT_TV_CONFIG },
+  { id: "d_curtain", name: "וילון כחול וזהב", config: DEFAULT_TV_CONFIG },
+  { id: "d_stone", name: "לוחות הברית", config: DEFAULT_TV_CONFIG },
+];
 
 function show(over: Partial<Parameters<typeof ScreenMenu>[0]> = {}) {
   const props = {
@@ -35,9 +37,9 @@ function show(over: Partial<Parameters<typeof ScreenMenu>[0]> = {}) {
     onClose: vi.fn(),
     currentCommunity: TORAH.id,
     canSwitch: true,
-    themes: THEMES,
-    currentTheme: "royal",
-    onTheme: vi.fn(),
+    looks: LOOKS,
+    currentLook: null,
+    onLook: vi.fn(),
     reload: vi.fn(),
     ...over,
   };
@@ -108,13 +110,26 @@ describe("the synagogue menu on the screen", () => {
     expect(setDeviceCommunity).not.toHaveBeenCalled();
   });
 
-  it("keeps the theme, which used to be on these arrows and nowhere else", async () => {
+  it("shows every set as a picture, and the side arrows move along them", async () => {
+    const { props } = show({ currentLook: "d_curtain" });
+    await screen.findByText(MAIN.name);
+    const row = screen.getByTestId("screen-menu-look");
+    expect(row.querySelectorAll(".tv-menu-look")).toHaveLength(3);
+    expect(row.querySelector(".tv-menu-look.is-on")?.textContent).toContain("וילון כחול וזהב");
+    press("ArrowDown");
+    press("ArrowLeft");
+    expect(props.onLook).toHaveBeenLastCalledWith("d_stone");
+    press("ArrowRight");
+    expect(props.onLook).toHaveBeenLastCalledWith(null);
+  });
+
+  it("keeps the look, which used to be on these arrows and nowhere else", async () => {
     const { props } = show();
     await screen.findByText(MAIN.name);
     // It opens on this screen's synagogue, the second row; next is the theme.
     press("ArrowDown");
     press("Enter");
-    expect(props.onTheme).toHaveBeenCalledWith("parchment");
+    expect(props.onLook).toHaveBeenCalledWith("d_curtain");
   });
 
   it("moves the screen once, however many times the OK key repeats", async () => {
@@ -175,7 +190,7 @@ describe("the synagogue menu on the screen", () => {
     press("ArrowDown");
     press("Enter");
     expect(setDeviceCommunity).not.toHaveBeenCalled();
-    expect(props.onTheme).not.toHaveBeenCalled();
+    expect(props.onLook).not.toHaveBeenCalled();
     expect(props.onClose).not.toHaveBeenCalled();
     // Once it is there, the keys work as normal.
     release([MAIN, TORAH]);
@@ -218,7 +233,7 @@ describe("the synagogue menu on the screen", () => {
     expect(screen.getByText(/בחירת בית כנסת נעשית מהמסך עצמו/)).toBeTruthy();
     // Without synagogues the rows are theme, then close.
     press("Enter");
-    expect(props.onTheme).toHaveBeenCalledWith("parchment");
+    expect(props.onLook).toHaveBeenCalledWith("d_curtain");
     expect(listCommunities).not.toHaveBeenCalled();
   });
 
@@ -236,7 +251,7 @@ describe("the synagogue menu on the screen", () => {
     expect(screen.queryByTestId("screen-menu-confirm")).toBeNull();
     press("ArrowDown");
     press("Enter");
-    expect(props.onTheme).toHaveBeenCalledWith("parchment");
+    expect(props.onLook).toHaveBeenCalledWith("d_curtain");
     expect(setDeviceCommunity).not.toHaveBeenCalled();
   });
 });

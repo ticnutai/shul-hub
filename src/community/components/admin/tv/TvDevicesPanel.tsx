@@ -33,8 +33,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useNow } from "@community/lib/realtime";
-import { allThemes, getTheme } from "@/tv/themes";
-import { DEFAULT_TV_CONFIG } from "@/tv/config";
+import { remoteLooks } from "@/tv/remoteLooks";
+import { LookThumb } from "@/tv/LookThumb";
+import { configForDevice, DEFAULT_TV_CONFIG } from "@/tv/config";
 import { boardConfig } from "@/tv/boardConfig";
 import { useSettings } from "@community/lib/data";
 import { formatDuration } from "@/tv/device";
@@ -169,6 +170,8 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
   const s = device.state ?? {};
   const saved = useTvConfig();
   const baseConfig = saved.data?.config;
+  // The sets this screen can wear from its remote, drawn on the TV's own board.
+  const looks = useMemo(() => (baseConfig ? remoteLooks(configForDevice(baseConfig, "tv")) : []), [baseConfig]);
 
   const { data: settings } = useSettings();
   // What the TV is actually rendering, resolved exactly as the TV resolves it
@@ -182,7 +185,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
       baseConfig
         ? boardConfig(baseConfig, {
             deviceClass: "tv",
-            themeOverride: s.themeOverride ?? null,
+            lookOverride: s.themeOverride ?? null,
             now: new Date(minute * 60_000),
             settings,
           })
@@ -201,7 +204,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
       baseConfig && occasionSlideId
         ? boardConfig(baseConfig, {
             deviceClass: "tv",
-            themeOverride: s.themeOverride ?? null,
+            lookOverride: s.themeOverride ?? null,
             now: new Date(minute * 60_000),
             settings,
             slideId: occasionSlideId,
@@ -268,7 +271,9 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
           </Badge>
         )}
         {s.paused && <Badge variant="outline">⏸ מושהה</Badge>}
-        {s.themeOverride && <Badge variant="outline">ערכה מהשלט: {getTheme(s.themeOverride, baseConfig?.customThemes).name}</Badge>}
+        {s.themeOverride && looks.some((l) => l.id === s.themeOverride) && (
+          <Badge variant="outline">ערכה מהשלט: {looks.find((l) => l.id === s.themeOverride)?.name}</Badge>
+        )}
         {/* What the box itself measured (screenHealth.ts): text the TV enlarged, and what does not fit. */}
         {s.app ? (
           <Badge
@@ -358,23 +363,29 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
             </div>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-medium" htmlFor={`theme-${device.id}`}>
-              ערכת נושא במסך הזה
-            </label>
-            <select
-              id={`theme-${device.id}`}
-              value={s.themeOverride ?? ""}
-              onChange={(e) => run("theme", "theme", { theme: e.target.value || null })}
-              className="block h-9 w-full rounded-md border bg-background px-2 text-sm"
-            >
-              <option value="">לפי העיצוב השמור ({getTheme(baseConfig?.theme, baseConfig?.customThemes).name})</option>
-              {allThemes(baseConfig?.customThemes).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+          {/* The sets this screen can wear, as on its remote's menu: the board as designed first. */}
+          <div className="space-y-1.5" role="group" aria-label="ערכה במסך הזה" data-testid={`device-looks-${device.id}`}>
+            <div className="text-sm font-medium">ערכה במסך הזה</div>
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+              {looks.map((l) => {
+                const on = (s.themeOverride ?? null) === l.id || (!l.id && !looks.some((x) => x.id === s.themeOverride));
+                return (
+                  <button
+                    key={l.id ?? "board"}
+                    type="button"
+                    aria-pressed={on}
+                    disabled={busy !== null}
+                    onClick={() => run("theme", "theme", { theme: l.id })}
+                    className={`overflow-hidden rounded-md border text-right transition ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+                  >
+                    <span className="block aspect-[16/10]">
+                      <LookThumb config={l.config} />
+                    </span>
+                    <span className="block truncate px-1.5 py-1 text-[11px]">{l.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="space-y-2">

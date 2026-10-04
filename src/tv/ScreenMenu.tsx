@@ -12,14 +12,16 @@
  * reachable by accident: with the menu closed the arrows do exactly what
  * they always did, and the board on the wall is unchanged.
  *
- * The theme sits here too, because Up and Down used to cycle it and this
- * takes those keys. Nothing was removed, only moved somewhere it can be
- * seen rather than guessed at.
+ * The look sits here too: the sets this screen can wear, each a small
+ * picture in a row (remoteLooks.ts) - the board as designed first. On that
+ * row the side arrows move along the pictures and OK steps to the next;
+ * either way the board wears it at once.
  */
 import { useEffect, useRef, useState } from "react";
 
 import { listCommunities, setDeviceCommunity, type CommunityChoice } from "./device";
-import type { TvTheme } from "./themes";
+import { LookThumb } from "./LookThumb";
+import type { RemoteLook } from "./remoteLooks";
 
 export type MenuState = "closed" | "open";
 
@@ -33,19 +35,21 @@ interface Props {
    *
    * The same board opens in a browser for an administrator, where there is
    * no device and no secret, so choosing a synagogue would only produce a
-   * failure. There it offers the theme and says where the choice belongs.
+   * failure. There it offers the look and says where the choice belongs.
    */
   canSwitch: boolean;
-  themes: TvTheme[];
-  currentTheme: string;
-  onTheme: (id: string) => void;
+  /** The sets this screen can wear, the board as designed first. */
+  looks: RemoteLook[];
+  /** The one worn now; null - the board as designed. */
+  currentLook: string | null;
+  onLook: (id: string | null) => void;
   /** Overridden in tests; on the wall the board reloads onto the new synagogue. */
   reload?: () => void;
 }
 
 type Row =
   | { kind: "community"; community: CommunityChoice }
-  | { kind: "theme" }
+  | { kind: "look" }
   | { kind: "close" };
 
 /** How long the second OK is waited for. */
@@ -58,9 +62,9 @@ export function ScreenMenu({
   onClose,
   currentCommunity,
   canSwitch,
-  themes,
-  currentTheme,
-  onTheme,
+  looks,
+  currentLook,
+  onLook,
   reload,
 }: Props) {
   const [communities, setCommunities] = useState<CommunityChoice[] | null>(null);
@@ -145,7 +149,7 @@ export function ScreenMenu({
 
   const rows: Row[] = [
     ...(canSwitch ? communities ?? [] : []).map((community) => ({ kind: "community" as const, community })),
-    { kind: "theme" as const },
+    { kind: "look" as const },
     // A way out that needs nothing but the arrows and OK.
     //
     // The obvious way out is Back, and on this hardware Back never reaches
@@ -160,6 +164,12 @@ export function ScreenMenu({
   rowsRef.current = rows;
   /** The synagogues have been asked for and have not come back yet. */
   const loading = canSwitch && communities === null && !error;
+
+  /** The next or the previous set, worn at once. */
+  const step = (delta: number) => {
+    const at = Math.max(0, looks.findIndex((l) => l.id === currentLook));
+    onLook(looks[(at + delta + looks.length) % Math.max(1, looks.length)]?.id ?? null);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -200,9 +210,8 @@ export function ScreenMenu({
             onClose();
             break;
           }
-          if (row.kind === "theme") {
-            const at = themes.findIndex((t) => t.id === currentTheme);
-            onTheme(themes[(at + 1) % Math.max(1, themes.length)]?.id ?? currentTheme);
+          if (row.kind === "look") {
+            step(1);
             break;
           }
           if (row.community.id === currentCommunity) {
@@ -240,6 +249,14 @@ export function ScreenMenu({
             });
           break;
         }
+        // Along the row of pictures, on the look's row; RTL, so left is onward.
+        case "ArrowLeft":
+        case "ArrowRight": {
+          if (rowsRef.current[liveIndex.current]?.kind !== "look") break;
+          stop();
+          step(e.key === "ArrowLeft" ? 1 : -1);
+          break;
+        }
         case "Escape":
         case "Backspace":
         case "GoBack":
@@ -252,11 +269,11 @@ export function ScreenMenu({
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
-  }, [open, loading, rows.length, themes, currentTheme, currentCommunity, onTheme, onClose, reload]);
+  }, [open, loading, rows.length, looks, currentLook, currentCommunity, onLook, onClose, reload]);
 
   if (!open) return null;
 
-  const themeName = themes.find((t) => t.id === currentTheme)?.name ?? currentTheme;
+  const lookName = looks.find((l) => l.id === currentLook)?.name ?? looks[0]?.name ?? "";
 
   return (
     <div className="tv-menu" role="dialog" aria-label="בחירת בית כנסת" data-testid="screen-menu">
@@ -284,11 +301,27 @@ export function ScreenMenu({
                 </li>
               );
             }
-            if (row.kind === "theme") {
+            if (row.kind === "look") {
               return (
-                <li key="theme" className={`tv-menu-row is-theme${active ? " is-active" : ""}`}>
-                  <span>ערכת נושא</span>
-                  <span className="tv-menu-value">{themeName}</span>
+                <li key="look" className={`tv-menu-row is-look${active ? " is-active" : ""}`} data-testid="screen-menu-look">
+                  <span className="tv-menu-look-head">
+                    <span>ערכה</span>
+                    <span className="tv-menu-value">{lookName}</span>
+                  </span>
+                  <span className="tv-menu-looks">
+                    {looks.map((l) => (
+                      <span
+                        key={l.id ?? "board"}
+                        className={`tv-menu-look${l.id === currentLook ? " is-on" : ""}`}
+                        aria-current={l.id === currentLook}
+                      >
+                        <span className="tv-menu-look-pic">
+                          <LookThumb config={l.config} />
+                        </span>
+                        <span className="tv-menu-look-name">{l.name}</span>
+                      </span>
+                    ))}
+                  </span>
                 </li>
               );
             }
@@ -308,7 +341,7 @@ export function ScreenMenu({
           })}
         </ul>
 
-        <div className="tv-menu-hint">חיצים לתנועה · OK לבחירה</div>
+        <div className="tv-menu-hint">חיצים לתנועה · OK לבחירה · בשורת הערכה: חיצים לצדדים בין התמונות</div>
       </div>
     </div>
   );

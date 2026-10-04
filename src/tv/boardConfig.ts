@@ -12,21 +12,21 @@
 import { applyDayLook } from "./dayLooks";
 import { configForDevice, type TvConfig } from "./config";
 import type { DeviceClass } from "./devices";
-import { allThemes } from "./themes";
+import { applyLook } from "./remoteLooks";
 import type { Settings } from "@community/lib/data";
 
 export function boardConfig(
   saved: TvConfig,
   {
     deviceClass,
-    themeOverride,
+    lookOverride,
     now,
     settings,
     slideId,
   }: {
     deviceClass: DeviceClass;
-    /** A theme chosen from the remote on this screen. */
-    themeOverride?: string | null;
+    /** A set chosen from the remote on this screen (remoteLooks.ts); null - the board as designed. */
+    lookOverride?: string | null;
     /**
      * The slide up now. An occasion's own screen wears the occasion's design;
      * without it, only a design that dresses the whole board is applied -
@@ -45,15 +45,12 @@ export function boardConfig(
       : saved;
   // This kind of screen's own settings...
   const forScreen = configForDevice(withEnd, deviceClass);
-  // ...and over them a theme chosen from this screen's remote: the most
-  // particular choice there is - this box, now. Applied before the TV's own
-  // settings it was overwritten by them, so on a TV with a theme of its own
-  // (אהל אברהם) choosing a theme from the remote changed nothing.
-  // A remote choice the admin has since deleted is simply ignored.
-  const chosen =
-    themeOverride && allThemes(saved.customThemes).some((t) => t.id === themeOverride)
-      ? { ...forScreen, theme: themeOverride, themeOverrides: {} }
-      : forScreen;
+  // ...and over them a set chosen from this screen's remote, for its look:
+  // the most particular choice there is - this box, now. Applied before the
+  // TV's own settings it was overwritten by them, so on a TV with a look of
+  // its own (אהל אברהם) choosing from the remote changed nothing. A choice
+  // the admin has since deleted is simply ignored.
+  const chosen = applyLook(forScreen, lookOverride);
   // Then Shabbat's, a festival's or Friday's look, when the day has one.
   return applyDayLook(chosen, now, settings, slideId);
 }

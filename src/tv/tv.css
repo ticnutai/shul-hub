@@ -3136,6 +3136,65 @@
   border: 1px solid transparent;
 }
 
+/* The look's row: its name, then the sets in small pictures, the one worn ringed. */
+/* Room for a row of pictures: wider than a list of names needs. */
+.tv-menu-card:has(.tv-menu-row.is-look) {
+  width: min(86cqw, calc(var(--u) * 80));
+}
+
+.tv-menu-row.is-look {
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--u, 1vh) * 0.8);
+}
+
+.tv-menu-look-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.tv-menu-looks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+}
+
+.tv-menu-look {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2em;
+  width: 7.5em;
+  font-size: 0.7em;
+  opacity: 0.75;
+}
+
+.tv-menu-look-pic {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border: 2px solid transparent;
+  border-radius: 0.4em;
+}
+
+.tv-menu-look.is-on {
+  opacity: 1;
+}
+
+.tv-menu-look.is-on .tv-menu-look-pic {
+  border-color: #f0c35c;
+  box-shadow: 0 0 0 2px rgba(240, 195, 92, 0.35);
+}
+
+.tv-menu-look-name {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Focus on a TV is not a browser outline: it has to be obvious across a room. */
 .tv-menu-row.is-active {
   background: rgba(233, 196, 106, 0.16);

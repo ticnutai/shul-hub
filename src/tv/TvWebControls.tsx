@@ -122,7 +122,7 @@ export function WebControls({
       <button type="button" className="tv-web-btn" onClick={onNext} aria-label="השקופית הבאה">
         הבאה ◀
       </button>
-      <button type="button" className="tv-web-btn" onClick={onTheme} title="החלפת ערכת נושא (במסך הזה בלבד)">
+      <button type="button" className="tv-web-btn" onClick={onTheme} title="החלפת ערכה (במסך הזה בלבד)">
         🎨 {themeName}
       </button>
       <button type="button" className="tv-web-btn" onClick={toggleFullscreen}>

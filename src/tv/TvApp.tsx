@@ -5,13 +5,13 @@ import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
 import { installUpdateNow, nativeAppInfo, updateText, useApkUpdate } from "./apkUpdate";
-import { SLIDE_KIND_LABELS, type TvConfig } from "./config";
+import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { lastKnownCommunity, OUTAGE_REASON_LABELS, type DeviceLink } from "./device";
 import { ScreenMenu } from "./ScreenMenu";
-import { allThemes, getTheme } from "./themes";
+import { remoteLooks } from "./remoteLooks";
 import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
@@ -28,8 +28,8 @@ import { findClipped, measureTextBoost } from "./screenHealth";
  * Remote control (the WebView receives the D-pad as ordinary key events):
  *   ◀ / ▶      next / previous slide (RTL: left is forward)
  *   OK         pause / resume
- *   ▲ / ▼      next / previous colour theme (kept on this TV)
- *   0          back to the theme the admin chose
+ *   ▲ / ▼      the menu: which synagogue, and which set this TV wears (kept on this TV)
+ *   0          back to the board as the admin designed it
  *   1-9        jump to slide N
  *   Back/Menu  help card - Back is captured so the board cannot be exited by
  *              a stray press on a wall-mounted screen.
@@ -39,7 +39,7 @@ const THEME_OVERRIDE_KEY = "shul-tv-theme-override";
 
 function readOverride(): string | null {
   try {
-    // Validated against the theme list (built-in + the admin's) where it is used.
+    // A set's id (remoteLooks.ts), checked where it is used; an old theme's id simply matches none.
     return localStorage.getItem(THEME_OVERRIDE_KEY) || null;
   } catch {
     return null;
@@ -150,21 +150,21 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     };
   }, [link, web]);
 
-  // The remote's theme choice is kept on the TV. In a browser it lasts only
-  // for the visit, so an admin never keeps seeing a stale local theme.
+  // The set chosen from the remote is kept on the TV. In a browser it lasts
+  // only for the visit, so an admin never keeps seeing a stale local look.
   const [themeOverride, setThemeOverride] = useState<string | null>(() => (web ? null : readOverride()));
   const baseConfig = configOverride ?? adminConfig;
-  const themes = useMemo(() => allThemes(baseConfig.customThemes), [baseConfig.customThemes]);
-  // When the admin picks a theme (saved, or in the editor's draft), it wins
-  // over whatever the remote chose.
-  const lastAdminTheme = useRef(baseConfig.theme);
+  // When the admin changes the board's look (saved, or in the editor's
+  // draft), it wins over whatever the remote chose.
+  const adminLook = `${baseConfig.theme}|${baseConfig.backgroundImage ?? ""}|${baseConfig.backgroundGradient ?? ""}|${JSON.stringify(baseConfig.frameStyle)}`;
+  const lastAdminLook = useRef(adminLook);
   useEffect(() => {
-    if (baseConfig.theme !== lastAdminTheme.current) {
-      lastAdminTheme.current = baseConfig.theme;
+    if (adminLook !== lastAdminLook.current) {
+      lastAdminLook.current = adminLook;
       setThemeOverride(null);
       if (!web) writeOverride(null);
     }
-  }, [baseConfig.theme, web]);
+  }, [adminLook, web]);
 
   // What kind of screen this is. The wall in the shul, a laptop and a phone
   // can each be given their own wording and layout; a board where nobody has
@@ -178,7 +178,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
 
   // The same resolution the admin's picture of this screen uses (boardConfig.ts).
   const config = useMemo<TvConfig>(
-    () => boardConfig(baseConfig, { deviceClass, themeOverride, now: minuteNow, settings: data.settings }),
+    () => boardConfig(baseConfig, { deviceClass, lookOverride: themeOverride, now: minuteNow, settings: data.settings }),
     [baseConfig, themeOverride, deviceClass, minuteNow, data.settings],
   );
   const slides = useMemo(() => buildSlides(data, config, minuteNow, zmanim), [data, config, minuteNow, zmanim]);
@@ -208,7 +208,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const drawConfig = useMemo<TvConfig>(
     () =>
       occasionSlideId
-        ? boardConfig(baseConfig, { deviceClass, themeOverride, now: minuteNow, settings: data.settings, slideId: occasionSlideId })
+        ? boardConfig(baseConfig, { deviceClass, lookOverride: themeOverride, now: minuteNow, settings: data.settings, slideId: occasionSlideId })
         : config,
     [occasionSlideId, config, baseConfig, deviceClass, themeOverride, minuteNow, data.settings],
   );
@@ -278,21 +278,25 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     return () => window.clearTimeout(id);
   }, [notice]);
 
+  // The sets this screen can wear, each drawn on this screen's own board for its thumbnail.
+  const looks = useMemo(() => remoteLooks(configForDevice(baseConfig, deviceClass)), [baseConfig, deviceClass]);
+  const lookName = looks.find((l) => l.id === themeOverride)?.name ?? looks[0].name;
   const applyTheme = useCallback(
     (id: string | null) => {
-      setThemeOverride(id);
-      if (!web) writeOverride(id);
-      flash(`ערכת נושא: ${getTheme(id ?? baseConfig.theme, themes).name}${id ? "" : " (של המנהל)"}`);
+      const known = id && looks.some((l) => l.id === id) ? id : null;
+      setThemeOverride(known);
+      if (!web) writeOverride(known);
+      flash(`ערכה: ${looks.find((l) => l.id === known)?.name ?? looks[0].name}`);
     },
-    [baseConfig.theme, themes, flash, web],
+    [looks, flash, web],
   );
 
   const cycleTheme = useCallback(
     (delta: number) => {
-      const currentIdx = themes.findIndex((t) => t.id === config.theme);
-      applyTheme(themes[(currentIdx + delta + themes.length) % themes.length].id);
+      const at = Math.max(0, looks.findIndex((l) => l.id === themeOverride));
+      applyTheme(looks[(at + delta + looks.length) % looks.length].id);
     },
-    [config.theme, themes, applyTheme],
+    [looks, themeOverride, applyTheme],
   );
 
   /**
@@ -439,8 +443,8 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         goTo(typeof p.index === "number" ? p.index : String(p.slideId ?? p.kind ?? ""));
         break;
       case "theme": {
-        const id = typeof p.theme === "string" && themes.some((t) => t.id === p.theme) ? p.theme : null;
-        applyTheme(id);
+        // A set's id from the admin's "connected screens" (the command kept its old name).
+        applyTheme(typeof p.theme === "string" ? p.theme : null);
         break;
       }
       case "message":
@@ -642,9 +646,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
             onClose={() => setMenuOpen(false)}
             currentCommunity={lastKnownCommunity()?.id ?? null}
             canSwitch={!web}
-            themes={themes}
-            currentTheme={config.theme}
-            onTheme={applyTheme}
+            looks={looks}
+            currentLook={themeOverride}
+            onLook={applyTheme}
           />
           {toast && <div className="tv-toast">{toast}</div>}
           {updateText(update.state) && <div className="tv-update-line">{updateText(update.state)}</div>}
@@ -677,7 +681,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
           {web && (
             <WebControls
               paused={paused}
-              themeName={getTheme(config.theme, themes).name}
+              themeName={lookName}
               exitHref={exitHref}
               onPrev={() => go(-1)}
               onNext={() => go(1)}
@@ -697,9 +701,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
                   <dt>{web ? "רווח" : "OK"}</dt>
                   <dd>עצירה / המשך</dd>
                   <dt>▲ ▼</dt>
-                  <dd>החלפת ערכת נושא</dd>
+                  <dd>תפריט: בית הכנסת והערכה של המסך</dd>
                   <dt>0</dt>
-                  <dd>חזרה לערכת הנושא של המנהל</dd>
+                  <dd>חזרה לעיצוב של הלוח</dd>
                   <dt>1–9</dt>
                   <dd>מעבר ישיר לשקופית</dd>
                   <dt>{web ? "Esc" : "תפריט"}</dt>
@@ -722,7 +726,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
                     </>
                   )}
                   <br />
-                  ערכת נושא: {getTheme(config.theme, themes).name}
+                  ערכה: {lookName}
                   {themeOverride ? " (נבחרה בשלט)" : ""} · גרסה {__APP_VERSION__}
                 </p>
               </div>
