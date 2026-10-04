@@ -16,30 +16,45 @@ import { toast } from "sonner";
 
 /** The phone's notification channels of the synagogue (the app). */
 export const CHANNELS = {
-  minyan: { id: "shul_minyanim", name: "תזכורות למניינים ולשיעורים", description: "רגע לפני שמתחיל מניין או שיעור שבחרתם" },
-  notice: { id: "shul_notices", name: "מודעות בית הכנסת", description: "מודעה חדשה מהגבאי" },
+  minyan: { id: "shul_minyanim_v2", name: "תזכורות למניינים ולשיעורים", description: "רגע לפני שמתחיל מניין או שיעור שבחרתם" },
+  notice: { id: "shul_notices_v2", name: "מודעות בית הכנסת", description: "מודעה חדשה מהגבאי" },
 } as const;
 
 let channelsReady: Promise<void> | null = null;
+
+/**
+ * A notification channel with the phone's own notification sound.
+ *
+ * Asking for sound "default" names a sound file called "default" inside the
+ * app - there is none, so every such channel was silent: the learning
+ * reminders, the Omer, everything (found on a Galaxy S25). Left out, Android
+ * uses the phone's sound. A channel cannot be changed once made, and one
+ * deleted comes back with its old settings if made again under the same id -
+ * so the silent ones are retired, and a new id is made in their place.
+ */
+export async function ensureSoundChannel(
+  channel: { id: string; name: string; description: string; importance: 1 | 2 | 3 | 4 | 5 },
+  retired: string[] = [],
+): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+  const { channels } = await LocalNotifications.listChannels();
+  for (const id of retired) {
+    if (channels.some((c) => c.id === id)) await LocalNotifications.deleteChannel({ id });
+  }
+  if (channels.some((c) => c.id === channel.id)) return;
+  await LocalNotifications.createChannel({ ...channel, visibility: 1, vibration: true, lights: true });
+}
+
+/** The silent channels of before (ensureSoundChannel). */
+const RETIRED = ["shul_minyanim", "shul_notices"];
 
 /** The channels, made once: loud, on top of whatever is open, with a buzz. */
 export function ensureChannels(): Promise<void> {
   if (!Capacitor.isNativePlatform()) return Promise.resolve();
   channelsReady ??= (async () => {
     try {
-      for (const c of Object.values(CHANNELS)) {
-        await LocalNotifications.createChannel({
-          id: c.id,
-          name: c.name,
-          description: c.description,
-          // 5: pops up over the app in use (heads-up), with sound.
-          importance: 5,
-          visibility: 1,
-          sound: "default",
-          vibration: true,
-          lights: true,
-        });
-      }
+      // 5: pops up over the app in use (heads-up), with sound.
+      for (const c of Object.values(CHANNELS)) await ensureSoundChannel({ ...c, importance: 5 }, RETIRED);
     } catch (e) {
       channelsReady = null;
       console.warn("notification channels", e);

@@ -2,32 +2,27 @@ import { useState, useEffect, useCallback } from "react";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
 import * as webPushService from "@/services/webPushService";
+import { ensureSoundChannel } from "@community/lib/notify";
 
 /* ─── Types ──────────────────────────────────────────────── */
 
 const STORAGE_KEY = "dailyLearningReminders_v2";
 const FIRST_INSTALL_KEY = "app_first_install_done";
-const CHANNEL_ID = "daily_learning_reminders_v2";
+// v3: v2 was made with a sound file the app does not have, and was silent (ensureSoundChannel).
+const CHANNEL_ID = "daily_learning_reminders_v3";
 const PERMISSION_AUTO_REQUEST_KEY = "daily_notifications_permission_auto_requested_v1";
 const SETTINGS_CHANGED_EVENT = "daily_learning_reminders_changed_v1";
 
 async function ensureNotificationChannel() {
   if (!Capacitor.isNativePlatform()) return;
   try {
-    const channels = await LocalNotifications.listChannels();
-    const exists = channels.channels.some((c) => c.id === CHANNEL_ID);
-    if (!exists) {
-      await LocalNotifications.createChannel({
-        id: CHANNEL_ID,
-        name: "תזכורות לימוד",
-        description: "תזכורות יומיות ללימוד תורה",
-        importance: 5,
-        visibility: 1,
-        sound: "default",
-        vibration: true,
-        lights: true,
-      });
-    }
+    // With the phone's own sound (ensureSoundChannel: "default" was silent).
+    await ensureSoundChannel({
+      id: CHANNEL_ID,
+      name: "תזכורות לימוד",
+      description: "תזכורות יומיות ללימוד תורה",
+      importance: 5,
+    }, ["daily_learning_reminders_v2"]);
   } catch (e) {
     console.warn("Failed to create daily notification channel:", e);
   }

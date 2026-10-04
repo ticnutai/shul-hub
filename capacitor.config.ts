@@ -6,11 +6,18 @@ const config: CapacitorConfig = {
   // Live builds carry only the offline page (the app itself comes from the site).
   webDir: process.env.CAP_LIVE === '1' ? 'dist-live' : 'dist',
   // CAP_LIVE=1: the app shows the website itself, so every publish reaches the
-  // phone without a new APK (the site's service worker keeps it working
-  // offline after the first visit). offline.html is shown only when the site
-  // cannot be reached at all. The Play build is made without it, as before.
+  // phone without a new APK. No service worker in the app (src/lib/swPolicy.ts):
+  // offline.html is shown when the site cannot be reached. The Play build is
+  // made without it, as before. CAP_LIVE_URL points a test build elsewhere
+  // (an emulator at the computer's own server: http://10.0.2.2:4302/).
   ...(process.env.CAP_LIVE === '1'
-    ? { server: { url: 'https://shul-hub.lovable.app/', errorPath: 'offline.html' } }
+    ? {
+        server: {
+          url: process.env.CAP_LIVE_URL || 'https://shul-hub.lovable.app/',
+          errorPath: 'offline.html',
+          ...(process.env.CAP_LIVE_URL?.startsWith('http:') ? { cleartext: true } : {}),
+        },
+      }
     : {}),
   plugins: {
     SplashScreen: {

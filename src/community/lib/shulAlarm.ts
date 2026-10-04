@@ -23,6 +23,8 @@ export interface ShulAlarmPlugin {
     quiet: Array<{ start: number; end: number }>;
   }): Promise<void>;
   test(options: { title: string; body: string }): Promise<void>;
+  /** Looks for new notices now; `forget` makes the phone tell those again (testing). */
+  checkNow(options?: { forget?: string[] }): Promise<void>;
 }
 
 export const ShulAlarm = registerPlugin<ShulAlarmPlugin>("ShulAlarm");

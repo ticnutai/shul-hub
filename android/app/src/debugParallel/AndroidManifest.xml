@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The app downloaded from the site (not Google Play): a minyan's reminder on
+  the minute, with nothing for the member to allow. Without it Android may
+  hold a reminder back by up to an hour - measured on a Galaxy S25.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+</manifest>
