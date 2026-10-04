@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
-  ArrowDown,
-  ArrowUp,
   BellRing,
   Check,
   ExternalLink,
@@ -30,17 +28,6 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   ALERT_EVENT_LABELS,
   DEFAULT_TV_CONFIG,
@@ -151,7 +138,8 @@ import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { FrameSpacing } from "./BoardLook";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
 import { BlankBoardStarter, BuildGuide, type BuildStep } from "./BlankBoardStarter";
-import { blankBoard } from "@/tv/blankBoard";
+import { blankBoard, standardBoard } from "@/tv/blankBoard";
+import { SubPart } from "./Parts";
 import { uploadImages } from "./uploadImages";
 import { ReadabilityNote } from "./ReadabilityNote";
 import { TvVersions } from "./TvVersions";
@@ -264,17 +252,13 @@ function CopyBoxLook({
   );
 }
 
-/** A heading inside a section, over one of its parts. */
-function PartTitle({ children }: { children: ReactNode }) {
-  return <h4 className="border-b pb-1 text-sm font-semibold">{children}</h4>;
-}
 
 /**
  * The design tab's topics, side by side at the top: a click jumps to its
  * section. Which one is on screen is marked as the page scrolls.
  */
 const DESIGN_TOPICS = [
-  { id: "design-sets", label: "ערכות מוכנות" },
+  { id: "design-sets", label: "ערכות" },
   { id: "design-background", label: "רקע" },
   { id: "design-boxes", label: "תיבות" },
   { id: "design-frames", label: "מסגרות" },
@@ -1351,7 +1335,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             <label className="flex flex-wrap items-center gap-2 text-sm">
               <span className="font-semibold">התיבות, המסגרות והטקסט של:</span>
               <select
-                aria-label="התיבות והטקסט של"
+                aria-label="התיבות, המסגרות והטקסט של"
                 value={partTarget}
                 onChange={(e) => setPartTarget(e.target.value)}
                 className="h-9 min-w-48 flex-1 rounded-md border bg-background px-2 text-sm"
@@ -1390,17 +1374,29 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
           <Section
             id="design-sets"
-            title="1. ערכות מוכנות"
+            title="1. ערכות"
             hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
           >
-            <BlankBoardStarter
-              onCreate={(blocks) => {
-                edit("blank-board", (c) => blankBoard(c, blocks));
-                setComposerScreen(0);
-                setGuide([]);
-              }}
-            />
-            <DesignLibrary config={view} onEdit={edit} />
+            <div className="space-y-5">
+              <SubPart title="התחלה מחדש" hint="לוח ריק שבונים צעד אחרי צעד, הלוח הרגיל של המערכת, או מחיקת הכול.">
+                <BlankBoardStarter
+                  unavailable={
+                    occasionScope || scope !== "all"
+                      ? 'התחלה מחדש היא ללוח כולו: בחרו למעלה "כל המסכים", וצאו מעיצוב המועד, כדי להשתמש בה.'
+                      : null
+                  }
+                  // Straight onto the board, past the scope: starting over is the whole board's.
+                  onCreate={(blocks) => {
+                    dispatch({ type: "edit", key: "start-over:blank", update: (c) => blankBoard(c, blocks) });
+                    setComposerScreen(0);
+                    setGuide([]);
+                  }}
+                  onStandard={() => dispatch({ type: "edit", key: "start-over:standard", update: (c) => standardBoard(c) })}
+                  onWipe={() => dispatch({ type: "edit", key: "start-over:wipe", update: () => structuredClone(DEFAULT_TV_CONFIG) })}
+                />
+              </SubPart>
+              <DesignLibrary config={view} onEdit={edit} />
+            </div>
           </Section>
 
           <Section
@@ -1416,14 +1412,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             title="3. תיבות"
             hint="תיבות מוכנות, הצורה של התיבה והרקע שלה - לכל התיבות או לתיבה שנבחרה למעלה."
           >
-            <PartTitle>תיבות מוכנות</PartTitle>
             <FramesLayer {...layerProps} target={partTarget} part="presets" />
-            <PartTitle>צורת התיבה</PartTitle>
             <FramesLayer {...layerProps} target={partTarget} part="shape" />
-            <PartTitle>רקע התיבה</PartTitle>
-            <p className="text-[11px] text-muted-foreground">
-              צבע, מעבר צבעים או תמונה מאותה גלריה של הרקעים - ו"אטימות": 100% חוסם, פחות - רואים את רקע הלוח דרך התיבה.
-            </p>
             <FramesLayer {...layerProps} target={partTarget} part="background" />
           </Section>
 
@@ -1661,29 +1651,20 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             </label>
           </Section>
 
+          {/*
+            How each kind of content is drawn inside its box. What is on which
+            screen, and for how long, is the composer's ("מסכים ומה עליהם");
+            this list used to switch them on and off too, and the two disagreed.
+          */}
           <Section
-            title="שקופיות ופריסות"
-            hint="הסדר, משך הזמן והפריסה של כל שקופית. החצים משנים סדר."
+            title="איך מוצג כל סוג תוכן"
+            hint='הפריסה של זמני התפילות, הלימוד, ההודעות והשיעורים בתוך התיבה שלהם. מה מופיע ובאיזה מסך - ב"מסכים ומה עליהם".'
           >
-            <ul className="space-y-2">
-              {draft.slides.map((s, i) => (
-                <li
-                  key={s.kind}
-                  className={`rounded-lg border p-3 ${s.enabled ? "" : "opacity-60"}`}
-                >
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Switch
-                      checked={s.enabled}
-                      aria-label={`הצגת ${SLIDE_KIND_LABELS[s.kind]}`}
-                      onCheckedChange={(on) =>
-                        edit(`slide-on:${s.kind}`, (c) => ({
-                          ...c,
-                          slides: c.slides.map((x) =>
-                            x.kind === s.kind ? { ...x, enabled: on } : x,
-                          ),
-                        }))
-                      }
-                    />
+            <ul className="space-y-2" data-testid="content-layouts">
+              {draft.slides
+                .filter((s) => SLIDE_LAYOUTS[s.kind].length > 1)
+                .map((s) => (
+                  <li key={s.kind} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
                     <span className="min-w-28 font-medium">{SLIDE_KIND_LABELS[s.kind]}</span>
                     <select
                       aria-label={`פריסת ${SLIDE_KIND_LABELS[s.kind]}`}
@@ -1691,9 +1672,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                       onChange={(e) =>
                         edit(`slide-layout:${s.kind}`, (c) => ({
                           ...c,
-                          slides: c.slides.map((x) =>
-                            x.kind === s.kind ? { ...x, layout: e.target.value } : x,
-                          ),
+                          slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, layout: e.target.value } : x)),
                         }))
                       }
                       className="h-8 rounded-md border bg-background px-2 text-sm"
@@ -1704,68 +1683,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                         </option>
                       ))}
                     </select>
-                    {s.kind !== "slideshow" && (
-                      <Stepper
-                        label={`משך ${SLIDE_KIND_LABELS[s.kind]}`}
-                        value={s.seconds}
-                        min={5}
-                        max={120}
-                        step={1}
-                        format={(v) => `${v} שנ׳`}
-                        onChange={(v) =>
-                          edit(`slide-sec:${s.kind}`, (c) => ({
-                            ...c,
-                            slides: c.slides.map((x) =>
-                              x.kind === s.kind ? { ...x, seconds: v } : x,
-                            ),
-                          }))
-                        }
-                      />
-                    )}
-                    <div className="ms-auto flex">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8"
-                        aria-label="הזזה למעלה"
-                        disabled={i === 0}
-                        onClick={() =>
-                          edit("order", (c) => {
-                            const slides = [...c.slides];
-                            [slides[i - 1], slides[i]] = [slides[i], slides[i - 1]];
-                            return { ...c, slides };
-                          })
-                        }
-                      >
-                        <ArrowUp className="size-4" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-8"
-                        aria-label="הזזה למטה"
-                        disabled={i === draft.slides.length - 1}
-                        onClick={() =>
-                          edit("order", (c) => {
-                            const slides = [...c.slides];
-                            [slides[i], slides[i + 1]] = [slides[i + 1], slides[i]];
-                            return { ...c, slides };
-                          })
-                        }
-                      >
-                        <ArrowDown className="size-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  {s.kind === "slideshow" && (
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      המשך נקבע לפי מספר התמונות × זמן לתמונה (בהגדרות המצגת).
-                    </p>
-                  )}
-                </li>
-              ))}
+                  </li>
+                ))}
             </ul>
           </Section>
         </TabsContent>
@@ -1986,30 +1905,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
           </Section>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button type="button" variant="ghost" size="sm" className="text-muted-foreground">
-                <RotateCcw className="size-4" /> איפוס לעיצוב ברירת המחדל
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent dir="rtl">
-              <AlertDialogHeader>
-                <AlertDialogTitle>לאפס את כל העיצוב לברירת המחדל?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  צבעי הבסיס, השקופיות וההתראות יחזרו להגדרות המקוריות בתצוגה המקדימה. שום
-                  דבר לא ישתנה במסכים עד שתלחצו "שמור ושדר".
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>ביטול</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => edit("reset-all", () => structuredClone(DEFAULT_TV_CONFIG))}
-                >
-                  אפס
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
         </TabsContent>
       </Tabs>
     </>

@@ -47,3 +47,29 @@ export function blankBoard(c: TvConfig, blocks: readonly BlockId[]): TvConfig {
     screens: [{ id: "screen1", name: "מסך 1", seconds: 15, blocks: chosen.map((block) => ({ block })) }],
   };
 }
+
+/**
+ * The system's ordinary board again: its look and its screens as every new
+ * board starts, with what the shul has collected kept (as blankBoard keeps
+ * it) - the wording, the logos, the occasions, the galleries, its own sets.
+ */
+export function standardBoard(c: TvConfig): TvConfig {
+  const plain = Object.fromEntries(DESIGN_KEYS.map((k) => [k, structuredClone(DEFAULT_TV_CONFIG[k])])) as Partial<TvConfig>;
+  const perDevice = Object.fromEntries(
+    Object.entries(c.perDevice).map(([device, overlay]) => [
+      device,
+      Object.fromEntries(Object.entries(overlay ?? {}).filter(([k]) => !(DESIGN_KEYS as string[]).includes(k))),
+    ]),
+  ) as TvConfig["perDevice"];
+  const { screens: _screens, ...rest } = c;
+  return {
+    ...rest,
+    ...plain,
+    boardFrame: null,
+    boardFrameTune: structuredClone(DEFAULT_TV_CONFIG.boardFrameTune),
+    titleStyle: "plain",
+    perDevice,
+    occasions: readOccasions(c),
+    slides: structuredClone(DEFAULT_TV_CONFIG.slides),
+  };
+}

@@ -85,7 +85,6 @@ export function TitleStylePicker({ config, onEdit, frame }: { config: TvConfig; 
       : onEdit("title-style", (c) => ({ ...c, titleStyle: id ?? "plain" }));
   return (
     <div className="space-y-1.5">
-      <div className="text-xs font-medium">סגנון הכותרת של התיבה</div>
       <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4" data-testid="title-styles">
         {choices.map((t) => {
           const on = current === t.id;
@@ -172,7 +171,7 @@ export function FrameCorners({
   const heading = compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium";
   return (
     <div className="space-y-2">
-      <div className={heading}>{compact ? "צורת התיבות" : "צורה ופינות"}</div>
+      {compact && <div className={heading}>צורת התיבות</div>}
       <div
         data-testid="frame-shapes"
         className={compact ? "grid grid-cols-6 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-6"}

@@ -1148,8 +1148,45 @@ function normalizeIllustratedStyle(raw: unknown): IllustratedStyle {
  * painting has no design becomes the medallion, the same arrangement drawn
  * with ordinary frames. A screen of its own that was painted, likewise.
  */
+/**
+ * What a screen shows is decided in the composer, block by block. Before it,
+ * a list of slides switched each kind of content on or off - and the switch
+ * outlived the composer: a block on a screen whose slide was off showed
+ * nothing, and the two controls said different things. So the old switch is
+ * read once, as the composer would say it - the block taken off the screens
+ * where it showed nothing - and every slide is on from then on.
+ */
+const SLIDE_BLOCK: Record<SlideKind, BlockId> = {
+  prayer: "prayers",
+  learning: "learning",
+  announcements: "announcements",
+  shiurim: "shiurim",
+  slideshow: "slideshow",
+};
+
+function retireSlideSwitches(c: TvConfig): TvConfig {
+  const off = c.slides.filter((s) => !s.enabled).map((s) => SLIDE_BLOCK[s.kind]);
+  if (!off.length || !c.screens?.length) return c;
+  const strip = (s: Screen): Screen => {
+    const grid = s.grid
+      ?.map((r) => {
+        const keep = r.blocks.map((b, i) => [b, r.widths[i]] as const).filter(([b]) => !off.includes(b));
+        return { ...r, blocks: keep.map(([b]) => b), widths: keep.map(([, w]) => w) };
+      })
+      .filter((r) => r.blocks.length);
+    const { grid: _g, ...rest } = s;
+    return { ...rest, blocks: s.blocks.filter((b) => !off.includes(b.block)), ...(grid?.length ? { grid } : {}) };
+  };
+  return {
+    ...c,
+    screens: c.screens.map(strip),
+    occasions: c.occasions?.map((o) => (o.screen ? { ...o, screen: strip(o.screen) } : o)),
+    slides: c.slides.map((s) => ({ ...s, enabled: true })),
+  };
+}
+
 export function normalizeTvConfig(raw: unknown): TvConfig {
-  const c = normalizeStored(raw);
+  const c = retireSlideSwitches(normalizeStored(raw));
   if (c.screenLayout !== "illustrated" && !Object.values(c.perDevice).some((o) => o?.screenLayout === "illustrated")) return c;
   const moved = migratePainted(c);
   const perDevice = Object.fromEntries(

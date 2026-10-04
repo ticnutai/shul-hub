@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { SubPart } from "./Parts";
 import { Plus, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -56,11 +57,11 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
   };
 
   return (
-    <div className="space-y-2" data-testid="design-library">
-      <div className="text-sm font-medium">עיצובים מוכנים</div>
-      <p className="text-[11px] leading-tight text-muted-foreground">
-        לחיצה ממלאת את החלקים שכתובים מתחת לעיצוב - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.
-      </p>
+    <div className="space-y-5" data-testid="design-library">
+      <SubPart
+        title="ערכות מוכנות"
+        hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
+      >
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="builtin-designs">
         {BUILTIN_DESIGNS.filter((d) => !isHiddenReady(config, "design", d.id)).map((d) => {
           const wall = findBackdrop(d.values.backgroundImage ?? null);
@@ -123,9 +124,10 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         items={BUILTIN_DESIGNS.filter((d) => isHiddenReady(config, "design", d.id)).map((d) => ({ key: d.id, name: d.name }))}
         onRestore={(id) => onEdit("design-show", (cfg) => showReady(cfg, "design", id))}
       />
+      </SubPart>
+      <SubPart title="הערכות שלי" hint="ערכות ששמרתם: לחיצה מלבישה; אפשר לשנות שם, לעדכן למה שעל הלוח עכשיו, ולמחוק.">
       {designs.length > 0 && (
         <>
-          <div className="text-sm font-medium">הערכות שלי</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {designs.map((d) => {
               const c = { ...coloursOnScreen(config), ...d.colours };
@@ -270,10 +272,11 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
           </Button>
           <span className="text-xs text-muted-foreground">
             שומר את מה שעל הלוח עכשיו - כולו או רק החלקים שתבחרו.
-            {designs.length >= MAX_DESIGNS ? ` הגעתם למספר העיצובים המרבי (${MAX_DESIGNS}).` : ""}
+            {designs.length >= MAX_DESIGNS ? ` הגעתם למספר הערכות המרבי (${MAX_DESIGNS}).` : ""}
           </span>
         </div>
       )}
+      </SubPart>
     </div>
   );
 }

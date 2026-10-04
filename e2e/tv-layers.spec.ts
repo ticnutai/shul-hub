@@ -58,7 +58,7 @@ test.describe("TV editor, by layer", () => {
 
   test("a board from nothing: what is on it first, then a guide through the steps", async ({ page }) => {
     const starter = page.getByTestId("blank-board");
-    await starter.getByRole("button", { name: "התחלה מאפס - לוח ריק" }).click();
+    await starter.getByRole("button", { name: "לוח ריק - בוחרים מה יופיע" }).click();
     // The common ones are ticked to begin with; the shiurim are added, the zmanim taken off.
     await starter.getByRole("checkbox", { name: /שיעורים/ }).check();
     await starter.getByRole("checkbox", { name: /זמני היום/ }).uncheck();
@@ -97,7 +97,7 @@ test.describe("TV editor, by layer", () => {
 
   test("every box gets a background from the same gallery, and one box its own - beside its shape and line", async ({ page }) => {
     // A box's background is its own part, from the same gallery.
-    const scope = page.getByLabel("התיבות והטקסט של");
+    const scope = page.getByLabel("התיבות, המסגרות והטקסט של");
     const part = page.getByTestId("box-part-background");
     const layer = part.getByTestId("box-layer-background");
     await expect(part.getByTestId("box-background-gallery")).toBeVisible();
@@ -133,7 +133,7 @@ test.describe("TV editor, by layer", () => {
     await expect(page.getByTestId("readability")).toHaveCount(0);
 
     // Pale text's own box made pale too.
-    await page.getByLabel("התיבות והטקסט של").selectOption("frame:zmanim");
+    await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:zmanim");
     const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#eeeeee");
@@ -142,9 +142,9 @@ test.describe("TV editor, by layer", () => {
     await note.getByRole("button", { name: /בדיקת קריאוּת/ }).click();
     await expect(note).toContainText("זמני היום");
 
-    await page.getByLabel("התיבות והטקסט של").selectOption("frames");
+    await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frames");
     await note.getByRole("button", { name: "לתיקון" }).first().click();
-    await expect(page.getByLabel("התיבות והטקסט של")).toHaveValue("frame:zmanim");
+    await expect(page.getByLabel("התיבות, המסגרות והטקסט של")).toHaveValue("frame:zmanim");
     await expectNotFrozen(page, "readability");
   });
 
@@ -157,7 +157,7 @@ test.describe("TV editor, by layer", () => {
     await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e, "::after").clipPath)).toContain("evenodd");
 
     // One box apart: the zmanim an ellipse, the others stay hexagons.
-    await page.getByLabel("התיבות והטקסט של").selectOption("frame:zmanim");
+    await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:zmanim");
     await page.getByTestId("box-shapes").getByRole("button", { name: "אליפסה" }).click();
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
     await expect(zmanim).toHaveAttribute("data-shape", "ellipse");
@@ -199,7 +199,7 @@ test.describe("TV editor, by layer", () => {
     // A frame style reaches its frames, and one frame can stand apart.
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("board-frames").first().getByRole("button").nth(1).click();
-    await page.getByLabel("התיבות והטקסט של").selectOption("frame:clock");
+    await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:clock");
     const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
     await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
@@ -224,7 +224,7 @@ test.describe("TV editor, by layer", () => {
 
   test("text is chosen for the board, one box - its colours, font and size - or one part of it", async ({ page }) => {
     const layer = page.getByTestId("layer-text");
-    await page.getByLabel("התיבות והטקסט של").selectOption("frame:zmanim");
+    await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:zmanim");
     await layer.getByRole("button", { name: "הוספת טקסט" }).click();
     await layer.getByLabel("טקסט", { exact: true }).fill("#ffeeaa");
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
@@ -239,7 +239,7 @@ test.describe("TV editor, by layer", () => {
     await layer.getByLabel("גודל הטקסט בתיבה").fill("1.4");
     await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).getPropertyValue("--fs"))).toContain("1.4");
 
-    await page.getByLabel("התיבות והטקסט של").selectOption("frames");
+    await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frames");
     await layer.getByLabel("חלק מסוים בטקסט").selectOption("header.title");
     // The same editor as a click on the board: size in steps, weight from one list.
     const bigger = layer.getByRole("button", { name: "הגדלת גודל טקסט של הרכיב" });

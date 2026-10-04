@@ -33,7 +33,7 @@ test("a box added by hand: written, on the board, dressed like any box, and remo
 
   // Dressed in the design tab, chosen by its title.
   await page.getByRole("tab", { name: "עיצוב" }).click();
-  const scope = page.getByLabel("התיבות והטקסט של");
+  const scope = page.getByLabel("התיבות, המסגרות והטקסט של");
   const option = scope.locator("option", { hasText: "חוגים" });
   await scope.selectOption(await option.getAttribute("value"));
   const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");

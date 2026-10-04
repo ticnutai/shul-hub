@@ -1,16 +1,18 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { FRAME_CHOICES } from "./tvChoices";
 import { ImagePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
-import { BOX_SHAPES, frameLabel, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
-import { BOX_PRESETS, applyBoxPreset, boxPresetCss, boxShapeCss, wearsBoxPreset } from "@/tv/boxPresets";
+import { frameLabel, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
+import { BOX_PRESETS, applyBoxPreset, boxPresetCss, wearsBoxPreset } from "@/tv/boxPresets";
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
 import { FRAME_PICTURES, framePictureRef } from "@/tv/framePictures";
 import { THEME_VAR_LAYERS, TV_FONTS, isSafeGradient, type ThemeVar } from "@/tv/themes";
 import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { Folded, InnerCard, SubPart } from "./Parts";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import {
   MAX_BACKGROUNDS,
@@ -202,6 +204,8 @@ export function BackgroundLayer({
   const target = fixedTarget;
   const frame = frameOf(target);
   const onBoard = target === "board";
+  // The board's background is its own section, in parts; a box's sits inside its part, as cards.
+  const inParts = onBoard;
 
   /** What this target's background is now: a colour, a gradient or a picture, or nothing. */
   const currentOf = (c: TvConfig): string | null =>
@@ -302,7 +306,8 @@ export function BackgroundLayer({
     : { fill: picture ? null : current, picture: picture ? current : null, overlay: null, strength: saved.backgroundDim, tune: saved.backgroundTune };
 
   return (
-    <div className="space-y-3" data-testid={onBoard ? "layer-background" : "box-layer-background"}>
+    <div className={onBoard ? "space-y-5" : "space-y-3"} data-testid={onBoard ? "layer-background" : "box-layer-background"}>
+      <SubPart bare={!inParts} title="גלריית רקעים" hint="לחיצה מלבישה. צבעים, מעברי צבע ותמונות - מוכנים ושלכם; ✕ מסתיר או מוחק.">
       <BackgroundGallery
         testIds={onBoard ? "" : "box-"}
         saved={saved}
@@ -318,9 +323,10 @@ export function BackgroundLayer({
           else apply(b.picture ?? b.fill);
         }}
       />
+      </SubPart>
 
-      <div className="space-y-3 rounded-lg border p-3" data-testid={onBoard ? "background-now" : "box-background-now"}>
-        <div className="text-sm font-medium">{onBoard ? "הרקע של הלוח עכשיו" : "הרקע עכשיו"}</div>
+      <SubPart bare={!inParts} title="רקע משלכם" hint="צבע, מעבר צבעים או תמונה - בונים כאן ושומרים בגלריה.">
+      <InnerCard testId={onBoard ? "background-now" : "box-background-now"} label={onBoard ? "הרקע של הלוח עכשיו" : "הרקע עכשיו"}>
         <Segments label="סוג הרקע" value={source} onChange={(v) => setSource(v as Source)} options={sources} />
 
         {source === "colour" && (
@@ -354,11 +360,13 @@ export function BackgroundLayer({
             {onBoard && picture && <PictureLayer saved={saved} onEdit={onEdit} />}
           </div>
         )}
-      </div>
+      </InnerCard>
+      </SubPart>
 
       {/* The sliders of this target's background. */}
       {onBoard ? (
-        <div className="space-y-2 rounded-lg border p-3" data-testid="background-tune">
+        <SubPart bare={!inParts} title="כוונון" hint="בהירות, רוויה, גוון וטשטוש של הרקע, וצבע מעליו.">
+        <InnerCard testId="background-tune">
           <Range label="בהירות" value={tune.brightness} min={0.6} max={1.4} step={0.05} show={pct} onChange={(v) => setTune({ brightness: v })} />
           <Range label="רוויית צבע" value={tune.saturation} min={0} max={2} step={0.05} show={pct} onChange={(v) => setTune({ saturation: v })} />
           <Range label="גוון" value={tune.hue} min={-180} max={180} step={5} show={(v) => `${v}°`} onChange={(v) => setTune({ hue: v })} />
@@ -368,9 +376,10 @@ export function BackgroundLayer({
             <Range label="עוצמת הצבע" value={tune.tintStrength} min={0.05} max={1} step={0.05} show={pct} onChange={(v) => setTune({ tintStrength: v })} />
           )}
           <button type="button" className="text-xs underline" onClick={() => setTune(DEFAULT_BACKGROUND_TUNE)}>
-            איפוס הסליידרים
+            איפוס הכוונון
           </button>
-        </div>
+        </InnerCard>
+        </SubPart>
       ) : !picture ? (
         // Always for a box, also on the theme's own colour: how much of what is
         // behind it shows through. 100% blocks it; less lets the background in.
@@ -399,10 +408,9 @@ export function BackgroundLayer({
       )}
 
       {onBoard && (
-        <details className="rounded-md border p-2">
-          <summary className="cursor-pointer text-xs font-medium">צבעי הבסיס של רקע הלוח (כשאין לו רקע משלו)</summary>
-          <div className="mt-2">{colourFields(THEME_VAR_LAYERS.background)}</div>
-        </details>
+        <SubPart bare={!inParts} title="צבעי הבסיס" hint="מה שרואים כשללוח אין רקע משלו.">
+          <Folded label="צבעי הבסיס של רקע הלוח">{colourFields(THEME_VAR_LAYERS.background)}</Folded>
+        </SubPart>
       )}
     </div>
   );
@@ -643,25 +651,6 @@ function PictureLayer({ saved, onEdit }: { saved: TvConfig; onEdit: Edit }) {
 
 /* -------------------------------------------------------------- מסגרות -- */
 
-/** A part's controls with nothing around them, when its section already says what it is. */
-function BarePart({ children, testId }: { title: string; children: ReactNode; testId?: string }) {
-  return (
-    <div className="space-y-2" data-testid={testId}>
-      {children}
-    </div>
-  );
-}
-
-/** A part of a section: a small heading over its controls. */
-function TitledPart({ title, children, testId }: { title: string; children: ReactNode; testId?: string }) {
-  return (
-    <div className="space-y-2 rounded-lg border p-3" data-testid={testId}>
-      <div className="text-sm font-medium">{title}</div>
-      {children}
-    </div>
-  );
-}
-
 /**
  * The board's frame moved and sized by hand: thicker, longer, further from
  * the side, up or down, on one side or both - each knob named for the frame
@@ -714,19 +703,6 @@ function BoardFrameControls({ config, onEdit }: { config: TvConfig; onEdit: Laye
   );
 }
 
-const BOX_SHAPE_NAMES: Record<BoxShape, string> = {
-  square: "ישר",
-  round: "מעוגל",
-  arch: "קשת",
-  pill: "כמוסה",
-  ellipse: "אליפסה",
-  hexagon: "משושה",
-  octagon: "מתומן",
-  dome: "כיפה",
-  onion: "כיפת בצל",
-  lancet: "קשת מחודדת",
-  scallop: "מסולסל",
-};
 
 /**
  * Everything about the boxes, in one place: ready boxes, a shape, a
@@ -748,8 +724,7 @@ export function FramesLayer(
   const { config, saved, onEdit, colourFields } = props;
   const target = props.target;
   const show = (p: BoxPart) => !props.part || props.part === p;
-  // Shown as a section of its own, the section's title is its title: no second one inside.
-  const Part = props.part ? BarePart : TitledPart;
+  const Part = SubPart;
   const frame = frameOf(target);
   const fs = saved.frameStyle;
   const own = frame ? saved.frameLooks[frame] : undefined;
@@ -795,7 +770,7 @@ export function FramesLayer(
   ];
 
   return (
-    <div className="space-y-3" data-testid={props.part ? `box-part-${props.part}` : "layer-frames"}>
+    <div className="space-y-5" data-testid={props.part ? `box-part-${props.part}` : "layer-frames"}>
       {show("presets") && (
       <Part title="תיבות מוכנות" testId="box-presets">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -829,25 +804,26 @@ export function FramesLayer(
       )}
 
       {show("shape") && (
-      <Part title="צורת התיבה" testId="box-shape">
+      <Part title="צורה ופינות" testId="box-shape">
         {frame ? (
-          <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-7" data-testid="box-shapes">
-            {([null, ...BOX_SHAPES] as Array<BoxShape | null>).map((sh) => {
-              const on = (own?.shape ?? null) === sh;
+          // The same tiles, names and order as for every box (FRAME_CHOICES); "רגיל" is the plain round corner.
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" data-testid="box-shapes">
+            {[
+              { id: null as BoxShape | null, name: "כמו כולן", hint: "הצורה של כל התיבות", css: { borderStyle: "dashed", borderRadius: 6 } as CSSProperties },
+              ...FRAME_CHOICES.map((c) => ({ id: (c.id === "auto" ? "round" : c.id) as BoxShape | null, name: c.name, hint: c.hint, css: c.css })),
+            ].map((choice) => {
+              const on = (own?.shape ?? null) === choice.id;
               return (
                 <button
-                  key={sh ?? "all"}
+                  key={choice.id ?? "all"}
                   type="button"
                   aria-pressed={on}
-                  onClick={() => setOwn("shape", { shape: sh })}
-                  className={`rounded-lg border p-1.5 text-center ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
+                  title={choice.hint}
+                  onClick={() => setOwn("shape", { shape: choice.id })}
+                  className={`rounded-lg border p-1.5 text-center transition ${on ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`}
                 >
-                  <span
-                    className="mx-auto mb-1 block h-7 w-11 border-2 border-[#c9a227] bg-[#12243f]"
-                    style={sh ? boxShapeCss(sh) : { borderStyle: "dashed", borderRadius: 6 }}
-                    aria-hidden
-                  />
-                  <span className="block text-[11px] leading-tight">{sh ? BOX_SHAPE_NAMES[sh] : "כמו כולן"}</span>
+                  <span className="mx-auto mb-1 block h-10 w-14 border-2 border-[#c9a227] bg-[#12243f]" style={choice.css} aria-hidden />
+                  <span className="block text-[11px] font-medium leading-tight">{choice.name}</span>
                 </button>
               );
             })}
@@ -860,28 +836,26 @@ export function FramesLayer(
       )}
 
       {show("background") && (
-      <Part title="רקע התיבה" testId="box-background">
+      <Part
+        title="רקע התיבה"
+        testId="box-background"
+        hint='צבע, מעבר צבעים או תמונה מאותה גלריה של הרקעים - ו"אטימות": 100% חוסם, פחות - רואים את רקע הלוח דרך התיבה.'
+      >
         <BackgroundLayer key={target} {...props} fixedTarget={target} />
-        {!frame && (
-          <details className="rounded-md border p-2">
-            <summary className="cursor-pointer text-xs font-medium">צבע הבסיס של התיבות (כשאין להן רקע משלהן)</summary>
-            <div className="mt-2">{colourFields(THEME_VAR_LAYERS.frames)}</div>
-          </details>
-        )}
+        {!frame && <Folded label="צבע הבסיס של התיבות (כשאין להן רקע משלהן)">{colourFields(THEME_VAR_LAYERS.frames)}</Folded>}
       </Part>
       )}
 
       {/* Not a box's frame: one for the whole board - columns, beams, a פרוכת, a frame around the screen. */}
-      {show("frames") && (
-        <Part title="מסגרת ללוח כולו" testId="board-frame">
+      {show("frames") && !frame && (
+        <Part title="מסגרת ללוח כולו" testId="board-frame" hint="חלה על כל המסך, לא על תיבה. הצבעים והחומרים של התיבות נשארים כפי שבחרתם.">
           <BoardFramePicker config={config} onEdit={onEdit} />
-          <p className="text-[11px] text-muted-foreground">חלה על כל המסך, לא על תיבה אחת. הצבעים והחומרים של התיבות נשארים כפי שבחרתם.</p>
           <BoardFrameControls config={saved} onEdit={onEdit} />
         </Part>
       )}
 
       {show("frames") && (
-        <Part title="קו ובליטה" testId="frame-style">
+        <Part title="קו ובליטה של התיבות" testId="frame-style" hint={frame ? "הבליטה ועובי מסגרת התמונה - משותפים לכל התיבות (בחרו \"הכול\" למעלה)." : undefined}>
           {frame ? (
             <>
               <ColourChoice
@@ -910,8 +884,12 @@ export function FramesLayer(
                 show={(v) => (v === 0 ? "רגיל" : pct(v))}
                 onChange={(v) => setFs({ depth: v })}
               />
-              <button type="button" className="text-xs underline" onClick={() => setFs({ ...DEFAULT_FRAME_STYLE, fill: fs.fill, fillOpacity: fs.fillOpacity })}>
-                איפוס הקו, הבליטה והמסגרת
+              <button
+                type="button"
+                className="text-xs underline"
+                onClick={() => setFs({ line: DEFAULT_FRAME_STYLE.line, lineWidth: DEFAULT_FRAME_STYLE.lineWidth, depth: DEFAULT_FRAME_STYLE.depth })}
+              >
+                איפוס הקו והבליטה
               </button>
             </>
           )}
@@ -919,11 +897,11 @@ export function FramesLayer(
       )}
 
       {show("frames") && (
-      <Part title="מסגרת מיוחדת" testId="frame-pictures">
-        <p className="text-[11px] leading-tight text-muted-foreground">
-          הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה או מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה.
-          {" "}בתיבה בצורה חתוכה (משושה, מתומן, כיפה, מגן...) המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה.
-        </p>
+      <Part
+        title="מסגרת לתיבות"
+        testId="frame-pictures"
+        hint="הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה או מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה. בתיבה בצורה חתוכה (משושה, מתומן, כיפה...) המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה."
+      >
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           <label
             className={`flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-dashed text-[11px] hover:border-primary ${uploading ? "opacity-60" : ""}`}
@@ -1000,98 +978,106 @@ export function TextLayer({
   const area = target.startsWith("area:") ? target.slice(5) : null;
 
   return (
-    <div className="space-y-3" data-testid="layer-text">
-      <label className="flex items-center gap-2 rounded-md bg-muted/60 p-2 text-sm">
-        <span className="shrink-0 font-medium">חלק מסוים:</span>
-        <select
-          aria-label="חלק מסוים בטקסט"
-          value={element}
-          onChange={(e) => setElement(e.target.value)}
-          className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
-        >
-          <option value="">{given === "frames" ? "כל הטקסט בלוח" : "כל הטקסט בתיבה"}</option>
-          {TEXT_AREAS.map((a) => (
-            <option key={a.key} value={a.key}>
-              {a.label}
-              {config.styles[a.key] ? " •" : ""}
-            </option>
-          ))}
-        </select>
-      </label>
+    <div className="space-y-5" data-testid="layer-text">
+      {/* One part of the board's text: offered for the whole board, where it belongs. */}
+      {given === "frames" && (
+        <SubPart title="איזה טקסט" hint="כל הטקסט בלוח, או חלק אחד ממנו (השעה, שם בית הכנסת, כותרת...).">
+          <select
+            aria-label="חלק מסוים בטקסט"
+            value={element}
+            onChange={(e) => setElement(e.target.value)}
+            className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+          >
+            <option value="">כל הטקסט בלוח</option>
+            {TEXT_AREAS.map((a) => (
+              <option key={a.key} value={a.key}>
+                {a.label}
+                {config.styles[a.key] ? " •" : ""}
+              </option>
+            ))}
+          </select>
+        </SubPart>
+      )}
 
       {area ? (
-        <>
+        <SubPart title="עיצוב החלק שנבחר">
           <TextAreaControls config={config} onEdit={onEdit} areaKey={area} />
-        </>
+        </SubPart>
       ) : frame ? (
-        <div className="space-y-2 rounded-lg border p-3">
-          <ColourChoice
-            label="טקסט"
-            value={saved.frameLooks[frame]?.text}
-            fallback="#ffffff"
-            unsetLabel="כמו כל הלוח"
-            onChange={(v) => onEdit(`layer-text:${frame}:text`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { text: v }) }))}
-          />
-          <ColourChoice
-            label="כותרות ושעות"
-            value={saved.frameLooks[frame]?.accent}
-            fallback="#f0c35c"
-            unsetLabel="כמו כל הלוח"
-            onChange={(v) => onEdit(`layer-text:${frame}:accent`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { accent: v }) }))}
-          />
-          {/* Its own font and size: for this box only, over the board's. */}
-          <label className="flex items-center gap-2 text-xs">
-            <span className="shrink-0">גופן</span>
-            <select
-              aria-label="גופן התיבה"
-              value={saved.frameLooks[frame]?.font ?? ""}
-              onChange={(e) =>
-                onEdit(`layer-text:${frame}:font`, (c) => ({
-                  ...c,
-                  frameLooks: setFrameLook(c.frameLooks, frame, { font: (e.target.value || null) as TvConfig["font"] | null }),
-                }))
+        <>
+          <SubPart title="גופן וגודל">
+            {/* Its own font and size: for this box only, over the board's. */}
+            <label className="flex items-center gap-2 text-xs">
+              <span className="shrink-0">גופן</span>
+              <select
+                aria-label="גופן התיבה"
+                value={saved.frameLooks[frame]?.font ?? ""}
+                onChange={(e) =>
+                  onEdit(`layer-text:${frame}:font`, (c) => ({
+                    ...c,
+                    frameLooks: setFrameLook(c.frameLooks, frame, { font: (e.target.value || null) as TvConfig["font"] | null }),
+                  }))
+                }
+                className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">כמו כל הלוח</option>
+                {TV_FONTS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Range
+              label="גודל הטקסט בתיבה"
+              value={saved.frameLooks[frame]?.textScale ?? 1}
+              min={0.6}
+              max={1.8}
+              step={0.05}
+              show={pct}
+              onChange={(v) =>
+                onEdit(`layer-text:${frame}:scale`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { textScale: v === 1 ? null : v }) }))
               }
-              className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
-            >
-              <option value="">כמו כל הלוח</option>
-              {TV_FONTS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Range
-            label="גודל הטקסט בתיבה"
-            value={saved.frameLooks[frame]?.textScale ?? 1}
-            min={0.6}
-            max={1.8}
-            step={0.05}
-            show={pct}
-            onChange={(v) =>
-              onEdit(`layer-text:${frame}:scale`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { textScale: v === 1 ? null : v }) }))
-            }
-          />
-          <TitleStylePicker config={saved} onEdit={onEdit} frame={frame} />
-        </div>
+            />
+          </SubPart>
+          <SubPart title="סגנון הכותרת">
+            <TitleStylePicker config={saved} onEdit={onEdit} frame={frame} />
+          </SubPart>
+          <SubPart title="צבעי הטקסט">
+            <ColourChoice
+              label="טקסט"
+              value={saved.frameLooks[frame]?.text}
+              fallback="#ffffff"
+              unsetLabel="כמו כל הלוח"
+              onChange={(v) => onEdit(`layer-text:${frame}:text`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { text: v }) }))}
+            />
+            <ColourChoice
+              label="כותרות ושעות"
+              value={saved.frameLooks[frame]?.accent}
+              fallback="#f0c35c"
+              unsetLabel="כמו כל הלוח"
+              onChange={(v) => onEdit(`layer-text:${frame}:accent`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, { accent: v }) }))}
+            />
+          </SubPart>
+        </>
       ) : (
         <>
-          <label className="flex items-center gap-2 text-xs">
-            <span className="shrink-0">גופן</span>
-            <select
-              aria-label="גופן"
-              value={saved.font}
-              onChange={(e) => onEdit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))}
-              className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
-            >
-              {TV_FONTS.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          {(
+          <SubPart title="גופן וגודל">
+            <label className="flex items-center gap-2 text-xs">
+              <span className="shrink-0">גופן</span>
+              <select
+                aria-label="גופן"
+                value={saved.font}
+                onChange={(e) => onEdit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))}
+                className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+              >
+                {TV_FONTS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </label>
             <Range
               label="גודל הטקסט"
               value={saved.textScale}
@@ -1101,28 +1087,27 @@ export function TextLayer({
               show={pct}
               onChange={(v) => onEdit("scale", (c) => ({ ...c, textScale: v }))}
             />
-          )}
-          <TitleStylePicker config={saved} onEdit={onEdit} />
-          <div className="space-y-1">
-            <Range
-              label="מרווח אותיות בכותרות"
-              value={saved.tracking ?? 0}
-              min={0}
-              max={0.24}
-              step={0.01}
-              show={(v) => (saved.tracking === null ? "רגיל" : `${v.toFixed(2)}em`)}
-              onChange={(v) => onEdit("track", (c) => ({ ...c, tracking: v }))}
-            />
-            {saved.tracking !== null && (
-              <button type="button" className="text-xs underline" onClick={() => onEdit("track", (c) => ({ ...c, tracking: null }))}>
-                מרווח רגיל
-              </button>
-            )}
-          </div>
-          <div className="text-xs font-medium text-muted-foreground">
-            צבעי הטקסט
-          </div>
-          {colourFields(THEME_VAR_LAYERS.text)}
+            <div className="space-y-1">
+              <Range
+                label="מרווח אותיות בכותרות"
+                value={saved.tracking ?? 0}
+                min={0}
+                max={0.24}
+                step={0.01}
+                show={(v) => (saved.tracking === null ? "רגיל" : `${v.toFixed(2)}em`)}
+                onChange={(v) => onEdit("track", (c) => ({ ...c, tracking: v }))}
+              />
+              {saved.tracking !== null && (
+                <button type="button" className="text-xs underline" onClick={() => onEdit("track", (c) => ({ ...c, tracking: null }))}>
+                  מרווח רגיל
+                </button>
+              )}
+            </div>
+          </SubPart>
+          <SubPart title="סגנון הכותרת">
+            <TitleStylePicker config={saved} onEdit={onEdit} />
+          </SubPart>
+          <SubPart title="צבעי הטקסט">{colourFields(THEME_VAR_LAYERS.text)}</SubPart>
         </>
       )}
     </div>

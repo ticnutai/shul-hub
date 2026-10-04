@@ -891,7 +891,7 @@ function BoardElement({
   const change = (v: string) =>
     onEdit(`txt:${k}`, (c) =>
       isTicker
-        ? { ...c, ticker: { enabled: v.trim() !== "", text: v.slice(0, 400) } }
+        ? { ...c, ticker: { ...c.ticker, text: v.slice(0, 400) } }
         : setText(c, k, v === fallback ? null : v),
     );
 

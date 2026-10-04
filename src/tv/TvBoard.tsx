@@ -184,7 +184,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
    */
   const bars = useMemo(() => {
     const on = (b: string) => !composed || composed.screen.blocks.some((x) => x.block === b);
-    return { header: on("header"), clock: on("clock"), footer: on("footer"), logo: on("logo") };
+    return { header: on("header"), clock: on("clock"), footer: on("footer"), logo: on("logo"), ticker: on("ticker") };
   }, [composed, occasionScreen]);
   const screenSlides = composed
     ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
@@ -321,7 +321,8 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 
         {dashboard && <DashboardStrip now={minuteNow} extra={config.ticker.enabled ? config.ticker.text : ""} />}
 
-        {!dashboard && !ownHeader && config.ticker.enabled && config.ticker.text.trim() && (
+        {/* On, written, and on this screen (the composer's "כתובית רצה"). */}
+        {!dashboard && !ownHeader && bars.ticker && config.ticker.enabled && config.ticker.text.trim() && (
           <div className="tv-ticker" {...edit.attr("ticker")}>
             <span
               className="tv-ticker-text"

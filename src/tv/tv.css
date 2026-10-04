@@ -3300,6 +3300,16 @@
   corner-shape: round;
 }
 
+/* One box's own corner, as every box's (has-frame-shape). */
+.tv-root :is(.tv-panel, .tv-card):is([data-shape="squircle"], [data-shape="bevel"], [data-shape="scoop"], [data-shape="notch"]) {
+  border-radius: calc(var(--u) * 1.6) !important;
+}
+
+.tv-root :is(.tv-panel, .tv-card)[data-shape="squircle"] { corner-shape: superellipse(2); }
+.tv-root :is(.tv-panel, .tv-card)[data-shape="bevel"] { corner-shape: bevel; }
+.tv-root :is(.tv-panel, .tv-card)[data-shape="scoop"] { corner-shape: scoop; }
+.tv-root :is(.tv-panel, .tv-card)[data-shape="notch"] { corner-shape: notch; }
+
 .tv-root :is(.tv-panel, .tv-card)[data-shape="round"] {
   border-radius: calc(var(--u) * 2.2) !important;
   corner-shape: round;

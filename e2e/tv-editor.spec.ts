@@ -347,17 +347,33 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "design deleted");
   });
 
-  test("the reset dialog opens, cancels and confirms without sticking", async ({ page }) => {
+  test("starting over is one place: the ordinary board, or everything deleted, each asked first", async ({ page }) => {
+    // The reset that lived in "כלים" is gone: starting over is in "ערכות" only.
     await page.getByRole("tab", { name: "כלים" }).click();
-    const open = page.getByRole("button", { name: /איפוס לעיצוב ברירת המחדל/ });
+    await expect(page.getByRole("button", { name: /איפוס לעיצוב ברירת המחדל/ })).toHaveCount(0);
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    const starter = page.getByTestId("blank-board");
+    await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
+    await expect(root(page)).toHaveClass(/has-bg-gradient/);
 
-    await open.click();
-    await page.getByRole("button", { name: "ביטול" }).first().click();
-    await expectNotFrozen(page, "reset cancelled");
+    // The ordinary board: asked, cancelled, then done - the look goes back.
+    await starter.getByRole("button", { name: "הלוח הרגיל של המערכת" }).click();
+    await page.getByRole("button", { name: "ביטול", exact: true }).click();
+    await expect(root(page)).toHaveClass(/has-bg-gradient/);
+    await expectNotFrozen(page, "start over cancelled");
+    await starter.getByRole("button", { name: "הלוח הרגיל של המערכת" }).click();
+    await page.getByRole("button", { name: "חזרה ללוח הרגיל" }).click();
+    await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
 
-    await open.click();
-    await page.getByRole("button", { name: "אפס", exact: true }).click();
-    await expectNotFrozen(page, "reset confirmed");
+    // Everything deleted: says so before it is done.
+    await starter.getByRole("button", { name: "מחיקת הכול" }).click();
+    await expect(page.getByRole("alertdialog")).toContainText("הנוסחים, הלוגואים, המועדים");
+    await page.getByRole("alertdialog").getByRole("button", { name: "מחיקת הכול" }).click();
+    await expectNotFrozen(page, "everything deleted");
+
+    // Not offered for one kind of screen: it is the whole board's.
+    await chooseDevice(page, "מובייל");
+    await expect(page.getByTestId("blank-board")).toContainText("התחלה מחדש היא ללוח כולו");
   });
 
   test("a run through the editor, the way an admin actually uses it", async ({ page }) => {

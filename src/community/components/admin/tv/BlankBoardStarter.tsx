@@ -1,4 +1,15 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { BLOCK_BY_ID } from "@/tv/blocks";
 import { STARTER_BLOCKS, STARTER_DEFAULT } from "@/tv/blankBoard";
@@ -16,11 +27,30 @@ export const BUILD_STEPS = [
 export type BuildStep = (typeof BUILD_STEPS)[number]["id"];
 
 /**
- * "התחלה מאפס": the gabbai ticks what the board shows, and gets one screen
- * with only that on it and the plainest look (blankBoard.ts). Undo brings
- * the board back; nothing is saved until "שמור ושדר".
+ * "התחלה מחדש" - the one place to start the board over, three ways:
+ *  - a blank board: tick what it shows, then arrange and dress it step by
+ *    step (blankBoard.ts);
+ *  - the system's ordinary board: its look and screens as a new board's
+ *    (standardBoard);
+ *  - everything deleted: the whole board as a new synagogue's - wording,
+ *    logos, occasions and galleries with it.
+ * The first two keep what the shul has collected. All three are a draft
+ * until "שמור ושדר", and a step back (Ctrl+Z) undoes them; once saved, the
+ * board before is in "גרסאות קודמות". It was two things in two tabs - this,
+ * and a "reset" in "כלים" that said it reset the colours and deleted it all.
  */
-export function BlankBoardStarter({ onCreate }: { onCreate: (blocks: BlockId[]) => void }) {
+export function BlankBoardStarter({
+  onCreate,
+  onStandard,
+  onWipe,
+  unavailable,
+}: {
+  onCreate: (blocks: BlockId[]) => void;
+  onStandard: () => void;
+  onWipe: () => void;
+  /** Why it is not offered now: starting over is for the whole board, not one kind of screen or an occasion. */
+  unavailable?: string | null;
+}) {
   const [open, setOpen] = useState(false);
   const [chosen, setChosen] = useState<BlockId[]>([...STARTER_DEFAULT]);
   const toggle = (id: BlockId) => setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
@@ -28,15 +58,43 @@ export function BlankBoardStarter({ onCreate }: { onCreate: (blocks: BlockId[]) 
   const content = STARTER_BLOCKS.filter((id) => !fixed.includes(id));
   const hasContent = chosen.some((id) => content.includes(id));
 
+  if (unavailable)
+    return (
+      <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground" data-testid="blank-board">
+        {unavailable}
+      </p>
+    );
+
   if (!open)
     return (
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-dashed border-primary/40 p-3" data-testid="blank-board">
+      <div className="flex flex-wrap items-center gap-2" data-testid="blank-board">
         <Button type="button" onClick={() => setOpen(true)}>
-          התחלה מאפס - לוח ריק
+          לוח ריק - בוחרים מה יופיע
         </Button>
-        <p className="flex-1 text-xs text-muted-foreground">
-          בוחרים קודם מה יופיע על הלוח, ואז מסדרים ומעצבים צעד אחרי צעד. אפשר לבטל בכל רגע ב"ביטול שינויים".
-        </p>
+        <Confirm
+          trigger={
+            <Button type="button" variant="outline">
+              הלוח הרגיל של המערכת
+            </Button>
+          }
+          title="לחזור ללוח הרגיל של המערכת?"
+          text="המראה והמסכים יחזרו להיות כמו בלוח חדש. הנוסחים, הלוגואים, המועדים, הגלריות והערכות שלכם נשארים."
+          action="חזרה ללוח הרגיל"
+          onConfirm={onStandard}
+        />
+        <Confirm
+          trigger={
+            <Button type="button" variant="ghost" className="text-destructive">
+              מחיקת הכול
+            </Button>
+          }
+          title="למחוק את כל ההגדרות של הלוח?"
+          text='הכול חוזר להיות כמו בבית כנסת חדש: המראה והמסכים, וגם הנוסחים, הלוגואים, המועדים, התמונות, הגלריות, הערכות והתיבות שלכם. המניינים, ההודעות והשיעורים לא נמחקים. זו טיוטה עד "שמור ושדר"; אחרי שמירה אפשר להחזיר מ"גרסאות קודמות" בלשונית "כלים".'
+          action="מחיקת הכול"
+          destructive
+          onConfirm={onWipe}
+        />
+        <p className="w-full text-[11px] text-muted-foreground">הכול טיוטה עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר.</p>
       </div>
     );
 
@@ -85,6 +143,44 @@ export function BlankBoardStarter({ onCreate }: { onCreate: (blocks: BlockId[]) 
         העיצוב והסידור מתאפסים; הנוסחים, הלוגואים, המועדים והגלריות שלכם נשארים. שום דבר לא נשמר עד "שמור ושדר".
       </p>
     </div>
+  );
+}
+
+/** Asked before it is done, the same way for each way to start over. */
+function Confirm({
+  trigger,
+  title,
+  text,
+  action,
+  destructive = false,
+  onConfirm,
+}: {
+  trigger: ReactNode;
+  title: string;
+  text: string;
+  action: string;
+  destructive?: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      <AlertDialogContent dir="rtl">
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{text}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>ביטול</AlertDialogCancel>
+          <AlertDialogAction
+            className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
+            onClick={onConfirm}
+          >
+            {action}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 

@@ -3,10 +3,10 @@ import { isSafeLayerFill } from "./layers";
 
 /** A box's own shape: square or round corners, or one of the whole-box shapes. */
 export type BoxShape =
-  | "square" | "round" | "arch" | "pill" | "ellipse" | "hexagon" | "octagon"
+  | "square" | "round" | "squircle" | "bevel" | "scoop" | "notch" | "arch" | "pill" | "ellipse" | "hexagon" | "octagon"
   | "dome" | "onion" | "lancet" | "scallop";
 export const BOX_SHAPES: BoxShape[] = [
-  "square", "round", "arch", "pill", "ellipse", "hexagon", "octagon", "dome", "onion", "lancet", "scallop",
+  "square", "round", "squircle", "bevel", "scoop", "notch", "arch", "pill", "ellipse", "hexagon", "octagon", "dome", "onion", "lancet", "scallop",
 ];
 
 /**
