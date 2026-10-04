@@ -3,6 +3,7 @@ import { BookOpen, House, LogIn, Megaphone, MessageCircle, ShieldCheck, UserRoun
 import { useSettings } from "@community/lib/data";
 import { cn } from "@/lib/utils";
 import { NotificationCenter } from "@community/components/NotificationCenter";
+import { ReminderEngine } from "@community/components/ReminderEngine";
 import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 import { AdminAiShortcut } from "./AdminAiShortcut";
 import { readLogos } from "@community/lib/logos";
@@ -109,6 +110,7 @@ export function GlobalAppHeader() {
         >
           <AccountChip />
           <NotificationCenter />
+          <ReminderEngine />
         </div>
       </div>
       <PrimaryDestinationNav className="mx-auto mb-2 mt-2 max-w-md px-2 sm:mb-2.5 sm:mt-2.5" />
