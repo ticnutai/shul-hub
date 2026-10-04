@@ -272,7 +272,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
         )}
         {s.paused && <Badge variant="outline">⏸ מושהה</Badge>}
         {s.themeOverride && looks.some((l) => l.id === s.themeOverride) && (
-          <Badge variant="outline">ערכה מהשלט: {looks.find((l) => l.id === s.themeOverride)?.name}</Badge>
+          <Badge variant="outline">ערכה שנבחרה למסך: {looks.find((l) => l.id === s.themeOverride)?.name}</Badge>
         )}
         {/* What the box itself measured (screenHealth.ts): text the TV enlarged, and what does not fit. */}
         {s.app ? (

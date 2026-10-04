@@ -211,7 +211,7 @@ test.describe("administrator", () => {
     await expect(page.locator('[data-edit="zman.alot"]')).toHaveCount(0);
 
     // Undo everything: back to exactly what is saved.
-    const undo = page.getByRole("button", { name: "ביטול (Ctrl+Z)" });
+    const undo = page.getByRole("button", { name: "צעד אחורה (Ctrl+Z)" });
     for (let i = 0; i < 30 && (await undo.isEnabled()); i++) await undo.click();
     await expect(page.getByText("הכל שמור").first()).toBeVisible();
     await expect(page.locator(BOARD_NAME).first()).toContainText(original);
@@ -250,7 +250,7 @@ test.describe("administrator", () => {
     await page.getByRole("button", { name: "דוגמת התראת זמנים" }).click();
     await expect(page.locator(".tv-alert-card, .tv-alert-chip").first()).toBeVisible();
 
-    const undo = page.getByRole("button", { name: "ביטול (Ctrl+Z)" });
+    const undo = page.getByRole("button", { name: "צעד אחורה (Ctrl+Z)" });
     for (let i = 0; i < 30 && (await undo.isEnabled()); i++) await undo.click();
     await expect(page.getByText("הכל שמור").first()).toBeVisible();
     expect(errors).toEqual([]);

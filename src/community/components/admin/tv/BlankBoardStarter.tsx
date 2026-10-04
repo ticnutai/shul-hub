@@ -11,7 +11,7 @@ export const BUILD_STEPS = [
   { id: "design-boxes", label: "תיבות" },
   { id: "design-frames", label: "מסגרות" },
   { id: "design-text", label: "טקסט" },
-  { id: "design-sets", label: "שמירה כעיצוב שלי" },
+  { id: "design-sets", label: "שמירה כערכה שלי" },
 ] as const;
 export type BuildStep = (typeof BUILD_STEPS)[number]["id"];
 

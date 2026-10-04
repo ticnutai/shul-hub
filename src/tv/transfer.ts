@@ -141,7 +141,7 @@ export function buildExport(
 
 export function exportFileName(what: "themes" | "gradients" | "all"): string {
   const day = new Date().toISOString().slice(0, 10);
-  const label = what === "themes" ? "ערכות-נושא" : what === "gradients" ? "גרדיאנטים" : "עיצוב";
+  const label = what === "themes" ? "צבעי-בסיס" : what === "gradients" ? "גרדיאנטים" : "עיצוב";
   return `לוח-${label}-${day}.json`;
 }
 
@@ -206,7 +206,7 @@ export function parseImport(text: string, newThemeId: () => string, newGradientI
     .filter((i): i is PortableIllustration => i !== null);
 
   if (!themes.length && !gradients.length && !board && !illustrations.length)
-    throw new Error("לא נמצאו ערכות נושא או גרדיאנטים תקינים בקובץ");
+    throw new Error("לא נמצאו צבעי בסיס או גרדיאנטים תקינים בקובץ");
   return {
     themes,
     gradients,

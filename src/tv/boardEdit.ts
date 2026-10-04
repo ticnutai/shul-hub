@@ -57,7 +57,7 @@ export const EDITABLE: Record<string, EditableSpec> = {
    * background, style and frames. `closest("[data-edit]")` means an inner
    * element still wins, so nothing else changes.
    */
-  "board.background": { label: "רקע הלוח, סגנון ומסגרות" },
+  "board.background": { label: "רקע הלוח ומסגרת הלוח" },
   "header.logo": { label: "לוגו קרובים", hideable: true, flip: "header" },
   /**
    * The mark of whoever the board belongs to beside the shul - the company

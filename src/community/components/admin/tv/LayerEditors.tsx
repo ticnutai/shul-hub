@@ -902,7 +902,7 @@ export function FramesLayer(
                 <Range label="עובי הקו" value={fs.lineWidth} min={0.5} max={6} step={0.5} show={(v) => String(v)} onChange={(v) => setFs({ lineWidth: v })} />
               )}
               <Range
-                label="כמה המסגרות בולטות"
+                label="כמה התיבות בולטות"
                 value={fs.depth}
                 min={0}
                 max={1}

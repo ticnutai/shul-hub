@@ -87,7 +87,7 @@ test("the sketch's top and bottom lines are the board's spacing; the line betwee
 
   // A double click on the top line: back to the design's own spacing.
   await page.mouse.dblclick(top.x + top.width / 2, (await sketch.locator('[data-sketch-handle="space-top"]').boundingBox())!.y + 3);
-  await expect(status).toContainText("מרווח עליון (מעל הלוחות): כמו בעיצוב");
+  await expect(status).toContainText("מרווח עליון (מעל התיבות): רגיל");
 
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect

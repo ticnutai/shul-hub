@@ -93,7 +93,7 @@ export const BLOCKS: readonly BlockSpec[] = [
   {
     id: "logo",
     name: "לוגואים",
-    note: "של בית הכנסת ושל התורמים - נבחרים בעיצוב",
+    note: "של בית הכנסת ושל התורמים - נבחרים בלשונית פריסה",
     zone: "top",
     weight: 0,
     chrome: true,

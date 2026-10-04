@@ -443,7 +443,7 @@ function ColorField({
         size="icon"
         className="size-8 shrink-0"
         aria-label={`החזרת ${label} לצבע הבסיס`}
-        title={`ערך הערכה: ${themeValue}`}
+        title={`צבע הבסיס: ${themeValue}`}
         disabled={!overridden}
         onClick={onReset}
       >
@@ -1148,7 +1148,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           setBeforeAfter((v) => !v);
         }}
       >
-        <ArrowLeftRight className="size-4" /> {beforeAfter ? "מוצג: לפני - חזרה לאחרי" : "לפני / אחרי"}
+        <ArrowLeftRight className="size-4" /> {beforeAfter ? "חזרה לטיוטה" : "לפני / אחרי"}
       </Button>
       <Button type="button" variant="outline" size="sm" onClick={() => setAutoplay((a) => !a)}>
         {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
@@ -1218,8 +1218,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="ביטול (Ctrl+Z)"
-          title="ביטול (Ctrl+Z)"
+          aria-label="צעד אחורה (Ctrl+Z)"
+          title="צעד אחורה (Ctrl+Z)"
           disabled={!state.past.length}
           onClick={() => dispatch({ type: "undo" })}
         >
@@ -1229,8 +1229,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="חזרה (Ctrl+Y)"
-          title="חזרה (Ctrl+Y)"
+          aria-label="צעד קדימה (Ctrl+Y)"
+          title="צעד קדימה (Ctrl+Y)"
           disabled={!state.future.length}
           onClick={() => dispatch({ type: "redo" })}
         >
@@ -1579,8 +1579,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           </Section>
 
           <Section
-            title="כשהתוכן לא נכנס למסגרת"
-            hint="יום עם הרבה מניינים, שבוע של שיעורים, הודעה ארוכה: מסגרת שאין בה מקום לכל - זזה לאט, כך שהכול עובר מול הקהל. מסגרת שהכול נכנס בה לא זזה."
+            title="כשהתוכן לא נכנס לתיבה"
+            hint="יום עם הרבה מניינים, שבוע של שיעורים, הודעה ארוכה: תיבה שאין בה מקום לכל - זזה לאט, כך שהכול עובר מול הקהל. תיבה שהכול נכנס בה לא זזה."
           >
             <div className="flex flex-wrap gap-2" role="group" aria-label="כשהתוכן לא נכנס">
               {(
@@ -1967,7 +1967,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               onRestore={(config, label) => {
                 setShownVersion(null);
                 dispatch({ type: "edit", key: `restore-version:${label}`, update: () => config });
-                toast.success(`הגרסה מ-${label} הוחזרה כטיוטה. "שמור ושדר" מעלה אותה למסכים; "ביטול שינויים" מחזיר.`);
+                toast.success(`הגרסה מ-${label} הוחזרה כטיוטה. "שמור ושדר" מעלה אותה למסכים; "צעד אחורה" (Ctrl+Z) מחזיר.`);
               }}
             />
           </Section>
@@ -2271,7 +2271,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             title="הלוח במסך מלא בעיצוב השמור, בדיוק כמו בטלוויזיות. מתאים גם כדי להשתמש במחשב כמסך תצוגה."
             onClick={() => window.open("/admin/tv-board", "_blank")}
           >
-            <ExternalLink className="size-4" /> פתיחת הלוח בחלון נפרד
+            <ExternalLink className="size-4" /> תצוגת הלוח השמור בחלון נפרד
           </Button>
         </span>
       </div>

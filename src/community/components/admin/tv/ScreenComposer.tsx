@@ -586,11 +586,11 @@ export function ScreenComposer({
                     size="sm"
                     variant="outline"
                     className="h-7 shrink-0 px-2 text-[11px]"
-                    title="מבטל את הסידור הידני של המסך הזה; המסגרות יסודרו לפי ה'מיקום' שברשימה"
+                    title="מבטל את הסידור הידני של המסך הזה; התיבות יסודרו לפי ה'מיקום' שברשימה"
                     onClick={() => {
                       editScreen({ grid: undefined });
                       setSketchMessage(
-                        "חזרה לסידור האוטומטי: המסגרות מסודרות לפי ה'מיקום' שברשימה.",
+                        "חזרה לסידור האוטומטי: התיבות מסודרות לפי ה'מיקום' שברשימה.",
                       );
                     }}
                   >

@@ -55,7 +55,7 @@ export function DeviceScopeBanner({
         {editingOne ? (
           <>עורך עכשיו: {DEVICE_CLASS_LABELS[scope as DeviceClass]}</>
         ) : (
-          <>עורך עכשיו: כל התצוגות</>
+          <>עורך עכשיו: כל המסכים</>
         )}
       </span>
 

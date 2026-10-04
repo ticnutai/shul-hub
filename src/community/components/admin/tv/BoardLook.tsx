@@ -32,10 +32,10 @@ type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 export const SPACING_FALLBACK: Record<SpacingEdge, number> = { top: 2.6, bottom: 1.6, sides: 3, gap: 2 };
 
 const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
-  top: { name: "מרווח עליון", hint: "בין שורת הכותרת לבין הלוחות. פחות מרווח = לוחות גבוהים יותר" },
-  bottom: { name: "מרווח תחתון", hint: "בין הלוחות לבין השורה התחתונה (הפרשה והנרות)" },
-  sides: { name: "שוליים בצדדים", hint: "המרווח בין הלוחות לקצה המסך" },
-  gap: { name: "מרווח בין הלוחות", hint: "המרווח בין לוח ללוח" },
+  top: { name: "מרווח עליון", hint: "בין שורת הכותרת לבין התיבות. פחות מרווח = תיבות גבוהות יותר" },
+  bottom: { name: "מרווח תחתון", hint: "בין התיבות לבין השורה התחתונה (הפרשה והנרות)" },
+  sides: { name: "שוליים בצדדים", hint: "המרווח בין התיבות לקצה המסך" },
+  gap: { name: "מרווח בין התיבות", hint: "המרווח בין תיבה לתיבה" },
 };
 
 /**
@@ -255,8 +255,8 @@ export function FrameSpacing({
 
       {!compact && (
         <p className="text-xs text-muted-foreground">
-          חל על כל הלוחות בכל הפריסות - בטלוויזיה, בלפטופ ובנייד. מרווח קטן יותר מעלה את גובה
-          הלוחות, ולפעמים מכניס שורה נוספת.
+          חל על כל התיבות בכל הפריסות - בטלוויזיה, בלפטופ ובנייד. מרווח קטן יותר מגביה את
+          התיבות, ולפעמים מכניס שורה נוספת.
         </p>
       )}
     </div>

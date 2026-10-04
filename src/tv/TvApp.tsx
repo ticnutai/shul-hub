@@ -87,7 +87,7 @@ const COMMAND_LABELS: Record<TvCommand["command"], string> = {
   prev: "שקופית קודמת",
   goto: "מעבר לשקופית",
   reload: "טעינה מחדש",
-  theme: "החלפת ערכת נושא",
+  theme: "החלפת ערכה",
   snapshot: "צילום מסך",
   message: "הודעה על המסך",
   identify: "זיהוי מסך",

@@ -676,7 +676,7 @@ function OccasionDialog({
               className="h-9 rounded-md border bg-background px-2"
             >
               <option value="">כרגיל</option>
-              <optgroup label="עיצובים מוכנים">
+              <optgroup label="ערכות מוכנות">
                 {BUILTIN_DESIGNS.map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
@@ -684,7 +684,7 @@ function OccasionDialog({
                 ))}
               </optgroup>
               {config.designs.length > 0 && (
-                <optgroup label="העיצובים שלי">
+                <optgroup label="הערכות שלי">
                   {config.designs.map((d) => (
                     <option key={d.id} value={d.id}>
                       {d.name}

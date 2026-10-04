@@ -74,7 +74,7 @@ export function TvVersions({
                 on ? onShow(null) : open(v.id, (config) => onShow({ id: v.id, label: when(v.saved_at), config }))
               }
             >
-              <Eye className="size-4" /> {on ? "סגירת התצוגה" : "הצגה"}
+              <Eye className="size-4" /> {on ? "חזרה לטיוטה" : "הצגה"}
             </Button>
             <Button
               type="button"

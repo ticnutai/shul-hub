@@ -179,7 +179,7 @@ test.describe("TV editor, by layer", () => {
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-frame-line");
     const panel = root(page).locator('[data-frame="prayers"]').first();
     await expect.poll(() => panel.evaluate((e) => getComputedStyle(e).outlineStyle)).toBe("solid");
-    await layer.getByLabel("כמה המסגרות בולטות").fill("0.6");
+    await layer.getByLabel("כמה התיבות בולטות").fill("0.6");
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-frame-depth");
     await page.getByTestId("frame-shapes").getByRole("button", { name: "קשת", exact: true }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-frame-arch");

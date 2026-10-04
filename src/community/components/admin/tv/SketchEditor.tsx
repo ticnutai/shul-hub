@@ -35,7 +35,7 @@ import { SPACING_MAX } from "@/tv/config";
  * editor's undo folds a drag into one step.
  */
 export const SKETCH_HINT =
-  "גררו מסגרת כדי להזיז אותה. משכו בקו שבין שתי מסגרות כדי לשנות רוחב, ובקו שבין שתי שורות כדי לשנות גובה. הקו שמעל השורה הראשונה ומתחת לאחרונה - המרווח מלמעלה ומלמטה.";
+  "גררו תיבה כדי להזיז אותה. משכו בקו שבין שתי תיבות כדי לשנות רוחב, ובקו שבין שתי שורות כדי לשנות גובה. הקו שמעל השורה הראשונה ומתחת לאחרונה - המרווח מלמעלה ומלמטה.";
 
 type Indicator = { left: number; top: number; width: number; height: number };
 
@@ -193,7 +193,7 @@ export function SketchEditor({
       !hit
         ? `גוררים את ${name(p.block)}`
         : !result
-        ? `השורה הזו מלאה - שלוש מסגרות לכל היותר בשורה`
+        ? `השורה הזו מלאה - שלוש תיבות לכל היותר בשורה`
         : same
         ? `${name(p.block)} כבר נמצא כאן`
         : `שחררו כדי לשים את ${name(p.block)} ${describe(p.block, hit.target)}`,
@@ -231,7 +231,7 @@ export function SketchEditor({
       ? `, מימין ל${name(blocks[i + 1])}`
       : " - לבד בשורה";
     setMessage(
-      `${name(p.block)} עבר לשורה ${row + 1}${beside}. אפשר לבטל ב"ביטול שינויים" או בחץ החזרה.`,
+      `${name(p.block)} עבר לשורה ${row + 1}${beside}. אפשר להחזיר ב"צעד אחורה" (Ctrl+Z).`,
     );
   };
 
@@ -275,8 +275,8 @@ export function SketchEditor({
     e.currentTarget.setPointerCapture(e.pointerId);
   };
   const spaceMessage = (edge: Edge, value: number | null) =>
-    `${edge === "top" ? "מרווח עליון (מעל הלוחות)" : "מרווח תחתון (מתחת ללוחות)"}: ${
-      value === null ? "כמו בעיצוב" : value
+    `${edge === "top" ? "מרווח עליון (מעל התיבות)" : "מרווח תחתון (מתחת לתיבות)"}: ${
+      value === null ? "רגיל" : value
     }`;
   const rowsMessage = (next: ScreenRow[], row: number) => {
     const p = percents([next[row].height, next[row + 1].height]);
@@ -437,8 +437,8 @@ export function SketchEditor({
     >
       {lineHandle({
         id: "space-top",
-        label: "מרווח מעל הלוחות",
-        title: "גררו למטה כדי להוריד את כל הלוחות; לחיצה כפולה - כמו בעיצוב",
+        label: "מרווח מעל התיבות",
+        title: "גררו למטה כדי להוריד את כל התיבות; לחיצה כפולה - רגיל",
         className: "top-0",
         onPointerDown: spaceDown("top"),
         onDoubleClick: () => {
@@ -533,8 +533,8 @@ export function SketchEditor({
       </div>
       {lineHandle({
         id: "space-bottom",
-        label: "מרווח מתחת ללוחות",
-        title: "גררו למעלה כדי להרחיק את הלוחות מהשורה התחתונה; לחיצה כפולה - כמו בעיצוב",
+        label: "מרווח מתחת לתיבות",
+        title: "גררו למעלה כדי להרחיק את התיבות מהשורה התחתונה; לחיצה כפולה - רגיל",
         className: "bottom-0",
         onPointerDown: spaceDown("bottom"),
         onDoubleClick: () => {

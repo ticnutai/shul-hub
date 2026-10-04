@@ -362,7 +362,7 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
           })}
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
-          כמו ב"רקעים": לחיצה מלבישה את הרקע על הלוח כולו. העלאה, שכבה מעל תמונה וסליידרים - בלשונית "עיצוב".
+          כמו בחלק "רקע" בלשונית העיצוב: לחיצה מלבישה את הרקע על הלוח כולו. העלאה, שכבה מעל תמונה וסליידרים - בלשונית "עיצוב".
         </p>
       </div>
     </div>
@@ -582,7 +582,7 @@ export function ElementLook({
           )}
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
-          השינוי מוחל בכל המסכים - טלוויזיה, מחשב, לפטופ, טאבלט ונייד - ובכל הפריסות.
+          השינוי מוחל על המסכים שנבחרו בפס למעלה ("כל המסכים", או סוג מסך אחד) - ובכל הפריסות.
         </p>
         {inherited && (
           <p className="text-[11px] leading-tight text-amber-700 dark:text-amber-400">
@@ -592,7 +592,7 @@ export function ElementLook({
         {/* Set once for one theme only; there is no choosing themes any more, so it can be made to show. */}
         {style?.theme && style.theme !== config.theme && (
           <p className="flex flex-wrap items-center gap-2 text-[11px] leading-tight text-amber-700 dark:text-amber-400">
-            העיצוב הזה נקבע פעם לערכת צבעים אחרת, ולכן אינו מוצג.
+            העיצוב הזה נקבע פעם לצבעי בסיס אחרים, ולכן אינו מוצג.
             <button type="button" className="underline" onClick={() => set({ theme: undefined }, "theme-scope")}>
               להציג אותו
             </button>
@@ -648,7 +648,7 @@ export function ElementLook({
             }
             className="h-8 rounded-md border bg-background px-2 text-sm"
           >
-            <option value="">כמו בעיצוב</option>
+            <option value="">רגיל</option>
             {TEXT_WEIGHTS.map((w) => (
               <option key={w.value} value={w.value}>
                 {w.label}

@@ -137,7 +137,7 @@ test.describe("TV editor", () => {
     await versions.getByRole("button", { name: "הצגה" }).click();
     await expect(page.getByTestId("preview-comparing")).toContainText("הגרסה מ-");
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
-    await versions.getByRole("button", { name: "סגירת התצוגה" }).click();
+    await versions.getByRole("button", { name: "חזרה לטיוטה" }).click();
     await expect(page.getByTestId("preview-comparing")).toHaveCount(0);
 
     // Put back as a draft: the board is as it was, and there is something to save.
@@ -267,9 +267,9 @@ test.describe("TV editor", () => {
 
   test("a look can be saved as a design, and the board can be broadcast", async ({ page }) => {
     await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
-    await page.getByRole("button", { name: "שמירה כעיצוב חדש" }).click();
-    await page.getByLabel("שם העיצוב").fill("זהב שלי");
-    await page.getByRole("button", { name: "שמירת העיצוב" }).click();
+    await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
+    await page.getByLabel("שם הערכה").fill("זהב שלי");
+    await page.getByRole("button", { name: "שמירת הערכה" }).click();
     await expectNotFrozen(page, "save as a design");
 
     // The bar at the top; the same button also stands under the preview while
@@ -316,11 +316,11 @@ test.describe("TV editor", () => {
     // A background only.
     await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
     await expect(root).toHaveClass(/has-bg-gradient/);
-    await library.getByRole("button", { name: "שמירה כעיצוב חדש" }).click();
-    await library.getByLabel("שם העיצוב").fill("רקע ירוק");
+    await library.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
+    await library.getByLabel("שם הערכה").fill("רקע ירוק");
     await library.getByRole("checkbox", { name: "מסגרות" }).uncheck();
     await library.getByRole("checkbox", { name: "טקסט" }).uncheck();
-    await library.getByRole("button", { name: "שמירת העיצוב" }).click();
+    await library.getByRole("button", { name: "שמירת הערכה" }).click();
     await expect(library.getByRole("button", { name: /^רקע ירוק/ })).toBeVisible();
     await expect(library.getByText("רקע", { exact: true })).toBeVisible();
     await expectNotFrozen(page, "design saved");
@@ -336,7 +336,7 @@ test.describe("TV editor", () => {
 
     // Renaming it, from its own card.
     await library.getByRole("button", { name: "שינוי שם" }).click();
-    await library.getByLabel("שם העיצוב").fill("רקע אחר");
+    await library.getByLabel("שם הערכה").fill("רקע אחר");
     await library.getByRole("button", { name: "שינוי השם" }).click();
     await expect(library.getByRole("button", { name: /^רקע אחר/ })).toBeVisible();
     await expectNotFrozen(page, "design renamed");
@@ -397,7 +397,7 @@ test.describe("TV editor", () => {
     // about its look is then in one panel - the way the live editor is used.
     await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
     await page.locator(".tv-frame .tv-root").first().click({ position: { x: 8, y: 8 } });
-    await expect(page.getByText("רקע הלוח, סגנון ומסגרות")).toBeVisible();
+    await expect(page.getByText("רקע הלוח ומסגרת הלוח")).toBeVisible();
     await expectNotFrozen(page, "board selected");
 
     // A frame for the whole board, chosen from the board's own panel.
@@ -626,7 +626,7 @@ test.describe("TV editor", () => {
     // The one switcher says, in words, what it currently means.
     await look("כל המסכים");
     await expect(banner).toHaveAttribute("data-scope", "all");
-    await expect(banner).toContainText("כל התצוגות");
+    await expect(banner).toContainText("כל המסכים");
 
     await page.getByRole("tab", { name: "עיצוב" }).click();
     const skins = boardFrames(page);

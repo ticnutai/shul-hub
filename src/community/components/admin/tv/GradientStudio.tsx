@@ -277,7 +277,7 @@ export function TransferPanel({
             variant="ghost"
             onClick={() => onExport("all", "clipboard")}
           >
-            העתקה ללוח
+            העתקה (להדבקה במקום אחר)
           </Button>
         </div>
       </div>
@@ -327,7 +327,7 @@ export function TransferPanel({
               </AlertDialogTrigger>
               <AlertDialogContent dir="rtl">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>לייבא את העיצובים מהקובץ?</AlertDialogTitle>
+                  <AlertDialogTitle>לייבא מהקובץ?</AlertDialogTitle>
                   <AlertDialogDescription>
                     צבעי הבסיס והגרדיאנטים יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
                     הכל נשאר טיוטה עד "שמור ושדר".

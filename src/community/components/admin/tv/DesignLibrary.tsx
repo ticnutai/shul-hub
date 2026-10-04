@@ -109,7 +109,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
                   ...cfg,
                   designs: [...cfg.designs, { ...structuredClone(d), id: newDesignId(), name: `${d.name} (שלי)` }].slice(0, MAX_DESIGNS),
                 }));
-                toast.success(`נוצר עותק: "${d.name} (שלי)" - ב"העיצובים שלי"`);
+                toast.success(`נוצר עותק: "${d.name} (שלי)" - ב"הערכות שלי"`);
               }}
             >
               שכפול לעריכה
@@ -125,7 +125,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       />
       {designs.length > 0 && (
         <>
-          <div className="text-sm font-medium">העיצובים שלי</div>
+          <div className="text-sm font-medium">הערכות שלי</div>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
             {designs.map((d) => {
               const c = { ...coloursOnScreen(config), ...d.colours };
@@ -216,7 +216,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         >
           <Input
             autoFocus
-            aria-label="שם העיצוב"
+            aria-label="שם הערכה"
             value={form.name}
             maxLength={40}
             placeholder="שם לעיצוב, למשל: חגים"
@@ -250,7 +250,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
           )}
           <div className="flex gap-2">
             <Button type="submit" size="sm">
-              <Save className="size-4" /> {form.mode === "new" ? "שמירת העיצוב" : "שינוי השם"}
+              <Save className="size-4" /> {form.mode === "new" ? "שמירת הערכה" : "שינוי השם"}
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setForm(null)}>
               ביטול
@@ -266,7 +266,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             disabled={designs.length >= MAX_DESIGNS}
             onClick={() => setForm({ mode: "new", name: "", parts: ["background", "frames", "text"] })}
           >
-            <Plus className="size-4" /> שמירה כעיצוב חדש
+            <Plus className="size-4" /> שמירה כערכה חדשה
           </Button>
           <span className="text-xs text-muted-foreground">
             שומר את מה שעל הלוח עכשיו - כולו או רק החלקים שתבחרו.
