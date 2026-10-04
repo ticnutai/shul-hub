@@ -36,9 +36,8 @@ test.describe("TV editor, by layer", () => {
     await expect(page.getByTestId("parts-scope")).toBeVisible();
     for (const part of ["shape", "background", "frames"]) await expect(page.getByTestId(`box-part-${part}`)).toBeVisible();
     await expect(page.getByTestId("layer-text")).toBeVisible();
-    // The ready boxes are with the boxes, not with the sets of the whole board.
-    await expect(page.locator("#design-boxes").getByTestId("box-presets")).toBeVisible();
-    await expect(page.locator("#design-sets").getByTestId("box-presets")).toHaveCount(0);
+    // No "ready boxes": a bundle of the parts below, which are chosen one by one.
+    await expect(page.getByTestId("box-presets")).toHaveCount(0);
 
     // The topics side by side: a click brings its section to the top.
     const topics = page.getByTestId("design-topics");
@@ -148,9 +147,10 @@ test.describe("TV editor, by layer", () => {
     await expectNotFrozen(page, "readability");
   });
 
-  test("boxes: a ready one, a shape of its own for one box, and a frame from the gallery", async ({ page }) => {
-    // A ready box: a hexagon, its gold line drawn as a ring that follows the cut.
-    await page.getByTestId("box-presets").getByRole("button", { name: "משושה זהב", exact: true }).click();
+  test("boxes: a shape for every box, a shape of its own for one box, and a frame from the gallery", async ({ page }) => {
+    // Every box a hexagon with a gold line, drawn as a ring that follows the cut.
+    await page.getByTestId("frame-shapes").getByRole("button", { name: "משושה", exact: true }).click();
+    await page.getByTestId("box-part-frames").getByRole("button", { name: "הוספת קו מסביב" }).click();
     await expect(root(page)).toHaveClass(/has-shape-hexagon/);
     const prayers = root(page).locator('[data-frame="prayers"]').first();
     await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e).clipPath)).toContain("polygon");

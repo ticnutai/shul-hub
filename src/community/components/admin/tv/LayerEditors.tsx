@@ -5,7 +5,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
 import { frameLabel, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
-import { BOX_PRESETS, applyBoxPreset, boxPresetCss, wearsBoxPreset } from "@/tv/boxPresets";
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
@@ -711,7 +710,7 @@ function BoardFrameControls({ config, onEdit }: { config: TvConfig; onEdit: Laye
  * A box's background used to be under "רקעים" and its line here: two places
  * for one box.
  */
-export type BoxPart = "presets" | "shape" | "background" | "frames";
+export type BoxPart = "shape" | "background" | "frames";
 
 export function FramesLayer(
   props: LayerProps & {
@@ -771,37 +770,6 @@ export function FramesLayer(
 
   return (
     <div className="space-y-5" data-testid={props.part ? `box-part-${props.part}` : "layer-frames"}>
-      {show("presets") && (
-      <Part title="תיבות מוכנות" testId="box-presets">
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {BOX_PRESETS.filter((p) => !isHiddenReady(saved, "box", p.id)).map((p) => {
-            const on = wearsBoxPreset(saved, p, frame);
-            return (
-              <div key={p.id} className="group relative">
-              <TileRemove name={p.name} ready onClick={() => onEdit("box-preset:hide", (c) => hideReady(c, "box", p.id))} />
-              <button
-                key={p.id}
-                type="button"
-                aria-pressed={on}
-                aria-label={p.name}
-                onClick={() => onEdit(`box-preset:${target}`, (c) => applyBoxPreset(c, p, frame))}
-                className={`rounded-lg border p-2 text-center transition ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
-              >
-                <span className="mx-auto mb-1 block h-9 w-14" style={boxPresetCss(p)} aria-hidden />
-                <span className="block text-[11px] font-medium leading-tight">{p.name}</span>
-              </button>
-              </div>
-            );
-          })}
-        </div>
-        <HiddenShelf
-          testId="box-hidden"
-          items={BOX_PRESETS.filter((p) => isHiddenReady(saved, "box", p.id)).map((p) => ({ key: p.id, name: p.name }))}
-          onRestore={(id) => onEdit("box-preset:show", (c) => showReady(c, "box", id))}
-        />
-        <p className="text-[11px] text-muted-foreground">כל חלק אפשר לשנות אחר כך למטה, בנפרד.</p>
-      </Part>
-      )}
 
       {show("shape") && (
       <Part title="צורה ופינות" testId="box-shape">

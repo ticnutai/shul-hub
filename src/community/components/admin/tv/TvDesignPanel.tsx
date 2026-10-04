@@ -1410,9 +1410,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           <Section
             id="design-boxes"
             title="3. תיבות"
-            hint="תיבות מוכנות, הצורה של התיבה והרקע שלה - לכל התיבות או לתיבה שנבחרה למעלה."
+            hint="הצורה של התיבה והרקע שלה - לכל התיבות או לתיבה שנבחרה למעלה."
           >
-            <FramesLayer {...layerProps} target={partTarget} part="presets" />
             <FramesLayer {...layerProps} target={partTarget} part="shape" />
             <FramesLayer {...layerProps} target={partTarget} part="background" />
           </Section>
