@@ -113,3 +113,30 @@ test("on the medallion the strip's bar in the sketch sizes the strip on the boar
   await expect.poll(async () => (await boxOf(page, ".tv-med-strip")).height).toBeGreaterThan(before + 3);
   await expectNotFrozen(page, "strip size");
 });
+
+test("a dragged part lines up: back on its own place when close, with a guide while it is held", async ({ page }) => {
+  await open(page, { screenLayout: "medallion" });
+  const strip = frame(page).locator(".tv-med-strip");
+  await strip.dblclick();
+  await expect(strip).toHaveAttribute("data-edit", "dash.strip");
+  const date = await boxOf(page, ".tv-med-plaque.is-date");
+  const from = { x: date.x + date.width / 2, y: date.y + date.height / 2 };
+
+  // Held a hair away from where it stands: the guide shows, and it stays put.
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(from.x + 2, from.y + 4, { steps: 6 });
+  await expect(page.getByTestId("snap-guide").first()).toBeVisible();
+  await page.mouse.up();
+  await expect(page.getByTestId("snap-guide")).toHaveCount(0);
+  const after = await boxOf(page, ".tv-med-plaque.is-date");
+  expect(Math.abs(after.y - date.y)).toBeLessThan(1.5);
+  expect(Math.abs(after.x - date.x)).toBeLessThan(1.5);
+
+  // With Ctrl it moves freely by the same hair.
+  await page.keyboard.down("Control");
+  await drag(page, from, 0, 6);
+  await page.keyboard.up("Control");
+  expect((await boxOf(page, ".tv-med-plaque.is-date")).y).toBeGreaterThan(date.y + 3);
+  await expectNotFrozen(page, "snapping");
+});

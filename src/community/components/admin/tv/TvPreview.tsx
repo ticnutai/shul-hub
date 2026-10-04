@@ -9,6 +9,7 @@ import { slideLabel, type useTvSlides } from "./tvPreviewData";
 import { DeviceFrame, DeviceToolbar } from "./DevicePreview";
 import { setElementStyle, styleTargetKey } from "@/tv/boardEdit";
 import { dragTune, readTuneFrom, type BoardFrameTune } from "@/tv/boardFrame";
+import { snapOffset, snapTune } from "@/tv/snap";
 import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
 
@@ -93,6 +94,31 @@ export function SlideStrip({
         </button>
       ))}
     </div>
+  );
+}
+
+/** The lines a dragged element snapped to, drawn over the board while the drag lasts. */
+function SnapGuides({ frame, x, y }: { frame: DOMRect; x: number | null; y: number | null }) {
+  const line = "pointer-events-none fixed z-[70] border-pink-500";
+  return (
+    <>
+      {x !== null && (
+        <div
+          aria-hidden
+          data-testid="snap-guide"
+          className={`${line} border-l-2 border-dashed`}
+          style={{ left: frame.left + (frame.width * x) / 100, top: frame.top, height: frame.height }}
+        />
+      )}
+      {y !== null && (
+        <div
+          aria-hidden
+          data-testid="snap-guide"
+          className={`${line} border-t-2 border-dashed`}
+          style={{ top: frame.top + (frame.height * y) / 100, left: frame.left, width: frame.width }}
+        />
+      )}
+    </>
   );
 }
 
@@ -232,7 +258,21 @@ export function TvDeviceStudio({
   // Drag-to-move. The delta is converted to percent of the board's frame
   // (cqw / cqh), which is what ElementStyle stores, so it lands in the same
   // relative place on every device - whatever scale the preview is drawn at.
-  const drag = useRef<{ key: string; elementKey?: string; frame: DOMRect; startX: number; startY: number; x0: number; y0: number; moved: boolean } | null>(null);
+  const drag = useRef<{
+    key: string;
+    elementKey?: string;
+    frame: DOMRect;
+    startX: number;
+    startY: number;
+    x0: number;
+    y0: number;
+    /** Where the element's middle stands with no offset, in percent of the board. */
+    cx: number;
+    cy: number;
+    moved: boolean;
+  } | null>(null);
+  /** The lines an element snapped to while it is dragged (snap.ts), in percent of the board. */
+  const [guides, setGuides] = useState<{ frame: DOMRect; x: number | null; y: number | null } | null>(null);
   // The board's frame - columns, beams, a curtain - is grabbed and stretched
   // by hand: a drag on a piece moves it, a drag on one of its handles makes
   // it longer or thicker (boardFrame.dragTune). The pointer is measured in
@@ -286,7 +326,8 @@ export function TvDeviceStudio({
     const dy = e.clientY - d.startY;
     if (!d.moved && Math.hypot(dx, dy) < 3) return true;
     d.moved = true;
-    const next = dragTune(d.piece, d.handle, d.t0, { dx, dy, u: d.u, width: d.width, height: d.height, fromRight: d.fromRight, fromBottom: d.fromBottom });
+    const raw = dragTune(d.piece, d.handle, d.t0, { dx, dy, u: d.u, width: d.width, height: d.height, fromRight: d.fromRight, fromBottom: d.fromBottom });
+    const next = e.ctrlKey ? raw : snapTune(raw);
     onEdit!("board-frame-drag", (c) => ({ ...c, boardFrameTune: { ...next, sides: c.boardFrameTune.sides } }));
     return true;
   };
@@ -306,7 +347,22 @@ export function TvDeviceStudio({
     const s = props.config.styles[key];
     // No pointer capture yet: a captured pointer retargets the click to the
     // wrapper, and a plain click must still select the element under it.
-    drag.current = { key, elementKey: el.dataset.edit!, frame: frame.getBoundingClientRect(), startX: e.clientX, startY: e.clientY, x0: s?.x ?? 0, y0: s?.y ?? 0, moved: false };
+    const box = frame.getBoundingClientRect();
+    const own = el.getBoundingClientRect();
+    const x0 = s?.x ?? 0;
+    const y0 = s?.y ?? 0;
+    drag.current = {
+      key,
+      elementKey: el.dataset.edit!,
+      frame: box,
+      startX: e.clientX,
+      startY: e.clientY,
+      x0,
+      y0,
+      cx: ((own.left + own.width / 2 - box.left) / box.width) * 100 - x0,
+      cy: ((own.top + own.height / 2 - box.top) / box.height) * 100 - y0,
+      moved: false,
+    };
   };
   const onPointerMove = (e: PointerEvent) => {
     if (moveFrameDrag(e)) return;
@@ -324,11 +380,20 @@ export function TvDeviceStudio({
       }
     }
     d.moved = true;
-    const x = Math.round((d.x0 + (dx / d.frame.width) * 100) * 10) / 10;
-    const y = Math.round((d.y0 + (dy / d.frame.height) * 100) * 10) / 10;
+    let x = Math.round((d.x0 + (dx / d.frame.width) * 100) * 10) / 10;
+    let y = Math.round((d.y0 + (dy / d.frame.height) * 100) * 10) / 10;
+    // Lines things up: back on its place, or its middle on the board's; Ctrl drags freely.
+    if (!e.ctrlKey) {
+      const sx = snapOffset(x, d.cx);
+      const sy = snapOffset(y, d.cy);
+      x = sx.value;
+      y = sy.value;
+      setGuides({ frame: d.frame, x: sx.line, y: sy.line });
+    } else setGuides(null);
     onEdit!(`style:pos:${d.key}`, (c) => setElementStyle(c, d.key, { x: Math.max(-50, Math.min(50, x)), y: Math.max(-50, Math.min(50, y)) }));
   };
   const onPointerUp = (e: PointerEvent) => {
+    setGuides(null);
     const f = frameDrag.current;
     if (f) {
       frameDrag.current = null;
@@ -374,6 +439,7 @@ export function TvDeviceStudio({
         onPointerCancel: () => {
           drag.current = null;
           frameDrag.current = null;
+          setGuides(null);
         },
         onMouseOver: (e: MouseEvent) => setHovered(keyAt(e.target)),
         onMouseLeave: () => setHovered(null),
@@ -384,6 +450,7 @@ export function TvDeviceStudio({
     return (
       <div className={`fixed inset-0 z-[60] bg-black${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
         {editing && <EditHighlight hovered={hovered} selected={selected} />}
+        {guides && <SnapGuides {...guides} />}
         <BoardInFrame {...props} editing={editing} />
       </div>
     );
@@ -392,6 +459,7 @@ export function TvDeviceStudio({
   return (
     <div className={`space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
       {editing && <EditHighlight hovered={hovered} selected={selected} />}
+      {guides && <SnapGuides {...guides} />}
       <div className="flex flex-wrap items-center gap-2">
         <DeviceToolbar
           compare={compare}
