@@ -8,6 +8,7 @@ import { Capacitor, SystemBars, SystemBarsStyle } from "@capacitor/core";
 import { SplashScreen } from "@capacitor/splash-screen";
 import { installStartupDiagnostics } from "./utils/startupDiagnostics";
 import { installLayoutShiftTracker } from "./utils/renderDebug";
+import { wantsServiceWorker } from "./lib/swPolicy";
 
 // Init IndexedDB early for fast cache access
 torahDB.init();
@@ -38,14 +39,13 @@ if (import.meta.env.DEV && "serviceWorker" in navigator) {
 // worker. Reload exactly once when a newer worker takes control so the page
 // starts with its new HTML/JS shell. A first-time install needs no reload.
 /*
- * The installed app is the app: its files come inside the APK, and a new
- * version arrives as a new APK. A service worker there is the website's
- * habit and only harm - it can keep serving the previous version's files
- * after the new one is installed. So none is registered in the app, and any
- * left from an earlier build is removed with its caches.
+ * A service worker only in a phone's browser (swPolicy.ts). In the installed
+ * app it is only harm - it can keep serving the previous version's files
+ * after a new one is out - and on a computer it gives little. So none is
+ * registered there, and any left from before is removed with its caches.
  */
-const nativeApp = Capacitor.isNativePlatform();
-if (nativeApp && "serviceWorker" in navigator) {
+const withWorker = wantsServiceWorker();
+if (!withWorker && "serviceWorker" in navigator) {
   void navigator.serviceWorker.getRegistrations().then(async (registrations) => {
     if (!registrations.length) return;
     await Promise.all(registrations.map((r) => r.unregister()));
@@ -55,7 +55,7 @@ if (nativeApp && "serviceWorker" in navigator) {
   });
 }
 
-if (import.meta.env.PROD && !nativeApp && "serviceWorker" in navigator) {
+if (import.meta.env.PROD && withWorker && "serviceWorker" in navigator) {
   const hadControllerAtStartup = Boolean(navigator.serviceWorker.controller);
   let reloadingForNewWorker = false;
 

@@ -8,6 +8,15 @@
  */
 import { Capacitor } from "@capacitor/core";
 import { supabase } from "@/integrations/supabase/client";
+import { wantsServiceWorker } from "@/lib/swPolicy";
+
+/**
+ * Notifications sent from the server while the site is closed need a
+ * function there that sends them ("push-subscribe" / "send-push"). It was
+ * never put on this project's server, so subscribing only failed quietly.
+ * Off until it is - then this is the one switch to turn.
+ */
+const PUSH_SERVER_READY = false;
 
 /* ─── VAPID Public Key ──────────────────────────────────── */
 const DEFAULT_VAPID_PUBLIC_KEY =
@@ -68,7 +77,8 @@ async function callPushApi(body: Record<string, unknown>) {
 /** Is Web Push available on this platform? */
 export function isWebPushSupported(): boolean {
   return (
-    !Capacitor.isNativePlatform() &&
+    PUSH_SERVER_READY &&
+    wantsServiceWorker() &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
     "Notification" in window

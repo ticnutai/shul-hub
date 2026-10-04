@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { devices, expect, test } from '@playwright/test';
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process';
 import path from 'node:path';
 import { rememberShul } from './support/chooseShul';
@@ -53,6 +53,8 @@ async function servePwa(): Promise<ChildProcess> {
 }
 
 test.describe.configure({ timeout: 300_000 });
+// The site's worker lives only in a phone's browser (swPolicy.ts): this is a phone.
+test.use({ userAgent: devices['Pixel 7'].userAgent });
 
 test('an installed app picks up a new build without losing what is on it', async ({ page }, testInfo) => {
   // It builds into the one dist folder: two projects at once would build over each other.
@@ -109,6 +111,16 @@ test('an installed app picks up a new build without losing what is on it', async
     // or an update can be a day late for no reason anyone can see.
     expect(workerState.updateViaCache).toBe('none');
     expect(workerState.cacheNames).not.toContain('supabase-cache');
+
+    // The same site on a computer: no worker is registered there.
+    const desktop = await page.context().browser()!.newContext({ ...devices['Desktop Chrome'], serviceWorkers: 'allow' });
+    const pc = await desktop.newPage();
+    await rememberShul(pc);
+    await pc.goto(`${BASE}/chumash`);
+    await expect.poll(() => pc.evaluate(() => document.documentElement.dataset.appBuild)).toBe('qa-v2');
+    await pc.waitForTimeout(4000);
+    expect(await pc.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(0);
+    await desktop.close();
   } finally {
     server.kill();
   }

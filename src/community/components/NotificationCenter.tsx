@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { toast } from "sonner";
+import { Capacitor } from "@capacitor/core";
+import { LocalNotifications } from "@capacitor/local-notifications";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -13,167 +15,74 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { useAnnouncements, useChavrutot, useMinyanim, useSettings, useShiurim } from "@community/lib/data";
-import { heldOn, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
+import { useMinyanim, useShiurim } from "@community/lib/data";
+import { setReminderPrefs, useReminderPrefs } from "@community/lib/reminderPrefsStore";
+import { playChime, showSystemNotification } from "@community/lib/notify";
+import { hasShulAlarm, ShulAlarm } from "@community/lib/shulAlarm";
 
-type Preferences = {
-  enabled: boolean;
-  minyanim: boolean;
-  shiurim: boolean;
-  announcements: boolean;
-  chavrutot: boolean;
-  selectedMinyanIds: string[];
-  selectedShiurIds: string[];
-};
+const native = Capacitor.isNativePlatform();
 
-const STORAGE_KEY = "shul-notification-preferences-v1";
-const defaults: Preferences = {
-  enabled: false,
-  minyanim: true,
-  shiurim: true,
-  announcements: true,
-  chavrutot: false,
-  selectedMinyanIds: [],
-  selectedShiurIds: [],
-};
-
-function loadPreferences(): Preferences {
-  if (typeof window === "undefined") return defaults;
-  try {
-    return { ...defaults, ...JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}") };
-  } catch {
-    return defaults;
-  }
-}
-
-function deliverNotification(title: string, body: string) {
-  if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-    new Notification(title, { body, icon: "/favicon.ico", dir: "rtl", lang: "he" });
-    return;
-  }
-  toast(title, { description: body, duration: 8000 });
+/**
+ * What the phone allows the app: reminders on the minute (Android 12 and up
+ * asks for it), and the whole-screen ring (Android 14 and up). Null in a
+ * browser, or before it is known.
+ */
+function usePhoneAllows(open: boolean) {
+  const [allows, setAllows] = useState<{ exact: boolean; fullScreen: boolean } | null>(null);
+  const refresh = useCallback(async () => {
+    if (!native) return;
+    try {
+      if (hasShulAlarm()) setAllows(await ShulAlarm.status());
+      else {
+        const exact = await LocalNotifications.checkExactNotificationSetting();
+        setAllows({ exact: exact.exact_alarm === "granted", fullScreen: false });
+      }
+    } catch {
+      setAllows(null);
+    }
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    void refresh();
+    // Back from the phone's settings: look again.
+    const again = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    document.addEventListener("visibilitychange", again);
+    return () => document.removeEventListener("visibilitychange", again);
+  }, [open, refresh]);
+  return allows;
 }
 
 export function NotificationCenter() {
   const { data: minyanim = [] } = useMinyanim();
   const { data: shiurim = [] } = useShiurim();
-  const { data: settings } = useSettings();
-  const { data: announcements = [] } = useAnnouncements();
-  const { data: chavrutot = [] } = useChavrutot();
-  const [preferences, setPreferences] = useState(loadPreferences);
+  const preferences = useReminderPrefs();
+  const setPreferences = setReminderPrefs;
+  const [open, setOpen] = useState(false);
+  const allows = usePhoneAllows(open);
   const availableMinyanim = minyanim.filter((item) => item.active && item.notification_enabled);
   const availableShiurim = shiurim.filter((item) => item.active && item.notification_enabled);
-
-  useEffect(() => localStorage.setItem(STORAGE_KEY, JSON.stringify(preferences)), [preferences]);
-
-  useEffect(() => {
-    if (!preferences.enabled) return;
-    const showNew = (
-      type: string,
-      enabled: boolean,
-      items: Array<{ id: string; title: string; body: string }>,
-    ) => {
-      const key = `shul-known-${type}-v1`;
-      const known = new Set<string>(JSON.parse(localStorage.getItem(key) ?? "[]"));
-      if (known.size > 0 && enabled) {
-        items
-          .filter((item) => !known.has(item.id))
-          .forEach((item) => deliverNotification(item.title, item.body));
-      }
-      localStorage.setItem(key, JSON.stringify(items.map((item) => item.id)));
-    };
-    showNew(
-      "announcements",
-      preferences.announcements,
-      announcements
-        .filter((item) => item.notification_enabled)
-        .map((item) => ({ id: item.id, title: item.title, body: item.body })),
-    );
-    showNew(
-      "chavrutot",
-      preferences.chavrutot,
-      chavrutot
-        .filter((item) => item.notification_enabled)
-        .map((item) => ({ id: item.id, title: `חברותא: ${item.topic}`, body: item.time_text })),
-    );
-  }, [
-    announcements,
-    chavrutot,
-    preferences.announcements,
-    preferences.chavrutot,
-    preferences.enabled,
-  ]);
-
-  const schedule = useMemo(
-    () => ({ minyanim: availableMinyanim, shiurim: availableShiurim, settings }),
-    [availableMinyanim, availableShiurim, settings],
-  );
-
-  useEffect(() => {
-    if (!preferences.enabled) return;
-    const check = () => {
-      const now = new Date();
-      const today = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
-      const notify = (key: string, title: string, body: string) => {
-        const storageKey = `shul-notified-${today}-${key}`;
-        if (sessionStorage.getItem(storageKey)) return;
-        sessionStorage.setItem(storageKey, "1");
-        deliverNotification(title, body);
-      };
-      const due = (time: string, minutes: number) => {
-        const match = time.match(/^(\d{1,2}):(\d{2})/);
-        if (!match) return false;
-        const event = new Date(now);
-        event.setHours(Number(match[1]), Number(match[2]), 0, 0);
-        const difference = (event.getTime() - now.getTime()) / 60000;
-        return difference >= 0 && difference < Math.max(1, minutes);
-      };
-      if (preferences.minyanim) {
-        const zmanim = zmanimFor(now, schedule.settings);
-        schedule.minyanim
-          .filter(
-            (item) =>
-              // Not a reminder for a minyan out of its season (בין הזמנים that ended).
-              heldOn(item, now) &&
-              (preferences.selectedMinyanIds.length === 0 ||
-                preferences.selectedMinyanIds.includes(item.id)),
-          )
-          .forEach((item) => {
-            const resolved = resolveMinyan(item, zmanim);
-            if (resolved && due(resolved.time, item.reminder_minutes))
-              notify(
-                `minyan-${item.id}`,
-                `תזכורת: ${item.label}`,
-                `${resolved.time}${item.room ? ` · ${item.room}` : ""}`,
-              );
-          });
-      }
-      if (preferences.shiurim) {
-        schedule.shiurim
-          .filter((item) => item.schedule_type === "daily" || item.day_of_week === now.getDay())
-          .filter(
-            (item) =>
-              preferences.selectedShiurIds.length === 0 ||
-              preferences.selectedShiurIds.includes(item.id),
-          )
-          .forEach((item) => {
-            if (due(item.time_text, item.reminder_minutes))
-              notify(
-                `shiur-${item.id}`,
-                `תזכורת לשיעור: ${item.title}`,
-                `${item.time_text}${item.location ? ` · ${item.location}` : ""}`,
-              );
-          });
-      }
-    };
-    check();
-    const timer = window.setInterval(check, 30_000);
-    return () => window.clearInterval(timer);
-  }, [preferences, schedule]);
 
   async function toggleEnabled(enabled: boolean) {
     setPreferences((current) => ({ ...current, enabled }));
     if (!enabled) return;
+
+    if (native) {
+      try {
+        const now = await LocalNotifications.checkPermissions();
+        const granted =
+          now.display === "granted" || (await LocalNotifications.requestPermissions()).display === "granted";
+        if (granted) toast.success("ההתראות הופעלו", { description: "התזכורות יגיעו גם כשהאפליקציה סגורה." });
+        else
+          toast.info("ההתראות חסומות בטלפון", {
+            description: "אפשר לאשר אותן בהגדרות הטלפון ← אפליקציות ← התראות.",
+          });
+      } catch {
+        toast.info("ההתראות הופעלו בתוך האפליקציה");
+      }
+      return;
+    }
 
     if (typeof Notification === "undefined") {
       toast.info("התזכורות הופעלו בתוך האתר", {
@@ -208,6 +117,22 @@ export function NotificationCenter() {
     }
   }
 
+  /** As a reminder comes: on the phone's notifications (or the page), with its sound. */
+  async function tryIt() {
+    if (preferences.sound) playChime();
+    const ok = await showSystemNotification("בדיקה: מנחה 13:30", "בעוד 10 דקות · כך תיראה תזכורת", "shul-test", "minyan");
+    if (!ok) toast("בדיקה: מנחה 13:30", { description: "בעוד 10 דקות · כך תיראה תזכורת (בתוך האתר)" });
+  }
+
+  async function allowExact() {
+    try {
+      if (hasShulAlarm()) await ShulAlarm.openExactSettings();
+      else await LocalNotifications.changeExactNotificationSetting();
+    } catch {
+      toast.info("אפשר לאשר בהגדרות הטלפון ← אפליקציות ← הרשאות מיוחדות ← שעונים מעוררים ותזכורות");
+    }
+  }
+
   const toggleId = (field: "selectedMinyanIds" | "selectedShiurIds", id: string) =>
     setPreferences((current) => ({
       ...current,
@@ -217,7 +142,7 @@ export function NotificationCenter() {
     }));
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           variant="ghost"
@@ -238,7 +163,7 @@ export function NotificationCenter() {
         <DialogHeader className="text-right">
           <DialogTitle>התראות ותזכורות</DialogTitle>
           <DialogDescription>
-            אפשר לבחור סוגי התראות וגם מניין או שיעור מסוים. רשימה ריקה פירושה לקבל את כולם.
+            אפשר לבחור סוגי התראות וגם מניין או שיעור מסוים. רשימה ריקה פירושה לקבל את כולם. בשבת ובחג אין התראות.
           </DialogDescription>
         </DialogHeader>
         <div className="flex items-center justify-between rounded-xl border p-3">
@@ -249,6 +174,54 @@ export function NotificationCenter() {
             onCheckedChange={toggleEnabled}
           />
         </div>
+        {preferences.enabled && (
+          <section className="space-y-3 rounded-xl border p-3" data-testid="reminder-how">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="notifications-sound">צליל עם כל התראה</Label>
+              <Switch
+                id="notifications-sound"
+                checked={preferences.sound}
+                onCheckedChange={(sound) => setPreferences((current) => ({ ...current, sound }))}
+              />
+            </div>
+            {hasShulAlarm() && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="notifications-alarm">מניין מצלצל כמו שעון מעורר</Label>
+                  <Switch
+                    id="notifications-alarm"
+                    checked={preferences.alarm}
+                    onCheckedChange={(alarm) => setPreferences((current) => ({ ...current, alarm }))}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  על כל המסך, גם כשהטלפון נעול, עד שלוחצים "עצירה". לא בשבת ובחג.
+                </p>
+                {preferences.alarm && allows && !allows.fullScreen && (
+                  <Button type="button" size="sm" variant="outline" onClick={() => void ShulAlarm.openFullScreenSettings()}>
+                    לאשר צלצול על כל המסך
+                  </Button>
+                )}
+              </div>
+            )}
+            {native && allows && !allows.exact && (
+              <div className="space-y-1 rounded-lg bg-amber-50 p-2 text-xs text-amber-900 dark:bg-amber-950 dark:text-amber-100">
+                <p>הטלפון עלול לאחר תזכורות בכמה דקות. כדי שיגיעו בדיוק בזמן:</p>
+                <Button type="button" size="sm" variant="outline" onClick={() => void allowExact()}>
+                  לאשר תזכורות בדיוק בזמן
+                </Button>
+              </div>
+            )}
+            {!native && (
+              <p className="text-xs text-muted-foreground">
+                באתר התזכורות מגיעות כל עוד האתר פתוח. כדי לקבל אותן גם כשהוא סגור - באפליקציה.
+              </p>
+            )}
+            <Button type="button" size="sm" variant="secondary" onClick={() => void tryIt()}>
+              לנסות: כך תיראה תזכורת
+            </Button>
+          </section>
+        )}
         <PreferenceGroup
           title="מניינים"
           enabled={preferences.minyanim}

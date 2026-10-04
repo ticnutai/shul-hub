@@ -1,9 +1,11 @@
 import { useState, useCallback, useEffect } from "react";
 import { Capacitor } from "@capacitor/core";
 import { LocalNotifications } from "@capacitor/local-notifications";
+import { ensureSoundChannel } from "@community/lib/notify";
 
 const STORAGE_KEY = "omer_reminder_v2";
-const CHANNEL_ID = "omer_reminders_v2";
+// A new id: "omer_reminders_v2" was made with a sound file the app does not have, and was silent (ensureSoundChannel).
+const CHANNEL_ID = "omer_reminders_v2_sound";
 const NOTIF_ID_START = 3100;
 
 export interface OmerReminderConfig {
@@ -26,19 +28,13 @@ function saveConfig(config: OmerReminderConfig) {
 
 async function ensureChannel() {
   try {
-    const { channels } = await LocalNotifications.listChannels();
-    if (!channels.some((c) => c.id === CHANNEL_ID)) {
-      await LocalNotifications.createChannel({
-        id: CHANNEL_ID,
-        name: "ספירת העומר",
-        description: "תזכורת יומית לספירת העומר",
-        importance: 4,
-        visibility: 1,
-        sound: "default",
-        vibration: true,
-        lights: true,
-      });
-    }
+    // With the phone's own sound (ensureSoundChannel: "default" was silent).
+    await ensureSoundChannel({
+      id: CHANNEL_ID,
+      name: "ספירת העומר",
+      description: "תזכורת יומית לספירת העומר",
+      importance: 4,
+    }, ["omer_reminders_v2"]);
   } catch { /* ignore */ }
 }
 
