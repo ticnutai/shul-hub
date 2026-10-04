@@ -81,6 +81,27 @@ try {
     await call("PATCH", `${API}/edits/${edit.id}/listings/${language}`, JSON.stringify({ title }));
     await call("POST", `${API}/edits/${edit.id}:commit`);
     console.log("store title is now:", title);
+  } else if (cmd === "production") {
+    // node scripts/play-upload.mjs production <versionCode> <notes>: a version already uploaded, to everyone.
+    // Committing sends it to Google's review; it reaches everyone once approved.
+    const [code, text] = [aab, notes];
+    await call(
+      "PUT",
+      `${API}/edits/${edit.id}/tracks/production`,
+      JSON.stringify({
+        track: "production",
+        releases: [
+          {
+            name: process.env.RELEASE_NAME || undefined,
+            versionCodes: [String(code)],
+            status: "completed",
+            releaseNotes: [{ language: "iw-IL", text }],
+          },
+        ],
+      }),
+    );
+    await call("POST", `${API}/edits/${edit.id}:commit`);
+    console.log("production release", code, "sent to Google for review (it goes out once approved)");
   } else if (cmd === "internal") {
     // With curl: on a slow line the bundle takes minutes, and fetch gives up
     // waiting for an answer after five.

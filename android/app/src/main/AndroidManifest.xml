@@ -66,6 +66,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- "עוזר חכם": dictating to the admin's assistant (speech recognition in Hebrew). -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Dictation is a help, not a need: devices without a microphone (some
+         tablets and TVs) must still get the app - Google Play dropped 20 of
+         them for 1.11.1 because asking for the microphone made it required. -->
+    <uses-feature android:name="android.hardware.microphone" android:required="false" />
 
     <queries>
         <intent>
