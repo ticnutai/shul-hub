@@ -275,9 +275,57 @@ export function useTvConfig() {
       }
       throw new Error("הלוח נשמר עכשיו גם ממקום אחר. נסו לשמור שוב.");
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["tv_config_admin"] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["tv_config_admin"] });
+      // The save just put the version it replaced on the list (tv_config_versions, by trigger).
+      void queryClient.invalidateQueries({ queryKey: ["tv_config_versions"] });
+    },
   });
   return { ...query, save };
+}
+
+/* ------------------------------------------------------------- versions -- */
+
+export interface TvConfigVersion {
+  id: string;
+  /** When this version was saved (it stood on the screens from then). */
+  saved_at: string;
+  /** When a newer save replaced it. */
+  replaced_at: string;
+}
+
+/**
+ * The board's earlier versions, newest first: each save keeps the one it
+ * replaced (the database does it, tv_config_versions). Listed without their
+ * contents - a board can be large - and each is read when it is opened.
+ */
+export function useTvConfigVersions() {
+  return useQuery({
+    queryKey: ["tv_config_versions"],
+    queryFn: async () => {
+      const { data, error } = await tvDb
+        .from("tv_config_versions")
+        .select("id, saved_at, replaced_at")
+        .eq("community_id", communityId())
+        .order("replaced_at", { ascending: false })
+        .limit(40);
+      if (error) throw error;
+      return (data ?? []) as TvConfigVersion[];
+    },
+  });
+}
+
+/** One earlier version's board, read as every board is read. */
+export async function readTvConfigVersion(id: string): Promise<TvConfig> {
+  const { data, error } = await tvDb
+    .from("tv_config_versions")
+    .select("config")
+    .eq("community_id", communityId())
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("הגרסה לא נמצאה");
+  return normalizeTvConfig(data.config);
 }
 
 /* --------------------------------------------------------------- events -- */

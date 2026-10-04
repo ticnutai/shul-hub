@@ -114,6 +114,39 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "board frame dragged");
   });
 
+  test("before and after, and an earlier version looked at and put back", async ({ page }) => {
+    const gallery = page.getByTestId("background-gallery");
+    await page.getByRole("tab", { name: "עיצוב" }).click();
+    await gallery.getByRole("button", { name: "זרקור זהב", exact: true }).click();
+    await expect(root(page)).toHaveClass(/has-bg-gradient/);
+
+    // Before: what is on the screens, not to be edited; after: the draft again.
+    await page.getByRole("button", { name: "לפני / אחרי" }).click();
+    await expect(page.getByTestId("preview-comparing")).toContainText("לפני השינויים");
+    await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
+    await page.getByTestId("preview-comparing").getByRole("button", { name: "חזרה לטיוטה" }).click();
+    await expect(root(page)).toHaveClass(/has-bg-gradient/);
+
+    // Saved: the board it replaced is kept as a version.
+    await page.getByRole("button", { name: "שמור ושדר למסכים" }).first().click();
+    await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
+    await page.getByRole("tab", { name: "כלים" }).click();
+    const versions = page.getByTestId("tv-versions");
+    await expect(versions.getByRole("listitem")).toHaveCount(1);
+
+    await versions.getByRole("button", { name: "הצגה" }).click();
+    await expect(page.getByTestId("preview-comparing")).toContainText("הגרסה מ-");
+    await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
+    await versions.getByRole("button", { name: "סגירת התצוגה" }).click();
+    await expect(page.getByTestId("preview-comparing")).toHaveCount(0);
+
+    // Put back as a draft: the board is as it was, and there is something to save.
+    await versions.getByRole("button", { name: "החזרה כטיוטה" }).click();
+    await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
+    await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
+    await expectNotFrozen(page, "versions");
+  });
+
   test("a title style for every box, and one box apart", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await page.getByTestId("title-styles").first().getByRole("button", { name: "כותרת: סרט" }).click();

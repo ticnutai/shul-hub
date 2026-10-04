@@ -11,6 +11,7 @@ import {
   Rows2,
   ImagePlus,
   Minus,
+  ArrowLeftRight,
   Pencil,
   Pause,
   Play,
@@ -152,6 +153,7 @@ import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./Laye
 import { BlankBoardStarter, BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { blankBoard } from "@/tv/blankBoard";
 import { uploadImages } from "./uploadImages";
+import { TvVersions } from "./TvVersions";
 import { DesignLibrary } from "./DesignLibrary";
 import { findDesign } from "@/tv/designs";
 import { ScreenComposer } from "./ScreenComposer";
@@ -538,6 +540,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
    * by accident and vanishes the moment the control is left.
    */
   const [preview, setPreview] = useState<Partial<TvConfig> | null>(null);
+  /**
+   * Something other than the draft on the preview, to compare: what is on
+   * the screens now ("לפני / אחרי"), or an earlier version. Never edited -
+   * editing on the board, and the try-outs, are for the draft alone.
+   */
+  const [beforeAfter, setBeforeAfter] = useState(false);
+  const [shownVersion, setShownVersion] = useState<{ id: string; label: string; config: TvConfig } | null>(null);
 
   /**
    * The board as the chosen screen sees it. Everything on this panel shows
@@ -546,6 +555,8 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
    * screen chosen it is the shared board itself, unchanged.
    */
   const scoped = occasionScope ? occasionLook(state.present, occasionScope) : configForDevice(state.present, scopeDevice);
+  const comparing = shownVersion ?? (beforeAfter && saved.data ? { id: "saved", label: "מה שעל המסכים עכשיו", config: saved.data.config } : null);
+  const shownConfig = comparing ? comparing.config : state.present;
   const view = preview ? { ...scoped, ...preview } : scoped;
 
   const edit = useCallback(
@@ -1067,6 +1078,21 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         }}
       >
         <Pencil className="size-4" /> {editing ? "סיום עריכה בלוח" : "עריכה ישירה בלוח"}
+      </Button>
+      {/* What is on the screens now against the draft - while there is a difference to see. */}
+      <Button
+        type="button"
+        variant={beforeAfter ? "default" : "outline"}
+        size="sm"
+        aria-pressed={beforeAfter}
+        disabled={!dirty && !beforeAfter}
+        title="מחליף בין מה שעל המסכים עכשיו לבין השינויים שלא נשמרו"
+        onClick={() => {
+          setShownVersion(null);
+          setBeforeAfter((v) => !v);
+        }}
+      >
+        <ArrowLeftRight className="size-4" /> {beforeAfter ? "מוצג: לפני - חזרה לאחרי" : "לפני / אחרי"}
       </Button>
       <Button type="button" variant="outline" size="sm" onClick={() => setAutoplay((a) => !a)}>
         {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
@@ -1854,8 +1880,27 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
           <Section
+            title="גרסאות קודמות"
+            hint="כל שמירה שומרת כאן את מה שהיה על המסכים לפניה (40 האחרונות). אפשר להציג גרסה בתצוגה המקדימה, ולהחזיר אותה כטיוטה - ואז 'שמור ושדר' מעלה אותה למסכים."
+          >
+            <TvVersions
+              shown={shownVersion?.id ?? null}
+              onShow={(v) => {
+                setBeforeAfter(false);
+                setShownVersion(v);
+                if (v) showPreview();
+              }}
+              onRestore={(config, label) => {
+                setShownVersion(null);
+                dispatch({ type: "edit", key: `restore-version:${label}`, update: () => config });
+                toast.success(`הגרסה מ-${label} הוחזרה כטיוטה. "שמור ושדר" מעלה אותה למסכים; "ביטול שינויים" מחזיר.`);
+              }}
+            />
+          </Section>
+
+          <Section
             title="ייבוא וייצוא"
-            hint="גיבוי של ערכות הנושא והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
+            hint="גיבוי של צבעי הבסיס והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
           >
             <TransferPanel onExport={doExport} onImport={doImport} />
           </Section>
@@ -1901,16 +1946,16 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       <>
         <TvDeviceStudio
           onDeviceChange={onDeviceChange}
-          preview={preview}
+          preview={comparing ? null : preview}
           {...board}
           dayLook={dayLook}
           fullscreen
-          config={state.present}
+          config={shownConfig}
           index={index}
           cycle={cycle}
           progress={0}
           paused={!autoplay}
-          editing={editing}
+          editing={editing && !comparing}
           selected={selected}
           onSelect={setSelected}
           onEdit={edit}
@@ -2062,17 +2107,38 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
   const studioView = (
     <div className="w-full" data-board-preview>
+      {comparing && (
+        <div
+          className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-2 text-sm"
+          data-testid="preview-comparing"
+        >
+          <span className="flex-1">
+            מוצג עכשיו: <b>{comparing.id === "saved" ? "מה שעל המסכים - לפני השינויים" : `הגרסה מ-${comparing.label}`}</b>. אי אפשר לערוך אותו.
+          </span>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setBeforeAfter(false);
+              setShownVersion(null);
+            }}
+          >
+            חזרה לטיוטה
+          </Button>
+        </div>
+      )}
       <TvDeviceStudio
         onDeviceChange={onDeviceChange}
-        preview={preview}
+        preview={comparing ? null : preview}
         {...board}
         dayLook={dayLook}
-        config={state.present}
+        config={shownConfig}
         index={index}
         cycle={cycle}
         progress={0}
         paused={!autoplay}
-        editing={editing}
+        editing={editing && !comparing}
         selected={selected}
         onSelect={setSelected}
         onEdit={edit}

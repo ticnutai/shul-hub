@@ -116,6 +116,8 @@ const SHIURIM = [
 export async function serveEditor(page: Page, config: Record<string, unknown> = {}): Promise<EditorServer> {
   let saved: Record<string, unknown> = config;
   let writes = 0;
+  // As the database does (tv_config_versions): each save keeps the board it replaced.
+  const versions: Array<{ id: string; saved_at: string; replaced_at: string; config: Record<string, unknown> }> = [];
 
   const json = (route: Route, body: unknown, status = 200) =>
     route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
@@ -141,8 +143,18 @@ export async function serveEditor(page: Page, config: Record<string, unknown> = 
     if (method === "PATCH" || method === "POST" || method === "PUT") {
       if (table === "tv_config") {
         const body = request.postDataJSON() as { config?: Record<string, unknown> };
-        if (body?.config) saved = body.config;
+        if (body?.config) {
+          versions.unshift({
+            id: `v${versions.length + 1}`,
+            saved_at: new Date(Date.now() - 3_600_000).toISOString(),
+            replaced_at: new Date().toISOString(),
+            config: saved,
+          });
+          saved = body.config;
+        }
         writes += 1;
+        // The row written, as the database answers .select() - so the save is not retried.
+        return json(route, [{ updated_at: new Date().toISOString() }]);
       }
       return json(route, [], 204);
     }
@@ -167,6 +179,11 @@ export async function serveEditor(page: Page, config: Record<string, unknown> = 
         return json(route, SHIURIM);
       case "logo_library":
         return json(route, LOGO_LIBRARY);
+      case "tv_config_versions": {
+        const id = url.searchParams.get("id")?.replace(/^eq\./, "");
+        if (id) return json(route, { config: versions.find((v) => v.id === id)?.config ?? {} });
+        return json(route, versions.map(({ config: _c, ...v }) => v));
+      }
       default:
         return json(route, []);
     }
