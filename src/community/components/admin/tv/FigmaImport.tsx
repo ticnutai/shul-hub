@@ -35,7 +35,7 @@ export function FigmaImport({
 }) {
   const [colours, setColours] = useState<FigmaColor[] | null>(null);
   const [roles, setRoles] = useState<Record<ThemeRole, string | null> | null>(null);
-  const [name, setName] = useState("ערכה מפיגמה");
+  const [name, setName] = useState("צבעים מפיגמה");
   /** What was selected before, to go back to on cancel. */
   const previousTheme = useRef(config.theme);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -53,7 +53,7 @@ export function FigmaImport({
         ...c.customThemes.filter((t) => t.id !== DRAFT_ID),
         {
           id: DRAFT_ID,
-          name: themeName.trim() || "ערכה מפיגמה",
+          name: themeName.trim() || "צבעים מפיגמה",
           description: "יובאה מפיגמה",
           light: isLightColor(vars["--tv-bg-a"]),
           vars,
@@ -66,7 +66,7 @@ export function FigmaImport({
     try {
       const found = parseFigmaColors(await file.text());
       const guessed = guessRoles(found);
-      const themeName = file.name.replace(/\.json$/i, "").slice(0, 40) || "ערכה מפיגמה";
+      const themeName = file.name.replace(/\.json$/i, "").slice(0, 40) || "צבעים מפיגמה";
       previousTheme.current = config.theme === DRAFT_ID ? previousTheme.current : config.theme;
       setColours(found);
       setRoles(guessed);
@@ -171,7 +171,7 @@ export function FigmaImport({
             setName(e.target.value);
             apply(roles, e.target.value);
           }}
-          aria-label="שם הערכה"
+          aria-label="שם הצבעים"
           className="h-8"
         />
         <Button type="button" variant="ghost" size="icon" className="size-8" aria-label="ביטול הייבוא" onClick={cancel}>
@@ -220,8 +220,8 @@ export function FigmaImport({
       </div>
 
       <p className="text-xs leading-relaxed text-muted-foreground">
-        הערכה כבר מוצגת בתצוגה המקדימה ובחלון החי. תפקיד שלא נבחר לו צבע לוקח את הצבע של ערכת
-        ברירת המחדל. בסיום: <span className="font-medium">שמור ושדר</span>.
+        הצבעים כבר מוצגים בתצוגה המקדימה ובחלון החי. תפקיד שלא נבחר לו צבע לוקח את צבע הבסיס
+        הרגיל. בסיום: <span className="font-medium">שמור ושדר</span>.
       </p>
     </div>
   );

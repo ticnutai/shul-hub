@@ -3,7 +3,7 @@ import { ImagePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
-import { BOX_SHAPES, FRAME_IDS, FRAME_LABELS, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
+import { BOX_SHAPES, FRAME_LABELS, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
 import { BOX_PRESETS, applyBoxPreset, boxPresetCss, boxShapeCss, wearsBoxPreset } from "@/tv/boxPresets";
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
@@ -17,6 +17,7 @@ import {
   hiddenBackgrounds,
   applyBackground,
   backgroundOf,
+  writeBoardBackground,
   galleryOf,
   kindOf,
   newBackgroundId,
@@ -54,52 +55,6 @@ export type LayerProps = {
 };
 
 /* ---------------------------------------------------------------- pieces -- */
-
-type Option = { value: string; label: string };
-
-function TargetPicker({
-  label,
-  value,
-  onChange,
-  top,
-  groups,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  top: Option[];
-  groups: Array<{ label: string; options: Option[] }>;
-}) {
-  return (
-    <label className="flex items-center gap-2 rounded-md bg-muted/60 p-2 text-sm">
-      <span className="shrink-0 font-medium">למה:</span>
-      <select
-        aria-label={label}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
-      >
-        {top.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-        {groups.map((g) => (
-          <optgroup key={g.label} label={g.label}>
-            {g.options.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </optgroup>
-        ))}
-      </select>
-    </label>
-  );
-}
-
-const frameOptions = (config: TvConfig): Option[] =>
-  FRAME_IDS.map((id) => ({ value: `frame:${id}`, label: `${FRAME_LABELS[id]}${config.frameLooks[id] ? " •" : ""}` }));
 
 const frameOf = (target: string): FrameId | null =>
   target.startsWith("frame:") ? (target.slice(6) as FrameId) : null;
@@ -231,7 +186,6 @@ const flat = (c: string) => `linear-gradient(180deg, ${c}, ${c})`;
 type Source = "colour" | "gradient" | "picture";
 
 export function BackgroundLayer({
-  config,
   saved,
   onEdit,
   setPreview,
@@ -269,12 +223,7 @@ export function BackgroundLayer({
   /** Writes a background into the target. null = back to what the theme / style draws. */
   const write = useCallback(
     (c: TvConfig, value: string | null): TvConfig => {
-      if (target === "board") {
-        if (value === null) return { ...c, backgroundGradient: null, backgroundImage: null };
-        // A background of its own replaces the painting (which is its own wall).
-        if (isPictureFill(value)) return { ...c, backgroundImage: value };
-        return { ...c, backgroundGradient: value, backgroundImage: null };
-      }
+      if (target === "board") return writeBoardBackground(c, value);
       const id = frameOf(target);
       if (id) return { ...c, frameLooks: setFrameLook(c.frameLooks, id, { bg: value }) };
       return { ...c, frameStyle: { ...c.frameStyle, fill: value } };
@@ -389,8 +338,6 @@ export function BackgroundLayer({
         {source === "gradient" && (
           <GradientStudio
             key={target}
-            config={config}
-            onEdit={onEdit}
             applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${FRAME_LABELS[frame]}` : "החלה על כל התיבות"}
             current={current && isSafeGradient(current) ? current : null}
             onPreview={preview}
@@ -654,7 +601,7 @@ function PictureLayer({ saved, onEdit }: { saved: TvConfig; onEdit: Edit }) {
         value={mode}
         onChange={(v) => set(v === "theme" ? null : v === "colour" ? hex : gradient(angle, a, b))}
         options={[
-          { id: "theme", name: "צבע הערכה" },
+          { id: "theme", name: "צבע הבסיס" },
           { id: "colour", name: "צבע" },
           { id: "gradient", name: "מעבר צבעים" },
         ]}
@@ -793,14 +740,13 @@ export type BoxPart = "presets" | "shape" | "background" | "frames";
 export function FramesLayer(
   props: LayerProps & {
     /** Every box ("frames") or one ("frame:<id>"), chosen once at the top of the tab. */
-    target?: string;
+    target: string;
     /** Which part of the box this section shows; all of them when not given. */
     part?: BoxPart;
   },
 ) {
   const { config, saved, onEdit, colourFields } = props;
-  const [ownTarget, setTarget] = useState("frames");
-  const target = props.target ?? ownTarget;
+  const target = props.target;
   const show = (p: BoxPart) => !props.part || props.part === p;
   // Shown as a section of its own, the section's title is its title: no second one inside.
   const Part = props.part ? BarePart : TitledPart;
@@ -850,16 +796,6 @@ export function FramesLayer(
 
   return (
     <div className="space-y-3" data-testid={props.part ? `box-part-${props.part}` : "layer-frames"}>
-      {!props.target && (
-        <TargetPicker
-          label="מסגרות של"
-          value={target}
-          onChange={setTarget}
-          top={[{ value: "frames", label: "כל התיבות" }]}
-          groups={[{ label: "תיבה אחת", options: frameOptions(config) }]}
-        />
-      )}
-
       {show("presets") && (
       <Part title="תיבות מוכנות" testId="box-presets">
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -1055,50 +991,33 @@ export function TextLayer({
   target: given,
 }: LayerProps & {
   /** Every box ("frames": the board's text) or one ("frame:<id>"), chosen once at the top of the tab. */
-  target?: string;
+  target: string;
 }) {
-  const [ownTarget, setTarget] = useState("board");
   // With the box chosen at the top: optionally one element of the board (the clock's time, a title...).
   const [element, setElement] = useState("");
-  const target = given ? (element ? `area:${element}` : given === "frames" ? "board" : given) : ownTarget;
+  const target = element ? `area:${element}` : given === "frames" ? "board" : given;
   const frame = frameOf(target);
   const area = target.startsWith("area:") ? target.slice(5) : null;
 
   return (
     <div className="space-y-3" data-testid="layer-text">
-      {given ? (
-        <label className="flex items-center gap-2 rounded-md bg-muted/60 p-2 text-sm">
-          <span className="shrink-0 font-medium">חלק מסוים:</span>
-          <select
-            aria-label="חלק מסוים בטקסט"
-            value={element}
-            onChange={(e) => setElement(e.target.value)}
-            className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
-          >
-            <option value="">{given === "frames" ? "כל הטקסט בלוח" : "כל הטקסט בתיבה"}</option>
-            {TEXT_AREAS.map((a) => (
-              <option key={a.key} value={a.key}>
-                {a.label}
-                {config.styles[a.key] ? " •" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-      ) : (
-        <TargetPicker
-          label="טקסט של"
-          value={target}
-          onChange={setTarget}
-          top={[{ value: "board", label: "כל הלוח" }]}
-          groups={[
-            { label: "בתוך מסגרת", options: frameOptions(config) },
-            {
-              label: "אזור על הלוח",
-              options: TEXT_AREAS.map((a) => ({ value: `area:${a.key}`, label: `${a.label}${config.styles[a.key] ? " •" : ""}` })),
-            },
-          ]}
-        />
-      )}
+      <label className="flex items-center gap-2 rounded-md bg-muted/60 p-2 text-sm">
+        <span className="shrink-0 font-medium">חלק מסוים:</span>
+        <select
+          aria-label="חלק מסוים בטקסט"
+          value={element}
+          onChange={(e) => setElement(e.target.value)}
+          className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+        >
+          <option value="">{given === "frames" ? "כל הטקסט בלוח" : "כל הטקסט בתיבה"}</option>
+          {TEXT_AREAS.map((a) => (
+            <option key={a.key} value={a.key}>
+              {a.label}
+              {config.styles[a.key] ? " •" : ""}
+            </option>
+          ))}
+        </select>
+      </label>
 
       {area ? (
         <>

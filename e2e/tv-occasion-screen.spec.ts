@@ -71,7 +71,7 @@ test("an occasion stands beside the screens; its card and the prayers share its 
   expect(day?.screen?.blocks.map((b) => b.block)).toEqual(expect.arrayContaining(["festival", "prayers"]));
 
   // Back to the board's screen: the preview returns to now.
-  await page.getByRole("button", { name: /הלוח/ }).first().click();
+  await page.getByRole("button", { name: /הלוח/ }).filter({ hasNotText: "חלון נפרד" }).first().click();
   await expect(page.getByTestId("occasion-screen-note")).toHaveCount(0);
 });
 
@@ -111,7 +111,7 @@ test("an occasion's design on its screen only: the ordinary screen keeps its loo
 
   // The board's own screen: its own look.
   await page.getByRole("tab", { name: "פריסה" }).click();
-  await page.getByRole("button", { name: /הלוח/ }).first().click();
+  await page.getByRole("button", { name: /הלוח/ }).filter({ hasNotText: "חלון נפרד" }).first().click();
   await expect(root).not.toHaveClass(/has-frame-image/);
   // The occasion's screen: in its wood.
   await page.getByTestId("occasion-screen-tab").and(page.locator('[data-occasion="o_testday2"]')).click();
@@ -130,7 +130,7 @@ test("an occasion's design on the whole board: the editor says so, and shows it 
   await expect(note).toContainText("כל המסכים לובשים את העיצוב «מסגרת עץ מגולפת» של יום העץ");
   // On the board's own screen, the board being edited - until asked to show it as the screens do.
   await page.getByRole("tab", { name: "פריסה" }).click();
-  await page.getByRole("button", { name: /הלוח/ }).first().click();
+  await page.getByRole("button", { name: /הלוח/ }).filter({ hasNotText: "חלון נפרד" }).first().click();
   await expect(root).not.toHaveClass(/has-frame-image/);
   await note.getByRole("button", { name: "הצגה כמו במסכים" }).click();
   await expect(root).toHaveClass(/has-frame-image/);

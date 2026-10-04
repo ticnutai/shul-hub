@@ -27,7 +27,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -55,14 +54,11 @@ import {
   type TvConfig,
 } from "@/tv/config";
 import {
-  allThemes,
   getTheme,
-  isLightColor,
   isSafeCssValue,
   newCustomThemeId,
   newGradientId,
   THEME_VAR_LABELS,
-  TV_THEMES,
   type ThemeVar,
 } from "@/tv/themes";
 import { useDayZmanim } from "@/tv/useBoardData";
@@ -148,9 +144,6 @@ const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
   { id: "both", name: "שניהם" },
 ];
 
-const SCENE_INTERVALS = [10, 15, 20, 30, 45, 60, 120, 180, 300, 600, 900, 1200, 1800, 2700, 3600];
-const intervalLabel = (s: number) =>
-  s < 60 ? `${s} שניות` : s === 60 ? "דקה" : s < 3600 ? `${s / 60} דקות` : "שעה";
 import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
 import type { DeviceMode } from "./devices";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
@@ -160,7 +153,7 @@ import { BlankBoardStarter, BuildGuide, type BuildStep } from "./BlankBoardStart
 import { blankBoard } from "@/tv/blankBoard";
 import { uploadImages } from "./uploadImages";
 import { DesignLibrary } from "./DesignLibrary";
-import { captureDesign, findDesign, MAX_DESIGNS } from "@/tv/designs";
+import { findDesign } from "@/tv/designs";
 import { ScreenComposer } from "./ScreenComposer";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useDraftSync } from "./tvDraftChannel";
@@ -175,8 +168,6 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { MedallionRows } from "./MedallionRows";
-import { HiddenShelf, TileRemove } from "./ReadyShelf";
-import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { FRAME_IDS, FRAME_LABELS } from "@/tv/frameLooks";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
@@ -393,7 +384,7 @@ function ColorField({
         variant="ghost"
         size="icon"
         className="size-8 shrink-0"
-        aria-label={`החזרת ${label} לערך של ערכת הנושא`}
+        aria-label={`החזרת ${label} לצבע הבסיס`}
         title={`ערך הערכה: ${themeValue}`}
         disabled={!overridden}
         onClick={onReset}
@@ -748,7 +739,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
   /** "ביטול שינויים" asks inline before it throws the draft away. */
   const [confirmDiscard, setConfirmDiscard] = useState(false);
-  /** The theme whose "מחיקה" is waiting to be confirmed, inline. */
   // Saving, or an undo back to the saved design, answers the question itself.
   useEffect(() => {
     if (!dirty) setConfirmDiscard(false);
@@ -901,7 +891,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   };
 
   // What is being edited: the board, one screen's, or one occasion's design.
-  const themes = allThemes(draft.customThemes);
   const theme = getTheme(scoped.theme, draft.customThemes);
   const layerProps: LayerProps = {
     config: view,
@@ -937,12 +926,6 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       ))}
     </div>
   );
-  /** The colours on screen now: the theme plus the live edits below. */
-  const currentVars = () =>
-    ({ ...theme.vars, ...(scoped.themeOverrides as Partial<Record<ThemeVar, string>>) } as Record<
-      ThemeVar,
-      string
-    >);
   /* --------------------------------------------- import and export -- */
 
   const doExport = async (what: "themes" | "gradients" | "all", how: "file" | "clipboard") => {
@@ -968,7 +951,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       illustrations,
     );
     const count = payload.themes.length + payload.gradients.length + illustrations.length;
-    if (!count && !payload.board) return toast.error("אין עדיין ערכות נושא או גרדיאנטים משלכם לייצוא");
+    if (!count && !payload.board) return toast.error("אין עדיין צבעי בסיס או גרדיאנטים משלכם לייצוא");
     const what_ = `${count} פריטים${payload.board ? " ומבנה הלוח" : ""}${
       missing ? ` · ${missing} תבניות לא יוצאו כי התמונה שלהן לא נטענה` : ""
     }`;
@@ -1018,7 +1001,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         return first ? { ...next, illustration: first } : next;
       });
       const parts = [
-        incoming.themes.length ? `${incoming.themes.length} ערכות נושא` : "",
+        incoming.themes.length ? `${incoming.themes.length} סטים של צבעי בסיס` : "",
         incoming.gradients.length ? `${incoming.gradients.length} גרדיאנטים` : "",
         uploaded.length ? `${uploaded.length} תבניות מאוירות` : "",
       ].filter(Boolean);
@@ -1026,7 +1009,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
         [
           parts.length ? `יובאו ${parts.join(" ו-")}` : "",
           // Shape from the tablets editor: style, corners, spacing, text size, name
-          incoming.board ? "הוחל מבנה הלוח (סגנון, פינות, מרווחים, גודל טקסט ושם)" : "",
+          incoming.board ? "הוחל מבנה הלוח (קשת או פינות, רקע, מרווחים, גודל טקסט ושם)" : "",
           failed ? `${failed} תמונות לא הועלו` : "",
           incoming.skipped ? `${incoming.skipped} פריטים לא תקינים דולגו` : "",
         ]
@@ -1879,7 +1862,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
           <Section
             title="ייבוא מפיגמה"
-            hint="קובץ המשתנים (Variables) של פיגמה הופך לערכת נושא. בלי טוקן ובלי חשבון - הקובץ נקרא כאן בדפדפן."
+            hint="קובץ המשתנים (Variables) של פיגמה הופך לצבעי הבסיס של הלוח. בלי טוקן ובלי חשבון - הקובץ נקרא כאן בדפדפן."
           >
             <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
           </Section>
@@ -1894,7 +1877,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               <AlertDialogHeader>
                 <AlertDialogTitle>לאפס את כל העיצוב לברירת המחדל?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  ערכת הנושא, הצבעים, השקופיות וההתראות יחזרו להגדרות המקוריות בתצוגה המקדימה. שום
+                  צבעי הבסיס, השקופיות וההתראות יחזרו להגדרות המקוריות בתצוגה המקדימה. שום
                   דבר לא ישתנה במסכים עד שתלחצו "שמור ושדר".
                 </AlertDialogDescription>
               </AlertDialogHeader>
@@ -2137,7 +2120,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             title="הלוח במסך מלא בעיצוב השמור, בדיוק כמו בטלוויזיות. מתאים גם כדי להשתמש במחשב כמסך תצוגה."
             onClick={() => window.open("/admin/tv-board", "_blank")}
           >
-            <ExternalLink className="size-4" /> לוח במסך מלא
+            <ExternalLink className="size-4" /> פתיחת הלוח בחלון נפרד
           </Button>
         </span>
       </div>

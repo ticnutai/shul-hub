@@ -45,9 +45,9 @@ import {
   toggleFlip,
 } from "@/tv/boardEdit";
 import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
-import { applyBackground, galleryOf, tileOf, wears } from "@/tv/backgrounds";
+import { applyBackground, galleryOf, writeBoardBackground, tileOf, wears } from "@/tv/backgrounds";
 import { BoardFramePicker, FrameAndSpacing } from "./BoardLook";
-import { getTheme, isSafeCssValue } from "@/tv/themes";
+import { isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
 
@@ -297,8 +297,8 @@ function flatColour(gradient: string | null): string | null {
  * The board's background, from a click on the board: the same gallery as
  * "רקעים" (the ready colours, gradients and pictures and the shul's own),
  * written the same way - a colour after a picture takes the picture off,
- * "לפי הערכה" takes everything off. It wrote the gradient alone, so over a
- * picture nothing changed. The themes are chosen in one place, "עיצוב".
+ * "רקע בסיס" takes everything off - through writeBoardBackground, as the
+ * design tab does, so the same click does the same thing in both.
  */
 function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
   const gallery = galleryOf(config);
@@ -318,11 +318,11 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
           <button
             type="button"
             aria-pressed={own}
-            title="הרקע של ערכת הנושא"
-            onClick={() => onEdit("bg.gallery", (c) => ({ ...c, backgroundGradient: null, backgroundImage: null, backgroundOverlay: null }))}
+            title="בלי רקע משלו: צבעי הבסיס של הלוח"
+            onClick={() => onEdit("bg.gallery", (c) => writeBoardBackground(c, null))}
             className={`h-8 rounded-md border px-2 text-[11px] transition ${own ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
           >
-            לפי הערכה
+            רקע בסיס
           </button>
           <label
             className="flex h-8 cursor-pointer items-center gap-1 rounded-md border px-2 text-[11px] hover:border-primary/50"
@@ -334,12 +334,7 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
               aria-label="צבע רקע אחיד"
               value={(!config.backgroundImage && flatColour(config.backgroundGradient)) || "#0b1628"}
               onChange={(e) =>
-                onEdit("bg.colour", (c) => ({
-                  ...c,
-                  backgroundGradient: `linear-gradient(180deg, ${e.target.value}, ${e.target.value})`,
-                  backgroundImage: null,
-                  backgroundOverlay: null,
-                }))
+                onEdit("bg.colour", (c) => writeBoardBackground(c, `linear-gradient(180deg, ${e.target.value}, ${e.target.value})`))
               }
               className="size-5 cursor-pointer border-0 bg-transparent p-0"
             />
@@ -630,7 +625,7 @@ export function ElementLook({
             dir="ltr"
             aria-label="צבע הרכיב (ערך)"
             value={colorText}
-            placeholder="של הערכה"
+            placeholder="רגיל"
             className={`h-8 w-28 font-mono text-xs ${
               colorText && !isSafeCssValue(colorText) ? "border-destructive" : ""
             }`}

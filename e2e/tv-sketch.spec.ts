@@ -94,15 +94,15 @@ test("the keyboard moves and sizes a block; an arrangement is kept as a kit and 
   await expect(status).toContainText("שורה 2 - 55%");
 
   // Kept as a kit, the arrangement given up, then put back by the kit.
-  await page.getByRole("button", { name: "שמירה כערכה" }).click();
-  await page.getByLabel("שם הערכה").fill("שלוש בשורה");
+  await page.getByRole("button", { name: "שמירת הסידור" }).click();
+  await page.getByLabel("שם הסידור").fill("שלוש בשורה");
   await page.getByRole("button", { name: "שמירה", exact: true }).click();
-  await expect(status).toContainText("נשמר כערכה «שלוש בשורה»");
+  await expect(status).toContainText("הסידור נשמר בשם «שלוש בשורה»");
   await page.getByRole("button", { name: "סידור אוטומטי" }).click();
   expect(await rowOf("shiurim")).toBe(2);
   await page.getByTestId("layout-kits").getByRole("button", { name: /שלוש בשורה/ }).click();
   expect(await rowOf("shiurim")).toBe(1);
-  await expect(status).toContainText("הוחלה הערכה «שלוש בשורה»");
+  await expect(status).toContainText("הוחל הסידור «שלוש בשורה»");
 
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect

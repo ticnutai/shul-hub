@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Download, RotateCcw, Upload, X } from "lucide-react";
+import { Check, Download, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import type { TvConfig } from "@/tv/config";
 import {
   isSafeGradient,
 } from "@/tv/themes";
@@ -28,7 +27,6 @@ import {
  * deleting a saved gradient never changes a board that already uses it.
  */
 
-type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
 const DEFAULT_ANGLE = 160;
 
@@ -54,27 +52,13 @@ function build(kind: "linear" | "radial", angle: number, from: string, to: strin
     : `radial-gradient(ellipse at 50% 30%, ${from}, ${to})`;
 }
 
-export function GradientSwatch({ value, className = "" }: { value: string; className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={`block rounded-md border ${className}`}
-      style={{ backgroundImage: value }}
-    />
-  );
-}
-
 export function GradientStudio({
-  config,
-  onEdit,
   /** Where "החלה" puts the gradient: the board's background, or a chosen element. */
   applyLabel,
   onApply,
   onPreview,
   current,
 }: {
-  config: TvConfig;
-  onEdit: Edit;
   applyLabel: string;
   onApply: (value: string | null) => void;
   /**
@@ -145,11 +129,6 @@ export function GradientStudio({
           <Button type="button" size="sm" onClick={() => onApply(built)} disabled={!valid}>
             <Check className="size-4" /> {applyLabel}
           </Button>
-          {current && (
-            <Button type="button" size="sm" variant="outline" onClick={() => onApply(null)}>
-              <RotateCcw className="size-4" /> הסרת הגרדיאנט
-            </Button>
-          )}
           <span className="text-xs text-muted-foreground">
             {valid ? "" : "הערך אינו גרדיאנט תקין"}
           </span>
@@ -278,7 +257,7 @@ export function TransferPanel({
           {(
             [
               ["all", "הכל + מבנה הלוח"],
-              ["themes", "ערכות נושא"],
+              ["themes", "צבעי בסיס"],
               ["gradients", "גרדיאנטים"],
             ] as const
           ).map(([what, label]) => (
@@ -306,8 +285,8 @@ export function TransferPanel({
       <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">ייבוא</div>
         <p className="text-xs text-muted-foreground">
-          קובץ מעורך לוחות הברית מביא גם את מבנה הלוח: סגנון, פינות, מרווחים, גודל טקסט ושם בית
-          הכנסת. הכל נכנס לטיוטה עד "שמור ושדר".
+          קובץ מעורך לוחות הברית מביא גם את מבנה הלוח: קשת או פינות, רקע, מרווחים, גודל טקסט ושם
+          בית הכנסת. הכל נכנס לטיוטה עד "שמור ושדר".
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" variant="outline" asChild>
@@ -350,7 +329,7 @@ export function TransferPanel({
                 <AlertDialogHeader>
                   <AlertDialogTitle>לייבא את העיצובים מהקובץ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    הערכות והגרדיאנטים יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
+                    צבעי הבסיס והגרדיאנטים יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
                     הכל נשאר טיוטה עד "שמור ושדר".
                   </AlertDialogDescription>
                 </AlertDialogHeader>

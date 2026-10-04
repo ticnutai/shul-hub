@@ -388,7 +388,7 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "flat colour");
 
     // And back to what the style paints.
-    await panel.getByRole("button", { name: "לפי הערכה" }).click();
+    await panel.getByRole("button", { name: "רקע בסיס" }).click();
     await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-bg-gradient");
     await expectNotFrozen(page, "back to the style");
   });

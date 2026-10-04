@@ -2,6 +2,7 @@ import type { TvConfig } from "./config";
 import { TV_BACKDROPS, backdropRef, backdropUrl, findBackdrop } from "./backdrops";
 import { DEFAULT_BACKGROUND_TUNE } from "./layers";
 import { TV_GRADIENTS, type TvGradient } from "./themes";
+import { isPictureFill } from "./layerCss";
 import { isHiddenReady } from "./readyItems";
 
 /**
@@ -116,6 +117,19 @@ export function wearsExactly(c: TvConfig, b: SavedBackground): boolean {
 }
 
 /** The gallery: the shul's own first (newest first), then the ready-made examples it has not hidden. */
+/**
+ * The board's own background written the one way, wherever it is chosen:
+ * null takes everything off (back to the base colours), a picture goes under
+ * whatever is over it, and a colour or a gradient replaces the picture and
+ * the layer that was over it. The design tab and the board's own panel both
+ * write through here, so the same click does the same thing in both.
+ */
+export function writeBoardBackground(c: TvConfig, value: string | null): TvConfig {
+  if (value === null) return { ...c, backgroundGradient: null, backgroundImage: null, backgroundOverlay: null };
+  if (isPictureFill(value)) return { ...c, backgroundImage: value };
+  return { ...c, backgroundGradient: value, backgroundImage: null, backgroundOverlay: null };
+}
+
 export function galleryOf(c: Pick<TvConfig, "backgrounds" | "hiddenReady">): SavedBackground[] {
   return [...c.backgrounds, ...builtinBackgrounds().filter((b) => !isHiddenReady(c, "bg", b.id))];
 }

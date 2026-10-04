@@ -20,6 +20,7 @@
  * fall out of step with the first, because pinned and automatic are the same
  * field present or absent.
  */
+import { SPACING_FALLBACK } from "./BoardLook";
 import { Fragment, useMemo, useRef, useState } from "react";
 import { BookmarkPlus, CalendarDays, Plus, RotateCcw, X } from "lucide-react";
 
@@ -210,7 +211,7 @@ export function ScreenComposer({
     onLayouts([...config.layouts.filter((l) => l.name !== kit.name), kit].slice(-12));
     setKitName(null);
     setSketchMessage(
-      `הסידור נשמר כערכה «${kit.name}». אפשר להחיל אותה על כל מסך, גם אחרי שינויים.`,
+      `הסידור נשמר בשם «${kit.name}». אפשר להחיל אותו על כל מסך, גם אחרי שינויים.`,
     );
   };
   /**
@@ -224,12 +225,12 @@ export function ScreenComposer({
     const grid = keepCard ? [{ blocks: [CARD_BLOCK], widths: [1], height: 1 }, ...kit.grid] : kit.grid;
     const content = grid.flatMap((r) => r.blocks).map((block) => ({ block }));
     editScreen({ blocks: [...chrome, ...content], grid });
-    setSketchMessage(`הוחלה הערכה «${kit.name}» על "${screen.name}".`);
+    setSketchMessage(`הוחל הסידור «${kit.name}» על "${screen.name}".`);
   };
   const removeKit = (kit: SavedLayout) => {
-    if (!window.confirm(`למחוק את הערכה «${kit.name}»? המסכים שכבר מסודרים לפיה לא ישתנו.`)) return;
+    if (!window.confirm(`למחוק את הסידור השמור «${kit.name}»? המסכים שכבר מסודרים לפיו לא ישתנו.`)) return;
     onLayouts(config.layouts.filter((l) => l.id !== kit.id));
-    setSketchMessage(`הערכה «${kit.name}» נמחקה.`);
+    setSketchMessage(`הסידור «${kit.name}» נמחק.`);
   };
 
   const addScreen = () => {
@@ -463,7 +464,7 @@ export function ScreenComposer({
                   fallback:
                     config.screenLayout === "medallion"
                       ? { top: 2.4, bottom: 2.4 }
-                      : { top: 2.6, bottom: 1.6 },
+                      : { top: SPACING_FALLBACK.top, bottom: SPACING_FALLBACK.bottom },
                 }}
                 onSpacing={(edge, value) =>
                   onEdit(`spacing.${edge}`, (c) => ({
@@ -519,7 +520,7 @@ export function ScreenComposer({
                     setKitName(kitName === null ? `סידור ${config.layouts.length + 1}` : null)
                   }
                 >
-                  <BookmarkPlus className="size-3" /> שמירה כערכה
+                  <BookmarkPlus className="size-3" /> שמירת הסידור
                 </Button>
                 {screen.grid && (
                   <Button
@@ -545,7 +546,7 @@ export function ScreenComposer({
                     value={kitName}
                     onChange={(e) => setKitName(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && saveKit()}
-                    aria-label="שם הערכה"
+                    aria-label="שם הסידור"
                     className="h-8 text-sm"
                     maxLength={40}
                     autoFocus
@@ -564,7 +565,7 @@ export function ScreenComposer({
               {config.layouts.length > 0 && (
                 <div className="mt-2" data-testid="layout-kits">
                   <div className="mb-1 text-[11px] font-medium text-muted-foreground">
-                    ערכות סידור - לחיצה מחילה על המסך הזה
+                    סידורים שמורים - לחיצה מחילה על המסך הזה
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {config.layouts.map((kit) => (
@@ -583,7 +584,7 @@ export function ScreenComposer({
                         </button>
                         <button
                           type="button"
-                          aria-label={`מחיקת הערכה ${kit.name}`}
+                          aria-label={`מחיקת הסידור ${kit.name}`}
                           onClick={() => removeKit(kit)}
                           className="absolute -left-1.5 -top-1.5 hidden size-4 place-items-center rounded-full bg-destructive text-[10px] text-destructive-foreground group-hover:grid"
                         >
