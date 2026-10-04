@@ -52,7 +52,7 @@ export type SlideKind = "prayer" | "learning" | "announcements" | "shiurim" | "s
  * has to be able to describe a screen and blocks.ts has to be able to read
  * the config - putting the ids in blocks.ts would make that a circle.
  */
-export type BlockId =
+export type BuiltinBlockId =
   | "header"
   | "logo"
   | "clock"
@@ -67,7 +67,33 @@ export type BlockId =
   | "ticker"
   | "footer";
 
-export const BLOCK_IDS: readonly BlockId[] = [
+/**
+ * A box the gabbai added by hand (TvConfig.customBoxes): a title and free
+ * text, on/off and placed in the composer like any block, and dressed like
+ * any box (frameLooks is keyed by the same id).
+ */
+export type CustomBlockId = `custom:${string}`;
+export type BlockId = BuiltinBlockId | CustomBlockId;
+
+export const CUSTOM_BLOCK_RE = /^custom:[a-z0-9]{4,16}$/;
+export const isCustomBlock = (id: string): id is CustomBlockId => CUSTOM_BLOCK_RE.test(id);
+/** A block the board knows: a built-in one, or a box of its own by a well-formed id. */
+export const isKnownBlock = (id: unknown): id is BlockId =>
+  typeof id === "string" && ((BLOCK_IDS as readonly string[]).includes(id) || isCustomBlock(id));
+
+export interface CustomBox {
+  id: CustomBlockId;
+  title: string;
+  /** Free text; line breaks are kept. */
+  text: string;
+}
+export const MAX_CUSTOM_BOXES = 12;
+
+export function newCustomBoxId(): CustomBlockId {
+  return `custom:${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export const BLOCK_IDS: readonly BuiltinBlockId[] = [
   "header", "logo", "clock", "prayers", "zmanim", "announcements",
   "shiurim", "learning", "slideshow", "festival", "shabbat", "ticker", "footer",
 ];
@@ -600,6 +626,8 @@ export interface TvConfig {
   overflow: { mode: "off" | "pause" | "loop"; speed: "slow" | "normal" };
   /** Arrangements saved in the composer, to be put on a screen again (SavedLayout). */
   layouts: SavedLayout[];
+  /** Boxes added by hand: a title and free text each (CustomBox). */
+  customBoxes: CustomBox[];
   alerts: {
     enabled: boolean;
     events: AlertEvent[];
@@ -715,6 +743,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   logos: [],
   overflow: { mode: "off", speed: "slow" },
   layouts: [],
+  customBoxes: [],
   alerts: {
     enabled: true,
     events: ["sof_zman_shma", "sof_zman_tefila", "sunset", "candle"],
@@ -830,7 +859,7 @@ function normalizeGrid(raw: unknown): ScreenRow[] | undefined {
     const widths: number[] = [];
     r.blocks.forEach((b, i) => {
       const id = b as BlockId;
-      if (blocks.length >= 3 || !BLOCK_IDS.includes(id) || seen.has(id)) return;
+      if (blocks.length >= 3 || !isKnownBlock(id) || seen.has(id)) return;
       seen.add(id);
       blocks.push(id);
       widths.push(num(Array.isArray(r.widths) ? r.widths[i] : undefined, 1, 0.1, 10));
@@ -838,6 +867,20 @@ function normalizeGrid(raw: unknown): ScreenRow[] | undefined {
     if (blocks.length) rows.push({ blocks, widths, height: num(r.height, 1, 0.3, 4) });
   }
   return rows.length ? rows : undefined;
+}
+
+function normalizeCustomBoxes(raw: unknown): CustomBox[] {
+  const out: CustomBox[] = [];
+  for (const b of Array.isArray(raw) ? raw : []) {
+    if (!isObj(b) || typeof b.id !== "string" || !isCustomBlock(b.id) || out.some((o) => o.id === b.id)) continue;
+    out.push({
+      id: b.id,
+      title: typeof b.title === "string" ? b.title.trim().slice(0, 60) : "",
+      text: typeof b.text === "string" ? b.text.slice(0, 800) : "",
+    });
+    if (out.length >= MAX_CUSTOM_BOXES) break;
+  }
+  return out;
 }
 
 function normalizeLayouts(raw: unknown): SavedLayout[] {
@@ -865,7 +908,7 @@ function normalizeScreens(raw: unknown): Screen[] | undefined {
       if (!isObj(b)) continue;
       const id = b.block as BlockId;
       // A block twice on one screen would draw twice and count twice.
-      if (!BLOCK_IDS.includes(id) || seen.has(id)) continue;
+      if (!isKnownBlock(id) || seen.has(id)) continue;
       seen.add(id);
       const area = areas.includes(b.area as BlockArea) ? (b.area as BlockArea) : undefined;
       blocks.push(area ? { block: id, area } : { block: id });
@@ -1244,6 +1287,7 @@ function normalizeStored(stored: unknown): TvConfig {
     screens: withLogoSwitch(normalizeScreens(raw.screens), raw.logos),
     logos: normalizeLogos(raw.logos),
     layouts: normalizeLayouts(raw.layouts),
+    customBoxes: normalizeCustomBoxes(raw.customBoxes),
     overflow: {
       mode: isObj(raw.overflow) && ["pause", "loop"].includes(raw.overflow.mode as string) ? (raw.overflow.mode as "pause" | "loop") : "off",
       speed: isObj(raw.overflow) && raw.overflow.speed === "normal" ? "normal" : "slow",

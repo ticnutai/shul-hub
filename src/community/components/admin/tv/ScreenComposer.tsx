@@ -27,7 +27,9 @@ import { BookmarkPlus, CalendarDays, Plus, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { BLOCKS, BLOCK_BY_ID } from "@/tv/blocks";
+import { BLOCKS, blockSpec } from "@/tv/blocks";
+import { addCustomBox, editCustomBox, removeCustomBox } from "@/tv/customBoxes";
+import { MAX_CUSTOM_BOXES, newCustomBoxId, type CustomBlockId } from "@/tv/config";
 import type { BlockArea, BlockId, SavedLayout, Screen, TvConfig } from "@/tv/config";
 import { DAY_BLOCKS, dayScreen, readScreens } from "@/tv/screens";
 import { CARD_BLOCK, nextDateOf, occasionScreenOf, readOccasions, type Occasion } from "@/tv/occasions";
@@ -59,6 +61,55 @@ const GROUPS: { title: string; ids: BlockId[] }[] = [
 const OCCASION_GROUPS: { title: string; ids: BlockId[] }[] = [GROUPS[0], { title: "המועד", ids: [CARD_BLOCK] }, GROUPS[1]];
 
 const DAY_MS = 86_400_000;
+
+/** A box of the shul's own: its title and its text, written straight onto the board. */
+function CustomBoxEditor({
+  box,
+  onChange,
+  onRemove,
+  onClose,
+}: {
+  box: { title: string; text: string };
+  onChange: (patch: { title?: string; text?: string }) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="space-y-2 rounded-lg border-2 border-primary/40 p-2" data-testid="custom-box-editor">
+      <label className="block text-xs">
+        <span className="font-medium">כותרת התיבה</span>
+        <input
+          value={box.title}
+          maxLength={60}
+          onChange={(e) => onChange({ title: e.target.value })}
+          className="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+        />
+      </label>
+      <label className="block text-xs">
+        <span className="font-medium">מה כתוב בה</span>
+        <textarea
+          value={box.text}
+          maxLength={800}
+          rows={4}
+          onChange={(e) => onChange({ text: e.target.value })}
+          placeholder="כל שורה כאן היא שורה על הלוח"
+          className="mt-1 w-full rounded-md border bg-background p-2 text-sm"
+        />
+      </label>
+      <p className="text-[11px] text-muted-foreground">
+        את המראה שלה - צורה, רקע, מסגרת, צבע וגודל הטקסט - בוחרים בלשונית "עיצוב", כשבוחרים אותה למעלה ב"התיבות, המסגרות והטקסט של".
+      </p>
+      <div className="flex gap-2">
+        <button type="button" onClick={onClose} className="rounded-md border px-2 py-1 text-xs hover:border-primary/50">
+          סגירה
+        </button>
+        <button type="button" onClick={onRemove} className="rounded-md border border-destructive/50 px-2 py-1 text-xs text-destructive">
+          מחיקת התיבה
+        </button>
+      </div>
+    </div>
+  );
+}
 /** How far ahead an occasion stands beside the board's screens. */
 const OCCASION_DAYS_AHEAD = 7;
 
@@ -179,6 +230,12 @@ export function ScreenComposer({
     }));
   };
 
+  /** A block's name and place - a box added by hand by its title. */
+  const spec = (id: BlockId) => blockSpec(id, config.customBoxes);
+  const isCustom = (id: BlockId) => id.startsWith("custom:");
+  /** The box of the shul's own whose title and text are open below the list. */
+  const [editingBox, setEditingBox] = useState<CustomBlockId | null>(null);
+
   const toggle = (id: BlockId, on: boolean) =>
     editScreen({
       blocks: on ? [...screen.blocks, { block: id }] : screen.blocks.filter((b) => b.block !== id),
@@ -219,7 +276,7 @@ export function ScreenComposer({
    * off), standing as they were saved. The bars stay as the screen has them.
    */
   const applyKit = (kit: SavedLayout) => {
-    const chrome = screen.blocks.filter((b) => BLOCK_BY_ID[b.block].chrome);
+    const chrome = screen.blocks.filter((b) => spec(b.block).chrome);
     // An occasion's card stays on its screen: a kit without it gets it on top.
     const keepCard = occasion && !kit.grid.some((r) => r.blocks.includes(CARD_BLOCK));
     const grid = keepCard ? [{ blocks: [CARD_BLOCK], widths: [1], height: 1 }, ...kit.grid] : kit.grid;
@@ -257,7 +314,7 @@ export function ScreenComposer({
    * without a word here, so a board saved with three screens turned two on
    * the wall and nothing said why.
    */
-  const empty = (s: Screen) => !s.blocks.some((b) => !BLOCK_BY_ID[b.block].chrome);
+  const empty = (s: Screen) => !s.blocks.some((b) => !spec(b.block).chrome);
   const shown = screens.filter((s) => !empty(s)).length;
   // The ordinary rotation: what the wall does on a weekday with no festival.
   const ordinary = screens.filter((s) => !empty(s) && !dayScreen(s)).length;
@@ -443,7 +500,7 @@ export function ScreenComposer({
           >
             <Sketch
               ids={screen.blocks
-                .filter((b) => BLOCK_BY_ID[b.block].zone === "top")
+                .filter((b) => spec(b.block).zone === "top")
                 .map((b) => b.block)}
             />
             {rows.length === 0 ? (
@@ -454,6 +511,7 @@ export function ScreenComposer({
               <SketchEditor
                 key={screen.id}
                 rows={rows}
+                nameOf={(id) => spec(id).name}
                 manual={Boolean(screen.grid)}
                 onChange={(grid) => editScreen({ grid })}
                 onMessage={setSketchMessage}
@@ -476,7 +534,7 @@ export function ScreenComposer({
             )}
             <Sketch
               ids={screen.blocks
-                .filter((b) => BLOCK_BY_ID[b.block].zone === "bottom")
+                .filter((b) => spec(b.block).zone === "bottom")
                 .map((b) => b.block)}
               // The strip is a strip of its own on the medallion and the full board;
               // elsewhere this bar is the row of dots, and its size would change nothing.
@@ -575,7 +633,7 @@ export function ScreenComposer({
                           onClick={() => applyKit(kit)}
                           title={`החלת «${kit.name}» על "${screen.name}": ${kit.grid
                             .flatMap((r) => r.blocks)
-                            .map((b) => BLOCK_BY_ID[b].name)
+                            .map((b) => spec(b).name)
                             .join(", ")}`}
                           className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-xs hover:border-primary"
                         >
@@ -604,14 +662,17 @@ export function ScreenComposer({
       <div className="rounded-xl border bg-card p-3">
         <h4 className="text-sm font-semibold">מה יופיע במסך הזה</h4>
         <div className="mt-2 space-y-3">
-          {(occasion ? OCCASION_GROUPS : GROUPS).map((group) => (
+          {[
+            ...(occasion ? OCCASION_GROUPS : GROUPS),
+            ...(config.customBoxes.length ? [{ title: "התיבות שלי", ids: config.customBoxes.map((b) => b.id) as BlockId[] }] : []),
+          ].map((group) => (
             <Fragment key={group.title}>
               <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                 {group.title}
               </div>
               <div className="space-y-1">
                 {group.ids.map((id) => {
-                  const spec = BLOCK_BY_ID[id];
+                  const blockOf = spec(id);
                   const checked = on(id);
                   return (
                     <div
@@ -624,19 +685,19 @@ export function ScreenComposer({
                         // The card is what makes it the occasion's screen.
                         disabled={id === CARD_BLOCK}
                         onCheckedChange={(v) => toggle(id, v)}
-                        aria-label={spec.name}
+                        aria-label={blockOf.name}
                       />
                       <label htmlFor={`block-${id}`} className="min-w-0 flex-1 cursor-pointer">
-                        <span className="block text-sm leading-tight">{spec.name}</span>
-                        {spec.note && (
+                        <span className="block text-sm leading-tight">{blockOf.name}</span>
+                        {blockOf.note && (
                           <span className="block text-[11px] leading-tight text-muted-foreground">
-                            {spec.note}
+                            {blockOf.note}
                           </span>
                         )}
                       </label>
-                      {checked && spec.zone === "main" && (
+                      {checked && blockOf.zone === "main" && (
                         <select
-                          aria-label={`מיקום של ${spec.name}`}
+                          aria-label={`מיקום של ${blockOf.name}`}
                           value={areaOf(id)}
                           onChange={(e) => setArea(id, e.target.value)}
                           className="rounded border bg-background px-1 py-0.5 text-[11px]"
@@ -648,12 +709,51 @@ export function ScreenComposer({
                           ))}
                         </select>
                       )}
+                      {isCustom(id) && (
+                        <button
+                          type="button"
+                          aria-label={`עריכת ${blockOf.name}`}
+                          aria-expanded={editingBox === id}
+                          onClick={() => setEditingBox(editingBox === id ? null : (id as CustomBlockId))}
+                          className="rounded border px-1.5 py-0.5 text-[11px] hover:border-primary/50"
+                        >
+                          ✎
+                        </button>
+                      )}
                     </div>
                   );
                 })}
               </div>
             </Fragment>
           ))}
+          {editingBox && config.customBoxes.some((b) => b.id === editingBox) && (
+            <CustomBoxEditor
+              box={config.customBoxes.find((b) => b.id === editingBox)!}
+              onChange={(patch) => onEdit(`custom-box:${editingBox}:${Object.keys(patch).join(",")}`, (c) => editCustomBox(c, editingBox, patch))}
+              onRemove={() => {
+                if (!window.confirm(`למחוק את התיבה «${spec(editingBox).name}»? היא תרד מכל המסכים.`)) return;
+                onEdit(`custom-box:${editingBox}:remove`, (c) => removeCustomBox(c, editingBox));
+                setEditingBox(null);
+              }}
+              onClose={() => setEditingBox(null)}
+            />
+          )}
+          {!occasion && (
+            <button
+              type="button"
+              disabled={config.customBoxes.length >= MAX_CUSTOM_BOXES}
+              onClick={() => {
+                const made = newCustomBoxId();
+                onEdit("custom-box:add", (c) => addCustomBox(c, "תיבה חדשה", made).config);
+                // On this screen at once, and open for its title and text.
+                toggle(made, true);
+                setEditingBox(made);
+              }}
+              className="w-full rounded-md border-2 border-dashed px-2 py-1.5 text-sm hover:border-primary/50"
+            >
+              + הוספת תיבה משלי
+            </button>
+          )}
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
           בלי מיקום — הפריסה מסדרת לבד לפי מה שסומן. עם מיקום — נעוץ שם, והשאר מסתדרים סביבו.
@@ -696,7 +796,7 @@ function Sketch({
           >
             {/* The name is cut, not the bar: the handle on its edge stands half outside it. */}
             <span className="block truncate">
-              {BLOCK_BY_ID[id].name}
+              {blockSpec(id).name}
               {sized && strip.scale !== 1 && <span className="ms-1 opacity-60">×{strip.scale}</span>}
             </span>
             {sized && (

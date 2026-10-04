@@ -45,9 +45,12 @@ export function isFramePicture(v: string): boolean {
  */
 
 export const FRAME_IDS = ["prayers", "zmanim", "next", "clock", "date", "strip", "announcements", "shiurim", "learning"] as const;
-export type FrameId = (typeof FRAME_IDS)[number];
+export type BuiltinFrameId = (typeof FRAME_IDS)[number];
+/** A built-in box, or one the gabbai added (config.customBoxes), by its block id. */
+export type FrameId = BuiltinFrameId | `custom:${string}`;
+const CUSTOM_FRAME_RE = /^custom:[a-z0-9]{4,16}$/;
 
-export const FRAME_LABELS: Record<FrameId, string> = {
+export const FRAME_LABELS: Record<BuiltinFrameId, string> = {
   prayers: "התפילות",
   zmanim: "זמני היום",
   next: "המניין הבא",
@@ -58,6 +61,17 @@ export const FRAME_LABELS: Record<FrameId, string> = {
   shiurim: "השיעורים",
   learning: "לימוד יומי ופרשה",
 };
+
+/** A box's name: a built-in one's, or the title the gabbai gave a box of their own. */
+export function frameLabel(id: FrameId, customBoxes: ReadonlyArray<{ id: string; title: string }> = []): string {
+  if (id in FRAME_LABELS) return FRAME_LABELS[id as BuiltinFrameId];
+  return customBoxes.find((b) => b.id === id)?.title || "תיבה שלי";
+}
+
+/** Every box there is to dress: the built-in ones, then the shul's own. */
+export function allFrameIds(customBoxes: ReadonlyArray<{ id: string }> = []): FrameId[] {
+  return [...FRAME_IDS, ...customBoxes.map((b) => b.id as FrameId)];
+}
 
 export interface FrameLook {
   /** The frame's background: a colour, a gradient, or a picture (layers.isSafeLayerFill). */
@@ -93,7 +107,8 @@ const NUMBERS = { bgOpacity: [0, 1], lineWidth: [0, 6], textScale: [0.6, 1.8] } 
 export function normalizeFrameLooks(raw: unknown): FrameLooks {
   const out: FrameLooks = {};
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return out;
-  for (const id of FRAME_IDS) {
+  const ids = [...FRAME_IDS, ...Object.keys(raw).filter((k) => CUSTOM_FRAME_RE.test(k))] as FrameId[];
+  for (const id of ids) {
     const v = (raw as Record<string, unknown>)[id];
     if (!v || typeof v !== "object" || Array.isArray(v)) continue;
     const look: FrameLook = {};

@@ -209,6 +209,16 @@ export const BLOCK_BY_ID: Readonly<Record<BlockId, BlockSpec>> = Object.fromEntr
   BLOCKS.map((b) => [b.id, b]),
 ) as Record<BlockId, BlockSpec>;
 
+/**
+ * Any block's name and place, a box added by hand included: it is content,
+ * stands in the body of the screen, and is named by its title.
+ */
+export function blockSpec(id: BlockId, customBoxes: ReadonlyArray<{ id: string; title: string }> = []): BlockSpec {
+  const builtin = (BLOCK_BY_ID as Partial<Record<string, BlockSpec>>)[id];
+  if (builtin) return builtin;
+  return { id, name: customBoxes.find((b) => b.id === id)?.title || "תיבה שלי", zone: "main", weight: 2, elements: [] };
+}
+
 /** The blocks a slide kind maps to, for reading an existing config. */
 export const BLOCK_FOR_SLIDE: Readonly<Partial<Record<SlideKind, BlockId>>> = Object.fromEntries(
   BLOCKS.filter((b) => b.slideKind).map((b) => [b.slideKind as SlideKind, b.id]),

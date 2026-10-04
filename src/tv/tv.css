@@ -324,6 +324,16 @@
   box-shadow: none;
 }
 
+/* A box added by hand: its text as written, sized like the board's rows. */
+.tv-custom-text {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  white-space: pre-line;
+  font-size: calc(var(--fs) * 2.8 * var(--fit, 1));
+  line-height: 1.4;
+}
+
 /* Inside a cell the slide is already placed; it must not animate in again
    on every rotation, or a screen of four blocks flickers four times. */
 .tv-composed-cell .tv-slide {

@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
-import { FRAME_LABELS, type FrameId } from "@/tv/frameLooks";
+import { frameLabel, type FrameId } from "@/tv/frameLooks";
+import type { CustomBox } from "@/tv/config";
 import { readabilityIssues, type ReadabilityIssue } from "@/tv/readability";
 
-const nameOf = (frame: string) => FRAME_LABELS[frame as FrameId] ?? "תיבה";
 
 /**
  * Under the preview: where the board is hard to read, measured on the board
  * as drawn after each change. A click on a place opens its box's text.
  */
-export function ReadabilityNote({ watch, onFix }: { watch: unknown; onFix: (frame: string | null) => void }) {
+export function ReadabilityNote({
+  watch,
+  customBoxes,
+  onFix,
+}: {
+  watch: unknown;
+  customBoxes: CustomBox[];
+  onFix: (frame: string | null) => void;
+}) {
+  const nameOf = (frame: string) => frameLabel(frame as FrameId, customBoxes);
   const [issues, setIssues] = useState<ReadabilityIssue[]>([]);
   const [open, setOpen] = useState(false);
   useEffect(() => {

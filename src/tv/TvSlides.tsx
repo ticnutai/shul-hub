@@ -147,7 +147,8 @@ function ComposedSlide({
       {rows.map((row, i) => (
         <div key={i} className="tv-composed-row" style={{ gridTemplateColumns: tracks(row.widths) }}>
           {row.parts.map((part, j) => {
-            const frame = CELL_FRAME[part.block];
+            // A box added by hand is a box of its own, dressed by its own id.
+            const frame = CELL_FRAME[part.block] ?? (part.custom ? (part.block as FrameId) : undefined);
             return (
             <div
               key={`${part.block}-${j}`}
@@ -155,7 +156,9 @@ function ComposedSlide({
               {...(frame ? edit.frame(frame) : {})}
             >
               <AutoScroll enabled={SCROLLING_BLOCKS.includes(part.block)}>
-                {part.block === "zmanim" ? (
+                {part.custom ? (
+                  <CustomBoxView title={part.custom.title} text={part.custom.text} />
+                ) : part.block === "zmanim" ? (
                   <ZmanimPanel zmanim={zmanim} now={now} />
                 ) : part.slide?.kind === "occasion" ? (
                   <OccasionFrame slide={part.slide} />
@@ -169,6 +172,22 @@ function ComposedSlide({
         </div>
       ))}
     </section>
+  );
+}
+
+/**
+ * A box the gabbai added by hand: a title and the text as written, line
+ * breaks and all, shrunk to fit its box before it would be cut.
+ */
+export function CustomBoxView({ title, text }: { title: string; text: string }) {
+  const ref = useShrinkToFit<HTMLDivElement>(`${title}:${text}`);
+  return (
+    <>
+      {title && <h3 className="tv-panel-title">{title}</h3>}
+      <div className="tv-custom-text" ref={ref}>
+        {text}
+      </div>
+    </>
   );
 }
 

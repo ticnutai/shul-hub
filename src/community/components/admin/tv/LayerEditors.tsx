@@ -3,7 +3,7 @@ import { ImagePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
-import { BOX_SHAPES, FRAME_LABELS, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
+import { BOX_SHAPES, frameLabel, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
 import { BOX_PRESETS, applyBoxPreset, boxPresetCss, boxShapeCss, wearsBoxPreset } from "@/tv/boxPresets";
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
@@ -338,7 +338,7 @@ export function BackgroundLayer({
         {source === "gradient" && (
           <GradientStudio
             key={target}
-            applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${FRAME_LABELS[frame]}` : "החלה על כל התיבות"}
+            applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${frameLabel(frame, saved.customBoxes)}` : "החלה על כל התיבות"}
             current={current && isSafeGradient(current) ? current : null}
             onPreview={preview}
             onApply={apply}
@@ -394,7 +394,7 @@ export function BackgroundLayer({
       {current && (
         <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => apply(null)}>
           <RotateCcw className="size-3.5" />
-          {onBoard ? "רקע הלוח לפי צבעי הבסיס" : frame ? `${FRAME_LABELS[frame]}: רקע כמו כל התיבות` : "התיבות: הרקע הרגיל"}
+          {onBoard ? "רקע הלוח לפי צבעי הבסיס" : frame ? `${frameLabel(frame, saved.customBoxes)}: רקע כמו כל התיבות` : "התיבות: הרקע הרגיל"}
         </Button>
       )}
 

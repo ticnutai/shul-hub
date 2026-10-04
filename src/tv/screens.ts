@@ -25,7 +25,7 @@
  *     "the festival on my single screen" expressible at all.
  */
 import { BLOCKS, BLOCK_FOR_SLIDE } from "./blocks";
-import type { BlockEntry, BlockId, Screen, TvConfig } from "./config";
+import { isCustomBlock, type BlockEntry, type BlockId, type Screen, type TvConfig } from "./config";
 
 export type { BlockEntry, Screen };
 
@@ -167,7 +167,7 @@ export function dayScreen(screen: Screen): "shabbat" | "festival" | null {
 }
 
 export function place(blocks: BlockEntry[]): BlockEntry[][] {
-  const main = blocks.filter((e) => BLOCKS.find((b) => b.id === e.block)?.zone === "main");
+  const main = blocks.filter((e) => BLOCKS.find((b) => b.id === e.block)?.zone === "main" || isCustomBlock(e.block));
   const rows: BlockEntry[][] = [];
 
   for (const wide of main.filter((e) => e.area === "wide")) rows.push([wide]);

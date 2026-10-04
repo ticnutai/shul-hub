@@ -20,7 +20,7 @@ import { planWeek } from "@community/lib/week-schedule";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { specialDayFor, todaysCategories } from "@community/lib/specialDays";
 import { useRealtimeSync, type RealtimeSyncState } from "@community/lib/realtime";
-import type { BlockArea, BlockId, PrayerDays, Screen, ScreenRow, TvConfig } from "./config";
+import { isCustomBlock, type BlockArea, type BlockId, type CustomBox, type PrayerDays, type Screen, type ScreenRow, type TvConfig } from "./config";
 import { arrange } from "./grid";
 import { dayScreen, place, readScreens } from "./screens";
 import { useOfflineSnapshot } from "./useOfflineSnapshot";
@@ -150,6 +150,8 @@ export interface ComposedPart {
   block: BlockId;
   area?: BlockArea;
   slide?: BoardSlide;
+  /** A box added by hand: what it says (config.customBoxes). */
+  custom?: CustomBox;
 }
 
 const ANNOUNCEMENTS_PER_PAGE = 4;
@@ -394,6 +396,10 @@ function withOccasions(board: BoardSlide[], built: BoardSlide[], config: TvConfi
         if (entry.block === CARD_BLOCK) return [{ block: entry.block, area: entry.area, slide: card }];
         // The zmanim are a panel with no slide; the bars are drawn by the board around the screen.
         if (entry.block === "zmanim") return [{ block: entry.block, area: entry.area }];
+        if (isCustomBlock(entry.block)) {
+          const box = config.customBoxes.find((b) => b.id === entry.block);
+          return box ? [{ block: entry.block, area: entry.area, custom: box }] : [];
+        }
         return (byBlock.get(entry.block) ?? []).map((slide) => ({ block: entry.block, area: entry.area, slide }));
       });
       return [
@@ -487,6 +493,12 @@ function compose(slides: BoardSlide[], config: TvConfig): BoardSlide[] {
       }
       // The day's line on an ordinary screen is the occasion's banner now.
       if (entry.block === "festival" || entry.block === "shabbat") continue;
+      // A box added by hand says what it says; one since deleted is simply not drawn.
+      if (isCustomBlock(entry.block)) {
+        const box = config.customBoxes.find((b) => b.id === entry.block);
+        if (box) parts.push({ block: entry.block, area: entry.area, custom: box });
+        continue;
+      }
       for (const slide of byBlock.get(entry.block) ?? [])
         parts.push({
           block: entry.block,
@@ -498,7 +510,7 @@ function compose(slides: BoardSlide[], config: TvConfig): BoardSlide[] {
         });
     }
     // Bars are drawn by the board around the slide, not inside it.
-    const body = parts.filter((p) => p.slide || p.block === "zmanim");
+    const body = parts.filter((p) => p.slide || p.block === "zmanim" || p.custom);
     if (!body.length) continue;
     out.push({
       id: `screen:${screen.id}`,

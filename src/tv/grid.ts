@@ -1,5 +1,5 @@
 import { BLOCK_BY_ID } from "./blocks";
-import type { BlockEntry, BlockId, ScreenRow } from "./config";
+import { isCustomBlock, type BlockEntry, type BlockId, type ScreenRow } from "./config";
 import { place } from "./screens";
 
 /**
@@ -27,7 +27,8 @@ const MIN_SHARE = 0.15;
 const MIN_HEIGHT = 0.4;
 const MAX_HEIGHT = 3;
 
-const isMain = (id: BlockId) => BLOCK_BY_ID[id]?.zone === "main";
+// A box added by hand (custom:…) is content, in the body like the times.
+const isMain = (id: BlockId) => BLOCK_BY_ID[id]?.zone === "main" || isCustomBlock(id);
 
 export function arrange(blocks: BlockEntry[], grid?: ScreenRow[]): PlacedRow[] {
   const main = blocks.filter((e) => isMain(e.block));

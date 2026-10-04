@@ -10,7 +10,8 @@ import { useShownPrayerDay, type ShownPrayerDay } from "./useDayCycle";
 import { PrayerDaysLine } from "./PrayerDaysLine";
 import { tracks } from "./grid";
 import type { ScreenRow } from "./config";
-import { SlideView } from "./TvSlides";
+import { CustomBoxView, SlideView } from "./TvSlides";
+import type { FrameId } from "./frameLooks";
 import { OccasionFrame } from "./OccasionCard";
 import { AutoScroll } from "./AutoScroll";
 import { SCROLLING_BLOCKS, useScrolls } from "./overflowContext";
@@ -164,6 +165,11 @@ function ScreenFrames({
           cells.push({ node: <Fragment key={`z${i}`}>{zmanim}</Fragment>, width });
           return;
         }
+        if (part.custom) {
+          // A box added by hand: a frame of its own, dressed by its own id.
+          cells.push({ width, node: <CustomMedFrame key={`${part.block}${i}`} id={part.block} title={part.custom.title} text={part.custom.text} /> });
+          return;
+        }
         if (!part.slide) return;
         if (part.slide.kind === "occasion") {
           cells.push({
@@ -200,6 +206,15 @@ function ScreenFrames({
           {row.cells.map((c) => c.node)}
         </div>
       ))}
+    </div>
+  );
+}
+
+function CustomMedFrame({ id, title, text }: { id: string; title: string; text: string }) {
+  const edit = useBoardEdit();
+  return (
+    <div className="tv-panel tv-med-cell" data-block={id} {...edit.frame(id as FrameId)}>
+      <CustomBoxView title={title} text={text} />
     </div>
   );
 }

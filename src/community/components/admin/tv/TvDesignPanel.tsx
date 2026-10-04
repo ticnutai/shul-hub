@@ -171,7 +171,7 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { MedallionRows } from "./MedallionRows";
-import { FRAME_IDS, FRAME_LABELS, type FrameId } from "@/tv/frameLooks";
+import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
 import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
@@ -217,17 +217,20 @@ function Section({ title, hint, children, id }: { title: string; hint?: string; 
 function CopyBoxLook({
   from,
   looks,
+  customBoxes,
   onCopy,
 }: {
   from: FrameId;
   looks: TvConfig["frameLooks"];
+  customBoxes: TvConfig["customBoxes"];
   onCopy: (to: FrameId[], from: FrameId) => void;
 }) {
-  const others = FRAME_IDS.filter((id) => id !== from);
+  const label = (id: FrameId) => frameLabel(id, customBoxes);
+  const others = allFrameIds(customBoxes).filter((id) => id !== from);
   const [to, setTo] = useState<string>("all");
   return (
     <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-xs" data-testid="copy-box-look">
-      <span className="font-medium">העתקת העיצוב של {FRAME_LABELS[from]} אל:</span>
+      <span className="font-medium">העתקת העיצוב של {label(from)} אל:</span>
       <select
         aria-label="העתקה אל"
         value={to}
@@ -237,7 +240,7 @@ function CopyBoxLook({
         <option value="all">כל שאר התיבות</option>
         {others.map((id) => (
           <option key={id} value={id}>
-            {FRAME_LABELS[id]}
+            {label(id)}
             {looks[id] ? " •" : ""}
           </option>
         ))}
@@ -251,7 +254,7 @@ function CopyBoxLook({
           const targets = to === "all" ? others : [to as FrameId];
           onCopy(targets, from);
           toast.success(
-            `העיצוב של ${FRAME_LABELS[from]} הועתק ${to === "all" ? "לכל שאר התיבות" : `ל${FRAME_LABELS[to as FrameId]}`}.`,
+            `העיצוב של ${label(from)} הועתק ${to === "all" ? "לכל שאר התיבות" : `ל${label(to as FrameId)}`}.`,
           );
         }}
       >
@@ -1355,9 +1358,9 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               >
                 <option value="frames">הכול - כל התיבות וכל הלוח</option>
                 <optgroup label="תיבה אחת">
-                  {FRAME_IDS.map((id) => (
+                  {allFrameIds(draft.customBoxes).map((id) => (
                     <option key={id} value={`frame:${id}`}>
-                      {FRAME_LABELS[id]}
+                      {frameLabel(id, draft.customBoxes)}
                       {draft.frameLooks[id] ? " •" : ""}
                     </option>
                   ))}
@@ -1369,6 +1372,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
               <CopyBoxLook
                 from={partTarget.slice(6) as FrameId}
                 looks={scoped.frameLooks}
+                customBoxes={draft.customBoxes}
                 onCopy={(to, from) =>
                   edit(`copy-look:${from}:${to.join(",")}`, (c) => {
                     const look = c.frameLooks[from];
@@ -2223,6 +2227,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       {!comparing && (
         <ReadabilityNote
           watch={state.present}
+          customBoxes={state.present.customBoxes}
           onFix={(frame) => {
             if (frame) setPartTarget(`frame:${frame}`);
             setTab("design");

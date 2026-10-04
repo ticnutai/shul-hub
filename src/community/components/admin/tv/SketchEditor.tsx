@@ -8,7 +8,7 @@ import {
 } from "react";
 import { Move } from "lucide-react";
 
-import { BLOCK_BY_ID } from "@/tv/blocks";
+import { blockSpec } from "@/tv/blocks";
 import type { BlockId, ScreenRow } from "@/tv/config";
 import {
   gridOf,
@@ -43,6 +43,7 @@ type Edge = "top" | "bottom";
 
 export function SketchEditor({
   rows,
+  nameOf = (id) => blockSpec(id).name,
   manual,
   onChange,
   onMessage: setMessage,
@@ -50,6 +51,8 @@ export function SketchEditor({
   onSpacing,
 }: {
   rows: PlacedRow[];
+  /** A block's name - a box added by hand is named by its title. */
+  nameOf?: (id: BlockId) => string;
   /** The screen already has a hand arrangement. */
   manual: boolean;
   onChange: (grid: ScreenRow[]) => void;
@@ -95,7 +98,7 @@ export function SketchEditor({
     | { kind: "space"; edge: Edge; y: number; start: number; px: number }
   >(null);
 
-  const name = (id: BlockId) => `«${BLOCK_BY_ID[id].name}»`;
+  const name = (id: BlockId) => `«${nameOf(id)}»`;
   const grid = gridOf(rows);
 
   /* ------------------------------------------------------- hit testing -- */
@@ -465,13 +468,13 @@ export function SketchEditor({
                   role="button"
                   tabIndex={0}
                   aria-label={`${
-                    BLOCK_BY_ID[e.block].name
+                    nameOf(e.block)
                   } - גררו כדי להזיז, או חיצים (עם Shift: גודל)`}
                   onKeyDown={keyDown(e.block, r, i)}
                   onFocus={() => {
                     if (!restoring.current)
                       setMessage(
-                        `${BLOCK_BY_ID[e.block].name}: חיצים מזיזים, Shift וחיצים משנים גודל`,
+                        `${nameOf(e.block)}: חיצים מזיזים, Shift וחיצים משנים גודל`,
                       );
                   }}
                   className={`relative min-w-0 cursor-grab touch-none select-none rounded outline-none focus-visible:ring-2 focus-visible:ring-sky-400 border border-[#f0c35c]/35 bg-white/5 px-2 py-1 text-[11px] transition-colors hover:border-[#f0c35c]/80 hover:bg-white/10 active:cursor-grabbing ${
@@ -487,7 +490,7 @@ export function SketchEditor({
                   {/* The name is cut, not the cell: the handle on its edge stands half outside it. */}
                   <span className="block truncate">
                     <Move className="me-1 inline size-3 opacity-50" aria-hidden />
-                    {BLOCK_BY_ID[e.block].name}
+                    {nameOf(e.block)}
                     {!even && <span className="ms-1 opacity-60">{p[i]}%</span>}
                     {e.area && !manual && <span className="opacity-60"> · נעוץ</span>}
                   </span>
@@ -497,8 +500,8 @@ export function SketchEditor({
                       data-sketch-handle="width"
                       role="separator"
                       aria-orientation="vertical"
-                      aria-label={`רוחב ${BLOCK_BY_ID[e.block].name} מול ${
-                        BLOCK_BY_ID[row.entries[i + 1].block].name
+                      aria-label={`רוחב ${nameOf(e.block)} מול ${
+                        nameOf(row.entries[i + 1].block)
                       }`}
                       title="גררו כדי לחלק את השורה אחרת"
                       className="absolute -left-[7px] bottom-1 top-1 z-10 w-2.5 cursor-ew-resize rounded bg-[#f0c35c]/0 hover:bg-[#f0c35c]/70"
@@ -545,7 +548,7 @@ export function SketchEditor({
           className="pointer-events-none fixed z-[70] -translate-x-1/2 -translate-y-1/2 rounded border border-sky-400 bg-[#0b1628]/90 px-2 py-1 text-[11px] text-[#f0c35c] shadow-lg"
           style={{ left: drag.x, top: drag.y }}
         >
-          {BLOCK_BY_ID[drag.block].name}
+          {nameOf(drag.block)}
         </div>
       )}
     </div>
