@@ -347,6 +347,7 @@ export function TvDeviceStudio({
   };
 
   const onPointerDown = (e: PointerEvent) => {
+    if ((e.target as Element).closest?.("[data-free-edit]")) return;
     // Alt + click is an ordinary click on the board (the skill's escape hatch).
     if (!editing || !onEdit || e.button !== 0 || e.altKey) return;
     if (startFrameDrag(e)) return;
@@ -450,7 +451,7 @@ export function TvDeviceStudio({
   const editHandlers = editing
     ? {
         onClickCapture: (e: MouseEvent) => {
-          if (e.altKey) return;
+          if (e.altKey || (e.target as Element).closest?.("[data-free-edit]")) return;
           const key = keyAt(e.target);
           if (!key) return;
           e.preventDefault();

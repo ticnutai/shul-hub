@@ -100,6 +100,8 @@ export default defineConfig(({ mode }) => ({
         // They are cached on first use by the runtimeCaching rule below instead,
         // which keeps offline reading working without the upfront download.
         globIgnores: [
+          // The board artwork (several MB) is fetched when a board uses it, never by every phone in advance.
+          '**/new-shul-assets/**',
           '**/assets/data-*.js', // chumash: bereishit .. devarim
           '**/assets/siddur_*.js', // siddur nusachim
           '**/assets/*_on_*.js', // Sefaria commentaries (Rashi_on_Genesis, ...)

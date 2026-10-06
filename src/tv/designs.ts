@@ -1,3 +1,9 @@
+import { newElement } from "./elements";
+import { PREMIUM_DESIGNS } from './premiumDesigns';
+import { MODULAR_DESIGNS } from './modularDesigns';
+import { EMERALD_COMPOSITION } from './emeraldComposition';
+import { ORIGINAL_LAYER_DESIGNS } from './originalLayerDesigns';
+import { INDEPENDENT_DESIGNS } from './independentDesigns';
 import type { TvConfig } from "./config";
 import { getTheme, isSafeCssValue, THEME_VARS, THEME_VAR_LAYERS, type ThemeVar } from "./themes";
 
@@ -30,7 +36,7 @@ export const DESIGN_PART_LABELS: Record<DesignPart, string> = {
 /** Which settings each part is made of - the same split as the editor's layers. */
 const PART_KEYS: Record<DesignPart, Array<keyof TvConfig>> = {
   background: ["backgroundGradient", "backgroundImage", "backgroundOverlay", "backgroundDim", "backgroundTune"],
-  frames: ["boardFrame", "boardFrameTune", "boardFrameImage", "frame"],
+  frames: ["elements", "boardFrame", "boardFrameTune", "boardFrameImage", "frame"],
   text: ["font", "textScale", "tracking", "styles", "titleStyle"],
   layout: ["screenLayout", "illustration", "spacing", "clockStyle"],
 };
@@ -267,6 +273,27 @@ const frames = (patch: Partial<TvConfig["frameStyle"]>) => ({
 });
 
 export const BUILTIN_DESIGNS: SavedDesign[] = [
+  ...INDEPENDENT_DESIGNS,
+  ...ORIGINAL_LAYER_DESIGNS,
+  EMERALD_COMPOSITION,
+  ...MODULAR_DESIGNS,
+  ...PREMIUM_DESIGNS,
+  ...([['marble', 'שיש וזהב · חדש ועתיק', 'stone', '#342818'], ['wood', 'עץ אגוז · אור חם', 'stone', '#342818'], ['marble-dark', 'ספיר וזהב · מלכותי', 'navy', '#fff5d9']] as const).map(([wall, name, theme, ink]): SavedDesign => ({
+    id: `d_new_${wall}`, name, parts: ALL, theme,
+    colours: { ...text(ink, ink, '#c9a45d'), '--tv-panel': theme === 'navy' ? '#12223b' : '#faf2df' },
+    values: {
+      ...background(`backdrop:${wall}`), boardFrame: null, screenLayout: 'medallion',
+      spacing: { top: 2, bottom: 2, sides: 7, gap: 2 },
+      frame: { shape: 'round', top: 2, bottom: 2 },
+      frameStyle: frames({ fill: theme === 'navy' ? '#12223b' : '#faf2df', fillOpacity: .92, line: '#c9a45d', lineWidth: 1.2, depth: .4 }),
+      frameLooks: {},
+      elements: [
+        { ...newElement('column'), id: `new_${wall}_left`, x: 1, y: 3, width: 4, height: 94, group: `new_${wall}_columns` },
+        { ...newElement('column'), id: `new_${wall}_right`, x: 95, y: 3, width: 4, height: 94, group: `new_${wall}_columns` },
+        { ...newElement('ornament'), id: `new_${wall}_crown`, x: 38, y: 0, width: 24, height: 5 },
+      ],
+    },
+  })),
   {
     id: "d_curtain",
     name: "וילון כחול וזהב",

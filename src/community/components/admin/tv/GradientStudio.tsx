@@ -251,12 +251,12 @@ export function TransferPanel({
     <div className="space-y-3">
       <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">
-          ייצוא — לגיבוי או להעברה לבית כנסת אחר
+          פורמט העיצוב המקורי — העברה חלקית למערכת תואמת
         </div>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              ["all", "הכל + מבנה הלוח"],
+              ["all", "צבעים ומבנה בסיסי (JSON)"],
               ["themes", "צבעי בסיס"],
               ["gradients", "גרדיאנטים"],
             ] as const
@@ -283,6 +283,7 @@ export function TransferPanel({
       </div>
 
       <div className="space-y-1.5">
+        <p className="text-sm text-amber-800 dark:text-amber-200" role="note">הפורמט המקורי אינו מעביר שכבות אלמנטים, טקסטים חופשיים או את העיצובים האמנותיים החדשים. לשמירתם השתמשו בחבילת ZIP של New Shul. אתר אחר צריך תמיכה במנגנון השכבות כדי להציגם ולערוך אותם.</p>
         <div className="text-xs font-medium text-muted-foreground">ייבוא</div>
         <p className="text-xs text-muted-foreground">
           קובץ מעורך לוחות הברית מביא גם את מבנה הלוח: קשת או פינות, רקע, מרווחים, גודל טקסט ושם

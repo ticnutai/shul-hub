@@ -1,5 +1,6 @@
 import { useContext, useMemo, type CSSProperties } from "react";
 import { ClockContext } from "./clockContext";
+import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import { HDate } from "@hebcal/core";
 import type { Announcement, Shiur } from "@community/lib/data";
 import type { ResolvedMinyan } from "@community/lib/minyan-time";
@@ -177,6 +178,8 @@ function PrayerPanel({
   const { next: nextIndex, past } = minyanNow(schedule.rows, now, schedule.isToday !== false);
   const title = titleKey ? edit.text(titleKey, "זמני התפילות") : schedule.title;
   const listRef = useFitRows<HTMLUListElement>(schedule.rows.length);
+  const deadline=useDeadlines()[0];
+  if(deadline?.stage==='panel') return <div className="tv-panel tv-dash-prayers" {...edit.frame('prayers',categoryKey(schedule.id))}><DeadlineCard alert={deadline}/></div>;
   return (
     <div className="tv-panel tv-dash-prayers" {...edit.frame("prayers", categoryKey(schedule.id))}>
       <h3 className="tv-panel-title" {...(titleKey ? edit.attr(titleKey) : {})}>

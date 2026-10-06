@@ -7,6 +7,20 @@ import { PLACES } from "./places";
 const BNEI_BRAK = { latitude: 32.0807, longitude: 34.8338 };
 const opts = { ...BNEI_BRAK, candleOffsetMinutes: 20, tzeitOffsetMinutes: 20 };
 
+it('MGA uses a fixed 72-minute extended day, independently for Shema and prayer',()=>{
+  for(const iso of ['2026-01-15T10:00:00Z','2026-06-15T10:00:00Z','2026-10-06T10:00:00Z']){
+    const z=calcZmanim(new Date(iso),opts);
+    const dawn=z.sunrise!.getTime()-72*60000;
+    const night=z.sunset!.getTime()+72*60000;
+    const hour=(night-dawn)/12;
+    // The library rounds its returned times; compare within its minute precision.
+    expect(Math.abs(z.sof_zman_shma_mga72!.getTime()-(dawn+3*hour))).toBeLessThan(60000);
+    expect(Math.abs(z.sof_zman_tefila_mga72!.getTime()-(dawn+4*hour))).toBeLessThan(60000);
+    expect(z.sof_zman_shma_mga72!.getTime()).toBeLessThan(z.sof_zman_shma!.getTime());
+    expect(z.sof_zman_tefila_mga72!.getTime()).toBeLessThan(z.sof_zman_tefila!.getTime());
+  }
+});
+
 /**
  * The board's times, against the engine hebcal.com runs on.
  *

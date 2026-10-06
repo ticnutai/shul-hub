@@ -1,3 +1,4 @@
+import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import type { Settings } from "@community/lib/data";
 import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
@@ -220,6 +221,7 @@ function CustomMedFrame({ id, title, text }: { id: string; title: string; text: 
 }
 
 function PrayersFrame({ shown, now, max }: { shown: ShownPrayerDay; now: Date; max: number }) {
+  const deadline=useDeadlines()[0];
   const edit = useBoardEdit();
   const { day } = shown;
   const { rows } = day;
@@ -228,6 +230,7 @@ function PrayersFrame({ shown, now, max }: { shown: ShownPrayerDay; now: Date; m
   const scrolls = useScrolls();
   const [from, to] = scrolls ? [0, rows.length] : rowWindow(rows.length, next, max);
   const fit = useShrinkToFit<HTMLUListElement>(`${from}:${to}:${rows.length}`);
+  if(deadline?.stage==='panel') return <div className="tv-panel tv-med-list" {...edit.frame('prayers')}><DeadlineCard alert={deadline}/></div>;
   return (
     <div className="tv-panel tv-med-list" {...edit.frame("prayers")}>
       <h3 className="tv-panel-title" {...edit.attr("dash.prayers")}>
@@ -261,6 +264,7 @@ function PrayersFrame({ shown, now, max }: { shown: ShownPrayerDay; now: Date; m
 }
 
 function ZmanimFrame({ zmanim, now, max }: { zmanim: Zmanim; now: Date; max: number }) {
+  const deadlines=useDeadlines();
   const edit = useBoardEdit();
   const scrolls = useScrolls();
   const { special, shown } = frameZmanim(now, zmanim, useHolyEndMinutes(), edit.hidden, scrolls ? 99 : max);
@@ -279,7 +283,7 @@ function ZmanimFrame({ zmanim, now, max }: { zmanim: Zmanim; now: Date; max: num
           </li>
         ))}
         {shown.map((e) => (
-          <li key={e} className="tv-med-row" {...edit.attr(`zman.${e}`)}>
+          <li key={e} data-zman={e} className={`tv-med-row${deadlines.some(a=>a.event===e)?' tv-zman-warning':''}`} {...edit.attr(`zman.${e}`)}>
             <span className="tv-med-name">{edit.text(`zman.${e}`, ZMAN_LABELS[e])}</span>
             <span className="tv-med-time">{formatTime(zmanim[e])}</span>
           </li>

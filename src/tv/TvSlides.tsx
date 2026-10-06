@@ -1,3 +1,4 @@
+import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AutoScroll } from "./AutoScroll";
 import { SCROLLING_BLOCKS } from "./overflowContext";
@@ -225,6 +226,8 @@ function PrayerSlide({
   );
   const zmanimPanel = { key: "panel.zmanim", width: 1, node: <ZmanimPanel zmanim={zmanim} now={now} /> };
   const label = (r: ResolvedMinyan) => <span {...edit.attr(`minyan:${r.minyan.id}:label`)}>{r.minyan.label}</span>;
+  const deadline=useDeadlines()[0];
+  if(deadline?.stage==='panel') return <section className="tv-slide">{heading}<div className="tv-prayer-grid"><div className="tv-panel" {...edit.frame('prayers')}><DeadlineCard alert={deadline}/></div><ZmanimPanel zmanim={zmanim} now={now}/></div></section>;
 
   if (slide.rows.length === 0) {
     // `timeline` is the prayer panel without zmanim of its own, because
@@ -359,6 +362,7 @@ function PrayerSlide({
 }
 
 export function ZmanimPanel({ zmanim, now, titleKey = "panel.zmanim" }: { zmanim: Zmanim; now: Date; titleKey?: string }) {
+  const deadlines=useDeadlines();
   const edit = useBoardEdit();
   const nowMs = now.getTime();
   const shown = SHOWN_ZMANIM.filter((e) => !edit.hidden(`zman.${e}`));
@@ -385,7 +389,8 @@ export function ZmanimPanel({ zmanim, now, titleKey = "panel.zmanim" }: { zmanim
           const past = t ? t.getTime() <= nowMs : false;
           return (
             <div
-              className={`tv-zman-row${event === nextEvent ? " is-next" : ""}${past ? " is-past" : ""}`}
+              className={`tv-zman-row${deadlines.some(a=>a.event===event)?' tv-zman-warning':''}${event === nextEvent ? " is-next" : ""}${past ? " is-past" : ""}`}
+              data-zman={event}
               key={event}
               {...edit.attr(`zman.${event}`)}
             >

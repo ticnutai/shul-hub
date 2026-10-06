@@ -1,3 +1,4 @@
+import { safeImage } from "./elements";
 import { isSafeCssValue, isSafeFill, isSafeUrl } from "./themes";
 
 /**
@@ -88,13 +89,13 @@ const BACKDROP_REF = /^backdrop:[a-z0-9-]{1,40}$/;
 /** What a background may be: a colour, a gradient, a ready picture, or an uploaded one (https). */
 export function isSafeLayerFill(value: string): boolean {
   const v = value.trim();
-  return isSafeFill(v) || BACKDROP_REF.test(v) || (/^https:\/\//i.test(v) && isSafeUrl(v));
+  return safeImage(v) || isSafeFill(v) || BACKDROP_REF.test(v) || (/^https:\/\//i.test(v) && isSafeUrl(v));
 }
 
 const fill = (v: unknown) => (typeof v === "string" && isSafeLayerFill(v) ? v.trim() : null);
 /** A picture of a frame: a ready-made one ("frame:<id>", framePictures.ts) or an uploaded one. */
 const picture = (v: unknown) =>
-  typeof v === "string" && (/^frame:[a-z0-9-]{1,40}$/.test(v.trim()) || (/^https:\/\//i.test(v.trim()) && isSafeUrl(v.trim())))
+  typeof v === "string" && (safeImage(v) || /^frame:[a-z0-9-]{1,40}$/.test(v.trim()) || (/^https:\/\//i.test(v.trim()) && isSafeUrl(v.trim())))
     ? v.trim()
     : null;
 

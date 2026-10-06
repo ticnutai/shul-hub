@@ -66,6 +66,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         {BUILTIN_DESIGNS.filter((d) => !isHiddenReady(config, "design", d.id)).map((d) => {
           const wall = findBackdrop(d.values.backgroundImage ?? null);
           const frame = framePictureUrl(d.values.frameStyle?.image ?? null);
+          const artwork = d.values.screenLayout === 'composition' ? d.values.elements?.find(e => e.kind === 'image')?.image : undefined;
           return (
             <div key={d.id} className="group relative overflow-hidden rounded-lg border text-right">
             <TileRemove name={d.name} ready onClick={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))} />
@@ -75,7 +76,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
               className="block w-full text-right hover:bg-muted/40"
               title="ממלא את החלקים שכתובים מתחתיו - וכל חלק ניתן אחר כך לשינוי בנפרד"
             >
-              <span
+              {artwork ? <img src={artwork} alt="" className="aspect-video w-full object-cover" loading="lazy" /> : <span
                 className="flex aspect-video items-center justify-center gap-1 p-2"
                 style={{ background: wall ? `url("${wall.thumb}") center / cover` : undefined }}
               >
@@ -95,10 +96,10 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
                     }
                   />
                 ))}
-              </span>
+              </span>}
               <span className="block px-2 pt-2 text-sm font-medium">{d.name}</span>
               <span className="block px-2 pb-1 text-[11px] leading-tight text-muted-foreground">
-                ממלא: {d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}
+                {d.values.elements?.some(e=>e.sourceMask) ? 'פרטי המקור במסכות · מסגרות ומילויים נפרדים' : artwork ? 'חיתוכי תמונה עם רקע · טקסט ושעון נפרדים' : `ממלא: ${d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}`}
               </span>
             </button>
             <button

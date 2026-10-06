@@ -1,3 +1,4 @@
+import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { useHolyEndMinutes } from "./holyEnd";
 import type { Settings } from "@community/lib/data";
@@ -52,6 +53,7 @@ function useMark() {
 const rowSize = (b: Box) => `calc(${b[2] - b[0] < 25 ? 1.55 : 1.95}cqw * var(--ill-k, 1))`;
 
 function PrayerFrame({ d, shown, now, max }: { d: Illustration; shown: ShownPrayerDay; now: Date; max: number }) {
+  const deadline=useDeadlines()[0];
   const edit = useBoardEdit();
   const { day } = shown;
   const mark = useMark();
@@ -59,6 +61,7 @@ function PrayerFrame({ d, shown, now, max }: { d: Illustration; shown: ShownPray
   const { rows } = day;
   const { next } = minyanNow(rows, now, day.isToday);
   const [from, to] = rowWindow(rows.length, next, max);
+  if(deadline?.stage==='panel') return <At b={b}><DeadlineCard alert={deadline}/></At>;
   return (
     <At b={b} style={{ color: d.ink }}>
       <div className="tv-ill-list" style={{ "--ill-size": rowSize(b) } as CSSProperties}>
@@ -94,6 +97,7 @@ function PrayerFrame({ d, shown, now, max }: { d: Illustration; shown: ShownPray
 }
 
 function ZmanimFrame({ d, zmanim, box, max, now }: { d: Illustration; zmanim: Zmanim; box: Box; max: number; now: Date }) {
+  const deadlines=useDeadlines();
   const edit = useBoardEdit();
   const mark = useMark();
   // The day's own times (a fast's start and end, צאת החג) come first; the
@@ -115,7 +119,7 @@ function ZmanimFrame({ d, zmanim, box, max, now }: { d: Illustration; zmanim: Zm
             </li>
           ))}
           {shown.map((e) => (
-            <li key={e} {...mark(`zman.${e}`)}>
+            <li key={e} data-zman={e} className={deadlines.some(a=>a.event===e)?'tv-zman-warning':undefined} {...mark(`zman.${e}`)}>
               <span className="tv-ill-name">{edit.text(`zman.${e}`, ZMAN_LABELS[e])}</span>
               <span className="tv-ill-time" style={{ color: d.accent }}>
                 {formatTime(zmanim[e])}
