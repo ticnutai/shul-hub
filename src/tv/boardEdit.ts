@@ -39,6 +39,9 @@ export interface EditableSpec {
   hint?: string;
 }
 
+// The board's own zmanim panel, as it always was. The full list of thirteen
+// (ZMAN_DISPLAY_KEYS, with the Magen Avraham times) is for the free elements,
+// where the gabbai picks which to show - not added to every existing board.
 export const SHOWN_ZMANIM: SolarEvent[] = [
   "alot",
   "sunrise",

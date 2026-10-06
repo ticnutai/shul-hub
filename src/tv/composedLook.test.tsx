@@ -137,7 +137,7 @@ describe("the day on a board built of screens", () => {
     // both stood centred at the foot of the board, one over the other.
     const withDay = painted();
     withDay.screens = [{ ...screens[0], blocks: [...screens[0].blocks, { block: "festival" }] }];
-    withDay.alerts = { enabled: true, events: ["sunset"], leadMinutes: [10], popupSeconds: 10 };
+    withDay.alerts = { enabled: true, mode:'pulse', events: ["sunset"], leadMinutes: [10], popupSeconds: 10 };
     const sunset = zmanimFor(cholHamoed, null).sunset!;
     const { container } = drawAt(withDay, new Date(sunset.getTime() - 5 * 60_000));
     expect(container.querySelector(".tv-event-banner")?.textContent).toContain("שקיעה בעוד");

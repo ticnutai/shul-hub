@@ -21,6 +21,20 @@ export interface ZmanAlert {
   popup: boolean;
   /** The lead that triggered the current popup, in minutes. */
   lead: number | null;
+  stage?: 'highlight' | 'panel' | 'board';
+}
+
+/** Every upcoming selected time is highlighted; the nearest drives the countdown. */
+export function stagedZmanAlerts(now: Date, zmanim: Zmanim, alerts: TvConfig['alerts'], isFriday: boolean): ZmanAlert[] {
+  if (!alerts.enabled || alerts.mode !== 'staged') return [];
+  return alerts.events.flatMap(event => {
+    const at = zmanim[event];
+    if (!at || !Number.isFinite(at.getTime()) || event === 'candle' && !isFriday) return [];
+    const remaining = at.getTime() - now.getTime();
+    if (remaining <= 0 || remaining > 30 * 60_000) return [];
+    const stage = remaining <= 10 * 60_000 ? 'board' : remaining <= 20 * 60_000 ? 'panel' : 'highlight';
+    return [{event, label:ALERT_EVENT_LABELS[event].replace(' (בערב שבת)',''), at, secondsLeft:Math.ceil(remaining/1000), popup:stage==='board', lead:null, stage} as ZmanAlert];
+  }).sort((a,b)=>a.at.getTime()-b.at.getTime());
 }
 
 export function currentZmanAlert(
@@ -29,6 +43,7 @@ export function currentZmanAlert(
   alerts: TvConfig["alerts"],
   isFriday: boolean,
 ): ZmanAlert | null {
+  if (alerts.mode === 'staged') return stagedZmanAlerts(now,zmanim,alerts,isFriday)[0] ?? null;
   if (!alerts.enabled || alerts.events.length === 0 || alerts.leadMinutes.length === 0) return null;
   const maxLead = Math.max(...alerts.leadMinutes);
 

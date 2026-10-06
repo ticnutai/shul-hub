@@ -1,5 +1,5 @@
 import type { TvConfig } from "./config";
-import { applyDesign, BUILTIN_DESIGNS, findDesign } from "./designs";
+import { applyDesign, BUILTIN_DESIGNS, findDesign, REMOTE_BUILTIN_IDS } from "./designs";
 import { isHiddenReady } from "./readyItems";
 
 /**
@@ -27,7 +27,8 @@ export function applyLook(c: TvConfig, id: string | null | undefined): TvConfig 
 }
 
 export function remoteLooks(c: TvConfig): RemoteLook[] {
-  const sets = [...BUILTIN_DESIGNS.filter((d) => !isHiddenReady(c, "design", d.id)), ...c.designs];
+  // The remote keeps the sets it always had: the classic ones and the shul's own (a new design is saved as one's own to be here).
+  const sets = [...BUILTIN_DESIGNS.filter((d) => REMOTE_BUILTIN_IDS.has(d.id) && !isHiddenReady(c, "design", d.id)), ...c.designs];
   return [
     { id: null, name: "העיצוב של הלוח", config: c },
     ...sets.filter((d) => d.parts.some((p) => p !== "layout")).map((d) => ({ id: d.id, name: d.name, config: applyLook(c, d.id) })),

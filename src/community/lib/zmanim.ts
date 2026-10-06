@@ -45,7 +45,8 @@ export interface ZmanimOptions {
   tzeitOffsetMinutes: number;
 }
 
-export type Zmanim = Record<SolarEvent, Date | null>;
+export type AdditionalSolarEvent = 'sof_zman_shma_mga72' | 'sof_zman_tefila_mga72';
+export type Zmanim = Record<SolarEvent, Date | null> & Partial<Record<AdditionalSolarEvent, Date | null>>;
 /** The same type (kept for the signature below; hebcal's class is imported as HebcalZmanim). */
 type Zmanim2 = Zmanim;
 
@@ -89,6 +90,8 @@ export function calcZmanim(date: Date, opts: ZmanimOptions): Zmanim2 {
     sunrise,
     sof_zman_shma: sofShma,
     sof_zman_tefila: sofTefila,
+    sof_zman_shma_mga72: ok(z.sofZmanShmaMGA()),
+    sof_zman_tefila_mga72: ok(z.sofZmanTfillaMGA()),
     chatzot,
     mincha_gedola: minchaGedola,
     plag,
@@ -113,6 +116,19 @@ export const ZMAN_LABELS: Record<SolarEvent, string> = {
   sunset: "שקיעה",
   tzeit: "צאת הכוכבים",
 };
+
+/**
+ * The Magen Avraham times (72 fixed minutes), beside the GRA ones the site
+ * always showed. A list of their own, so nothing that lists ZMAN_LABELS - the
+ * site's zmanim, the minyan "relative to" choices - gains entries it never had.
+ */
+export const EXTRA_ZMAN_LABELS: Record<AdditionalSolarEvent, string> = {
+  sof_zman_shma_mga72: "סוף זמן ק״ש מג״א",
+  sof_zman_tefila_mga72: "סוף זמן תפילה מג״א",
+};
+/** Every time a board element or a staged alert can show, by name. */
+export const ZMAN_DISPLAY_LABELS: Record<SolarEvent | AdditionalSolarEvent, string> = { ...ZMAN_LABELS, ...EXTRA_ZMAN_LABELS };
+export const ZMAN_DISPLAY_KEYS = ['alot','misheyakir','sunrise','sof_zman_shma_mga72','sof_zman_shma','sof_zman_tefila_mga72','sof_zman_tefila','chatzot','mincha_gedola','plag','candle','sunset','tzeit'] as const;
 
 /** רשימת הזמנים שניתן להיצמד אליהם בהגדרת מניין */
 export const RELATIVE_OPTIONS: SolarEvent[] = [

@@ -124,6 +124,10 @@ export const FRAME_PICTURES: FramePicture[] = [
   { id: "rosette-corners", name: "שושנות בפינות", url: ROSETTES, slice: 30, width: 2.4 },
   { id: "fan-corners", name: "צדפות בפינות", url: FANS, slice: 30, width: 2.4 },
   { id: "braid", name: "קליעת זהב", url: BRAID, slice: 13, width: 1 },
+  // The frames of the ready designs, with a clear middle: one for any box.
+  { id: "emerald-gold", name: "זהב מסולסל", url: "/new-shul-assets/emerald-modular-frame.webp", slice: 20, width: 2.5 },
+  { id: "sapphire-silver", name: "כסף ואבני ספיר", url: "/new-shul-assets/sapphire-modular-panel-frame.webp", slice: 20, width: 2.5 },
+  { id: "sapphire-royal", name: "כסף מלכותי", url: "/new-shul-assets/sapphire-modular-outer-frame.webp", slice: 20, width: 2.5 },
 ];
 
 export const framePictureRef = (id: string) => FRAME_PICTURE_PREFIX + id;

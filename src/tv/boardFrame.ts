@@ -22,6 +22,16 @@ export interface BoardFrameTune {
 
 export const DEFAULT_BOARD_FRAME_TUNE: BoardFrameTune = { size: 1, length: 1, x: 0, y: 0, sides: "both" };
 
+/**
+ * Frames around the whole screen taken from the ready designs: a picture with
+ * a clear middle (a "picture" frame), ready to wear like any other.
+ */
+export const READY_PICTURE_BOARD_FRAMES: { id: string; name: string; image: string }[] = [
+  { id: "pic-sapphire-royal", name: "כסף מלכותי", image: "/new-shul-assets/sapphire-modular-outer-frame.webp" },
+  { id: "pic-sapphire-silver", name: "כסף ואבני ספיר", image: "/new-shul-assets/sapphire-modular-panel-frame.webp" },
+  { id: "pic-emerald-gold", name: "זהב מסולסל", image: "/new-shul-assets/emerald-modular-frame.webp" },
+];
+
 export const BOARD_FRAME_LIMITS = {
   size: [0.4, 2.5],
   length: [0.2, 1.1],

@@ -1,3 +1,8 @@
+import { PREMIUM_DESIGNS } from './premiumDesigns';
+import { MODULAR_DESIGNS } from './modularDesigns';
+import { EMERALD_COMPOSITION } from './emeraldComposition';
+import { ORIGINAL_LAYER_DESIGNS } from './originalLayerDesigns';
+import { INDEPENDENT_DESIGNS } from './independentDesigns';
 import type { TvConfig } from "./config";
 import { getTheme, isSafeCssValue, THEME_VARS, THEME_VAR_LAYERS, type ThemeVar } from "./themes";
 
@@ -30,7 +35,7 @@ export const DESIGN_PART_LABELS: Record<DesignPart, string> = {
 /** Which settings each part is made of - the same split as the editor's layers. */
 const PART_KEYS: Record<DesignPart, Array<keyof TvConfig>> = {
   background: ["backgroundGradient", "backgroundImage", "backgroundOverlay", "backgroundDim", "backgroundTune"],
-  frames: ["boardFrame", "boardFrameTune", "boardFrameImage", "frame"],
+  frames: ["elements", "boardFrame", "boardFrameTune", "boardFrameImage", "frame"],
   text: ["font", "textScale", "tracking", "styles", "titleStyle"],
   layout: ["screenLayout", "illustration", "spacing", "clockStyle"],
 };
@@ -266,7 +271,30 @@ const frames = (patch: Partial<TvConfig["frameStyle"]>) => ({
   ...patch,
 });
 
+/** A gallery name without the workshop numbering ("· אוסף חדש 9", "· המקור בשכבות"). */
+const tidyName = (d: SavedDesign): SavedDesign => ({
+  ...d,
+  name: d.name.replace(/ · (עיצוב מקורי|אוסף חדש) \d+$| · (המקור בשכבות|חלקים עצמאיים|הרכבה נקייה ועצמאית)$/, ''),
+});
+/**
+ * Built from parts: every piece - wall, column, frame, fill, clock, ornament -
+ * is a layer of its own, moved, sized, hidden or swapped alone. The two
+ * paintings separated by masks lead (the strongest separation), then the
+ * pieces drawn apart, then the boards built from the system's own elements.
+ */
+const PARTS_DESIGNS: SavedDesign[] = [...ORIGINAL_LAYER_DESIGNS, EMERALD_COMPOSITION, ...MODULAR_DESIGNS, ...INDEPENDENT_DESIGNS].map(tidyName);
+/**
+ * Whole paintings, cut into rectangles that move; the background stays inside
+ * each. The ivory and sapphire paintings are offered as layers above instead -
+ * the same painting twice would be one choice in two places.
+ */
+const PAINTED_DESIGNS: SavedDesign[] = PREMIUM_DESIGNS.filter(
+  (d) => d.id !== 'd_premium_luminous-ivory' && d.id !== 'd_premium_royal-sapphire',
+).map(tidyName);
+
 export const BUILTIN_DESIGNS: SavedDesign[] = [
+  ...PARTS_DESIGNS,
+  ...PAINTED_DESIGNS,
   {
     id: "d_curtain",
     name: "וילון כחול וזהב",
@@ -325,3 +353,28 @@ export const BUILTIN_DESIGNS: SavedDesign[] = [
     },
   },
 ];
+
+/** The gallery of ready designs, in groups, each with a word on how it is built. */
+export const DESIGN_GROUPS: { id: 'parts' | 'paintings' | 'classic'; title: string; hint: string; ids: string[] }[] = [
+  {
+    id: 'parts',
+    title: 'בנויות מחלקים',
+    hint: 'כל חלק - רקע, עמוד, מסגרת, מילוי, שעון, קישוט - הוא שכבה משלו: מזיזים, מגדילים, מסתירים או מחליפים כל אחד בנפרד, והתוכן חי.',
+    ids: PARTS_DESIGNS.map((d) => d.id),
+  },
+  {
+    id: 'paintings',
+    title: 'ציורים מלאים',
+    hint: 'ציור אחד, חתוך לאזורים שאפשר להזיז ולהגדיל; הרקע של כל אזור נשאר בתוכו. הטקסט והשעון חיים.',
+    ids: PAINTED_DESIGNS.map((d) => d.id),
+  },
+  {
+    id: 'classic',
+    title: 'קלאסיות',
+    hint: 'רקע, תיבות, מסגרות וטקסט מהכלים של הלוח - כל אחד משתנה אחר כך בחלק שלו למטה.',
+    ids: BUILTIN_DESIGNS.filter((d) => !PARTS_DESIGNS.includes(d) && !PAINTED_DESIGNS.includes(d)).map((d) => d.id),
+  },
+];
+
+/** Designs the TV remote offers to switch to: the classic ones, as before, and the shul's own. */
+export const REMOTE_BUILTIN_IDS = new Set(DESIGN_GROUPS.find((g) => g.id === 'classic')!.ids);

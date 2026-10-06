@@ -1,3 +1,4 @@
+import { safeImage, normalizeElements, normalizeElementLibrary, type SavedElementSet, type BoardElement } from "./elements";
 import { normalizeFrameLooks, TITLE_STYLES, type FrameLooks, type TitleStyle } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
 import { normalizeBackgrounds, type SavedBackground } from "./backgroundItem";
@@ -14,7 +15,7 @@ import {
   type FrameStyle,
 } from "./layers";
 import { normalizeCustomIllustrations, type CustomIllustration } from "./illustrated";
-import type { SolarEvent } from "@community/lib/zmanim";
+import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from "@community/lib/zmanim";
 import type { EventAutoMode } from "@community/lib/specialDays";
 import { DEVICE_CLASSES, type DeviceClass } from "./devices";
 import {
@@ -188,9 +189,11 @@ export interface TvSlideConfig {
   layout: string;
 }
 
-export type AlertEvent = Extract<SolarEvent, "sof_zman_shma" | "sof_zman_tefila" | "sunset" | "candle">;
+export type AlertEvent = typeof ZMAN_DISPLAY_KEYS[number];
 
 export const ALERT_EVENT_LABELS: Record<AlertEvent, string> = {
+  ...ZMAN_DISPLAY_LABELS,
+  // The four a board always had keep the words it has been showing.
   sof_zman_shma: "סוף זמן קריאת שמע",
   sof_zman_tefila: "סוף זמן תפילה",
   sunset: "שקיעה",
@@ -238,8 +241,8 @@ export interface ElementStyle {
  *              between two plaques, prayers and zmanim in two large frames,
  *              a strip below - built from ordinary frames (TvMedallion.tsx)
  */
-export type ScreenLayout = "rotate" | "split" | "dashboard" | "illustrated" | "medallion";
-export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard", "illustrated", "medallion"];
+export type ScreenLayout = "rotate" | "split" | "dashboard" | "illustrated" | "medallion" | "composition";
+export const SCREEN_LAYOUTS: ScreenLayout[] = ["rotate", "split", "dashboard", "illustrated", "medallion", "composition"];
 
 /** Kinds of day that can have their own look (see dayLooks.ts), highest first. */
 export const DAY_KINDS = ["shabbat", "festival", "roshChodesh", "friday"] as const;
@@ -383,6 +386,7 @@ export function isBackdropRef(value: string | null | undefined): boolean {
  * actually stands in front of a screen and wants changed for that screen.
  */
 export interface DeviceOverlay {
+  elements?: BoardElement[];
   screenLayout?: ScreenLayout;
   clockStyle?: ClockStyle;
   boardFrame?: BoardFrame | null;
@@ -440,6 +444,8 @@ export interface BoardLogo {
 }
 
 export interface TvConfig {
+  elementLibrary: SavedElementSet[];
+  elements: BoardElement[];
   screenLayout: ScreenLayout;
   /**
    * Which painted board the "illustrated" layout shows: a built-in id or the
@@ -653,6 +659,7 @@ export interface TvConfig {
   customBoxes: CustomBox[];
   alerts: {
     enabled: boolean;
+    mode: 'staged' | 'pulse';
     events: AlertEvent[];
     /** Pop the reminder this many minutes before, e.g. [30, 15, 5]. */
     leadMinutes: number[];
@@ -746,6 +753,8 @@ export const DEFAULT_ILLUSTRATED_STYLE: IllustratedStyle = {
 };
 
 export const DEFAULT_TV_CONFIG: TvConfig = {
+  elementLibrary: [],
+  elements: [],
   perDevice: {},
   theme: "navy",
   font: "classic",
@@ -769,6 +778,9 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   customBoxes: [],
   alerts: {
     enabled: true,
+    // "pulse" is the board's alert as it always was; "staged" (30 / 20 / 10
+    // minutes, on the panel and then the whole board) only for whoever chooses it.
+    mode: 'pulse',
     events: ["sof_zman_shma", "sof_zman_tefila", "sunset", "candle"],
     leadMinutes: [30, 15, 5],
     popupSeconds: 40,
@@ -1288,6 +1300,8 @@ function normalizeStored(stored: unknown): TvConfig {
     : d.alerts.leadMinutes;
 
   return {
+    elementLibrary: normalizeElementLibrary(raw.elementLibrary),
+    elements: normalizeElements(raw.elements),
     theme,
     font,
     textScale: num(raw.textScale, d.textScale, 0.8, 1.3),
@@ -1297,7 +1311,7 @@ function normalizeStored(stored: unknown): TvConfig {
     // (see backdrops.ts - stored by name so a rebuild cannot break it).
     backgroundImage:
       typeof raw.backgroundImage === "string" &&
-      (raw.backgroundImage.startsWith("https://") || isBackdropRef(raw.backgroundImage))
+      (safeImage(raw.backgroundImage) || raw.backgroundImage.startsWith("https://") || isBackdropRef(raw.backgroundImage))
         ? raw.backgroundImage
         : null,
     backgroundOverlay:
@@ -1313,6 +1327,8 @@ function normalizeStored(stored: unknown): TvConfig {
     },
     alerts: {
       enabled: bool(alerts.enabled, d.alerts.enabled),
+      // A board saved before staged alerts keeps exactly the alerts it had.
+      mode: alerts.mode === 'staged' ? 'staged' : 'pulse',
       events: Array.isArray(alerts.events)
         ? alerts.events.filter((e): e is AlertEvent => ALERT_EVENTS.includes(e as AlertEvent))
         : d.alerts.events,
@@ -1438,7 +1454,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
       // so a screen's copy is checked exactly as the board's is. Everything
       // else on this list is written by the editor and read straight back.
       (kept as Record<string, unknown>)[k] =
-        k === "illustratedStyle"
+        k === "elements" ? normalizeElements(v) : k === "illustratedStyle"
           ? normalizeIllustratedStyle(v)
           : k === "frameLooks"
             ? normalizeFrameLooks(v)
@@ -1457,6 +1473,7 @@ function normalizePerDevice(raw: unknown): TvConfig["perDevice"] {
 
 /** Guards normalizePerDevice against a stray key from an older board. */
 const DEVICE_OVERLAY_KEYS: Record<keyof DeviceOverlay, true> = {
+  elements: true,
   screenLayout: true, clockStyle: true, boardFrame: true, boardFrameTune: true, boardFrameImage: true, titleStyle: true, frame: true, spacing: true,
   theme: true, themeOverrides: true, backgroundGradient: true, backgroundImage: true, backgroundOverlay: true,
   backgroundDim: true, font: true, textScale: true, tracking: true, texts: true, hidden: true,

@@ -1,3 +1,4 @@
+import { safeImage } from "./elements";
 import type { CSSProperties } from "react";
 import type { TvConfig } from "./config";
 
@@ -369,6 +370,7 @@ export function allGradients(saved?: readonly TvGradient[] | null): TvGradient[]
  * the picture was "none".
  */
 export function isSafeUrl(value: string): boolean {
+  if (safeImage(value)) return true;
   if (/[\s"'()\\;]/.test(value)) return false;
   // An uploaded picture, or a file this build shipped.
   return /^https:\/\/./i.test(value) || /^\/[^/]/.test(value);

@@ -1,3 +1,5 @@
+import { BoardElements } from "./BoardElements";
+import { elementData } from "./elementContent";
 import { HolyEndMinutesContext } from "./holyEnd";
 import { useBriefly } from "@/hooks/useBriefly";
 import { IllustratedStage } from "./TvIllustrated";
@@ -26,7 +28,8 @@ import { checkClock } from "./clock";
 import { OccasionCard } from "./OccasionCard";
 import { occasionPagesNow } from "./occasions";
 import { zmanimFor } from "@community/lib/minyan-time";
-import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
+import { currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
+import { DeadlineContext } from './DeadlineContext';
 import karovimLogo from "./assets/karovim-logo.png";
 import "./tv.css";
 
@@ -89,7 +92,9 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         overrides: config.themeOverrides,
         font: config.font,
         textScale: config.textScale,
-        backgroundImage: backdropUrl(config.backgroundImage),
+        // Embedded portable textures can exceed CSS custom-property token limits.
+        // Compositions render their background as an image element below the masks.
+        backgroundImage: config.screenLayout === 'composition' ? null : backdropUrl(config.backgroundImage),
         backgroundGradient: config.backgroundGradient,
         backgroundOverlay: config.backgroundOverlay,
         backgroundDim: config.backgroundDim,
@@ -101,6 +106,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       config.font,
       config.textScale,
       config.backgroundImage,
+      config.screenLayout,
       config.backgroundGradient,
       config.backgroundOverlay,
       config.backgroundDim,
@@ -190,12 +196,13 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     ? composed.parts.flatMap((p) => (p.slide ? [p.slide] : []))
     : slides;
   const mergedLook =
-    config.screenLayout === "illustrated" || config.screenLayout === "dashboard" || config.screenLayout === "medallion";
+    config.screenLayout === "illustrated" || config.screenLayout === "dashboard" || config.screenLayout === "medallion" || config.screenLayout === "composition";
   // The medallion draws any screen - what it has frames of its own for, and a
   // frame for anything else ticked; the painted board and the full board only
   // a screen with the prayers or the zmanim on it.
   const screenFitsLook =
     !composed ||
+    config.screenLayout === "composition" ||
     config.screenLayout === "medallion" ||
     (!occasionScreen && composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim"));
   // An occasion's screen always takes the whole stage, whatever the layout.
@@ -209,11 +216,13 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const illustrated = layout === "illustrated";
   // The medallion draws its own header too: the clock, the day and the date are its frames.
   const medallion = layout === "medallion";
-  const ownHeader = illustrated || medallion;
+  const composition = layout === "composition";
+  const ownHeader = illustrated || medallion || composition;
   const alert = shabbatNowOn ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
 
   return (
     <HolyEndMinutesContext.Provider value={holyEndMinutes}>
+    <DeadlineContext.Provider value={shabbatNowOn ? [] : stagedZmanAlerts(now,zmanim,config.alerts,jerusalemWeekday(now)===5)}>
     <BoardEditContext.Provider value={edit}>
     <BoardPreviewContext.Provider value={preview}>
       <OverflowContext.Provider value={overflow}>
@@ -244,6 +253,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         {...edit.attr("board.background")}
       >
         <div className="tv-bg" aria-hidden style={{ transform: DRIFT[cycle % DRIFT.length] }}>
+          {config.screenLayout === 'composition' && config.backgroundImage && <img data-composition-background src={backdropUrl(config.backgroundImage) ?? undefined} alt="" style={{position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover'}} />}
           {/* A colour over the background that keeps its light and shade. */}
           {tint && (
             <div className="tv-bg-tint" style={{ background: tint, opacity: config.backgroundTune.tintStrength }} />
@@ -260,6 +270,10 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           </div>
         )}
         <TvShapes />
+        {/* Only a board with free elements draws them, or works out their content:
+            the zmanim, parasha and daf of every element would otherwise be
+            recomputed on each tick of a box that has none. */}
+        {config.elements.length > 0 && (config.screenLayout !== 'composition' || composition) && <BoardElements elements={config.elements} data={elementData(screenSlides, now, {config, name:data.settings?.name ?? 'בית הכנסת', zmanim})} />}
         {!ownHeader && (bars.header || bars.clock || (bars.logo && config.logos.length > 0)) && (
           <TvHeader
             settings={data.settings}
@@ -283,7 +297,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
                   : "מתחבר לשרת בית הכנסת."}
               </p>
             </div>
-          ) : illustrated ? (
+          ) : composition ? null : illustrated ? (
             <IllustratedStage
               illustration={config.illustration}
               customIllustrations={config.customIllustrations}
@@ -355,7 +369,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
             </div>
           )}
 
-          {alert && !alert.popup && !bannerShown && (
+          {alert && !alert.stage && !alert.popup && !bannerShown && (
             <div className="tv-alert-chip">
               <span className="tv-alert-chip-icon">⏳</span>
               {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
@@ -366,7 +380,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         </footer>
 
         {alert?.popup && (
-          <div className="tv-alert-backdrop">
+          <div className="tv-alert-backdrop" data-testid="board-deadline" data-event={alert.event}>
             <div className="tv-alert-card" role="alert">
               <div className="tv-alert-icon">⏳</div>
               <div className="tv-alert-title">{alert.label}</div>
@@ -405,7 +419,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
               zmanimFor={zmanimOn}
               aside={
                 alert &&
-                !alert.popup && (
+                !alert.stage && !alert.popup && (
                   <span className="tv-event-banner-time tv-event-banner-countdown" data-testid="banner-countdown">
                     ⏳ {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
                   </span>
@@ -422,6 +436,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
       </OverflowContext.Provider>
     </BoardPreviewContext.Provider>
     </BoardEditContext.Provider>
+    </DeadlineContext.Provider>
     </HolyEndMinutesContext.Provider>
   );
 }

@@ -1,3 +1,10 @@
+import { ElementEditingProvider } from "./ElementEditingProvider";
+import { useLocation } from 'react-router-dom';
+import { useElementEditing } from "@/tv/elementEditing";
+import { normalizeElements } from "@/tv/elements";
+import { ElementsEditor } from "./ElementsEditor";
+import { WorkspaceTransfer } from "./WorkspaceTransfer";
+import { downloadFile } from "@/tv/workspaceTransfer";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
@@ -115,6 +122,7 @@ const LAYOUT_CHOICES: Array<{
       </>
     ),
   },
+  { id: 'composition', name: 'ערכה מחלקים', hint: 'גרפיקה מפורטת, טקסט ושעונים כשכבות עצמאיות. בחרו ערכה מקורית בלשונית עיצוב.', sketch: <i className="col-span-3 row-span-3 rounded border-2 border-current" /> },
   // No painted template: a look is built from parts (backgrounds, boxes and
   // frames, text), and a painted board that arrives is rebuilt from them
   // (config.normalizeTvConfig). The medallion is its arrangement in frames.
@@ -263,6 +271,7 @@ const DESIGN_TOPICS = [
   { id: "design-boxes", label: "תיבות" },
   { id: "design-frames", label: "מסגרות" },
   { id: "design-text", label: "טקסט" },
+  { id: "design-elements", label: "חלקים" },
 ] as const;
 
 function DesignTopics() {
@@ -445,7 +454,13 @@ function ColorField({
  * over it. It is the same editor (one draft, one save), kept in step with an
  * editor open on the admin page through tvDraftChannel.
  */
-export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
+export function TvDesignPanel(props: { studio?: boolean } = {}) {
+  return <ElementEditingProvider><TvDesignPanelContent {...props} /></ElementEditingProvider>;
+}
+function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
+  const elementEditing = useElementEditing()!;
+  const routerLocation = useLocation();
+  const { setEnabled: setElementEditingEnabled, setDraft: setElementDraft, select: selectElements } = elementEditing;
   const saved = useTvConfig();
   const devices = useTvDevices();
   const [state, dispatch] = useReducer(draftReducer, {
@@ -781,7 +796,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   // the board's own prayer-times setting.
   const [tab, setTab] = useState(() => {
     if (figmaHandoff) return "tools";
-    const search = new URLSearchParams(window.location.search);
+    const search = new URLSearchParams(routerLocation.search);
     // The old "מועדים ואירועים" tab's links land on the occasions.
     if (search.get("tvTab") === "events") return "occasions";
     const panel = search.get("panel");
@@ -789,6 +804,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   });
 
   /** "ביטול שינויים" asks inline before it throws the draft away. */
+  useEffect(() => {
+    const search=new URLSearchParams(routerLocation.search);
+    const panel=search.get('panel');
+    if(panel && ['design','layout','content','occasions','tools'].includes(panel)) setTab(panel);
+    else if(search.get('tvTab')==='events') setTab('occasions');
+  },[routerLocation.search,routerLocation.key]);
+
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   // Saving, or an undo back to the saved design, answers the question itself.
   useEffect(() => {
@@ -943,6 +965,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
   // What is being edited: the board, one screen's, or one occasion's design.
   const theme = getTheme(scoped.theme, draft.customThemes);
+  elementEditing.api.current = {
+    elements: view.elements,
+    commit: (next, key = `elements:${crypto.randomUUID()}`) => edit(key, c => ({ ...c, elements: normalizeElements(next) })),
+  };
+  useEffect(() => { setElementEditingEnabled(editing && !comparing); }, [editing, comparing, setElementEditingEnabled]);
+  useEffect(() => { setElementDraft(null); selectElements([]); }, [scope, occasionScope, comparing, setElementDraft, selectElements]);
   const layerProps: LayerProps = {
     config: view,
     saved: scoped,
@@ -1015,12 +1043,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
       return;
     }
     // A plain download: nothing leaves the browser.
-    const url = URL.createObjectURL(new Blob([text], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = exportFileName(what);
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadFile(new Blob([text], { type: "application/json" }), exportFileName(what));
     toast.success(`${what_} יוצאו לקובץ`);
   };
 
@@ -1198,6 +1221,13 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
   const controls = (
     <>
       <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur">
+        <Button type="button" variant="outline" size="sm" onClick={() => {
+          setTab('tools');
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            document.querySelector('[data-testid="board-transfer-section"]')?.scrollIntoView({ block: 'start' });
+            document.querySelector<HTMLElement>('[data-testid="board-transfer-section"] h2')?.focus();
+          }));
+        }}>ייבוא / ייצוא</Button>
         <Button
           type="button"
           variant="ghost"
@@ -1431,11 +1461,32 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
           >
             <TextLayer {...layerProps} target={partTarget} />
           </Section>
+
+          <Section
+            id="design-elements"
+            title="6. חלקים חופשיים"
+            hint="עמודים, עיטורים, מסגרות, תיבות, טקסט ותמונות - כל אחד שכבה משלו מעל הלוח: גרירה, שינוי גודל, קיבוץ, נעילה, סדר שכבות וספרייה של חלקים שמורים. בערכה מחלקים - זו הפריסה שלה."
+          >
+            <ElementsEditor config={view} onEdit={edit} />
+          </Section>
         </TabsContent>
         <TabsContent
           value="layout"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
+          {view.screenLayout === 'composition' ? <Section
+            id="layout-elements"
+            title="פריסת חלקי הערכה"
+            hint="בערכה מחלקים, הפריסה היא מקום וגודל של כל חלק."
+          >
+            <p className="mb-3 text-sm" data-testid="composition-layout-notice">
+              בערכה מחלקים אין מסכים מתחלפים ותיבות קבועות: כל חלק (תפילות, שעון, מסגרת, עמוד) עומד במקום שלו. מזיזים ומשנים גודל
+              ישירות על הלוח, או ברשימת החלקים.
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={() => { setTab("design"); window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80); }}>
+              לרשימת החלקים
+            </Button>
+          </Section> : <>
           <Section
             id="layout-screens"
             title="מסכים ומה עליהם"
@@ -1686,6 +1737,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 ))}
             </ul>
           </Section>
+          </>}
         </TabsContent>
         <TabsContent
           value="content"
@@ -1811,7 +1863,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
 
           <Section
             title="התראות לפני סוף זמן"
-            hint="ספירה לאחור בתחתית המסך, וכרטיס גדול בכל אחת מהדקות שנבחרו."
+            hint="30 דקות: הבלטה בזמני היום. 20 דקות: ספירה במקום תוכן התפילות. 10 דקות: ספירה על כל הלוח, עד הגעת הזמן. הקרוב ביותר קודם. בשבת ובחג ההתראות כבויות."
           >
             <label className="flex items-center gap-3">
               <Switch
@@ -1821,6 +1873,12 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 }
               />
               התראות פעילות
+            </label>
+            <label className="flex items-center gap-3">אופן ההתראה
+              <select aria-label="אופן התראת זמני היום" value={draft.alerts.mode} onChange={e=>edit('al-mode',c=>({...c,alerts:{...c.alerts,mode:e.target.value as 'staged'|'pulse'}}))}>
+                <option value="staged">שלבים: 30 / 20 / 10 דקות</option>
+                <option value="pulse">חלונות קצרים — השיטה הקודמת</option>
+              </select>
             </label>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
               {(Object.keys(ALERT_EVENT_LABELS) as AlertEvent[]).map((e) => (
@@ -1845,7 +1903,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                 </label>
               ))}
             </div>
-            <LeadMinutesEditor
+            {draft.alerts.mode==='pulse' && <><LeadMinutesEditor
               value={draft.alerts.leadMinutes}
               onChange={(leads) =>
                 edit("al-leads", (c) => ({ ...c, alerts: { ...c.alerts, leadMinutes: leads } }))
@@ -1864,7 +1922,7 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
                   edit("al-sec", (c) => ({ ...c, alerts: { ...c.alerts, popupSeconds: v } }))
                 }
               />
-            </div>
+            </div></>}
           </Section>
         </TabsContent>
         <TabsContent
@@ -1890,12 +1948,11 @@ export function TvDesignPanel({ studio = false }: { studio?: boolean } = {}) {
             />
           </Section>
 
-          <Section
-            title="ייבוא וייצוא"
-            hint="גיבוי של צבעי הבסיס והגרדיאנטים שלכם, או העברה שלהם לבית כנסת אחר. הייבוא מוסיף ואינו מוחק."
-          >
+          <div data-testid="board-transfer-section" className="scroll-mt-24 rounded-xl border p-4 space-y-4">
+            <h2 tabIndex={-1} className="font-semibold">ייבוא וייצוא</h2>
+            <WorkspaceTransfer config={draft} onImport={(config) => dispatch({ type: "edit", key: "workspace-import", update: () => config })} />
             <TransferPanel onExport={doExport} onImport={doImport} />
-          </Section>
+          </div>
 
           <Section
             title="ייבוא מפיגמה"

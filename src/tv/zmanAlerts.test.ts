@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import type { Zmanim } from "@community/lib/zmanim";
+import { ZMAN_DISPLAY_KEYS, type Zmanim } from "@community/lib/zmanim";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "./config";
-import { currentZmanAlert, describeMinutes, formatCountdown } from "./zmanAlerts";
+import { currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
 
 const at = (h: number, m: number, s = 0) => new Date(2026, 8, 18, h, m, s);
 
@@ -12,7 +12,39 @@ const zmanim = {
   candle: at(18, 5),
 } as unknown as Zmanim;
 
-const alerts = DEFAULT_TV_CONFIG.alerts; // leads 30 / 15 / 5, popup 40 s
+const alerts = {...DEFAULT_TV_CONFIG.alerts,mode:'pulse' as const}; // legacy pulse mode
+
+describe('staged deadlines',()=>{
+  // Staged alerts are chosen by the gabbai: every time, in the staged mode.
+  const staged={...DEFAULT_TV_CONFIG.alerts,mode:'staged' as const,events:[...ZMAN_DISPLAY_KEYS]};
+  it.each([[1800001,null],[1800000,'highlight'],[1200001,'highlight'],[1200000,'panel'],[600001,'panel'],[600000,'board'],[1,'board'],[0,null],[-1,null]])('boundary %s milliseconds → %s',(left,stage)=>{
+    const end=at(10,33);const now=new Date(end.getTime()-Number(left));
+    const result=currentZmanAlert(now,{sof_zman_tefila:end} as Zmanim,staged,false);
+    expect(result?.stage??null).toBe(stage);
+  });
+  it('supports every time, including both MGA72 deadlines, with explicit labels',()=>{
+    for(const event of staged.events){
+      const result=currentZmanAlert(at(10,0),{[event]:at(10,20)} as Zmanim,staged,true);
+      expect(result?.event).toBe(event);expect(result?.stage).toBe('panel');
+      if(event.includes('mga72'))expect(result?.label).toContain('מג״א');
+    }
+  });
+  it('highlights concurrent deadlines and counts to the nearest; transitions when it passes',()=>{
+    const times={sof_zman_tefila:at(10,20),sof_zman_tefila_mga72:at(10,10)} as Zmanim;
+    expect(stagedZmanAlerts(at(10,0),times,staged,false).map(a=>a.event)).toEqual(['sof_zman_tefila_mga72','sof_zman_tefila']);
+    expect(currentZmanAlert(at(10,10),times,staged,false)?.event).toBe('sof_zman_tefila');
+    expect(currentZmanAlert(at(10,20),times,staged,false)).toBeNull();
+    expect(currentZmanAlert(at(10,0),times,{...staged,enabled:false},false)).toBeNull();
+    expect(currentZmanAlert(at(10,0),times,{...staged,events:[]},false)).toBeNull();
+  });
+  it('a board saved before staged alerts keeps exactly the alerts it had; staged only when chosen',()=>{
+    expect(normalizeTvConfig({alerts:{enabled:true,events:['sunset']}}).alerts).toMatchObject({enabled:true,mode:'pulse',events:['sunset']});
+    expect(normalizeTvConfig({}).alerts).toMatchObject({mode:'pulse',events:['sof_zman_shma','sof_zman_tefila','sunset','candle']});
+    expect(normalizeTvConfig({alerts:{mode:'staged',events:['sof_zman_tefila_mga72']}}).alerts).toMatchObject({mode:'staged',events:['sof_zman_tefila_mga72']});
+    // The words a board has been showing do not change.
+    expect(currentZmanAlert(at(9,10),{sof_zman_shma:at(9,31)} as Zmanim,DEFAULT_TV_CONFIG.alerts,false)?.label).toBe('סוף זמן קריאת שמע');
+  });
+});
 
 describe("currentZmanAlert", () => {
   it("is silent well before any deadline", () => {

@@ -1,3 +1,4 @@
+import { safeImage } from "./elements";
 import { normalizeBackgroundTune, type BackgroundTune } from "./layers";
 import { isSafeCssValue, isSafeGradient, type TvGradient } from "./themes";
 
@@ -28,7 +29,7 @@ export const MAX_BACKGROUNDS = 60;
 const OWN_ID = /^b_[a-z0-9]{4,16}$/;
 
 const safePicture = (p: unknown): p is string =>
-  typeof p === "string" && (p.startsWith("https://") || p.startsWith("backdrop:")) && !/["'()\s<>]/.test(p);
+  typeof p === "string" && (safeImage(p) || p.startsWith("https://") || p.startsWith("backdrop:")) && !/["'()\s<>]/.test(p);
 const safeFill = (f: unknown): f is string => typeof f === "string" && isSafeGradient(f);
 const safeOverlay = (o: unknown): o is string => typeof o === "string" && (isSafeGradient(o) || isSafeCssValue(o));
 

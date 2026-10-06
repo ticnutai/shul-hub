@@ -108,6 +108,11 @@ export const TV_BACKDROPS: Backdrop[] = [
   { id: "stone-rough", name: "אבן מחוספסת", note: "אבן ירושלים מחוספסת", light: true, url: stoneRough, thumb: stoneRoughThumb },
   { id: "parchment-aged", name: "קלף ישן", note: "קלף עתיק וחם", light: true, url: parchmentAged, thumb: parchmentAgedThumb },
   { id: "velvet-nap", name: "קטיפה אדומה", note: "קטיפה עמוקה עם ברק רך", light: false, url: velvetNap, thumb: velvetNapThumb },
+  // The walls of the ready designs, with every part of the design taken off them:
+  // a background on their own, under any frames and boxes.
+  { id: "sapphire-stone", name: "אבן ספיר", note: "אבן כחולה עמוקה עם עורקים", light: false, url: "/new-shul-assets/sapphire-modular-background.webp", thumb: "/new-shul-assets/thumbs/wall-sapphire-stone.webp" },
+  { id: "ivory-marble", name: "שיש שמנת מואר", note: "שיש בהיר וחם, לטקסט כהה", light: true, url: "/new-shul-assets/luminous-ivory-repair.webp", thumb: "/new-shul-assets/thumbs/wall-ivory-marble.webp" },
+  { id: "royal-blue", name: "כחול מלכותי", note: "אבן כחולה עם דוגמה עדינה", light: false, url: "/new-shul-assets/royal-sapphire-repair.webp", thumb: "/new-shul-assets/thumbs/wall-royal-blue.webp" },
 ];
 
 const PREFIX = BACKDROP_PREFIX;

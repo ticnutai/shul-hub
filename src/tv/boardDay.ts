@@ -5,7 +5,7 @@ import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 import { weeklyParasha } from "./learning";
 import { nextCandleLighting } from "./shabbat";
 import { specialZmanim } from "@community/lib/specialDays";
-import type { SolarEvent, Zmanim } from "@community/lib/zmanim";
+import type { Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM } from "./boardEdit";
 
 export const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
@@ -47,7 +47,7 @@ export function frameZmanim(
   holyEndMinutes: number,
   hidden: (key: string) => boolean,
   max: number,
-): { special: ReturnType<typeof specialZmanim>; shown: SolarEvent[] } {
+): { special: ReturnType<typeof specialZmanim>; shown: (typeof SHOWN_ZMANIM)[number][] } {
   const special = specialZmanim(now, zmanim, holyEndMinutes).slice(0, max);
   const room = max - special.length;
   let shown = SHOWN_ZMANIM.filter((e) => !hidden(`zman.${e}`));

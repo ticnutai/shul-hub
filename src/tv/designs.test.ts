@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { normalizeTvConfig } from "./config";
 import { applyDesign, captureDesign, coloursOnScreen, findDesign } from "./designs";
 import { getTheme } from "./themes";
+import { MODULAR_DESIGNS } from './modularDesigns';
 
 const board = () =>
   normalizeTvConfig({
@@ -17,6 +18,18 @@ const board = () =>
   });
 
 describe("saved designs", () => {
+  it('replaces old decoration without changing content in the modular sapphire design',()=>{
+    const original=normalizeTvConfig({...board(),texts:{'header.title':'תוכן קיים'},styles:{'header.title':{x:20,scale:2}},titleStyle:'ribbon'});
+    const changed=applyDesign(original,MODULAR_DESIGNS[0]);
+    expect(changed.styles).toEqual({});
+    expect(changed.frameLooks).toEqual({});
+    expect(changed.titleStyle).toBe('plain');
+    expect(changed.texts).toEqual(original.texts);
+    expect(changed.screens).toEqual(original.screens);
+    expect(changed.logos).toEqual(original.logos);
+    expect(changed.backgroundImage).not.toBe(changed.boardFrameImage);
+    expect(changed.frameStyle.image).not.toBe(changed.boardFrameImage);
+  });
   it("carry only the parts they were saved with", () => {
     const d = captureDesign(board(), "רקע לילה", ["background"]);
     expect(d.parts).toEqual(["background"]);

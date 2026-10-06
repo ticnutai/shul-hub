@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { BOARD_FRAMES } from "../src/tv/config";
+import { READY_PICTURE_BOARD_FRAMES } from "../src/tv/boardFrame";
 import { expectNotFrozen, serveEditor, type EditorServer } from "./support/tvEditor";
 import { chooseDevice } from "./support/deviceMenu";
 
@@ -43,7 +44,8 @@ test.describe("TV editor", () => {
   test("every frame for the whole board applies, and each is the board's own", async ({ page }) => {
     await page.getByRole("tab", { name: "עיצוב" }).click();
     const count = await boardFrames(page).count();
-    expect(count).toBe(BOARD_FRAMES.length + 1);
+    // The drawn frames, "בלי", and the picture frames taken from the ready designs.
+    expect(count).toBe(BOARD_FRAMES.length + 1 + READY_PICTURE_BOARD_FRAMES.length);
 
     const applied: string[] = [];
     for (let i = 0; i < count; i++) {
@@ -53,7 +55,7 @@ test.describe("TV editor", () => {
       if (frame !== "none") await expect(root(page).locator(`.tv-board-frame[data-frame="${frame}"]`)).toHaveCount(1);
       await expectNotFrozen(page, `board frame ${frame}`);
     }
-    expect([...applied].sort()).toEqual(["none", ...BOARD_FRAMES].sort());
+    expect([...applied].sort()).toEqual(["none", ...BOARD_FRAMES, ...READY_PICTURE_BOARD_FRAMES.map(() => "picture")].sort());
   });
 
   test("the board's frame can be moved, lengthened, widened and put on one side", async ({ page }) => {
