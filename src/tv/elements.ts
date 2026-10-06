@@ -22,7 +22,7 @@ export const elementId = () => `el_${crypto.randomUUID()}`;
 export function newElement(kind: ElementKind): BoardElement {
   return { id: elementId(), kind, name: ELEMENT_NAMES[kind], x: 10, y: 15,
     width: kind === 'column' ? 8 : 30, height: kind === 'column' ? 75 : kind === 'text' || kind === 'ornament' ? 12 : 35,
-    color: '#c9a45d', fill: kind === 'box' ? '#fff8e8' : 'transparent', text: kind === 'text' ? 'שבת שלום' : '', image: '',
+    color: '#c9a45d', fill: kind === 'box' ? '#fff8e8' : 'transparent', text: kind === 'text' ? 'טקסט חדש' : '', image: '',
     fontSize: 4, opacity: 1, rotation: 0, locked: false, hidden: false, group: null };
 }
 /**
@@ -106,7 +106,7 @@ export function exportElementSet(elements: BoardElement[]) {
 export function importElementSet(text: string): BoardElement[] {
   if (text.length > 15_000_000) throw new Error('חבילת האלמנטים גדולה מדי');
   const raw = JSON.parse(text);
-  if (raw?.format !== 'new-shul-elements' || ![1,2,3].includes(raw?.version) || !Array.isArray(raw.elements)) throw new Error('זו אינה חבילת אלמנטים של New Shul');
+  if (raw?.format !== 'new-shul-elements' || ![1,2,3].includes(raw?.version) || !Array.isArray(raw.elements)) throw new Error('זה אינו קובץ חלקים של הלוח');
   const elements = normalizeElements(raw.elements);
   if (!elements.length || elements.length !== raw.elements.length) throw new Error('חבילת האלמנטים אינה תקינה');
   const groups = new Map<string, string>();

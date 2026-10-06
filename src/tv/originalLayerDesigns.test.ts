@@ -8,7 +8,8 @@ describe('Original artwork masks',()=>{
   it('preserves every mask, cutout and live binding through a versioned transfer',async()=>{
     for(const d of ORIGINAL_LAYER_DESIGNS){
       const doc=workspaceDocument(applyAppearance(normalizeTvConfig({}),normalizeTvConfig(d.values)));
-      expect(doc.version).toBe(3);
+      // Masks need 3; the live parasha and date in its texts need 4.
+      expect(doc.version).toBe(4);
       const result=await parseWorkspace(JSON.stringify(doc),async()=>'');
       expect(result.elements).toEqual(d.values.elements);
       expect(result.elements.filter(e=>e.sourceMask).length).toBeGreaterThan(15);

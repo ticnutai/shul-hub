@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react';
 import type { BoardElement } from './elements';
 import {useDeadlines, DeadlineCard} from './DeadlineContext';
+import { useFitLine } from './useFitLine';
 
 import type { ElementData } from './elementContent';
 export type { ElementData } from './elementContent';
@@ -17,7 +18,9 @@ export function BoundElement({ element: e }: { element: BoardElement }) {
   }
   if(e.binding==='prayers' && countdown?.stage==='panel') return <DeadlineCard alert={countdown}/>;
   if(e.binding==='logos') return <div data-content-binding="logos" style={{...style,display:'flex',justifyContent:'center',gap:'1cqw'}}>{data.logos?.map(l=><img key={l.url} src={l.url} alt={l.name} style={{maxWidth:'100%',height:'100%',objectFit:'contain'}} />)}</div>;
-  if(e.binding==='title'||e.binding==='date'||e.binding==='footer'||e.binding==='announcements'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return <div data-content-binding={e.binding} dir="rtl" style={{...style,display:'grid',placeItems:'center',textAlign:'center',whiteSpace:'pre-wrap',lineHeight:1.4}}>{data[e.binding]}</div>;
+  // One line that shrinks to fit (a name, a date, the parasha); paragraphs wrap.
+  if(e.binding==='title'||e.binding==='date'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return <FitLine binding={e.binding} text={data[e.binding] ?? ''} fontSize={e.fontSize} />;
+  if(e.binding==='footer'||e.binding==='announcements') return <div data-content-binding={e.binding} dir="rtl" style={{...style,display:'grid',placeItems:'center',textAlign:'center',whiteSpace:'pre-wrap',lineHeight:1.4}}>{data[e.binding]}</div>;
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(data.now);
   if (e.binding === 'clock') return <div data-content-binding="clock" dir="ltr" style={{ ...style, display: 'grid', placeItems: 'center' }}>{parts}</div>;
   if (e.binding === 'analog') {
@@ -33,8 +36,22 @@ export function BoundElement({ element: e }: { element: BoardElement }) {
   const page = Math.floor(data.now.getTime() / 15000) % Math.max(1, Math.ceil(rows.length / count));
   return <div data-content-binding={e.binding} dir="rtl" style={{ ...style, display: 'flex', flexDirection: 'column' }}>
     {rows.slice(page * count, page * count + count).map((row, i) => { const [label,time]=row; const key=e.binding==='zmanim'?data.zmanKeys?.[data.zmanim!.indexOf(row)]:undefined; return <div key={key??i} data-zman={key} className={deadlines.some(a=>a.event===key)?'tv-zman-warning':undefined} style={{ flex: `0 0 ${100/count}%`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1cqw', lineHeight: 1.2 }}>
-      {e.binding==='lessons' && e.rowsPerPage ? <><span style={{minWidth:0}}>{label.split(' · ')[0]}<small style={{display:'block',fontSize:'.72em',fontWeight:400,marginTop:'.4cqh'}}>{label.split(' · ').slice(1).join(' · ')}</small></span><span style={{flexShrink:0,textAlign:'left'}}><b dir="ltr">{time.split(' · ')[0]}</b><small style={{display:'block',fontSize:'.65em',fontWeight:400}}>{time.split(' · ').slice(1).join(' · ')}</small></span></> : <><span style={{ overflowWrap: 'anywhere' }}>{label}</span><b dir="ltr" style={{ whiteSpace: 'nowrap' }}>{time}</b></>}
+      {e.binding==='lessons' ? <><span style={{minWidth:0}}>{label.split(' · ')[0]}<small style={{display:'block',fontSize:'.72em',fontWeight:400,marginTop:'.4cqh'}}>{label.split(' · ').slice(1).join(' · ')}</small></span><span style={{flexShrink:0,textAlign:'left'}}><b dir="ltr">{time.split(' · ')[0]}</b><small style={{display:'block',fontSize:'.65em',fontWeight:400}}>{time.split(' · ').slice(1).join(' · ')}</small></span></> : <><span style={{ overflowWrap: 'anywhere' }}>{label}</span><b dir="ltr" style={{ whiteSpace: 'nowrap' }}>{time}</b></>}
     </div>;})}
     {!rows.length && <span style={{ margin: 'auto', fontSize: '.65em' }}>{e.binding==='zmanim'?'לא נבחרו זמני יום':`לא הוגדרו ${e.binding === 'prayers' ? 'תפילות להיום' : 'שיעורים להיום'}`}</span>}
   </div>;
+}
+
+function FitLine({ binding, text, fontSize }: { binding: string; text: string; fontSize: number }) {
+  const ref = useFitLine<HTMLDivElement>(text);
+  return (
+    <div
+      ref={ref}
+      data-content-binding={binding}
+      dir="rtl"
+      style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, fontWeight: 700, fontSize: `calc(${fontSize}cqh * var(--fit, 1))` }}
+    >
+      {text}
+    </div>
+  );
 }

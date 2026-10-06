@@ -11,6 +11,7 @@ import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { HiddenShelf, TileRemove } from "./ReadyShelf";
 import {
   BUILTIN_DESIGNS,
+  DESIGN_GROUPS,
   DESIGN_PARTS,
   DESIGN_PART_LABELS,
   MAX_DESIGNS,
@@ -62,13 +63,22 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         title="ערכות מוכנות"
         hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
       >
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="builtin-designs">
-        {BUILTIN_DESIGNS.filter((d) => !isHiddenReady(config, "design", d.id)).map((d) => {
+      <div className="space-y-4" data-testid="builtin-designs">
+      {DESIGN_GROUPS.map((group) => {
+        const shown = BUILTIN_DESIGNS.filter((d) => group.ids.includes(d.id) && !isHiddenReady(config, "design", d.id));
+        if (!shown.length) return null;
+        return (
+      <section key={group.id} data-design-group={group.id} className="space-y-1.5">
+        <h4 className="text-sm font-semibold">{group.title}</h4>
+        <p className="text-[11px] leading-snug text-muted-foreground">{group.hint}</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {shown.map((d) => {
           const wall = findBackdrop(d.values.backgroundImage ?? null);
           const frame = framePictureUrl(d.values.frameStyle?.image ?? null);
-          const artwork = d.values.screenLayout === 'composition' ? d.values.elements?.find(e => e.kind === 'image')?.image : undefined;
+          // The new designs are seen as they really are: a picture of the board wearing them.
+          const artwork = group.id === "classic" ? undefined : `/new-shul-assets/thumbs/${d.id}.webp`;
           return (
-            <div key={d.id} className="group relative overflow-hidden rounded-lg border text-right">
+            <div key={d.id} data-design-id={d.id} className="group relative overflow-hidden rounded-lg border text-right">
             <TileRemove name={d.name} ready onClick={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))} />
             <button
               type="button"
@@ -99,7 +109,13 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
               </span>}
               <span className="block px-2 pt-2 text-sm font-medium">{d.name}</span>
               <span className="block px-2 pb-1 text-[11px] leading-tight text-muted-foreground">
-                {d.values.elements?.some(e=>e.sourceMask) ? 'פרטי המקור במסכות · מסגרות ומילויים נפרדים' : artwork ? 'חיתוכי תמונה עם רקע · טקסט ושעון נפרדים' : `ממלא: ${d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}`}
+                {group.id === "parts"
+                  ? d.values.elements?.some((e) => e.sourceMask)
+                    ? "ציור מופרד לשכבות: עמודים, מסגרות, מילויים וקישוטים"
+                    : "חלקים עצמאיים · תוכן חי"
+                  : group.id === "paintings"
+                    ? "ציור באזורים · טקסט ושעון חיים"
+                    : `ממלא: ${d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}`}
               </span>
             </button>
             <button
@@ -119,6 +135,10 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             </div>
           );
         })}
+      </div>
+      </section>
+        );
+      })}
       </div>
       <HiddenShelf
         testId="designs-hidden"

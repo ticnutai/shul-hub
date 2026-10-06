@@ -69,7 +69,7 @@ export function ElementsEditor({ config, onEdit }: Props) {
       {([['left', 'לשמאל'], ['center-x', 'מרכוז אופקי'], ['right', 'לימין'], ['top', 'למעלה'], ['center-y', 'מרכוז אנכי'], ['bottom', 'למטה']] as const).map(([alignment, label]) => <Button key={alignment} size="sm" variant="outline" disabled={!first || elements.some(e => selected.includes(e.id) && e.locked)} onClick={() => commit(alignElements(elements, selected, alignment))}>{label}</Button>)}
     </div>
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="outline" disabled={!first} onClick={() => downloadFile(new Blob([exportElementSet(elements.filter(e => selected.includes(e.id)))], { type: 'application/json' }), 'new-shul-elements.json')}>ייצוא הבחירה</Button>
+      <Button size="sm" variant="outline" disabled={!first} onClick={() => downloadFile(new Blob([exportElementSet(elements.filter(e => selected.includes(e.id)))], { type: 'application/json' }), 'חלקים.json')}>ייצוא הבחירה</Button>
       <label className="cursor-pointer rounded border px-3 py-2 text-sm">ייבוא אלמנטים<input className="sr-only" type="file" aria-label="ייבוא אלמנטים מקובץ" accept=".json" onChange={async ev => {
         const f = ev.target.files?.[0]; ev.target.value = ''; if (!f) return;
         try {

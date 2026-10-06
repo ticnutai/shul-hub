@@ -48,10 +48,11 @@ export const PREMIUM_DESIGNS: SavedDesign[] = presets.map(p => {
     const [x,y,width,height,fontSize] = pos;
     elements.push({ ...newElement('text'), id: `premium_${p.id}_text_${elements.length}`, name, text: content, x,y,width,height,fontSize,color,binding });
   };
-  add('שם בית הכנסת','בית הכנסת',p.title,undefined,p.light ? p.ink : '#10233e');
+  // Live, not sample words: the synagogue's name, this week's parasha and today's date.
+  add('שם בית הכנסת','',p.title,'title',p.light ? p.ink : '#10233e');
   if (p.id === 'heritage-wood') elements[elements.length - 1].color = '#f8d991';
-  add('כותרת מרכזית','שבת שלום',p.main);
-  add('ברכת קבלת פנים','ברוכים הבאים',p.welcome);
+  add('פרשת השבוע','',p.main,'parasha');
+  add('התאריך העברי','',p.welcome,'date');
   add('כותרת תפילות','זמני תפילות',p.left);
   add('כותרת שיעורים','שיעורי תורה',p.right);
   add('תפילות היום','',p.prayers,'prayers');

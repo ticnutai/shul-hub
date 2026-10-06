@@ -5,7 +5,6 @@ import { normalizeElements } from "@/tv/elements";
 import { ElementsEditor } from "./ElementsEditor";
 import { WorkspaceTransfer } from "./WorkspaceTransfer";
 import { downloadFile } from "@/tv/workspaceTransfer";
-import { DataExportImportAdmin } from '../DataExportImportAdmin';
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
@@ -272,6 +271,7 @@ const DESIGN_TOPICS = [
   { id: "design-boxes", label: "תיבות" },
   { id: "design-frames", label: "מסגרות" },
   { id: "design-text", label: "טקסט" },
+  { id: "design-elements", label: "חלקים" },
 ] as const;
 
 function DesignTopics() {
@@ -1454,16 +1454,20 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             <FramesLayer {...layerProps} target={partTarget} part="frames" />
           </Section>
 
-          <Section id="design-elements" title="אלמנטים חופשיים" hint="עמודים, עיטורים, מסגרות וטקסט כשכבות נפרדות — גרירה, קיבוץ, נעילה וסדר שכבות.">
-            <ElementsEditor config={view} onEdit={edit} />
-          </Section>
-
           <Section
             id="design-text"
             title="5. טקסט"
             hint="גופן, גודל, צבעים וסגנון הכותרת - לכל הלוח או לתיבה שנבחרה למעלה, ואם רוצים - לחלק מסוים בה (השעה, כותרת...)."
           >
             <TextLayer {...layerProps} target={partTarget} />
+          </Section>
+
+          <Section
+            id="design-elements"
+            title="6. חלקים חופשיים"
+            hint="עמודים, עיטורים, מסגרות, תיבות, טקסט ותמונות - כל אחד שכבה משלו מעל הלוח: גרירה, שינוי גודל, קיבוץ, נעילה, סדר שכבות וספרייה של חלקים שמורים. בערכה מחלקים - זו הפריסה שלה."
+          >
+            <ElementsEditor config={view} onEdit={edit} />
           </Section>
         </TabsContent>
         <TabsContent
@@ -1473,10 +1477,15 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           {view.screenLayout === 'composition' ? <Section
             id="layout-elements"
             title="פריסת חלקי הערכה"
-            hint="בחרו חלק ברשימה או בתצוגה, ושנו את מיקומו וגודלו. Shift + לחיצה בוחרת כמה חלקים להזזה משותפת. השינויים נשמרים עם הערכה."
+            hint="בערכה מחלקים, הפריסה היא מקום וגודל של כל חלק."
           >
-            <p className="mb-3 text-sm" data-testid="composition-layout-notice">בערכה מחלקים, הפריסה נקבעת לפי האלמנטים. מסכי השקופיות, ריווח התיבות והגלילה של הפריסות הרגילות אינם חלים כאן. מספר התפילות והשיעורים בכל עמוד מוגדר באלמנט התוכן שנבחר.</p>
-            <ElementsEditor config={view} onEdit={edit} />
+            <p className="mb-3 text-sm" data-testid="composition-layout-notice">
+              בערכה מחלקים אין מסכים מתחלפים ותיבות קבועות: כל חלק (תפילות, שעון, מסגרת, עמוד) עומד במקום שלו. מזיזים ומשנים גודל
+              ישירות על הלוח, או ברשימת החלקים.
+            </p>
+            <Button type="button" size="sm" variant="outline" onClick={() => { setTab("design"); window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80); }}>
+              לרשימת החלקים
+            </Button>
           </Section> : <>
           <Section
             id="layout-screens"

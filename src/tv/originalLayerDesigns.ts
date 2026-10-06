@@ -71,7 +71,7 @@ function make(id:'luminous-ivory'|'royal-sapphire',name:string):SavedDesign {
     sourceMask:{width:W,height:H,path:p.path,holes:p.holes},
   }));
   const original=PREMIUM_DESIGNS.find(d=>d.id===`d_premium_${id}`)!;
-  elements.push(...original.values.elements!.filter(e=>e.kind==='text').map(e=>({...structuredClone(e),id:`original_${ivory?'ivory':'sapphire'}_${e.id.split('_').at(-1)}`,...(e.name==='שם בית הכנסת'?{binding:'title' as const,fontSize:ivory?3.3:2.6}:{}),...(e.binding==='prayers'?{rowsPerPage:3,fontSize:ivory?2.5:2.7}:{}),...(e.binding==='lessons'?{rowsPerPage:3,fontSize:ivory?2.8:2.9}:{}),...(e.name==='שורת תחתית'?{binding:'date' as const,fontSize:2.4}: {})})));
+  elements.push(...original.values.elements!.filter(e=>e.kind==='text').map(e=>({...structuredClone(e),id:`original_${ivory?'ivory':'sapphire'}_${e.id.split('_').at(-1)}`,...(e.name==='שם בית הכנסת'?{binding:'title' as const,fontSize:ivory?3.3:2.6}:{}),...(e.binding==='prayers'?{rowsPerPage:3,fontSize:ivory?2.5:2.7}:{}),...(e.binding==='lessons'?{rowsPerPage:3,fontSize:ivory?2.8:2.9}:{}),...(e.name==='שורת תחתית'?{binding:'footer' as const,fontSize:2.1}: {})})));
   return {id:ivory?'d_ivorylayers':'d_sapphirelayers',name,parts:['background','frames','text','layout'],theme:original.theme,colours:original.colours,
     values:{...structuredClone(EMERALD_COMPOSITION.values),elements,font:'traditional',backgroundImage:`/new-shul-assets/${id}-repair.webp`,backgroundGradient:null}};
 }

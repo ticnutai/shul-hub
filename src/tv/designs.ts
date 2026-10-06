@@ -1,4 +1,3 @@
-import { newElement } from "./elements";
 import { PREMIUM_DESIGNS } from './premiumDesigns';
 import { MODULAR_DESIGNS } from './modularDesigns';
 import { EMERALD_COMPOSITION } from './emeraldComposition';
@@ -272,28 +271,30 @@ const frames = (patch: Partial<TvConfig["frameStyle"]>) => ({
   ...patch,
 });
 
+/** A gallery name without the workshop numbering ("· אוסף חדש 9", "· המקור בשכבות"). */
+const tidyName = (d: SavedDesign): SavedDesign => ({
+  ...d,
+  name: d.name.replace(/ · (עיצוב מקורי|אוסף חדש) \d+$| · (המקור בשכבות|חלקים עצמאיים|הרכבה נקייה ועצמאית)$/, ''),
+});
+/**
+ * Built from parts: every piece - wall, column, frame, fill, clock, ornament -
+ * is a layer of its own, moved, sized, hidden or swapped alone. The two
+ * paintings separated by masks lead (the strongest separation), then the
+ * pieces drawn apart, then the boards built from the system's own elements.
+ */
+const PARTS_DESIGNS: SavedDesign[] = [...ORIGINAL_LAYER_DESIGNS, EMERALD_COMPOSITION, ...MODULAR_DESIGNS, ...INDEPENDENT_DESIGNS].map(tidyName);
+/**
+ * Whole paintings, cut into rectangles that move; the background stays inside
+ * each. The ivory and sapphire paintings are offered as layers above instead -
+ * the same painting twice would be one choice in two places.
+ */
+const PAINTED_DESIGNS: SavedDesign[] = PREMIUM_DESIGNS.filter(
+  (d) => d.id !== 'd_premium_luminous-ivory' && d.id !== 'd_premium_royal-sapphire',
+).map(tidyName);
+
 export const BUILTIN_DESIGNS: SavedDesign[] = [
-  ...INDEPENDENT_DESIGNS,
-  ...ORIGINAL_LAYER_DESIGNS,
-  EMERALD_COMPOSITION,
-  ...MODULAR_DESIGNS,
-  ...PREMIUM_DESIGNS,
-  ...([['marble', 'שיש וזהב · חדש ועתיק', 'stone', '#342818'], ['wood', 'עץ אגוז · אור חם', 'stone', '#342818'], ['marble-dark', 'ספיר וזהב · מלכותי', 'navy', '#fff5d9']] as const).map(([wall, name, theme, ink]): SavedDesign => ({
-    id: `d_new_${wall}`, name, parts: ALL, theme,
-    colours: { ...text(ink, ink, '#c9a45d'), '--tv-panel': theme === 'navy' ? '#12223b' : '#faf2df' },
-    values: {
-      ...background(`backdrop:${wall}`), boardFrame: null, screenLayout: 'medallion',
-      spacing: { top: 2, bottom: 2, sides: 7, gap: 2 },
-      frame: { shape: 'round', top: 2, bottom: 2 },
-      frameStyle: frames({ fill: theme === 'navy' ? '#12223b' : '#faf2df', fillOpacity: .92, line: '#c9a45d', lineWidth: 1.2, depth: .4 }),
-      frameLooks: {},
-      elements: [
-        { ...newElement('column'), id: `new_${wall}_left`, x: 1, y: 3, width: 4, height: 94, group: `new_${wall}_columns` },
-        { ...newElement('column'), id: `new_${wall}_right`, x: 95, y: 3, width: 4, height: 94, group: `new_${wall}_columns` },
-        { ...newElement('ornament'), id: `new_${wall}_crown`, x: 38, y: 0, width: 24, height: 5 },
-      ],
-    },
-  })),
+  ...PARTS_DESIGNS,
+  ...PAINTED_DESIGNS,
   {
     id: "d_curtain",
     name: "וילון כחול וזהב",
@@ -352,3 +353,28 @@ export const BUILTIN_DESIGNS: SavedDesign[] = [
     },
   },
 ];
+
+/** The gallery of ready designs, in groups, each with a word on how it is built. */
+export const DESIGN_GROUPS: { id: 'parts' | 'paintings' | 'classic'; title: string; hint: string; ids: string[] }[] = [
+  {
+    id: 'parts',
+    title: 'בנויות מחלקים',
+    hint: 'כל חלק - רקע, עמוד, מסגרת, מילוי, שעון, קישוט - הוא שכבה משלו: מזיזים, מגדילים, מסתירים או מחליפים כל אחד בנפרד, והתוכן חי.',
+    ids: PARTS_DESIGNS.map((d) => d.id),
+  },
+  {
+    id: 'paintings',
+    title: 'ציורים מלאים',
+    hint: 'ציור אחד, חתוך לאזורים שאפשר להזיז ולהגדיל; הרקע של כל אזור נשאר בתוכו. הטקסט והשעון חיים.',
+    ids: PAINTED_DESIGNS.map((d) => d.id),
+  },
+  {
+    id: 'classic',
+    title: 'קלאסיות',
+    hint: 'רקע, תיבות, מסגרות וטקסט מהכלים של הלוח - כל אחד משתנה אחר כך בחלק שלו למטה.',
+    ids: BUILTIN_DESIGNS.filter((d) => !PARTS_DESIGNS.includes(d) && !PAINTED_DESIGNS.includes(d)).map((d) => d.id),
+  },
+];
+
+/** Designs the TV remote offers to switch to: the classic ones, as before, and the shul's own. */
+export const REMOTE_BUILTIN_IDS = new Set(DESIGN_GROUPS.find((g) => g.id === 'classic')!.ids);
