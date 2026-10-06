@@ -13,7 +13,7 @@ import {
 import { useState, type ReactNode } from "react";
 import { ImagePlus } from "lucide-react";
 import { toast } from "sonner";
-import { DEFAULT_BOARD_FRAME_TUNE, type BoardFrameTune } from "@/tv/boardFrame";
+import { DEFAULT_BOARD_FRAME_TUNE, READY_PICTURE_BOARD_FRAMES, type BoardFrameTune } from "@/tv/boardFrame";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { HiddenShelf, TileRemove } from "./ReadyShelf";
 import { uploadImages } from "./uploadImages";
@@ -147,6 +147,22 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
             </div>
           );
         })}
+        {READY_PICTURE_BOARD_FRAMES.filter((f) => !isHiddenReady(config, "boardframe", f.id)).map((f) => {
+          const on = config.boardFrame === "picture" && config.boardFrameImage === f.image && !worn;
+          return (
+            <div key={f.id} className="group relative" data-testid="ready-picture-board-frame">
+              {!compact && !on && (
+                <TileRemove name={f.name} ready onClick={() => onEdit("board-frame:hide", (c) => hideReady(c, "boardframe", f.id))} />
+              )}
+              <button type="button" aria-pressed={on} onClick={() => put("board-frame:ready-picture", { frame: "picture", image: f.image, tune: DEFAULT_BOARD_FRAME_TUNE })} className={tile(on)}>
+                <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628] p-1" aria-hidden>
+                  <img src={f.image} alt="" className="size-full object-contain" loading="lazy" />
+                </span>
+                <span className={`block text-center font-medium ${label}`}>{f.name}</span>
+              </button>
+            </div>
+          );
+        })}
         {config.myBoardFrames.map((m) => {
           const on = wears(m);
           return (
@@ -178,7 +194,10 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
         <>
           <HiddenShelf
             testId="board-frames-hidden"
-            items={BOARD_FRAME_CHOICES.filter((f) => f.id && isHiddenReady(config, "boardframe", f.id)).map((f) => ({ key: f.id!, name: f.name }))}
+            items={[
+              ...BOARD_FRAME_CHOICES.filter((f) => f.id && isHiddenReady(config, "boardframe", f.id)).map((f) => ({ key: f.id!, name: f.name })),
+              ...READY_PICTURE_BOARD_FRAMES.filter((f) => isHiddenReady(config, "boardframe", f.id)).map((f) => ({ key: f.id, name: f.name })),
+            ]}
             onRestore={(id) => onEdit("board-frame:show", (c) => showReady(c, "boardframe", id))}
           />
           {naming ? (

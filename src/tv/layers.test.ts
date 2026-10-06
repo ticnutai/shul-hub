@@ -92,12 +92,18 @@ describe("ready-made frame pictures", () => {
       "rosette-corners",
       "fan-corners",
       "braid",
+      // The frames of the ready designs, with a clear middle.
+      "emerald-gold",
+      "sapphire-silver",
+      "sapphire-royal",
     ]);
     // The drawn ones are pictures too: an SVG, transparent inside.
-    for (const f of FRAME_PICTURES.slice(2)) {
+    for (const f of FRAME_PICTURES.slice(2, 11)) {
       expect(f.url).toMatch(/^data:image\/svg\+xml;utf8,/);
       expect(decodeURIComponent(f.url)).toContain('fill="none"');
     }
+    // The design frames are pictures this build ships, transparent in the middle.
+    for (const f of FRAME_PICTURES.slice(11)) expect(f.url).toMatch(/^\/new-shul-assets\/[\w-]+\.webp$/);
     const ref = framePictureRef("gold-ornate");
     expect(normalizeFrameStyle({ image: ref }).image).toBe(ref);
     expect(framePictureUrl(ref)).toBe(FRAME_PICTURES[0].url);
