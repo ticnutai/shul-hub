@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNotFrozen, serveEditor } from "./support/tvEditor";
+import { expectNotFrozen, serveEditor, pickColour } from "./support/tvEditor";
 
 /**
  * A box of the shul's own: added in the composer beside the built-in ones,
@@ -38,7 +38,7 @@ test("a box added by hand: written, on the board, dressed like any box, and remo
   await scope.selectOption(await option.getAttribute("value"));
   const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
   await layer.getByRole("radio", { name: "צבע", exact: true }).click();
-  await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
+  await pickColour(layer, "צבע הרקע", "#5a1a2a");
   await expect.poll(() => cell.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe("rgb(90, 26, 42)");
 
   // Saved with the board.

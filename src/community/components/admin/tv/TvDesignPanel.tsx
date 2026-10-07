@@ -186,6 +186,7 @@ import { draftReducer } from "./draftState";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTvSlides } from "./tvPreviewData";
 import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdminData";
+import { ColorPick } from "./ColorPick";
 
 /**
  * Live editor for the board's look and content rotation.
@@ -411,15 +412,11 @@ function ColorField({
   const valid = isSafeCssValue(text);
   return (
     <div className="flex items-center gap-2">
-      <input
-        type="color"
-        aria-label={label}
-        value={isHex ? value : "#000000"}
-        disabled={!isHex}
-        title={isHex ? label : "ערך עם שקיפות - עריכה בטקסט"}
-        onChange={(e) => onChange(e.target.value)}
-        className="size-9 shrink-0 cursor-pointer rounded border bg-transparent p-0.5 disabled:cursor-not-allowed disabled:opacity-40"
-      />
+      {isHex ? (
+        <ColorPick label={label} value={value} onChange={onChange} />
+      ) : (
+        <span title="ערך עם שקיפות - עריכה בטקסט" className="size-9 shrink-0 rounded border opacity-40" style={{ background: value }} aria-hidden />
+      )}
       <div className="min-w-0 flex-1">
         <div className="text-sm">{label}</div>
         <Input

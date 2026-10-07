@@ -13,6 +13,7 @@ import { exportElementSet, importElementSet } from '@/tv/elements';
 import { downloadFile } from '@/tv/workspaceTransfer';
 import { uploadImages } from './uploadImages';
 import {ZMAN_DISPLAY_KEYS,ZMAN_DISPLAY_LABELS} from '@/community/lib/zmanim';
+import { ColorPick } from './ColorPick';
 
 type Props = {
   config: TvConfig;
@@ -115,13 +116,13 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       </div>}
       <label className="text-xs">שם<input className="block w-full rounded border p-2" aria-label="שם האלמנט" value={first.name} onChange={e => patch({ name: e.target.value })} /></label>
       {([['x','מיקום אופקי',0,100],['y','מיקום אנכי',0,100],['width','רוחב האלמנט',1,100],['height','גובה האלמנט',1,100],['rotation','סיבוב',-180,180],['opacity','אטימות',0,1]] as const).map(([key,label,min,max]) => <label className="text-xs" key={key}>{label}<input type="number" className="block w-full rounded border p-2" aria-label={label} min={min} max={max} step={key === 'opacity' ? .1 : .5} value={Number(first[key].toFixed(2))} onChange={ev => { if (ev.target.value !== '') patch({ [key]: Number(ev.target.value) }); }} /></label>)}
-      <label className="text-xs">צבע<input type="color" aria-label="צבע האלמנט" value={first.color} onChange={e => patch({ color: e.target.value })} /></label>
+      <div className="flex items-center gap-1 text-xs">צבע<ColorPick label="צבע האלמנט" value={first.color} onChange={v => patch({ color: v })} /></div>
       {first.kind === 'text' && <><label className="text-xs">מקור התוכן<select className="block w-full rounded border p-2" aria-label="מקור תוכן האלמנט" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label></>}
       {/* The letters - size, font, bold, wrapping, the words - in the same bar as under the board's preview. */}
       {first.kind === 'text' && <div className="col-span-full">{textToolsElsewhere
         ? <p className="rounded border border-dashed p-2 text-xs text-muted-foreground" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות) נמצא מתחת לתצוגה המקדימה של הלוח.</p>
         : <ElementTextTools elements={elements} ids={selected} withColor={false} onPatch={textPatch} />}</div>}
-      {['box','frame'].includes(first.kind) && <label className="text-xs">מילוי<input type="color" aria-label="מילוי האלמנט" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={e => patch({ fill: e.target.value })} /><button type="button" onClick={() => patch({ fill: 'transparent' })}>ללא מילוי</button></label>}
+      {['box','frame'].includes(first.kind) && <div className="flex items-center gap-1 text-xs">מילוי<ColorPick label="מילוי האלמנט" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={v => patch({ fill: v })} /><button type="button" onClick={() => patch({ fill: 'transparent' })}>ללא מילוי</button></div>}
     </fieldset>}
     <div className="space-y-2 rounded border border-primary/40 bg-primary/5 p-3" data-testid="add-live-content">
       <p className="text-sm font-semibold">הוספת תוכן ללוח</p>

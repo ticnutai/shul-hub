@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNotFrozen, serveEditor } from "./support/tvEditor";
+import { expectNotFrozen, serveEditor, pickColour } from "./support/tvEditor";
 
 /**
  * The design tab in three layers - רקעים, מסגרות, טקסט - each asking "for
@@ -101,7 +101,7 @@ test.describe("TV editor, by layer", () => {
     const layer = part.getByTestId("box-layer-background");
     await expect(part.getByTestId("box-background-gallery")).toBeVisible();
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
-    await layer.getByLabel("צבע הרקע").fill("#203a5c");
+    await pickColour(layer, "צבע הרקע", "#203a5c");
     const prayers = root(page).locator('[data-frame="prayers"]').first();
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
     await expect.poll(() => bg(prayers)).toBe("rgb(32, 58, 92)");
@@ -110,7 +110,7 @@ test.describe("TV editor, by layer", () => {
     // One box apart, chosen once at the top: the zmanim in burgundy, the rest stay blue.
     await scope.selectOption("frame:zmanim");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
-    await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
+    await pickColour(layer, "צבע הרקע", "#5a1a2a");
     await expect.poll(() => bg(zmanim)).toBe("rgb(90, 26, 42)");
     expect(await bg(prayers)).toBe("rgb(32, 58, 92)");
 
@@ -135,7 +135,7 @@ test.describe("TV editor, by layer", () => {
     await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:zmanim");
     const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
-    await layer.getByLabel("צבע הרקע").fill("#eeeeee");
+    await pickColour(layer, "צבע הרקע", "#eeeeee");
     const note = page.getByTestId("readability");
     await expect(note).toBeVisible({ timeout: 5000 });
     await note.getByRole("button", { name: /בדיקת קריאוּת/ }).click();
@@ -202,7 +202,7 @@ test.describe("TV editor, by layer", () => {
     await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:clock");
     const layer = page.getByTestId("box-part-background").getByTestId("box-layer-background");
     await layer.getByRole("radio", { name: "צבע", exact: true }).click();
-    await layer.getByLabel("צבע הרקע").fill("#5a1a2a");
+    await pickColour(layer, "צבע הרקע", "#5a1a2a");
     await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(90, 26, 42)");
     // The plaque's text stays above whatever the style draws behind it.
     await expect(med.locator('[data-frame="date"] span').first()).toBeVisible();
@@ -226,7 +226,7 @@ test.describe("TV editor, by layer", () => {
     const layer = page.getByTestId("layer-text");
     await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:zmanim");
     await layer.getByRole("button", { name: "הוספת טקסט" }).click();
-    await layer.getByLabel("טקסט", { exact: true }).fill("#ffeeaa");
+    await pickColour(layer, "טקסט", "#ffeeaa");
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
     await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).color)).toBe("rgb(255, 238, 170)");
     // Its own font and size, over the board's.

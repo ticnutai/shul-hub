@@ -50,6 +50,7 @@ import { BoardFramePicker, FrameAndSpacing } from "./BoardLook";
 import { isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
+import { ColorPick } from "./ColorPick";
 
 /**
  * The form for whatever the admin clicked on the board. Every change goes
@@ -329,14 +330,11 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
             title="צבע אחיד לכל הרקע"
           >
             צבע
-            <input
-              type="color"
-              aria-label="צבע רקע אחיד"
+            <ColorPick
+              label="צבע רקע אחיד"
+              className="h-6 w-8"
               value={(!config.backgroundImage && flatColour(config.backgroundGradient)) || "#0b1628"}
-              onChange={(e) =>
-                onEdit("bg.colour", (c) => writeBoardBackground(c, `linear-gradient(180deg, ${e.target.value}, ${e.target.value})`))
-              }
-              className="size-5 cursor-pointer border-0 bg-transparent p-0"
+              onChange={(v) => onEdit("bg.colour", (c) => writeBoardBackground(c, `linear-gradient(180deg, ${v}, ${v})`))}
             />
           </label>
         </div>
@@ -614,13 +612,7 @@ export function ElementLook({
         </label>
         <label className="flex items-center gap-2">
           צבע
-          <input
-            type="color"
-            aria-label="צבע הרכיב"
-            value={isHex ? effective!.color! : "#ffffff"}
-            onChange={(e) => set({ color: e.target.value }, "color")}
-            className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
-          />
+          <ColorPick label="צבע הרכיב" value={isHex ? effective!.color! : "#ffffff"} onChange={(v) => set({ color: v }, "color")} />
           <Input
             dir="ltr"
             aria-label="צבע הרכיב (ערך)"
@@ -658,13 +650,7 @@ export function ElementLook({
         </label>
         <label className="flex items-center gap-2">
           רקע
-          <input
-            type="color"
-            aria-label="צבע רקע לרכיב"
-            value={bgHex ? effective!.bg! : "#000000"}
-            onChange={(e) => set({ bg: e.target.value }, "bg")}
-            className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
-          />
+          <ColorPick label="צבע רקע לרכיב" value={bgHex ? effective!.bg! : "#000000"} onChange={(v) => set({ bg: v }, "bg")} />
           {effective?.bg && (
             <Button
               type="button"

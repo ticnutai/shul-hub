@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { BOARD_FRAMES } from "../src/tv/config";
 import { READY_PICTURE_BOARD_FRAMES } from "../src/tv/boardFrame";
-import { expectNotFrozen, serveEditor, type EditorServer } from "./support/tvEditor";
+import { expectNotFrozen, serveEditor, type EditorServer, pickColour } from "./support/tvEditor";
 import { chooseDevice } from "./support/deviceMenu";
 
 /**
@@ -189,7 +189,7 @@ test.describe("TV editor", () => {
 
     // Built further and taken: it is not in the gallery yet, and can be kept there.
     const now = page.getByTestId("background-now");
-    await now.getByLabel("צבע ראשון").fill("#112233");
+    await pickColour(now, "צבע ראשון", "#112233");
     await now.getByRole("button", { name: "החלה על רקע הלוח" }).click();
     const keep = page.getByTestId("background-keep");
     await keep.getByLabel("שם לרקע בגלריה").fill("בדיקה");
@@ -214,7 +214,7 @@ test.describe("TV editor", () => {
     await now.getByRole("radio", { name: "מעבר צבעים", exact: true }).click();
 
     // Turning a dial reaches the board immediately.
-    await now.getByLabel("צבע ראשון").fill("#5a1a2a");
+    await pickColour(now, "צבע ראשון", "#5a1a2a");
     await expect.poll(gradient).not.toBe(before);
     const shown = await gradient();
     expect(shown).toContain("gradient");
@@ -231,7 +231,7 @@ test.describe("TV editor", () => {
     // Now the same thing, kept this time.
     await page.getByRole("tab", { name: "עיצוב" }).click();
     await now.getByRole("radio", { name: "מעבר צבעים", exact: true }).click();
-    await now.getByLabel("צבע ראשון").fill("#5a1a2a");
+    await pickColour(now, "צבע ראשון", "#5a1a2a");
     await expect.poll(gradient).not.toBe(before);
     await now.getByRole("button", { name: "החלה על רקע הלוח" }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
@@ -430,7 +430,7 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "background from the board");
 
     // A flat colour for the whole background, which beats the style's wall - and takes the picture off.
-    await panel.getByLabel("צבע רקע אחיד").fill("#123456");
+    await pickColour(panel, "צבע רקע אחיד", "#123456");
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-gradient");
     await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-bg-image");
     await expect

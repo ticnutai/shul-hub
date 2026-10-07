@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNotFrozen, serveEditor } from "./support/tvEditor";
+import { expectNotFrozen, serveEditor, pickColour } from "./support/tvEditor";
 
 /**
  * Backgrounds in one place: a colour, a gradient and a picture were three
@@ -40,7 +40,7 @@ test("a picture with a layer over it, kept in the gallery, changed, and removed 
   // Its layer made a colour of its own: the board follows, and offers to keep it.
   const layer = page.getByTestId("picture-layer");
   await layer.getByRole("radio", { name: "צבע", exact: true }).click();
-  await layer.getByLabel("צבע השכבה").fill("#7a1020");
+  await pickColour(layer, "צבע השכבה", "#7a1020");
   await expect.poll(() => root.evaluate((el) => getComputedStyle(el).getPropertyValue("--tv-bg-overlay").trim())).toBe("#7a1020");
   const keep = page.getByTestId("background-keep");
   await expect(keep).toContainText("לא שמור בגלריה");

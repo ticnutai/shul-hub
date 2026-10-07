@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Minus, Plus, TriangleAlert, WrapText } from 'lucide-react';
 
 import { ELEMENT_FONTS, wraps, type BoardElement, type ElementFont } from '@/tv/elements';
+import { ColorPick } from './ColorPick';
 
 const BTN = 'grid size-8 place-items-center rounded border text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40';
 const ON = 'border-primary bg-primary/10 text-primary';
@@ -81,8 +82,7 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
         {withColor && (
           <label className="flex items-center gap-1 text-xs text-muted-foreground">
             צבע
-            <input type="color" aria-label="צבע הטקסט" value={/^#[\da-f]{6}$/i.test(first.color) ? first.color : '#000000'}
-              onChange={ev => set({ color: ev.target.value }, 'color')} className="h-8 w-9 cursor-pointer rounded border bg-background" />
+            <ColorPick label="צבע הטקסט" value={first.color} onChange={v => set({ color: v }, 'color')} />
           </label>
         )}
       </div>

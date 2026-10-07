@@ -32,6 +32,7 @@ import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
 import { uploadImages } from "./uploadImages";
+import { ColorPick } from "./ColorPick";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -120,13 +121,7 @@ function ColourChoice({
       <span>{label}</span>
       {value ? (
         <span className="flex items-center gap-1.5">
-          <input
-            type="color"
-            aria-label={label}
-            value={hex ?? fallback}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-7 w-9 cursor-pointer rounded border"
-          />
+          <ColorPick label={label} value={hex ?? fallback} onChange={(v) => onChange(v)} />
           <button type="button" className="underline" onClick={() => onChange(null)}>
             {unsetLabel}
           </button>
@@ -329,13 +324,7 @@ export function BackgroundLayer({
 
         {source === "colour" && (
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <input
-              type="color"
-              aria-label="צבע הרקע"
-              value={flatNow ?? "#0b1628"}
-              onChange={(e) => apply(onBoard ? flat(e.target.value) : e.target.value)}
-              className="h-9 w-12 cursor-pointer rounded border"
-            />
+            <ColorPick label="צבע הרקע" value={flatNow ?? "#0b1628"} onChange={(v) => apply(onBoard ? flat(v) : v)} />
             <span className="text-muted-foreground">צבע אחיד. לחיצה פותחת בוחר צבעים.</span>
           </div>
         )}
@@ -615,18 +604,18 @@ function PictureLayer({ saved, onEdit }: { saved: TvConfig; onEdit: Edit }) {
       {mode === "colour" && (
         <label className="flex items-center gap-2 text-xs">
           צבע השכבה
-          <input type="color" aria-label="צבע השכבה" value={hex} onChange={(e) => set(e.target.value)} className="h-8 w-11 cursor-pointer rounded border" />
+          <ColorPick label="צבע השכבה" value={hex} onChange={set} />
         </label>
       )}
       {mode === "gradient" && (
         <div className="flex flex-wrap items-center gap-3 text-xs">
           <label className="flex items-center gap-1">
             מ־
-            <input type="color" aria-label="צבע ראשון של השכבה" value={a} onChange={(e) => set(gradient(angle, e.target.value, b))} className="h-8 w-11 cursor-pointer rounded border" />
+            <ColorPick label="צבע ראשון של השכבה" value={a} onChange={(v) => set(gradient(angle, v, b))} />
           </label>
           <label className="flex items-center gap-1">
             אל
-            <input type="color" aria-label="צבע שני של השכבה" value={b} onChange={(e) => set(gradient(angle, a, e.target.value))} className="h-8 w-11 cursor-pointer rounded border" />
+            <ColorPick label="צבע שני של השכבה" value={b} onChange={(v) => set(gradient(angle, a, v))} />
           </label>
           <label className="flex items-center gap-1">
             כיוון

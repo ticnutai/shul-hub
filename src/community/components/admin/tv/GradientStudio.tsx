@@ -16,6 +16,7 @@ import {
 import {
   isSafeGradient,
 } from "@/tv/themes";
+import { ColorPick } from "./ColorPick";
 
 /**
  * Building and keeping gradients.
@@ -162,30 +163,26 @@ export function GradientStudio({
         </div>
         <label className="flex items-center gap-2">
           מ־
-          <input
-            type="color"
-            aria-label="צבע ראשון"
+          <ColorPick
+            label="צבע ראשון"
             value={from}
-            onChange={(e) => {
+            onChange={(hex) => {
               setTouched(true);
-              setFrom(e.target.value);
+              setFrom(hex);
               setAdvanced("");
             }}
-            className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
           />
         </label>
         <label className="flex items-center gap-2">
           אל
-          <input
-            type="color"
-            aria-label="צבע שני"
+          <ColorPick
+            label="צבע שני"
             value={to}
-            onChange={(e) => {
+            onChange={(hex) => {
               setTouched(true);
-              setTo(e.target.value);
+              setTo(hex);
               setAdvanced("");
             }}
-            className="size-8 cursor-pointer rounded border bg-transparent p-0.5"
           />
         </label>
         {kind === "linear" && (

@@ -246,3 +246,17 @@ export async function settled(locator: import("@playwright/test").Locator) {
     await locator.page().waitForTimeout(100);
   }
 }
+
+/**
+ * A colour chosen in the editor's own colour panel (ColorPick.tsx): the box
+ * opens it at the foot of the window, the colour's code is typed, and "סיום".
+ * The browser's colour box it replaced was filled directly; this one is not
+ * an input.
+ */
+export async function pickColour(scope: Page | import("@playwright/test").Locator, label: string, hex: string) {
+  const page = "page" in scope && typeof scope.page === "function" ? scope.page() : (scope as Page);
+  await scope.getByRole("button", { name: label, exact: true }).first().click();
+  const panel = page.getByTestId("color-panel");
+  await panel.getByLabel("קוד הצבע").fill(hex);
+  await panel.getByRole("button", { name: "סיום" }).click();
+}
