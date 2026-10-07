@@ -15,7 +15,7 @@
  */
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Move, PanelLeft, PanelRight, PanelsLeftRight, RotateCcw, X } from 'lucide-react';
+import { Eye, EyeOff, Move, PanelLeft, PanelRight, PanelsLeftRight, RotateCcw, Save, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
@@ -24,10 +24,12 @@ import { kitOf, resetToKit } from '@/tv/kitReset';
 import type { TvConfig } from '@/tv/config';
 import { useElementEditing } from '@/tv/elementEditing';
 import {
-  BINDING_LABELS, ELEMENT_BINDINGS, MAX_ELEMENTS, SCROLLABLE, addContent, boundsOf, normalizeElements, placeSection,
-  sectionOf, setAlternates, setContent, sideOf, type BoardElement, type ElementBinding, type ElementScroll, type ElementSide,
+  BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, liveFrames, normalizeElements, placeSection,
+  setAlternates, setContent, type BoardElement, type ElementBinding, type ElementScroll, type ElementSide,
 } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
+import { AddContent } from './AddContent';
+import { DESIGN_PARTS, MAX_DESIGNS, captureDesign } from '@/tv/designs';
 
 /** When the content is longer than its frame. A notice shrinks, a list turns its pages - or either moves. */
 const FIT_LABELS = (binding: ElementBinding) => [
@@ -46,19 +48,13 @@ export function PartsContent({ config, onEdit, onManual }: {
 }) {
   const elements = config.elements;
   const editing = useElementEditing();
-  const [adding, setAdding] = useState<ElementBinding>('zmanim');
   /** Frames ticked for showing or hiding together (by the id of their content). */
   const [picked, setPicked] = useState<string[]>([]);
   const kit = useMemo(() => kitOf(config), [config]);
   const commit = (next: BoardElement[], key: string) => onEdit(key, c => ({ ...c, elements: normalizeElements(next) }));
 
   /** Every piece of live content, with the frame it stands in and where that stands. */
-  const frames = useMemo(() => elements.filter(e => e.binding).map(e => {
-    const ids = sectionOf(elements, e.id);
-    const heading = elements.find(x => ids.includes(x.id) && x.kind === 'text' && !x.binding && x.text.trim());
-    const shared = elements.filter(x => ids.includes(x.id) && x.binding).length > 1;
-    return { e, ids, binding: e.binding!, title: !shared && heading ? heading.text : BINDING_LABELS[e.binding!], side: sideOf(boundsOf(elements, ids)) };
-  }), [elements]);
+  const frames = useMemo(() => liveFrames(elements), [elements]);
   type Frame = (typeof frames)[number];
   const shown = frames.filter(f => !f.e.hidden);
   const hidden = frames.filter(f => f.e.hidden);
@@ -106,12 +102,25 @@ export function PartsContent({ config, onEdit, onManual }: {
     }
   };
 
-  const add = () => {
-    const added = addContent(elements, adding);
-    if (elements.length + added.length > MAX_ELEMENTS) { toast.error('עד 80 חלקים בלוח'); return; }
-    commit([...elements, ...added], `parts-content:add:${adding}`);
-    editing?.select(added.map(e => e.id));
-    toast.success(`נוספה מסגרת "${BINDING_LABELS[adding]}" באמצע הלוח${added.some(x => x.crop || x.image) ? ', בסגנון של המסגרות שבלוח' : ''}. בחרו לה צד ברשימה.`);
+  /**
+   * The board as it stands now, kept as a kit of one's own: in "הערכות שלי"
+   * in the design tab, put back on this page or any other with a click, and
+   * the kit "איפוס הכול" goes back to. Everything a kit carries, its layout
+   * too - without it a kit of parts came back as an ordinary board.
+   */
+  const [kitName, setKitName] = useState<string | null>(null);
+  const saveKit = () => {
+    const name = (kitName ?? '').trim().slice(0, 40);
+    if (!name) { toast.error('צריך לתת שם לערכה'); return; }
+    const existing = config.designs.find(d => d.name === name);
+    if (existing && !window.confirm(`כבר יש ערכה בשם «${name}». להחליף אותה במה שעל הלוח עכשיו?`)) return;
+    if (!existing && config.designs.length >= MAX_DESIGNS) { toast.error(`הגעתם למספר הערכות המרבי (${MAX_DESIGNS}). מחקו ערכה ב"הערכות שלי".`); return; }
+    onEdit(`parts-content:save-kit:${name}`, c => {
+      const kit = captureDesign(c, name, [...DESIGN_PARTS], existing?.id);
+      return { ...c, designs: existing ? c.designs.map(d => (d.id === existing.id ? kit : d)) : [...c.designs, kit] };
+    });
+    setKitName(null);
+    toast.success(`הערכה «${name}» נשמרה. היא ב"הערכות שלי" בלשונית "עיצוב", ותגיע למסכים ב"שמור ושדר".`);
   };
 
   return (
@@ -119,6 +128,10 @@ export function PartsContent({ config, onEdit, onManual }: {
       <div className="space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-semibold">המסגרות שעל הלוח</p>
+          <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setKitName(kitName === null ? '' : null)} data-testid="parts-save-kit"
+            title="שומר את הלוח כמו שהוא עכשיו כערכה משלכם - תופיע ב'הערכות שלי'">
+            <Save className="size-4" aria-hidden /> שמירה כערכה
+          </Button>
           {kit && (
             <Button type="button" size="sm" variant="outline" className="h-8" onClick={reset} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של «${kit.name}»`} data-testid="parts-reset">
               <RotateCcw className="size-4" aria-hidden /> איפוס הכול לברירת המחדל
@@ -128,6 +141,15 @@ export function PartsContent({ config, onEdit, onManual }: {
         <p className="text-xs text-muted-foreground">
           בכל מסגרת בוחרים מה היא מציגה - המסגרת והסגנון נשארים, והכותרת מתחלפת. ימין, אמצע או שמאל מזיזים אותה, ואם בצד הזה כבר עומדת מסגרת אחרת, השתיים מתחלפות.
         </p>
+        {kitName !== null && (
+          <form className="flex flex-wrap items-center gap-2 rounded-md border p-2" onSubmit={e => { e.preventDefault(); saveKit(); }} data-testid="parts-kit-form">
+            <input autoFocus aria-label="שם הערכה החדשה" value={kitName} maxLength={40} placeholder="למשל: אבן ירושלים - ארבע קשתות"
+              onChange={e => setKitName(e.target.value)} className="h-8 min-w-0 flex-1 basis-48 rounded border bg-background px-2 text-sm" />
+            <Button type="submit" size="sm" className="h-8">שמירה</Button>
+            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setKitName(null)}>ביטול</Button>
+            <p className="w-full text-[11px] text-muted-foreground">נשמר הכול: המסגרות, מה שהן מציגות, המיקום, הצבעים והרקע. עם אותו שם - מחליף את הערכה הקודמת.</p>
+          </form>
+        )}
         {/* Several at once: tick, then show or hide them all. */}
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="בחירה מרובה" data-testid="parts-bulk">
           <label className="flex items-center gap-1.5">
@@ -166,17 +188,7 @@ export function PartsContent({ config, onEdit, onManual }: {
         )}
       </div>
 
-      <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="parts-add">
-        <p className="text-sm font-semibold">הוספת תצוגה</p>
-        <p className="text-xs text-muted-foreground">מסגרת חדשה בסגנון של הלוח - העתק של המסגרות שכבר עליו - עם התוכן שבוחרים.</p>
-        <div className="flex flex-wrap gap-2">
-          <select aria-label="איזו תצוגה להוסיף" value={adding} onChange={e => setAdding(e.target.value as ElementBinding)}
-            className="h-9 min-w-0 flex-1 basis-40 rounded border bg-background px-2 text-sm">
-            {ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}{shown.some(f => f.binding === b) ? ' (כבר על הלוח)' : ''}</option>)}
-          </select>
-          <Button size="sm" onClick={add} disabled={elements.length >= MAX_ELEMENTS}>הוספה</Button>
-        </div>
-      </div>
+      <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); editing?.select(ids); }} />
 
       {hidden.length > 0 && (
         <div className="space-y-1" data-testid="parts-hidden">

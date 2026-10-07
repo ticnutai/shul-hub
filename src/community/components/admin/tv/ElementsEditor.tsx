@@ -6,6 +6,7 @@ import type { TvConfig } from '@/tv/config';
 import { BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, ELEMENT_KINDS, ELEMENT_NAMES, MAX_ELEMENTS, alignElements, boundsOf, addContent, elementId, moveElements, newElement, normalizeElements, placeSection, sectionOf, sideOf, type BoardElement, type ElementBinding, type ElementSide } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
 import { ElementTextTools } from './ElementTextTools';
+import { AddContent } from './AddContent';
 import { BoardElements } from '@/tv/BoardElements';
 import { useElementEditing } from '@/tv/elementEditing';
 import { ElementLibrary } from './ElementLibrary';
@@ -42,13 +43,6 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       if (e.group && !groups.has(e.group)) groups.set(e.group, elementId());
       return { ...e, id: elementId(), name: `${e.name} (עותק)`, x: Math.min(100 - e.width, e.x + 2), y: Math.min(100 - e.height, e.y + 2), locked: false, group: e.group ? groups.get(e.group)! : null };
     }); commit([...elements, ...added]); select(added.map(e => e.id));
-  };
-  const [liveChoice, setLiveChoice] = useState<ElementBinding>('zmanim');
-  const addLiveBox = (binding: ElementBinding) => {
-    const added = addContent(elements, binding);
-    if (elements.length + added.length > MAX_ELEMENTS) return toast.error('עד 80 אלמנטים בלוח');
-    commit([...elements, ...added]); select(added.map(x => x.id));
-    toast.success(`נוסף "${BINDING_LABELS[binding]}" באמצע הלוח${added.some(x => x.crop || x.image) ? ', בסגנון של המסגרות שבלוח' : ''}. בחרו לו צד בסמלים שברשימה, או גררו אותו.`);
   };
   /** Each part with the section it moves with, and where that section stands now. */
   const sections = useMemo(() => new Map(elements.map(e => { const ids = sectionOf(elements, e.id); return [e.id, { ids, side: sideOf(boundsOf(elements, ids)) }] as const; })), [elements]);
@@ -124,16 +118,8 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         : <ElementTextTools elements={elements} ids={selected} withColor={false} onPatch={textPatch} />}</div>}
       {['box','frame'].includes(first.kind) && <div className="flex items-center gap-1 text-xs">מילוי<ColorPick label="מילוי האלמנט" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={v => patch({ fill: v })} /><button type="button" onClick={() => patch({ fill: 'transparent' })}>ללא מילוי</button></div>}
     </fieldset>}
-    <div className="space-y-2 rounded border border-primary/40 bg-primary/5 p-3" data-testid="add-live-content">
-      <p className="text-sm font-semibold">הוספת תוכן ללוח</p>
-      <p className="text-xs text-muted-foreground">ברשימה שלמטה מופיעים רק החלקים שכבר נמצאים על הלוח. כאן מוסיפים עוד: זמני היום, הודעות, לוגואים, דף יומי ועוד.</p>
-      <div className="flex flex-wrap gap-2">
-        <select className="h-9 min-w-[10rem] flex-1 rounded border bg-background px-2 text-sm" aria-label="איזה תוכן להוסיף" value={liveChoice} onChange={e => setLiveChoice(e.target.value as ElementBinding)}>
-          {ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}{elements.some(x => x.binding === b && !x.hidden) ? ' (כבר על הלוח)' : ''}</option>)}
-        </select>
-        <Button size="sm" onClick={() => addLiveBox(liveChoice)} disabled={elements.length >= MAX_ELEMENTS}>הוספה</Button>
-      </div>
-    </div>
+    {/* The same adding as in the layout tab: a new frame, instead of a frame's content, or into a frame. */}
+    <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }} />
     <p className="text-xs text-muted-foreground">בכל שורה: ימין, אמצע או שמאל מזיזים את החלק יחד עם המסגרת שלו. אם בצד הזה כבר עומד חלק אחר, השניים מתחלפים. הסמל האחרון בוחר את החלק לגרירה ידנית על הלוח.</p>
     {/* Several parts at once: tick them (or Shift + click), then show, hide, lock or free them all. */}
     <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="פעולות על כמה חלקים" data-testid="elements-bulk">

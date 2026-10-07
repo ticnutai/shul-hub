@@ -308,9 +308,6 @@ function frameParts(all: BoardElement[], ids: string[]) {
  * Whether content wants a plain panel in this frame: an arch drawn with the
  * lines of three prayers or shiurim, showing anything else.
  */
-const wantsBackdrop = (frame: BoardElement | undefined, binding: ElementBinding) =>
-  Boolean(frame?.kind === 'image' && frame.crop) && binding !== 'prayers' && binding !== 'lessons';
-
 /** One line that shrinks to fit its box (a name, a date, the parasha). */
 const ONE_LINE: ElementBinding[] = ['title', 'date', 'parasha', 'dafYomi', 'amudYomi', 'seasonal', 'clock'];
 
@@ -339,8 +336,8 @@ function retarget(e: BoardElement, binding: ElementBinding, frame?: BoardElement
   const { zmanKeys: _z, rowsPerPage: _r, backdrop: _b, ...rest } = e;
   const alternates = rest.alternates?.filter(b => b !== binding);
   return { ...rest, binding, name: BINDING_LABELS[binding], ...(alternates?.length ? { alternates } : { alternates: undefined, alternateSeconds: undefined }),
-    ...fitContent(e, e.binding, binding),
-    ...(wantsBackdrop(frame, binding) ? { backdrop: true } : {}) };
+    // In the kit's own look: its ink and font, no panel behind - that one is the gabbai's to switch on.
+    ...fitContent(e, e.binding, binding) };
 }
 /** The heading of a frame, worded for what it shows - in turns, when it takes turns. */
 function headingFor(h: BoardElement, content: BoardElement): BoardElement {
@@ -419,7 +416,64 @@ export function styledBox(all: BoardElement[], binding: ElementBinding): BoardEl
 }
 
 /** New content on the board: in the board's look when it has one to copy, otherwise in a box of its own. */
-export const addContent = (all: BoardElement[], binding: ElementBinding) => styledBox(all, binding) ?? liveBox(binding);
+export const addContent = (all: BoardElement[], binding: ElementBinding) => styledBox(all, binding) ?? plainBox(all, binding) ?? liveBox(binding);
+
+/** The board's own letters: the ink, font and weight most of its live content wears. */
+function boardInk(all: BoardElement[]) {
+  const texts = all.filter(e => e.kind === 'text' && !e.hidden);
+  if (!texts.length) return null;
+  const most = <T,>(f: (e: BoardElement) => T) => {
+    const counts = new Map<T, number>();
+    for (const e of texts) counts.set(f(e), (counts.get(f(e)) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0][0];
+  };
+  return { color: most(e => e.color), font: most(e => e.font), weight: most(e => e.weight) };
+}
+
+/**
+ * A board with no frame of its own to copy: the content in the board's own
+ * letters, a heading over it, and nothing behind - not a dark box from another
+ * board. Null on an empty board (then liveBox, with a box to stand in).
+ */
+function plainBox(all: BoardElement[], binding: ElementBinding): BoardElement[] | null {
+  const ink = boardInk(all);
+  if (!ink) return null;
+  return liveBox(binding)
+    .filter(e => e.kind === 'text')
+    .map(e => ({ ...e, color: ink.color, ...(ink.font ? { font: ink.font } : {}), ...(ink.weight ? { weight: ink.weight } : {}) }));
+}
+
+/**
+ * Content put into a frame already on the board, beside what it shows - the
+ * daf yomi under the parasha. The content there gives up the lower part of its
+ * room, and the new one stands in it in the same letters; both are the frame's.
+ */
+export function addIntoFrame(all: BoardElement[], contentId: string, binding: ElementBinding): BoardElement[] {
+  const content = all.find(e => e.id === contentId);
+  if (!content?.binding || content.locked) return all;
+  const lists = LISTS.includes(binding) || binding === 'announcements';
+  const share = lists ? 0.5 : 0.32;
+  const room = Math.max(4, content.height * share);
+  const kept = content.height - room - 0.5;
+  const rows = content.rowsPerPage ? Math.max(1, Math.floor(content.rowsPerPage * (kept / content.height))) : undefined;
+  const shrunk: BoardElement = { ...content, height: kept, ...(rows ? { rowsPerPage: rows } : {}) };
+  const fit = fitContent({ ...content, height: room, rowsPerPage: undefined }, undefined, binding);
+  const added: BoardElement = {
+    ...newElement('text'),
+    name: BINDING_LABELS[binding], binding, text: '',
+    x: content.x, y: content.y + kept + 0.5, width: content.width, height: room,
+    color: content.color, group: content.group,
+    ...(content.font ? { font: content.font } : {}), ...(content.weight ? { weight: content.weight } : {}),
+    ...(content.align ? { align: content.align } : {}),
+    ...fit,
+    fontSize: Math.min(fit.fontSize ?? content.fontSize, content.fontSize),
+  };
+  // Above everything of its frame, so the frame never covers it.
+  const ids = sectionOf(all, contentId);
+  const last = Math.max(...ids.map(id => all.findIndex(e => e.id === id)));
+  const next = all.map(e => (e.id === contentId ? shrunk : e));
+  return [...next.slice(0, last + 1), added, ...next.slice(last + 1)];
+}
 
 export interface SavedElementSet { id: string; name: string; elements: BoardElement[] }
 export const MAX_ELEMENT_SETS = 24;
@@ -491,5 +545,17 @@ export function resizeElements(all: BoardElement[], ids: string[], handle: Resiz
     ...e,
     x: left + (e.x - b.x) * sx, y: top + (e.y - b.y) * sy,
     width: Math.max(1, e.width * sx), height: Math.max(1, e.height * sy),
+  });
+}
+
+/** A frame of live content on the board, as the gabbai knows it: by its heading, and where it stands. */
+export interface LiveFrame { e: BoardElement; ids: string[]; binding: ElementBinding; title: string; side: ElementSide }
+/** Every piece of live content, with the frame it stands in, named by its heading where it has its own. */
+export function liveFrames(all: BoardElement[]): LiveFrame[] {
+  return all.filter(e => e.binding).map(e => {
+    const ids = sectionOf(all, e.id);
+    const heading = all.find(x => ids.includes(x.id) && x.kind === 'text' && !x.binding && x.text.trim());
+    const shared = all.filter(x => ids.includes(x.id) && x.binding).length > 1;
+    return { e, ids, binding: e.binding!, title: !shared && heading ? heading.text : BINDING_LABELS[e.binding!], side: sideOf(boundsOf(all, ids)) };
   });
 }

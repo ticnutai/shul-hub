@@ -15,7 +15,8 @@ export function kitOf(config: TvConfig): SavedDesign | null {
   const ids = new Set(config.elements.map(e => e.id));
   if (!ids.size) return null;
   let best: { design: SavedDesign; score: number } | null = null;
-  for (const design of [...BUILTIN_DESIGNS, ...(config.designs ?? [])]) {
+  // One's own kits first: one saved from this board matches it as well as the kit it was made from, and is the one meant.
+  for (const design of [...(config.designs ?? []), ...BUILTIN_DESIGNS]) {
     const own = design.values.elements ?? [];
     if (!own.length) continue;
     const score = own.filter(e => ids.has(e.id)).length / own.length;

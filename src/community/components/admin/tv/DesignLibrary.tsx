@@ -9,6 +9,7 @@ import { findBackdrop } from "@/tv/backdrops";
 import { framePictureUrl } from "@/tv/framePictures";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { BoardElements } from "@/tv/BoardElements";
 import {
   BUILTIN_DESIGNS,
   DESIGN_GROUPS,
@@ -160,18 +161,29 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
                     className="block w-full text-right hover:bg-muted/50"
                     title="לחיצה שמה את העיצוב על הלוח (אפשר לבטל ב-Ctrl+Z)"
                   >
-                    <div
-                      className="flex h-12 items-end gap-1 p-2"
-                      style={{
-                        background:
-                          d.values.backgroundGradient ??
-                          `radial-gradient(ellipse at 20% 0%, ${c["--tv-bg-b"]}, transparent 70%), ${c["--tv-bg-a"]}`,
-                      }}
-                    >
-                      <span className="size-4 rounded-full" style={{ background: c["--tv-accent"] }} />
-                      <span className="size-4 rounded-full" style={{ background: c["--tv-text"] }} />
-                      <span className="size-4 rounded-full" style={{ background: d.values.frameStyle?.fill ?? c["--tv-panel"] }} />
-                    </div>
+                    {d.values.elements?.length ? (
+                      // A kit of parts: the board itself, small - not three dots of its colours.
+                      <div
+                        className="relative aspect-video w-full overflow-hidden"
+                        data-testid="kit-thumb"
+                        style={{ containerType: "size", background: d.values.backgroundGradient ?? c["--tv-bg-a"] }}
+                      >
+                        <BoardElements elements={d.values.elements} />
+                      </div>
+                    ) : (
+                      <div
+                        className="flex h-12 items-end gap-1 p-2"
+                        style={{
+                          background:
+                            d.values.backgroundGradient ??
+                            `radial-gradient(ellipse at 20% 0%, ${c["--tv-bg-b"]}, transparent 70%), ${c["--tv-bg-a"]}`,
+                        }}
+                      >
+                        <span className="size-4 rounded-full" style={{ background: c["--tv-accent"] }} />
+                        <span className="size-4 rounded-full" style={{ background: c["--tv-text"] }} />
+                        <span className="size-4 rounded-full" style={{ background: d.values.frameStyle?.fill ?? c["--tv-panel"] }} />
+                      </div>
+                    )}
                     <div className="p-2 pb-1">
                       <div className="text-sm font-medium">{d.name}</div>
                       <div className="text-[11px] leading-tight text-muted-foreground">
@@ -287,7 +299,8 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             variant="outline"
             size="sm"
             disabled={designs.length >= MAX_DESIGNS}
-            onClick={() => setForm({ mode: "new", name: "", parts: ["background", "frames", "text"] })}
+            // A board of parts is saved whole: its layout is what makes it one - without it, the kit came back as an ordinary board.
+            onClick={() => setForm({ mode: "new", name: "", parts: config.screenLayout === "composition" ? [...DESIGN_PARTS] : ["background", "frames", "text"] })}
           >
             <Plus className="size-4" /> שמירה כערכה חדשה
           </Button>

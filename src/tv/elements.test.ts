@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
+import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, addIntoFrame, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
 import { kitOf, resetToKit } from './kitReset';
 import { BUILTIN_DESIGNS, applyDesign } from './designs';
 import { setSymbol, symbolChoices } from './artSymbols';
@@ -185,13 +185,13 @@ describe('the options of a frame', () => {
   const ivory = PREMIUM_DESIGNS[1].values.elements!;
   const byBinding = (els: BoardElement[], b: string) => els.find(e => e.binding === b)!;
 
-  it('puts a plain panel behind content the arch was not drawn for, and none behind its own', () => {
+  it("brings new content in the kit's own look: its ink, no panel behind - the panel is chosen, and kept", () => {
     const prayers = byBinding(ivory, 'prayers');
-    const zmanim = setContent(ivory, prayers.id, 'zmanim');
-    expect(byBinding(zmanim, 'zmanim').backdrop).toBe(true);
-    expect(byBinding(setContent(zmanim, prayers.id, 'lessons'), 'lessons').backdrop).toBeUndefined();
-    expect(styledBox(ivory, 'announcements')!.find(e => e.binding)!.backdrop).toBe(true);
-    expect(normalizeElements([{ ...byBinding(zmanim, 'zmanim') }])[0].backdrop).toBe(true);
+    const zmanim = byBinding(setContent(ivory, prayers.id, 'zmanim'), 'zmanim');
+    expect(zmanim.backdrop).toBeUndefined();
+    expect(zmanim.color).toBe(prayers.color);
+    expect(styledBox(ivory, 'dafYomi')!.find(e => e.binding)!.backdrop).toBeUndefined();
+    expect(normalizeElements([{ ...zmanim, backdrop: true }])[0].backdrop).toBe(true);
   });
 
   it('takes turns, and its heading with it; nothing to take turns with is one content again', () => {
@@ -310,5 +310,43 @@ describe('the letters of a part', () => {
     expect(bad.weight).toBeUndefined();
     expect(bad.align).toBeUndefined();
     expect(bad.wrap).toBeUndefined();
+  });
+});
+
+describe('content added into a frame already there, and a board with no frame to copy', () => {
+  const ivory = PREMIUM_DESIGNS[1].values.elements!;
+  it('puts the daf yomi under the parasha, in the same frame and letters', () => {
+    const parasha = ivory.find(e => e.binding === 'parasha')!;
+    const next = addIntoFrame(ivory, parasha.id, 'dafYomi');
+    expect(next).toHaveLength(ivory.length + 1);
+    const daf = next.find(e => e.binding === 'dafYomi')!;
+    const shrunk = next.find(e => e.id === parasha.id)!;
+    expect(shrunk.height).toBeLessThan(parasha.height);
+    expect(daf.y).toBeGreaterThanOrEqual(shrunk.y + shrunk.height);
+    expect(daf.y + daf.height).toBeCloseTo(parasha.y + parasha.height, 5);
+    expect(daf).toMatchObject({ x: parasha.x, width: parasha.width, color: parasha.color });
+    expect(daf.fontSize).toBeLessThanOrEqual(parasha.fontSize);
+    expect(daf.backdrop).toBeUndefined();
+    // It belongs to the frame: it moves with it, and is drawn above it.
+    const frameIds = sectionOf(next, parasha.id);
+    expect(frameIds).toContain(daf.id);
+    expect(next.indexOf(daf)).toBeGreaterThan(Math.max(...sectionOf(ivory, parasha.id).map(id => ivory.findIndex(e => e.id === id))));
+    // A locked one is left alone.
+    const locked = ivory.map(e => e.id === parasha.id ? { ...e, locked: true } : e);
+    expect(addIntoFrame(locked, parasha.id, 'dafYomi')).toBe(locked);
+  });
+  it('a list put into a frame keeps fewer rows, both readable', () => {
+    const prayers = { ...ivory.find(e => e.binding === 'prayers')!, rowsPerPage: 6 };
+    const next = addIntoFrame(ivory.map(e => e.id === prayers.id ? prayers : e), prayers.id, 'zmanim');
+    expect(next.find(e => e.id === prayers.id)!.rowsPerPage).toBeLessThan(6);
+    expect(next.find(e => e.binding === 'zmanim')!.rowsPerPage).toBeGreaterThanOrEqual(2);
+  });
+  it('on a board with no frame to copy, comes in the board\'s letters with nothing behind - not a dark box', () => {
+    const lone = [{ ...newElement('text'), binding: 'title' as const, color: '#3e2809', font: 'david' as const, x: 10, y: 5, width: 80, height: 10 }];
+    const added = addContent(lone, 'dafYomi');
+    expect(added.some(e => e.kind === 'box' || e.kind === 'frame')).toBe(false);
+    expect(added.every(e => e.color === '#3e2809' && e.font === 'david')).toBe(true);
+    // An empty board still gets a box to stand in.
+    expect(addContent([], 'dafYomi').some(e => e.kind === 'box')).toBe(true);
   });
 });
