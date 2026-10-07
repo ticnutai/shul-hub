@@ -51,7 +51,8 @@ test("forgot password sends the email and the correct return address", async ({ 
 
   await expect(page.getByText("קישור לאיפוס הסיסמה נשלח לאימייל")).toBeVisible();
   expect(JSON.parse(requestBody)).toMatchObject({ email: "reset-check@example.com" });
-  expect(redirectTarget).toBe("http://127.0.0.1:4300/auth");
+  // Back to the site the request came from, whichever server that is.
+  expect(redirectTarget).toBe(new URL("/auth", page.url()).href);
 });
 
 test("password recovery link opens the new-password form", async ({ page }) => {
@@ -269,7 +270,7 @@ test("administrator can persist shared responsive Karovim logo dimensions", asyn
     await expect(page.getByTestId("setting-karovim_logo_desktop_width")).toHaveValue("512");
     const anonymousPage = await browser.newPage({ viewport: { width: 1280, height: 720 } });
     try {
-      await anonymousPage.goto("http://127.0.0.1:4300/community");
+      await anonymousPage.goto(new URL("/community", page.url()).href);
       const logo = anonymousPage.getByTestId("community-karovim-logo");
       await expect(logo).toBeVisible();
       await expect(logo).toHaveCSS("width", "512px");

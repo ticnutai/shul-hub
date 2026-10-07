@@ -191,6 +191,24 @@ export interface TvSlideConfig {
 
 export type AlertEvent = typeof ZMAN_DISPLAY_KEYS[number];
 
+/** The look of the countdown reminders (zmanAlerts.ts, DeadlineContext.tsx). */
+export interface AlertLook {
+  /** "theme" - the board's own colours; the others, colours of their own; "custom" - `colors`. */
+  style: 'theme' | 'night' | 'gold' | 'parchment' | 'crimson' | 'custom';
+  shape: 'rounded' | 'square' | 'pill' | 'arch';
+  size: 'small' | 'medium' | 'large';
+  /** Where the card stands on the board. */
+  position: 'center' | 'top' | 'bottom';
+  /** How much the board behind the card is darkened. */
+  dim: 'strong' | 'soft' | 'none';
+  icon: 'hourglass' | 'clock' | 'candle' | 'none';
+  colors: { bg: string; text: string; accent: string };
+}
+export const DEFAULT_ALERT_LOOK: AlertLook = {
+  style: 'theme', shape: 'rounded', size: 'large', position: 'center', dim: 'strong', icon: 'hourglass',
+  colors: { bg: '#1b2a4a', text: '#fff8ea', accent: '#e3c27a' },
+};
+
 export const ALERT_EVENT_LABELS: Record<AlertEvent, string> = {
   ...ZMAN_DISPLAY_LABELS,
   // The four a board always had keep the words it has been showing.
@@ -708,6 +726,14 @@ export interface TvConfig {
     leadMinutes: number[];
     /** How long each reminder stays on screen. */
     popupSeconds: number;
+    /**
+     * The staged mode's three steps, in minutes before the time: the time
+     * marked in the day's times, then a countdown in the prayers' place, then
+     * a countdown over the whole board. 0 leaves a step out. Never out of order.
+     */
+    stages: { highlight: number; panel: number; board: number };
+    /** How the reminder looks: its card, the countdown in the prayers' place, the small strip. */
+    look: AlertLook;
   };
   ticker: { enabled: boolean; text: string };
   /**
@@ -829,6 +855,8 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
     events: ["sof_zman_shma", "sof_zman_tefila", "sunset", "candle"],
     leadMinutes: [30, 15, 5],
     popupSeconds: 40,
+    stages: { highlight: 30, panel: 20, board: 10 },
+    look: DEFAULT_ALERT_LOOK,
   },
   ticker: { enabled: false, text: "" },
   countdown: { enabled: false },
@@ -1286,6 +1314,34 @@ function retireSlideSwitches(c: TvConfig): TvConfig {
   };
 }
 
+/** The staged steps, in order: the board's within the panel's within the highlight's (0 - left out). */
+function normalizeAlertStages(raw: unknown): TvConfig["alerts"]["stages"] {
+  const d = DEFAULT_TV_CONFIG.alerts.stages;
+  if (!isObj(raw)) return d;
+  const m = (v: unknown, f: number) => Math.round(num(v, f, 0, 120));
+  const highlight = m(raw.highlight, d.highlight);
+  const panel = Math.min(m(raw.panel, d.panel), highlight || 120);
+  const board = Math.min(m(raw.board, d.board), panel || highlight || 120);
+  return { highlight, panel, board };
+}
+const HEX = /^#[\da-f]{6}$/i;
+function normalizeAlertLook(raw: unknown): AlertLook {
+  const d = DEFAULT_ALERT_LOOK;
+  if (!isObj(raw)) return d;
+  const pick = <T extends string>(v: unknown, all: readonly T[], f: T): T => (all.includes(v as T) ? (v as T) : f);
+  const colors = isObj(raw.colors) ? raw.colors : {};
+  const hex = (v: unknown, f: string) => (typeof v === "string" && HEX.test(v) ? v : f);
+  return {
+    style: pick(raw.style, ["theme", "night", "gold", "parchment", "crimson", "custom"] as const, d.style),
+    shape: pick(raw.shape, ["rounded", "square", "pill", "arch"] as const, d.shape),
+    size: pick(raw.size, ["small", "medium", "large"] as const, d.size),
+    position: pick(raw.position, ["center", "top", "bottom"] as const, d.position),
+    dim: pick(raw.dim, ["strong", "soft", "none"] as const, d.dim),
+    icon: pick(raw.icon, ["hourglass", "clock", "candle", "none"] as const, d.icon),
+    colors: { bg: hex(colors.bg, d.colors.bg), text: hex(colors.text, d.colors.text), accent: hex(colors.accent, d.colors.accent) },
+  };
+}
+
 function normalizeElementDefaults(raw: unknown): ElementDefaults {
   if (!isObj(raw)) return DEFAULT_ELEMENT_DEFAULTS;
   return {
@@ -1422,6 +1478,8 @@ function normalizeStored(stored: unknown): TvConfig {
         : d.alerts.events,
       leadMinutes: leads.length ? leads : d.alerts.leadMinutes,
       popupSeconds: num(alerts.popupSeconds, d.alerts.popupSeconds, 10, 300),
+      stages: normalizeAlertStages(alerts.stages),
+      look: normalizeAlertLook(alerts.look),
     },
     ticker: { enabled: bool(ticker.enabled, d.ticker.enabled), text: str(ticker.text, "", 400) },
     countdown: { enabled: bool(countdown.enabled, d.countdown.enabled) },

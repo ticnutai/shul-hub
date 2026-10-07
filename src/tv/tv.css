@@ -1180,15 +1180,26 @@
   gap: calc(var(--u) * 0.8);
   padding: calc(var(--u) * 0.5) calc(var(--u) * 1.6);
   border-radius: 999px;
-  background: var(--tv-highlight);
-  border: 1px solid var(--tv-accent);
-  color: var(--tv-text);
+  background: var(--al-bg, var(--tv-highlight));
+  border: 1px solid var(--al-accent, var(--tv-accent));
+  color: var(--al-text, var(--tv-text));
   font-weight: 600;
 }
 
 .tv-alert-chip b {
-  color: var(--tv-accent);
+  color: var(--al-accent, var(--tv-accent));
   font-variant-numeric: tabular-nums;
+}
+
+/* A board of parts has no footer: the strip stands on its own at the foot of the board. */
+.tv-alert-chip.is-floating {
+  position: absolute;
+  bottom: calc(var(--u) * 2);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  font-size: calc(var(--fs) * 2.2);
+  box-shadow: var(--tv-shadow);
 }
 
 .tv-status {
@@ -1240,11 +1251,16 @@
   background: color-mix(in srgb, var(--tv-bg-a) 72%, transparent);
   animation: tv-fade 500ms ease both;
 }
+/* Where the card stands, and how much of the board shows behind it (config.alerts.look). */
+.tv-alert-backdrop[data-position="top"] { align-items: flex-start; padding-top: calc(var(--u) * 6); }
+.tv-alert-backdrop[data-position="bottom"] { align-items: flex-end; padding-bottom: calc(var(--u) * 6); }
+.tv-alert-backdrop[data-dim="soft"] { background: color-mix(in srgb, var(--tv-bg-a) 35%, transparent); }
+.tv-alert-backdrop[data-dim="none"] { background: transparent; }
 
 .tv-root .tv-zman-warning {
   background: #ffe3a1 !important;
   color: #442500 !important;
-  outline: .18cqh solid #d48b16;
+  outline: .18cqh solid var(--al-accent, #d48b16);
   border-radius: .5cqh;
   box-shadow: 0 0 1cqh #d48b1655;
 }
@@ -1254,20 +1270,26 @@
   width: 100%; height: 100%; min-height: 0; box-sizing: border-box;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 1cqh; padding: 1cqh; text-align: center; overflow: hidden;
-  background: #fff0ce; color: #442500; border-radius: 1cqh;
-  font-size: 1.8cqh; line-height: 1.3;
+  background: var(--al-bg, #fff0ce); color: var(--al-text, #442500);
+  border-radius: min(var(--al-radius, 1cqh), 3cqh);
+  border: .2cqh solid var(--al-accent, transparent);
+  font-size: calc(1.8cqh * var(--al-scale, 1)); line-height: 1.3;
 }
-.tv-deadline-panel strong { font-size: 2.4cqh; }
-.tv-deadline-panel .tv-deadline-digits {font-size: 6cqh; font-variant-numeric: tabular-nums; line-height: 1.2;}
+.tv-deadline-panel strong { font-size: calc(2.4cqh * var(--al-scale, 1)); }
+.tv-deadline-panel .tv-deadline-digits {font-size: calc(6cqh * var(--al-scale, 1)); font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--al-accent, inherit);}
 
 .tv-alert-card {
-  min-width: 52cqw;
-  padding: calc(var(--u) * 4.4) calc(var(--u) * 6);
-  border-radius: calc(var(--u) * 3);
+  /* Its size (config.alerts.look): every measure of the card follows it. */
+  --fs: calc(var(--u) * var(--tv-scale, 1) / var(--tv-text-boost, 1) * var(--al-scale, 1));
+  min-width: min(92cqw, calc(52cqw * var(--al-scale, 1)));
+  max-width: 92cqw;
+  padding: calc(var(--u) * 4.4 * var(--al-scale, 1)) calc(var(--u) * 6 * var(--al-scale, 1));
+  border-radius: var(--al-radius, calc(var(--u) * 3));
   background:
     radial-gradient(ellipse at 50% 0%, var(--tv-highlight), transparent 70%),
-    color-mix(in srgb, var(--tv-bg-a) 92%, var(--tv-accent));
-  border: calc(var(--u) * 0.25) solid var(--tv-accent);
+    var(--al-bg, color-mix(in srgb, var(--tv-bg-a) 92%, var(--tv-accent)));
+  color: var(--al-text, inherit);
+  border: calc(var(--u) * 0.25) solid var(--al-accent, var(--tv-accent));
   box-shadow: 0 0 0 calc(var(--u) * 1.6) var(--tv-highlight), var(--tv-shadow);
   text-align: center;
   animation: tv-pop 600ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
@@ -1290,7 +1312,7 @@
   font-size: calc(var(--fs) * 15);
   font-weight: 900;
   line-height: 1;
-  color: var(--tv-accent);
+  color: var(--al-accent, var(--tv-accent));
   font-variant-numeric: tabular-nums;
   direction: ltr;
 }
@@ -1298,7 +1320,8 @@
 .tv-alert-sub {
   margin-top: calc(var(--u) * 1);
   font-size: calc(var(--fs) * 2.8);
-  color: var(--tv-text-dim);
+  color: var(--al-text, var(--tv-text-dim));
+  opacity: 0.88;
 }
 
 @keyframes tv-fade {

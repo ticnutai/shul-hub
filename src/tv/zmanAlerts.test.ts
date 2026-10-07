@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZMAN_DISPLAY_KEYS, type Zmanim } from "@community/lib/zmanim";
-import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "./config";
-import { currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
+import { DEFAULT_ALERT_LOOK, DEFAULT_TV_CONFIG, normalizeTvConfig } from "./config";
+import { ALERT_PRESETS, alertLookVars, currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
 
 const at = (h: number, m: number, s = 0) => new Date(2026, 8, 18, h, m, s);
 
@@ -127,5 +127,37 @@ describe("normalizeTvConfig", () => {
     expect(cfg.theme).toBe("navy");
     expect(cfg.backgroundImage).toBeNull();
     expect(cfg.slideshow.images).toEqual([{ url: "https://x/b.jpg", caption: undefined }]);
+  });
+});
+
+describe("the gabbai's steps, and how the reminder looks", () => {
+  const staged = { ...DEFAULT_TV_CONFIG.alerts, mode: "staged" as const, events: ["sof_zman_tefila" as const] };
+  const times = { sof_zman_tefila: at(10, 33) } as unknown as Zmanim;
+  const stageAt = (h: number, m: number, stages = staged.stages) => stagedZmanAlerts(at(h, m), times, { ...staged, stages }, false)[0]?.stage ?? null;
+
+  it("keeps 30 / 20 / 10 until they are changed", () => {
+    expect([stageAt(10, 2), stageAt(10, 4), stageAt(10, 14), stageAt(10, 24), stageAt(10, 33)]).toEqual([null, "highlight", "panel", "board", null]);
+  });
+  it("follows the steps set, and leaves out a step of 0", () => {
+    const s = { highlight: 45, panel: 0, board: 5 };
+    expect([stageAt(9, 47, s), stageAt(9, 49, s), stageAt(10, 20, s), stageAt(10, 29, s)]).toEqual([null, "highlight", "highlight", "board"]);
+  });
+  it("reads the steps back in order, and refuses nonsense", () => {
+    expect(normalizeTvConfig({ alerts: { stages: { highlight: 15, panel: 40, board: 60 } } }).alerts.stages).toEqual({ highlight: 15, panel: 15, board: 15 });
+    expect(normalizeTvConfig({ alerts: { stages: "soon" } }).alerts.stages).toEqual({ highlight: 30, panel: 20, board: 10 });
+    expect(normalizeTvConfig({ alerts: { stages: { highlight: 500, panel: -3, board: 10 } } }).alerts.stages).toEqual({ highlight: 120, panel: 0, board: 10 });
+  });
+  it("keeps the look chosen, and anything unknown is the usual look", () => {
+    const look = { style: "crimson", shape: "arch", size: "small", position: "top", dim: "none", icon: "candle", colors: { bg: "#000000", text: "#ffffff", accent: "#ff0000" } };
+    expect(normalizeTvConfig({ alerts: { look } }).alerts.look).toEqual(look);
+    expect(normalizeTvConfig({ alerts: { look: { style: "neon", shape: "star", colors: { bg: "red" } } } }).alerts.look).toEqual(DEFAULT_ALERT_LOOK);
+    expect(normalizeTvConfig({}).alerts.look).toEqual(DEFAULT_ALERT_LOOK);
+  });
+  it("gives the board its colours only when the look has its own", () => {
+    expect(alertLookVars(DEFAULT_ALERT_LOOK)["--al-bg"]).toBeUndefined();
+    expect(alertLookVars({ ...DEFAULT_ALERT_LOOK, style: "gold" })).toMatchObject({ "--al-bg": ALERT_PRESETS.gold.bg, "--al-accent": ALERT_PRESETS.gold.accent });
+    expect(alertLookVars({ ...DEFAULT_ALERT_LOOK, style: "custom", colors: { bg: "#111111", text: "#eeeeee", accent: "#abcdef" } })["--al-accent"]).toBe("#abcdef");
+    expect(alertLookVars({ ...DEFAULT_ALERT_LOOK, size: "small" })["--al-scale"]).toBe("0.72");
+    expect(alertLookVars({ ...DEFAULT_ALERT_LOOK, shape: "pill" })["--al-radius"]).toBe("999px");
   });
 });

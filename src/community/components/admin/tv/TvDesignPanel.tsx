@@ -175,6 +175,7 @@ import { occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
 import { editPage, pageAt, pageLook, readPages } from "@/tv/partPages";
 import { PartPagesBar } from "./PartPagesBar";
+import { AlertsSettings, type AlertExample } from "./AlertsSettings";
 import { ElementTextTools } from "./ElementTextTools";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
@@ -909,7 +910,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   }, [autoplay, current, board.slides.length]);
 
   const zmanimToday = useDayZmanim(new Date(), board.data.settings);
-  const showAlertExample = () => {
+  const showAlertExample = (what: AlertExample = "board") => {
     // On Friday and Saturday the simulated moment could fall inside Shabbat,
     // where the board shows the Shabbat screen and no alerts - so the demo
     // uses the coming Sunday instead.
@@ -920,13 +921,17 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         : zmanimToday;
     const event = view.alerts.events.find((e) => e !== "candle" && day[e]) ?? "sunset";
     const at = day[event as AlertEvent];
-    const lead = view.alerts.leadMinutes[view.alerts.leadMinutes.length - 1] ?? 15;
     if (!at) return toast.error("אין זמן מתאים היום להדגמה");
-    setSimulatedNow(new Date(at.getTime() - lead * 60_000 + 2000));
+    // A moment at the step asked for: the staged board's card or panel, the pulsing card or its strip.
+    const { stages, leadMinutes, mode } = view.alerts;
+    const lead = leadMinutes[leadMinutes.length - 1] ?? 15;
+    const seconds =
+      mode === "staged"
+        ? what === "panel" ? stages.panel * 60 - 5 : (stages.board || stages.panel || stages.highlight) * 60 - 5
+        : what === "chip" ? Math.max(lead * 60 - view.alerts.popupSeconds - 30, 30) : lead * 60 - 2;
+    setSimulatedNow(new Date(at.getTime() - seconds * 1000));
     window.setTimeout(() => setSimulatedNow(null), 12_000);
-    toast.info(
-      `מציג איך תיראה ההתראה ${lead} דקות לפני ${ALERT_EVENT_LABELS[event as AlertEvent]}`,
-    );
+    toast.info(`מציג איך תיראה התזכורת ${Math.ceil(seconds / 60)} דקות לפני ${ALERT_EVENT_LABELS[event as AlertEvent]}`);
   };
 
   // Preview another moment: Shabbat, an occasion's day, any date - until the
@@ -1230,7 +1235,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         type="button"
         variant="outline"
         size="sm"
-        onClick={showAlertExample}
+        onClick={() => showAlertExample("board")}
         disabled={!draft.alerts.enabled}
       >
         <BellRing className="size-4" /> דוגמת התראת זמנים
@@ -1901,21 +1906,6 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           </Section>
 
           <Section
-            title="ספירה לתפילה הבאה"
-            hint="שורה מתחת לזמני התפילות שסופרת כמה נשאר למניין הבא. השאלה של מי שחוצה את האולם היא לא ״מתי מנחה״ אלא ״פספסתי?״, ומספר שזז עונה על זה מהר יותר משעה שצריך לחסר משעון. פעיל רק בפריסת ״לוח מלא״."
-          >
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={scoped.countdown.enabled}
-                onCheckedChange={(on) =>
-                  edit("cd-on", (c) => ({ ...c, countdown: { ...c.countdown, enabled: on } }))
-                }
-              />
-              הצגת ספירה
-            </label>
-          </Section>
-
-          <Section
             title="סרגל הודעה רץ"
             hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (~45%) כל עוד הסרגל פעיל."
           >
@@ -1939,67 +1929,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           </Section>
 
           <Section
-            title="התראות לפני סוף זמן"
-            hint="30 דקות: הבלטה בזמני היום. 20 דקות: ספירה במקום תוכן התפילות. 10 דקות: ספירה על כל הלוח, עד הגעת הזמן. הקרוב ביותר קודם. בשבת ובחג ההתראות כבויות."
+            title="תזכורות וספירה לאחור"
+            hint="תזכורות לפני סוף זמן קריאת שמע, סוף זמן תפילה, שקיעה ועוד: מתי הן מופיעות, באילו שלבים, ואיך הן נראות - צבעים, צורה, גודל ומיקום. ובסוף - ספירה לתפילה הבאה."
           >
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={draft.alerts.enabled}
-                onCheckedChange={(on) =>
-                  edit("al-on", (c) => ({ ...c, alerts: { ...c.alerts, enabled: on } }))
-                }
-              />
-              התראות פעילות
-            </label>
-            <label className="flex items-center gap-3">אופן ההתראה
-              <select aria-label="אופן התראת זמני היום" value={draft.alerts.mode} onChange={e=>edit('al-mode',c=>({...c,alerts:{...c.alerts,mode:e.target.value as 'staged'|'pulse'}}))}>
-                <option value="staged">שלבים: 30 / 20 / 10 דקות</option>
-                <option value="pulse">חלונות קצרים — השיטה הקודמת</option>
-              </select>
-            </label>
-            <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {(Object.keys(ALERT_EVENT_LABELS) as AlertEvent[]).map((e) => (
-                <label key={e} className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-primary"
-                    checked={draft.alerts.events.includes(e)}
-                    onChange={(ev) =>
-                      edit(`al-ev:${e}`, (c) => ({
-                        ...c,
-                        alerts: {
-                          ...c.alerts,
-                          events: ev.target.checked
-                            ? [...c.alerts.events, e]
-                            : c.alerts.events.filter((x) => x !== e),
-                        },
-                      }))
-                    }
-                  />
-                  {ALERT_EVENT_LABELS[e]}
-                </label>
-              ))}
-            </div>
-            {draft.alerts.mode==='pulse' && <><LeadMinutesEditor
-              value={draft.alerts.leadMinutes}
-              onChange={(leads) =>
-                edit("al-leads", (c) => ({ ...c, alerts: { ...c.alerts, leadMinutes: leads } }))
-              }
-            />
-            <div className="flex items-center gap-3 text-sm">
-              משך הצגת הכרטיס:
-              <Stepper
-                label="משך הצגת התראה"
-                value={draft.alerts.popupSeconds}
-                min={10}
-                max={180}
-                step={5}
-                format={(v) => `${v} שנ׳`}
-                onChange={(v) =>
-                  edit("al-sec", (c) => ({ ...c, alerts: { ...c.alerts, popupSeconds: v } }))
-                }
-              />
-            </div></>}
+            <AlertsSettings config={draft} countdown={scoped.countdown.enabled} edit={edit} onExample={showAlertExample} />
           </Section>
         </TabsContent>
         <TabsContent
@@ -2446,59 +2379,6 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   );
 }
 
-function LeadMinutesEditor({
-  value,
-  onChange,
-}: {
-  value: number[];
-  onChange: (v: number[]) => void;
-}) {
-  const [adding, setAdding] = useState("");
-  const add = () => {
-    const n = Number(adding);
-    if (!Number.isInteger(n) || n < 1 || n > 180) return toast.error("הזינו מספר דקות בין 1 ל-180");
-    onChange([...new Set([...value, n])].sort((a, b) => b - a).slice(0, 5));
-    setAdding("");
-  };
-  return (
-    <div className="flex flex-wrap items-center gap-2 text-sm">
-      התראה לפני:
-      {value.map((m) => (
-        <span
-          key={m}
-          className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-0.5"
-        >
-          {m} דק׳
-          <button
-            type="button"
-            aria-label={`הסרת התראה של ${m} דקות`}
-            onClick={() => onChange(value.filter((x) => x !== m))}
-            className="text-muted-foreground hover:text-foreground"
-          >
-            ×
-          </button>
-        </span>
-      ))}
-      {value.length < 5 && (
-        <span className="inline-flex items-center gap-1">
-          <Input
-            type="number"
-            min={1}
-            max={180}
-            value={adding}
-            onChange={(e) => setAdding(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && add()}
-            className="h-8 w-20"
-            aria-label="דקות להתראה נוספת"
-          />
-          <Button type="button" variant="outline" size="sm" onClick={add}>
-            הוספה
-          </Button>
-        </span>
-      )}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------ editor layout -- */
 

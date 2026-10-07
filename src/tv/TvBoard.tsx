@@ -28,7 +28,7 @@ import { checkClock } from "./clock";
 import { OccasionCard } from "./OccasionCard";
 import { occasionPagesNow } from "./occasions";
 import { zmanimFor } from "@community/lib/minyan-time";
-import { currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
+import { ALERT_ICONS, alertLookVars, currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
 import { DeadlineContext } from './DeadlineContext';
 import karovimLogo from "./assets/karovim-logo.png";
 import "./tv.css";
@@ -219,6 +219,9 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   const composition = layout === "composition";
   const ownHeader = illustrated || medallion || composition;
   const alert = shabbatNowOn ? null : currentZmanAlert(now, zmanim, config.alerts, jerusalemWeekday(now) === 5);
+  // How the reminders look (config.alerts.look): variables the card, the panel and the strip read.
+  const alertIcon = ALERT_ICONS[config.alerts.look.icon];
+  const alertVars = useMemo(() => alertLookVars(config.alerts.look), [config.alerts.look]);
 
   return (
     <HolyEndMinutesContext.Provider value={holyEndMinutes}>
@@ -245,6 +248,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         style={{
           ...style,
           ...frame.vars,
+          ...alertVars,
           ...(config.boardFrame ? boardFrameVars(config.boardFrameTune) : {}),
           // A picture frame of the shul's own (checked when the board was read).
           ...(config.boardFrame === "picture" && config.boardFrameImage ? { "--bf-image": `url("${config.boardFrameImage}")` } : {}),
@@ -371,7 +375,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 
           {alert && !alert.stage && !alert.popup && !bannerShown && (
             <div className="tv-alert-chip">
-              <span className="tv-alert-chip-icon">⏳</span>
+              {alertIcon && <span className="tv-alert-chip-icon">{alertIcon}</span>}
               {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
             </div>
           )}
@@ -379,10 +383,19 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           {!edit.hidden("footer.status") && bars.footer && <SyncStatus data={data} now={now} />}
         </footer>
 
+        {/* A board of parts has no footer for the small strip: it stands at the foot of the board. */}
+        {composition && alert && !alert.stage && !alert.popup && !bannerShown && (
+          <div className="tv-alert-chip is-floating" data-testid="floating-deadline">
+            {alertIcon && <span className="tv-alert-chip-icon">{alertIcon}</span>}
+            {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
+          </div>
+        )}
+
         {alert?.popup && (
-          <div className="tv-alert-backdrop" data-testid="board-deadline" data-event={alert.event}>
-            <div className="tv-alert-card" role="alert">
-              <div className="tv-alert-icon">⏳</div>
+          <div className="tv-alert-backdrop" data-testid="board-deadline" data-event={alert.event}
+            data-position={config.alerts.look.position} data-dim={config.alerts.look.dim}>
+            <div className="tv-alert-card" role="alert" data-shape={config.alerts.look.shape}>
+              {alertIcon && <div className="tv-alert-icon">{alertIcon}</div>}
               <div className="tv-alert-title">{alert.label}</div>
               <div className="tv-alert-countdown">{formatCountdown(alert.secondsLeft)}</div>
               <div className="tv-alert-sub">
@@ -421,7 +434,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
                 alert &&
                 !alert.stage && !alert.popup && (
                   <span className="tv-event-banner-time tv-event-banner-countdown" data-testid="banner-countdown">
-                    ⏳ {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
+                    {alertIcon} {alert.label} בעוד <b>{formatCountdown(alert.secondsLeft)}</b>
                   </span>
                 )
               }

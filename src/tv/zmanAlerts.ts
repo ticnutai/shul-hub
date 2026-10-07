@@ -1,5 +1,5 @@
 import type { Zmanim } from "@community/lib/zmanim";
-import { ALERT_EVENT_LABELS, type AlertEvent, type TvConfig } from "./config";
+import { ALERT_EVENT_LABELS, type AlertEvent, type AlertLook, type TvConfig } from "./config";
 
 /**
  * Countdown reminders before the day's deadlines (sof zman shma, sof zman
@@ -31,8 +31,12 @@ export function stagedZmanAlerts(now: Date, zmanim: Zmanim, alerts: TvConfig['al
     const at = zmanim[event];
     if (!at || !Number.isFinite(at.getTime()) || event === 'candle' && !isFriday) return [];
     const remaining = at.getTime() - now.getTime();
-    if (remaining <= 0 || remaining > 30 * 60_000) return [];
-    const stage = remaining <= 10 * 60_000 ? 'board' : remaining <= 20 * 60_000 ? 'panel' : 'highlight';
+    // The gabbai's steps (30 / 20 / 10 until set otherwise); a step of 0 is left out.
+    const { highlight, panel, board } = alerts.stages ?? { highlight: 30, panel: 20, board: 10 };
+    const first = Math.max(highlight, panel, board);
+    if (remaining <= 0 || remaining > first * 60_000) return [];
+    const stage = board && remaining <= board * 60_000 ? 'board' : panel && remaining <= panel * 60_000 ? 'panel' : highlight && remaining <= highlight * 60_000 ? 'highlight' : null;
+    if (!stage) return [];
     return [{event, label:ALERT_EVENT_LABELS[event].replace(' (בערב שבת)',''), at, secondsLeft:Math.ceil(remaining/1000), popup:stage==='board', lead:null, stage} as ZmanAlert];
   }).sort((a,b)=>a.at.getTime()-b.at.getTime());
 }
@@ -93,4 +97,39 @@ export function describeMinutes(totalSeconds: number): string {
   if (minutes <= 1) return "בעוד פחות מדקה";
   if (minutes === 2) return "בעוד שתי דקות";
   return `בעוד ${minutes} דקות`;
+}
+
+/* ------------------------------------------------------------- the look -- */
+
+/** The symbol at the top of the card and at the start of the small strip. */
+export const ALERT_ICONS: Record<AlertLook["icon"], string> = { hourglass: "⏳", clock: "🕰️", candle: "🕯️", none: "" };
+
+/** Colours of their own, beside the board's ("theme") and the gabbai's ("custom"). */
+export const ALERT_PRESETS: Record<Exclude<AlertLook["style"], "theme" | "custom">, AlertLook["colors"]> = {
+  night: { bg: "#0b1628", text: "#f5ecd7", accent: "#e3c27a" },
+  gold: { bg: "#fff3d1", text: "#3b2a07", accent: "#a8741a" },
+  parchment: { bg: "#f6ecd7", text: "#3e2809", accent: "#8a6a2a" },
+  crimson: { bg: "#4a0e17", text: "#fff1e6", accent: "#f2c46b" },
+};
+
+const RADIUS: Record<AlertLook["shape"], string> = {
+  rounded: "calc(var(--u) * 3)",
+  square: "calc(var(--u) * 0.6)",
+  pill: "999px",
+  arch: "50% 50% calc(var(--u) * 3) calc(var(--u) * 3) / 24% 24% calc(var(--u) * 3) calc(var(--u) * 3)",
+};
+const SCALE: Record<AlertLook["size"], number> = { small: 0.72, medium: 0.86, large: 1 };
+
+/**
+ * The reminder's look as CSS variables on the board (tv.css reads them in the
+ * card, the countdown in the prayers' place and the small strip). The board's
+ * own colours leave the colour variables out, so the theme's stand.
+ */
+export function alertLookVars(look: AlertLook): Record<string, string> {
+  const colors = look.style === "custom" ? look.colors : look.style === "theme" ? null : ALERT_PRESETS[look.style];
+  return {
+    ...(colors ? { "--al-bg": colors.bg, "--al-text": colors.text, "--al-accent": colors.accent } : {}),
+    "--al-radius": RADIUS[look.shape],
+    "--al-scale": String(SCALE[look.size]),
+  };
 }
