@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.settings (
   phone text NOT NULL DEFAULT '',
   theme text NOT NULL DEFAULT 'navy',
   home_header_variant text NOT NULL DEFAULT 'standard' CHECK (home_header_variant IN ('standard', 'karovim_logo')),
+  home_hero jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );

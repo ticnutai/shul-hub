@@ -10,6 +10,7 @@ import { MinyanOverridesAdmin } from "@community/components/admin/MinyanOverride
 import { AnnouncementsAdmin, ChavrutotAdmin, ShiurimAdmin } from "@community/components/admin/ContentAdmin";
 import { MessagesAdmin } from "@community/components/admin/MessagesAdmin";
 import { SiteDesignShortcuts, SiteHeaderSettings } from "@community/components/admin/SiteHeaderAdmin";
+import { HomeHeroSettings } from "@community/components/admin/HomeHeroSettings";
 import { WidgetsAdmin } from "@community/components/admin/WidgetsAdmin";
 import { UsersAdmin } from "@community/components/admin/UsersAdmin";
 import { ChavrutaRequestsAdmin } from "@community/components/admin/ChavrutaRequestsAdmin";
@@ -196,6 +197,7 @@ export function AdminPage() {
               {/* The site as a whole first - its header and its themes - then
                   what stands on the home page. */}
               <SiteHeaderSettings />
+              <HomeHeroSettings />
               <SiteDesignShortcuts />
               <WidgetsAdmin />
             </TabsContent>

@@ -875,6 +875,7 @@ export type Database = {
           elevation: number
           header_logo: string | null
           home_header_variant: string
+          home_hero: Json
           id: string
           karovim_logo_desktop_height: number
           karovim_logo_desktop_offset_x: number
@@ -906,6 +907,7 @@ export type Database = {
           elevation?: number
           header_logo?: string | null
           home_header_variant?: string
+          home_hero?: Json
           id?: string
           karovim_logo_desktop_height?: number
           karovim_logo_desktop_offset_x?: number
@@ -937,6 +939,7 @@ export type Database = {
           elevation?: number
           header_logo?: string | null
           home_header_variant?: string
+          home_hero?: Json
           id?: string
           karovim_logo_desktop_height?: number
           karovim_logo_desktop_offset_x?: number

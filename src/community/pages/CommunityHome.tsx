@@ -2,12 +2,9 @@ import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import {
   BookOpen,
-  CalendarDays,
   ChevronLeft,
   Clock,
   MessageSquareText,
-  Sunrise,
-  Sunset,
   Users,
 } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
@@ -29,7 +26,9 @@ import {
 import { overridesFor, resolveCategoryDay, zmanimFor } from "@community/lib/minyan-time";
 import { specialDayTitle, specialZmanim, holyEndMinutesFor, todaysCategories } from "@community/lib/specialDays";
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
-import { InlineEdit } from "@community/components/InlineEdit";
+import { HomeHero } from "@community/components/HomeHero";
+import { formatHebrewDate } from "@community/lib/hebrewDate";
+import { normalizeHomeHero } from "@community/lib/homeHero";
 import { QuickAddButton } from "@community/components/QuickAddButton";
 import { normalizePrayerLayout } from "@community/components/PrayerLayoutPicker";
 import { DaySchedule } from "@community/components/DaySchedule";
@@ -48,68 +47,6 @@ const SHOWN_ZMANIM: SolarEvent[] = [
   "sunset",
   "tzeit",
 ];
-
-function hebrewNumeral(value: number) {
-  let remaining = value % 1000;
-  const letters: string[] = [];
-  const values: Array<[number, string]> = [
-    [400, "ת"],
-    [300, "ש"],
-    [200, "ר"],
-    [100, "ק"],
-    [90, "צ"],
-    [80, "פ"],
-    [70, "ע"],
-    [60, "ס"],
-    [50, "נ"],
-    [40, "מ"],
-    [30, "ל"],
-    [20, "כ"],
-    [10, "י"],
-    [9, "ט"],
-    [8, "ח"],
-    [7, "ז"],
-    [6, "ו"],
-    [5, "ה"],
-    [4, "ד"],
-    [3, "ג"],
-    [2, "ב"],
-    [1, "א"],
-  ];
-
-  for (const [amount, letter] of values.slice(0, 4)) {
-    while (remaining >= amount) {
-      letters.push(letter);
-      remaining -= amount;
-    }
-  }
-  if (remaining === 15 || remaining === 16) {
-    letters.push("ט", remaining === 15 ? "ו" : "ז");
-    remaining = 0;
-  }
-  for (const [amount, letter] of values.slice(4)) {
-    while (remaining >= amount) {
-      letters.push(letter);
-      remaining -= amount;
-    }
-  }
-
-  if (letters.length === 1) return `${letters[0]}׳`;
-  return `${letters.slice(0, -1).join("")}״${letters.at(-1)}`;
-}
-
-function formatHebrewDate(date: Date) {
-  const parts = new Intl.DateTimeFormat("he-IL-u-ca-hebrew", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Asia/Jerusalem",
-  }).formatToParts(date);
-  const day = parts.find((part) => part.type === "day")?.value ?? "";
-  const month = parts.find((part) => part.type === "month")?.value ?? "";
-  const year = parts.find((part) => part.type === "year")?.value ?? "";
-  return `${hebrewNumeral(Number(day))} ${month} ${hebrewNumeral(Number(year))}`;
-}
 
 export function CommunityHome() {
   const { isAdmin } = useAuth();
@@ -219,56 +156,15 @@ export function CommunityHome() {
     <div className="min-h-screen">
       <CommunityHeader />
 
-      <section className="hero-surface">
-        <div className="mx-auto max-w-5xl px-4 py-14 text-center sm:py-16">
-          <p className="text-sm text-gold sm:text-base">
-            {settings?.id ? (
-              <InlineEdit
-                table="settings"
-                id={settings.id}
-                field="subtitle"
-                value={settings.subtitle}
-                queryKey="settings"
-                display={settings.subtitle || "קהילה, תורה ותפילה"}
-              />
-            ) : (
-              settings?.subtitle || "קהילה, תורה ותפילה"
-            )}
-          </p>
-          <h1 className="mt-3 text-4xl font-bold text-primary-foreground sm:text-5xl">
-            {settings?.id ? (
-              <InlineEdit
-                table="settings"
-                id={settings.id}
-                field="name"
-                value={settings.name}
-                queryKey="settings"
-                display={settings.name || "בית הכנסת"}
-              />
-            ) : (
-              (settings?.name ?? "בית הכנסת")
-            )}
-          </h1>
-          <div className="gold-rule mx-auto mt-4 h-px w-40" />
-          <div className="mt-4 flex items-start justify-center gap-2 text-sm opacity-90">
-            <CalendarDays className="mt-0.5 size-4 shrink-0" />
-            <div className="text-center">
-              <p data-testid="hebrew-date">{hebrewDateLabel}</p>
-              <p className="mt-0.5 text-xs opacity-80" data-testid="gregorian-date">
-                {dateLabel}
-              </p>
-            </div>
-          </div>
-          <div className="mt-6 flex items-center justify-center gap-6 text-sm">
-            <span className="flex items-center gap-2">
-              <Sunrise className="size-4" /> נץ {formatTime(zmanim.sunrise)}
-            </span>
-            <span className="flex items-center gap-2">
-              <Sunset className="size-4" /> שקיעה {formatTime(zmanim.sunset)}
-            </span>
-          </div>
-        </div>
-      </section>
+      <HomeHero
+        hero={normalizeHomeHero((settings as { home_hero?: unknown } | null | undefined)?.home_hero)}
+        headerShowsName={settings?.home_header_variant !== "karovim_logo"}
+        settings={settings}
+        hebrewDate={hebrewDateLabel}
+        dateLabel={dateLabel}
+        sunrise={formatTime(zmanim.sunrise)}
+        sunset={formatTime(zmanim.sunset)}
+      />
 
       <main className="mx-auto grid max-w-5xl grid-cols-1 gap-x-6 gap-y-12 px-4 py-10 text-right sm:grid-cols-2 sm:py-12">
         {sectionOrder.map((key) => {
