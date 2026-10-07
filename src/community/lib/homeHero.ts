@@ -11,7 +11,7 @@
  */
 
 export type HeroLayout = "classic" | "compact" | "split" | "cards" | "none";
-export type HeroLook = "royal" | "night" | "parchment" | "emerald" | "burgundy" | "plain";
+export type HeroLook = "royal" | "night" | "parchment" | "emerald" | "burgundy" | "stone" | "onyx" | "plain";
 /** The name in the strip: only when the header does not show it, always, or never. */
 export type HeroName = "auto" | "show" | "hide";
 
@@ -44,6 +44,8 @@ export const HERO_LOOKS: { id: HeroLook; name: string; swatch: string }[] = [
   { id: "parchment", name: "קלף בהיר", swatch: "linear-gradient(160deg, #fbf5e6, #efe1bf)" },
   { id: "emerald", name: "ירוק אמרלד", swatch: "linear-gradient(160deg, #0d3b2e, #17604a)" },
   { id: "burgundy", name: "יין ובורדו", swatch: "linear-gradient(160deg, #3d0f1a, #6e1d2f)" },
+  { id: "stone", name: "אבן ירושלים", swatch: "linear-gradient(160deg, #f1e8d6, #d8c7a4)" },
+  { id: "onyx", name: "אוניקס וזהב", swatch: "linear-gradient(160deg, #0d0d0f, #26231f)" },
   { id: "plain", name: "שקוף - כמו הדף", swatch: "hsl(var(--background))" },
 ];
 

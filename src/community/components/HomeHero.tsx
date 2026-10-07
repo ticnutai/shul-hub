@@ -16,6 +16,16 @@ const LOOK: Record<HeroLook, { className?: string; style?: CSSProperties; accent
   parchment: { style: { background: "linear-gradient(160deg, #fbf5e6, #efe1bf)", color: "#3b2a12" }, accent: "#9a7425", card: "border-[#9a7425]/30 bg-white/60", dark: false },
   emerald: { style: { background: "linear-gradient(160deg, #0d3b2e, #17604a)", color: "#f3ead2" }, accent: "#e6c66f", card: "border-[#e6c66f]/30 bg-white/5", dark: true },
   burgundy: { style: { background: "linear-gradient(160deg, #3d0f1a, #6e1d2f)", color: "#fbeee0" }, accent: "#e9c27c", card: "border-[#e9c27c]/30 bg-white/5", dark: true },
+  // Warm stone in the light of the afternoon: a soft grain of light across it, the ink of old brown.
+  stone: {
+    style: { background: "radial-gradient(ellipse at 20% 0%, rgba(255,255,255,.55), transparent 55%), linear-gradient(160deg, #f1e8d6, #d8c7a4)", color: "#3e2e14" },
+    accent: "#8a6a2a", card: "border-[#8a6a2a]/30 bg-white/50", dark: false,
+  },
+  // Black stone with a thread of gold along its top and bottom.
+  onyx: {
+    style: { background: "linear-gradient(160deg, #0d0d0f, #26231f)", color: "#f4ead2", boxShadow: "inset 0 2px 0 #c9a45d, inset 0 -2px 0 #c9a45d" },
+    accent: "#d9b56a", card: "border-[#d9b56a]/35 bg-white/5", dark: true,
+  },
   // On the page's light ground the site's gold is too pale to read: a darker gold.
   plain: { className: "border-b border-border bg-background text-foreground", accent: "#9a7425", card: "border-border bg-card", dark: false },
 };
