@@ -22,6 +22,19 @@ export interface BoardElement {
    * curtain. Absent: a notice is shrunk to fit, a list turns its pages.
    */
   scroll?: ElementScroll;
+  /**
+   * A plain panel behind the content, in the colour of the frame's own
+   * parchment: an arch drawn for three lines of prayers has lines across it,
+   * and a notice or the day's times written over them is hard to read.
+   */
+  backdrop?: boolean;
+  /** Other content this frame takes turns with, each for `alternateSeconds`. */
+  alternates?: ElementBinding[];
+  alternateSeconds?: number;
+  /** A heading's words in the same turns: one for each content of its frame. */
+  alternateTexts?: string[];
+  /** A symbol laid over the top of an arch (artSymbols.ts): which one. */
+  symbol?: string;
 }
 export type ElementScroll = 'pause' | 'loop';
 /** The content that can move in its frame: lists and paragraphs. */
@@ -46,7 +59,7 @@ export const safeImage = (s: unknown): boolean =>
   typeof s === 'string' && s.length < 2000 && (/^\/new-shul-assets\/[a-zA-Z0-9._-]+$/.test(s) || STORAGE_IMAGE.test(s));
 const colour = (s: unknown, fallback: string) => typeof s === 'string' && /^(#[\da-f]{3,8}|transparent)$/i.test(s) ? s : fallback;
 const n = (v: unknown, fallback: number, min: number, max: number) => typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
-const safePath = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 20000 && /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s+\-]+$/.test(v);
+const safePath = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 20000 && /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s+-]+$/.test(v);
 function normalizeMask(v: unknown): BoardElement['sourceMask'] {
   if(!v || typeof v!=='object')return;
   const m=v as Record<string,unknown>;
@@ -69,6 +82,12 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...(ELEMENT_BINDINGS.includes(v.binding) ? { binding: v.binding } : {}),
       ...(typeof v.rowsPerPage === 'number' ? { rowsPerPage: Math.round(n(v.rowsPerPage, 3, 1, 30)) } : {}),
       ...(v.scroll === 'pause' || v.scroll === 'loop' ? { scroll: v.scroll as ElementScroll } : {}),
+      ...(v.backdrop === true ? { backdrop: true } : {}),
+      ...(Array.isArray(v.alternates) && v.alternates.some((b: unknown) => ELEMENT_BINDINGS.includes(b as ElementBinding))
+        ? { alternates: [...new Set(v.alternates.filter((b: unknown) => ELEMENT_BINDINGS.includes(b as ElementBinding)))].slice(0, 5) as ElementBinding[], alternateSeconds: Math.round(n(v.alternateSeconds, 20, 5, 300)) } : {}),
+      ...(Array.isArray(v.alternateTexts) && v.alternateTexts.every((t: unknown) => typeof t === 'string') && v.alternateTexts.length > 1
+        ? { alternateTexts: v.alternateTexts.slice(0, 6).map((t: string) => t.slice(0, 80)), alternateSeconds: Math.round(n(v.alternateSeconds, 20, 5, 300)) } : {}),
+      ...(typeof v.symbol === 'string' && /^[a-z]{1,20}$/.test(v.symbol) ? { symbol: v.symbol } : {}),
       ...(Array.isArray(v.zmanKeys) ? {zmanKeys:[...new Set(v.zmanKeys.filter((k:unknown)=>ZMAN_DISPLAY_KEYS.includes(k as typeof ZMAN_DISPLAY_KEYS[number])))] as BoardElement['zmanKeys']} : {}),
       name: typeof v.name === 'string' ? v.name.slice(0, 80) : d.name, text: typeof v.text === 'string' ? v.text.slice(0, 2000) : '',
       color: colour(v.color, d.color), fill: colour(v.fill, d.fill), image: safeImage(v.image) ? v.image : '',
@@ -145,7 +164,9 @@ const overlap = (a: Rect, b: Rect) => {
   const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x), h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
   return w > 0 && h > 0 ? w * h / (areaOf(a) + areaOf(b) - w * h) : 0;
 };
-export type PlaceResult = { elements: BoardElement[]; result: 'moved' | 'swapped' | 'covers' | 'already' | 'locked' | 'missing'; ids: string[]; other?: string };
+export type PlaceResult = { elements: BoardElement[]; result: 'moved' | 'swapped' | 'covers' | 'already' | 'locked' | 'missing'; ids: string[]; other?: string;
+  /** The section it now stands over ('covers'): what "replace" hides. */
+  otherIds?: string[] };
 /**
  * A section moved to a side of the board. Where another section already
  * stands there - the lessons, when the prayers go right - the two change
@@ -182,7 +203,10 @@ export function placeSection(all: BoardElement[], id: string, side: ElementSide)
     const to = slot ? slot.box.x + slot.box.width / 2 - box.width / 2 : x;
     return { elements: moveElements(all, ids, to - box.x, 0), result: 'moved', ids };
   }
-  const name = all.find(e => e.id === best.ids[0])?.name;
+  // Named as the gabbai sees it: by its heading ("זמני תפילות"), not by the name of its picture.
+  const mine = all.filter(e => best.ids.includes(e.id));
+  const name = mine.find(e => e.kind === 'text' && !e.binding && e.text.trim())?.text
+    ?? (mine.find(e => e.binding)?.binding ? BINDING_LABELS[mine.find(e => e.binding)!.binding!] : mine[0]?.name);
   const dx = (best.box.x + best.box.width / 2) - (box.x + box.width / 2);
   // The two change places only where the place left behind is free: the
   // lessons go where the prayers were, never over the clock in the middle.
@@ -191,7 +215,7 @@ export function placeSection(all: BoardElement[], id: string, side: ElementSide)
     const w = Math.min(left.x + left.width, o.box.x + o.box.width) - Math.max(left.x, o.box.x), h = Math.min(left.y + left.height, o.box.y + o.box.height) - Math.max(left.y, o.box.y);
     return w > 0 && h > 0 && w * h > .2 * Math.min(areaOf(left), areaOf(o.box));
   })());
-  if (blocked) return { elements: moveElements(all, ids, x - box.x, 0), result: 'covers', ids, other: name };
+  if (blocked) return { elements: moveElements(all, ids, x - box.x, 0), result: 'covers', ids, other: name, otherIds: best.ids };
   if (all.some(e => best.ids.includes(e.id) && e.locked)) return { elements: all, result: 'locked', ids, other: name };
   return { elements: moveElements(moveElements(all, ids, dx, 0), best.ids, -dx, 0), result: 'swapped', ids, other: name };
 }
@@ -234,9 +258,50 @@ function frameParts(all: BoardElement[], ids: string[]) {
   return { own: bound.length === 1, heading: headings.length === 1 ? headings[0] : undefined, frame: frames[0] };
 }
 
-function retarget(e: BoardElement, binding: ElementBinding): BoardElement {
-  const { zmanKeys: _z, rowsPerPage, ...rest } = e;
-  return { ...rest, binding, name: BINDING_LABELS[binding], ...(LISTS.includes(binding) ? { rowsPerPage: rowsPerPage ?? (binding === 'zmanim' ? 6 : 4) } : {}) };
+/**
+ * Whether content wants a plain panel in this frame: an arch drawn with the
+ * lines of three prayers or shiurim, showing anything else.
+ */
+const wantsBackdrop = (frame: BoardElement | undefined, binding: ElementBinding) =>
+  Boolean(frame?.kind === 'image' && frame.crop) && binding !== 'prayers' && binding !== 'lessons';
+
+/** One line that shrinks to fit its box (a name, a date, the parasha). */
+const ONE_LINE: ElementBinding[] = ['title', 'date', 'parasha', 'dafYomi', 'amudYomi', 'seasonal', 'clock'];
+
+/**
+ * The type size and the rows for content in a box of this size - the box
+ * stays as it was: the day's times put in the parasha's wide frame fill that
+ * frame, in rows that read, not in the parasha's letters, which are four rows
+ * tall each. Content of the same kind (a list for a list, a line for a line)
+ * keeps the size the gabbai gave it.
+ */
+export function fitContent(e: BoardElement, from: ElementBinding | undefined, to: ElementBinding): Partial<BoardElement> {
+  const h = e.height;
+  const kind = (b?: ElementBinding) => !b ? '' : LISTS.includes(b) ? 'list' : ONE_LINE.includes(b) ? 'line' : b === 'analog' || b === 'logos' ? 'picture' : 'text';
+  const same = kind(from) === kind(to);
+  if (kind(to) === 'list') {
+    const rows = same && e.rowsPerPage ? e.rowsPerPage : Math.max(2, Math.min(to === 'zmanim' ? 13 : 8, Math.floor(h / 4.6)));
+    return { rowsPerPage: rows, fontSize: same ? e.fontSize : Math.round(Math.min(3.6, (h / rows) * 0.6) * 10) / 10 };
+  }
+  if (same) return {};
+  if (kind(to) === 'line') return { fontSize: Math.round(Math.min(10, h * 0.6) * 10) / 10 };
+  if (kind(to) === 'text') return { fontSize: Math.round(Math.min(3.2, Math.max(1.6, h / 8)) * 10) / 10 };
+  return {};
+}
+
+function retarget(e: BoardElement, binding: ElementBinding, frame?: BoardElement): BoardElement {
+  const { zmanKeys: _z, rowsPerPage: _r, backdrop: _b, ...rest } = e;
+  const alternates = rest.alternates?.filter(b => b !== binding);
+  return { ...rest, binding, name: BINDING_LABELS[binding], ...(alternates?.length ? { alternates } : { alternates: undefined, alternateSeconds: undefined }),
+    ...fitContent(e, e.binding, binding),
+    ...(wantsBackdrop(frame, binding) ? { backdrop: true } : {}) };
+}
+/** The heading of a frame, worded for what it shows - in turns, when it takes turns. */
+function headingFor(h: BoardElement, content: BoardElement): BoardElement {
+  const all = [content.binding!, ...(content.alternates ?? [])];
+  const { alternateTexts: _t, ...rest } = h;
+  return { ...rest, text: BINDING_HEADINGS[content.binding!], name: `כותרת ${BINDING_LABELS[content.binding!]}`,
+    ...(all.length > 1 ? { alternateTexts: all.map(b => BINDING_HEADINGS[b]), alternateSeconds: content.alternateSeconds ?? 20 } : { alternateSeconds: undefined }) };
 }
 
 /**
@@ -248,12 +313,33 @@ export function setContent(all: BoardElement[], id: string, binding: ElementBind
   const e = all.find(x => x.id === id);
   if (!e?.binding || e.binding === binding) return all;
   const { own, heading, frame } = frameParts(all, sectionOf(all, id));
+  const content = retarget(e, binding, frame);
   return all.map(x =>
-    x.id === e.id ? retarget(x, binding)
-    : own && x.id === heading?.id ? { ...x, text: BINDING_HEADINGS[binding], name: `כותרת ${BINDING_LABELS[binding]}` }
+    x.id === e.id ? content
+    : own && x.id === heading?.id ? headingFor(x, content)
     : own && x.id === frame?.id && x.id !== e.id ? { ...x, name: `מסגרת ${BINDING_LABELS[binding]}` }
     : x);
 }
+
+/**
+ * A frame that takes turns: its content, then each of these, for `seconds`
+ * each - the notices and the shiurim in one arch. Its heading takes the same
+ * turns. No alternates: the frame shows its one content again.
+ */
+export function setAlternates(all: BoardElement[], id: string, alternates: ElementBinding[], seconds: number): BoardElement[] {
+  const e = all.find(x => x.id === id);
+  if (!e?.binding) return all;
+  const list = [...new Set(alternates)].filter(b => b !== e.binding).slice(0, 5);
+  const content: BoardElement = list.length
+    ? { ...e, alternates: list, alternateSeconds: Math.round(Math.max(5, Math.min(300, seconds))) }
+    : { ...e, alternates: undefined, alternateSeconds: undefined };
+  const { own, heading } = frameParts(all, sectionOf(all, id));
+  return all.map(x => x.id === e.id ? content : own && x.id === heading?.id ? headingFor(x, content) : x);
+}
+
+/** Which of its turns a frame (or its heading) is on now. */
+export const turnOf = (count: number, seconds: number | undefined, now: Date) =>
+  count > 1 ? Math.floor(now.getTime() / ((seconds ?? 20) * 1000)) % count : 0;
 
 /**
  * A new frame in the board's own look: a copy of its finest frame that holds
@@ -268,14 +354,20 @@ export function styledBox(all: BoardElement[], binding: ElementBinding): BoardEl
     .filter(({ ids }) => { const p = frameParts(all, ids); return p.own && p.frame; })
     .sort((a, b) => areaOf(boundsOf(all, b.ids)) - areaOf(boundsOf(all, a.ids)))[0];
   if (!source) return null;
-  const { heading } = frameParts(all, source.ids);
+  const { heading, frame } = frameParts(all, source.ids);
   const box = boundsOf(all, source.ids);
   const dx = 50 - box.width / 2 - box.x;
   const group = elementId();
   return all.filter(x => source.ids.includes(x.id)).map(x => {
     const copy: BoardElement = { ...structuredClone(x), id: elementId(), group, hidden: false, locked: false, x: x.x + dx };
-    if (x.id === source.e.id) return retarget(copy, binding);
-    if (x.id === heading?.id) return { ...copy, text: BINDING_HEADINGS[binding], name: `כותרת ${BINDING_LABELS[binding]}` };
+    if (x.id === source.e.id) {
+      const { alternates: _a, alternateSeconds: _s, ...plain } = copy;
+      return retarget(plain, binding, frame);
+    }
+    if (x.id === heading?.id) {
+      const { alternateTexts: _t, alternateSeconds: _s, ...plain } = copy;
+      return { ...plain, text: BINDING_HEADINGS[binding], name: `כותרת ${BINDING_LABELS[binding]}` };
+    }
     return { ...copy, name: `${x.name} (${BINDING_LABELS[binding]})` };
   });
 }
@@ -314,5 +406,44 @@ export function importElementSet(text: string): BoardElement[] {
 }
 
 export function elementStyle(e: BoardElement): CSSProperties {
-  return { position: 'absolute', left: `${e.x}%`, top: `${e.y}%`, width: `${e.width}%`, height: `${e.height}%`, opacity: e.opacity, transform: `rotate(${e.rotation}deg)`, color: e.color, display: e.hidden ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center' };
+  return { position: 'absolute', left: `${e.x}%`, top: `${e.y}%`, width: `${e.width}%`, height: `${e.height}%`, opacity: e.opacity, transform: `rotate(${e.rotation}deg)`, color: e.color, display: e.hidden ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+    ...(e.backdrop ? backdropStyle(e.color) : {}) };
+}
+
+/**
+ * The plain panel behind content: parchment under dark ink, night under
+ * light ink, its edge feathered into the art rather than drawn as a box.
+ */
+export function backdropStyle(ink: string): CSSProperties {
+  const hex = /^#([\da-f]{6})/i.exec(ink)?.[1] ?? 'ffffff';
+  const [r, g, b] = [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16));
+  const dark = 0.299 * r + 0.587 * g + 0.114 * b < 128;
+  const panel = dark ? 'rgba(247, 239, 222, 0.96)' : 'rgba(13, 24, 44, 0.92)';
+  return { background: panel, borderRadius: '1.2cqh', boxShadow: `0 0 1cqh 0.9cqh ${panel}`, boxSizing: 'border-box', padding: '0.4cqh 0.6cqw' };
+}
+
+/** The eight handles of a selection: its sides and its corners. */
+export const RESIZE_HANDLES = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw'] as const;
+export type ResizeHandle = typeof RESIZE_HANDLES[number];
+/**
+ * The selection stretched or narrowed from one of its handles: its box takes
+ * the new edge, and every part in it keeps its place and share within the box
+ * - an arch with its heading and content grows as one. Never past the board,
+ * never thinner than 1%.
+ */
+export function resizeElements(all: BoardElement[], ids: string[], handle: ResizeHandle, dx: number, dy: number): BoardElement[] {
+  const chosen = all.filter(e => ids.includes(e.id));
+  if (!chosen.length || chosen.some(e => e.locked)) return all;
+  const b = boundsOf(all, ids);
+  let left = b.x, top = b.y, right = b.x + b.width, bottom = b.y + b.height;
+  if (handle.includes('w')) left = Math.max(0, Math.min(right - 1, left + dx));
+  if (handle.includes('e')) right = Math.min(100, Math.max(left + 1, right + dx));
+  if (handle.includes('n')) top = Math.max(0, Math.min(bottom - 1, top + dy));
+  if (handle.includes('s')) bottom = Math.min(100, Math.max(top + 1, bottom + dy));
+  const sx = (right - left) / b.width, sy = (bottom - top) / b.height;
+  return all.map(e => !ids.includes(e.id) ? e : {
+    ...e,
+    x: left + (e.x - b.x) * sx, y: top + (e.y - b.y) * sy,
+    width: Math.max(1, e.width * sx), height: Math.max(1, e.height * sy),
+  });
 }

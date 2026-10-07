@@ -631,12 +631,18 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   // Keyboard undo/redo while the panel is open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Only where text is typed does the field keep its own undo; a checkbox or a
+      // slider just clicked does not, or Ctrl+Z after ticking one did nothing.
       const target = e.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA)$/.test(target.tagName)) return;
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+      if (target?.isContentEditable || target?.tagName === "TEXTAREA") return;
+      if (target instanceof HTMLInputElement && !/^(checkbox|radio|range|color|button|submit|reset|file)$/.test(target.type)) return;
+      // The key, not the letter: on a Hebrew keyboard Z types "ז" and Y types "ט",
+      // and the shortcuts never fired for a gabbai typing in Hebrew.
+      const key = e.code === "KeyZ" ? "z" : e.code === "KeyY" ? "y" : e.key.toLowerCase();
+      if ((e.ctrlKey || e.metaKey) && key === "z") {
         e.preventDefault();
         dispatch({ type: e.shiftKey ? "redo" : "undo" });
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "y") {
+      } else if ((e.ctrlKey || e.metaKey) && key === "y") {
         e.preventDefault();
         dispatch({ type: "redo" });
       }

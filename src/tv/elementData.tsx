@@ -1,7 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { AutoScroll } from './AutoScroll';
 import { OverflowContext } from './overflowContext';
-import type { BoardElement, ElementScroll } from './elements';
+import { turnOf, type BoardElement, type ElementScroll } from './elements';
 import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import { useFitLine } from './useFitLine';
 import { useFitText } from './useFitText';
@@ -10,8 +10,11 @@ import type { ElementData } from './elementContent';
 export type { ElementData } from './elementContent';
 const Context = createContext<ElementData | undefined>(undefined);
 export const ElementDataProvider = Context.Provider;
-export function BoundElement({ element: e }: { element: BoardElement }) {
+export function BoundElement({ element }: { element: BoardElement }) {
   const data = useContext(Context);
+  // A frame that takes turns shows the content whose turn it is.
+  const turns = element.binding && element.alternates?.length ? [element.binding, ...element.alternates] : null;
+  const e = turns && data ? { ...element, binding: turns[turnOf(turns.length, element.alternateSeconds, data.now)] } : element;
   const deadlines=useDeadlines();
   const countdown=deadlines[0];
   const style = { width: '100%', height: '100%', fontSize: `${e.fontSize}cqh`, fontWeight: 700 };
@@ -39,10 +42,13 @@ export function BoundElement({ element: e }: { element: BoardElement }) {
   const count=e.rowsPerPage??3;
   // Scrolling, every row is on the track, each the height a page would give it; paging, a page at a time.
   const scrolling = Boolean(e.scroll) && rows.length > count;
-  const page = scrolling ? 0 : Math.floor(data.now.getTime() / 15000) % Math.max(1, Math.ceil(rows.length / count));
+  // Pages as even as they can be: 13 times on pages of 6 were 6, 6 and a lone 1.
+  const pages = Math.max(1, Math.ceil(rows.length / count));
+  const per = Math.ceil(rows.length / pages);
+  const page = scrolling ? 0 : Math.floor(data.now.getTime() / 15000) % pages;
   const list = <div data-content-binding={e.binding} dir="rtl" style={{ ...style, display: 'flex', flexDirection: 'column', ...(scrolling ? { height: 'auto' } : {}) }}>
-    {(scrolling ? rows : rows.slice(page * count, page * count + count)).map((row, i) => { const [label,time]=row; const key=e.binding==='zmanim'?data.zmanKeys?.[data.zmanim!.indexOf(row)]:undefined; return <div key={key??i} data-zman={key} className={deadlines.some(a=>a.event===key)?'tv-zman-warning':undefined} style={{ flex: scrolling ? `0 0 ${e.height / count}cqh` : `0 0 ${100/count}%`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1cqw', lineHeight: 1.2 }}>
-      {e.binding==='lessons' ? <><span style={{minWidth:0}}>{label.split(' · ')[0]}<small style={{display:'block',fontSize:'.72em',fontWeight:400,marginTop:'.4cqh'}}>{label.split(' · ').slice(1).join(' · ')}</small></span><span style={{flexShrink:0,textAlign:'left'}}><b dir="ltr">{time.split(' · ')[0]}</b><small style={{display:'block',fontSize:'.65em',fontWeight:400}}>{time.split(' · ').slice(1).join(' · ')}</small></span></> : <><span style={{ overflowWrap: 'anywhere' }}>{label}</span><b dir="ltr" style={{ whiteSpace: 'nowrap' }}>{time}</b></>}
+    {(scrolling ? rows : rows.slice(page * per, page * per + per)).map((row, i) => { const [label,time]=row; const key=e.binding==='zmanim'?data.zmanKeys?.[data.zmanim!.indexOf(row)]:undefined; return <div key={key??i} data-zman={key} className={deadlines.some(a=>a.event===key)?'tv-zman-warning':undefined} style={{ flex: scrolling ? `0 0 ${e.height / count}cqh` : `0 0 ${100/count}%`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1cqw', lineHeight: 1.2 }}>
+      {e.binding==='lessons' ? <><span style={{minWidth:0}}>{label.split(' · ')[0]}<small style={{display:'block',fontSize:'.72em',fontWeight:400,marginTop:'.4cqh'}}>{label.split(' · ').slice(1).join(' · ')}</small></span><span style={{flexShrink:0,textAlign:'left'}}><b dir="ltr">{time.split(' · ')[0]}</b><small style={{display:'block',fontSize:'.65em',fontWeight:400}}>{time.split(' · ').slice(1).join(' · ')}</small></span></> : <><FitLabel text={label} /><b dir="ltr" style={{ whiteSpace: 'nowrap' }}>{time}</b></>}
     </div>;})}
     {!rows.length && <span style={{ margin: 'auto', fontSize: '.65em' }}>{e.binding==='zmanim'?'לא נבחרו זמני יום':`לא הוגדרו ${e.binding === 'prayers' ? 'תפילות להיום' : 'שיעורים להיום'}`}</span>}
   </div>;
@@ -96,4 +102,24 @@ function FitBlock({ binding, text, fontSize }: { binding: string; text: string; 
       {text}
     </div>
   );
+}
+
+/**
+ * A row's name on one line: "סוף זמן קריאת שמע מגן אברהם" broke in two in a
+ * narrow arch, and the rows stood uneven. A long one is made smaller - that
+ * row alone - down to the floor of useFitLine, and only then ended with "...".
+ */
+function FitLabel({ text }: { text: string }) {
+  const ref = useFitLine<HTMLSpanElement>(text, 0);
+  return (
+    <span ref={ref} style={{ flex: '1 1 auto', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 'calc(1em * var(--fit, 1))' }}>
+      {text}
+    </span>
+  );
+}
+
+/** A heading taking the same turns as the content of its frame. */
+export function TurningText({ texts, seconds }: { texts: string[]; seconds?: number }) {
+  const data = useContext(Context);
+  return <>{texts[data ? turnOf(texts.length, seconds, data.now) : 0]}</>;
 }

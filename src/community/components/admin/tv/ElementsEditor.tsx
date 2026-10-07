@@ -45,9 +45,12 @@ export function ElementsEditor({ config, onEdit }: Props) {
   };
   /** Each part with the section it moves with, and where that section stands now. */
   const sections = useMemo(() => new Map(elements.map(e => { const ids = sectionOf(elements, e.id); return [e.id, { ids, side: sideOf(boundsOf(elements, ids)) }] as const; })), [elements]);
+  /** "Replace" from the message: the parts below are hidden, read from the board as it is then. */
+  const hideParts = (ids: string[]) =>
+    onEdit(`elements-replace:${ids.join(',')}`, c => ({ ...c, elements: c.elements.map(x => ids.includes(x.id) ? { ...x, hidden: true } : x) }));
   const place = (e: BoardElement, side: ElementSide) => {
     const r = placeSection(elements, e.id, side);
-    if (announcePlace(r, e.name, side)) { commit(r.elements, `element-side:${e.id}:${side}`); select(r.ids); }
+    if (announcePlace(r, e.name, side, hideParts)) { commit(r.elements, `element-side:${e.id}:${side}`); select(r.ids); }
   };
   const manual = (e: BoardElement) => {
     const ids = sections.get(e.id)?.ids ?? [e.id];
@@ -119,8 +122,26 @@ export function ElementsEditor({ config, onEdit }: Props) {
       </div>
     </div>
     <p className="text-xs text-muted-foreground">בכל שורה: ימין, אמצע או שמאל מזיזים את החלק יחד עם המסגרת שלו. אם בצד הזה כבר עומד חלק אחר, השניים מתחלפים. הסמל האחרון בוחר את החלק לגרירה ידנית על הלוח.</p>
+    {/* Several parts at once: tick them (or Shift + click), then show, hide, lock or free them all. */}
+    <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="פעולות על כמה חלקים" data-testid="elements-bulk">
+      <label className="flex items-center gap-1.5">
+        <input type="checkbox" aria-label="בחירת כל החלקים" className="size-4"
+          checked={elements.length > 0 && selected.length === elements.length}
+          ref={el => { if (el) el.indeterminate = selected.length > 0 && selected.length < elements.length; }}
+          onChange={ev => select(ev.target.checked ? elements.map(x => x.id) : [])} />
+        {selected.length ? `נבחרו ${selected.length}` : 'בחירת הכול'}
+      </label>
+      {selected.length > 0 && ([['הסתרה', { hidden: true }], ['הצגה', { hidden: false }], ['נעילה', { locked: true }], ['שחרור', { locked: false }]] as const).map(([label, p]) => (
+        <Button key={label} type="button" size="sm" variant="outline" className="h-7"
+          onClick={() => commit(elements.map(x => selected.includes(x.id) ? { ...x, ...p } : x), `elements-bulk:${label}:${selected.join(',')}`)}>
+          {label} לנבחרים
+        </Button>
+      ))}
+    </div>
     <div className="space-y-1" aria-label="שכבות האלמנטים">{[...elements].reverse().map(e => { const sec = sections.get(e.id); const mates = sec ? elements.filter(x => sec.ids.includes(x.id) && x.id !== e.id).map(x => x.name) : []; const tip = mates.length ? ` - זז יחד עם: ${mates.join(', ')}` : ''; return <div key={e.id} className={`flex items-center gap-2 rounded border px-2 py-1 ${selected.includes(e.id) ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/40' : ''}`}>
-      <button type="button" className="flex-1 text-right text-sm" onClick={ev => choose(e, ev.shiftKey)}>{e.name}{e.group ? ' · קבוצה' : ''}</button>
+      <input type="checkbox" aria-label={`בחירת ${e.name}`} className="size-4 shrink-0" checked={selected.includes(e.id)}
+        onChange={ev => select(s => ev.target.checked ? [...new Set([...s, e.id])] : s.filter(id => id !== e.id))} />
+      <button type="button" className={`flex-1 text-right text-sm ${e.hidden ? 'text-muted-foreground line-through' : ''}`} onClick={ev => choose(e, ev.shiftKey)}>{e.name}{e.group ? ' · קבוצה' : ''}</button>
       <div className="flex items-center gap-0.5" role="group" aria-label={`מיקום של ${e.name}`} data-testid="element-side">
         {([['right', 'ימין', PanelRight], ['center', 'אמצע', PanelsLeftRight], ['left', 'שמאל', PanelLeft]] as const).map(([side, label, Icon]) => <button key={side} type="button" aria-label={`${e.name} ל${label}`} aria-pressed={sec?.side === side} title={`להעביר ל${label}${tip}`} disabled={e.locked} onClick={() => place(e, side)} className={`grid size-7 place-items-center rounded border ${sec?.side === side ? 'border-primary bg-primary/10 text-primary' : 'border-transparent text-muted-foreground'} hover:border-primary hover:text-foreground disabled:opacity-40`}><Icon className="size-4" aria-hidden /></button>)}
         <button type="button" aria-label={`הזזה ידנית של ${e.name}`} title={`הזזה ידנית: בוחר את החלק${mates.length ? ' ואת מה שזז איתו' : ''}, ואז גוררים על הלוח`} disabled={e.locked} onClick={() => manual(e)} className="grid size-7 place-items-center rounded border border-transparent text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40"><Move className="size-4" aria-hidden /></button>

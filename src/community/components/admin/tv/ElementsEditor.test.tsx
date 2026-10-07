@@ -5,7 +5,7 @@
  */
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_TV_CONFIG, type TvConfig } from "@/tv/config";
 import { BINDING_LABELS, ELEMENT_BINDINGS, boundsOf, normalizeElements, sectionOf, sideOf } from "@/tv/elements";
@@ -13,6 +13,7 @@ import { PREMIUM_DESIGNS } from "@/tv/premiumDesigns";
 import { ElementEditingProvider } from "./ElementEditingProvider";
 import { ElementsEditor } from "./ElementsEditor";
 import { PartsContent } from "./PartsContent";
+import { Toaster } from "sonner";
 
 afterEach(cleanup);
 
@@ -169,5 +170,92 @@ describe("a long notice: shrunk, or the moving curtain", () => {
     expect(screen.queryByRole("combobox", { name: "כשלא נכנס - שעון מחוגים" })).toBeNull();
     fireEvent.change(fit, { target: { value: "" } });
     expect(latest.elements.find((e) => e.id === notice.id)!.scroll).toBeUndefined();
+  });
+});
+
+describe("PartsContent - more options of a frame", () => {
+  it("takes turns with more content, for the seconds chosen", () => {
+    render(<PartsHarness start={board()} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "הוספת תוכן מתחלף לזמני תפילות" }), { target: { value: "announcements" } });
+    const prayers = latest.elements.find((e) => e.binding === "prayers")!;
+    expect(prayers.alternates).toEqual(["announcements"]);
+    expect(screen.getByText(/מתחלפת עם 1/)).toBeTruthy();
+    fireEvent.change(screen.getByRole("spinbutton", { name: "שניות לכל תוכן בזמני תפילות" }), { target: { value: "45" } });
+    expect(latest.elements.find((e) => e.binding === "prayers")!.alternateSeconds).toBe(45);
+    fireEvent.click(screen.getByRole("button", { name: "בלי הודעות בזמני תפילות" }));
+    expect(latest.elements.find((e) => e.binding === "prayers")!.alternates).toBeUndefined();
+  });
+
+  it("chooses the day's times from the frame itself", () => {
+    render(<PartsHarness start={board()} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }), { target: { value: "zmanim" } });
+    const box = screen.getAllByRole("checkbox").find((c) => c.parentElement?.textContent === "עלות השחר") as HTMLInputElement;
+    expect(box.checked).toBe(true);
+    fireEvent.click(box);
+    expect(latest.elements.find((e) => e.binding === "zmanim")!.zmanKeys).not.toContain("alot");
+    // The plain panel came on by itself, and can be taken off.
+    const panel = screen.getByRole("checkbox", { name: "רקע חלק מאחורי זמני היום" }) as HTMLInputElement;
+    expect(panel.checked).toBe(true);
+    fireEvent.click(panel);
+    expect(latest.elements.find((e) => e.binding === "zmanim")!.backdrop).toBeUndefined();
+  });
+
+  it("offers the symbol over the arch where the drawing has one", () => {
+    render(<PartsHarness start={{ ...board(), elements: structuredClone(PREMIUM_DESIGNS[0].values.elements!) }} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "הסמל בראש זמני תפילות" }), { target: { value: "none" } });
+    expect(latest.elements.filter((e) => e.symbol)).toHaveLength(1);
+    expect((screen.getByRole("combobox", { name: "הסמל בראש זמני תפילות" }) as HTMLSelectElement).value).toBe("none");
+  });
+
+  it("replaces, from the message, the frame a new one was sent over", async () => {
+    render(<><PartsHarness start={board()} /><Toaster /></>);
+    fireEvent.change(screen.getByRole("combobox", { name: "איזו תצוגה להוסיף" }), { target: { value: "announcements" } });
+    fireEvent.click(screen.getByRole("button", { name: "הוספה" }));
+    fireEvent.click(screen.getByRole("button", { name: "הודעות לשמאל" }));
+    fireEvent.click(await screen.findByRole("button", { name: 'להחליף את "זמני תפילות"' }));
+    for (const n of ["תפילות היום", "כותרת תפילות", "מסגרת תפילות"]) expect(named(n).hidden).toBe(true);
+    expect(latest.elements.find((e) => e.binding === "announcements")!.hidden).toBe(false);
+  });
+});
+
+describe("several at once, and back to the kit", () => {
+  it("hides and shows several frames together, in one step", () => {
+    render(<PartsHarness start={board()} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "בחירת זמני תפילות" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "בחירת שיעורי תורה" }));
+    expect(screen.getByText("נבחרו 2")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /הסתרת הנבחרות/ }));
+    for (const n of ["תפילות היום", "מסגרת תפילות", "שיעורי היום", "מסגרת שיעורים"]) expect(named(n).hidden).toBe(true);
+    expect(named("פרשת השבוע").hidden).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: /הצגת הנבחרות/ }));
+    for (const n of ["תפילות היום", "מסגרת תפילות", "שיעורי היום", "מסגרת שיעורים"]) expect(named(n).hidden).toBe(false);
+  });
+
+  it("puts the board back as the kit made it, after asking", () => {
+    const start = { ...structuredClone(DEFAULT_TV_CONFIG), ...structuredClone(PREMIUM_DESIGNS[0].values) } as TvConfig;
+    render(<PartsHarness start={start} />);
+    fireEvent.change(screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }), { target: { value: "zmanim" } });
+    fireEvent.click(screen.getByRole("button", { name: "הסתרת שיעורי תורה" }));
+    const ask = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    fireEvent.click(screen.getByTestId("parts-reset"));
+    expect(latest.elements.some((e) => e.binding === "zmanim")).toBe(true);
+    fireEvent.click(screen.getByTestId("parts-reset"));
+    expect(ask).toHaveBeenCalledTimes(2);
+    expect(latest.elements).toEqual(PREMIUM_DESIGNS[0].values.elements);
+    ask.mockRestore();
+  });
+
+  it("hides, shows, locks and frees several parts of the list together", () => {
+    render(<Harness start={board()} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "בחירת עמוד שיש שמאל" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "בחירת עמוד שיש ימין" }));
+    fireEvent.click(screen.getByRole("button", { name: "הסתרה לנבחרים" }));
+    expect(named("עמוד שיש שמאל").hidden && named("עמוד שיש ימין").hidden).toBe(true);
+    expect(named("מסגרת תפילות").hidden).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "נעילה לנבחרים" }));
+    expect(named("עמוד שיש שמאל").locked && named("עמוד שיש ימין").locked).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "שחרור לנבחרים" }));
+    fireEvent.click(screen.getByRole("button", { name: "הצגה לנבחרים" }));
+    expect(named("עמוד שיש שמאל").hidden || named("עמוד שיש ימין").locked).toBe(false);
   });
 });

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, type BoardElement } from './elements';
+import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, setAlternates, turnOf, resizeElements, fitContent, type BoardElement } from './elements';
+import { kitOf, resetToKit } from './kitReset';
+import { BUILTIN_DESIGNS, applyDesign } from './designs';
+import { setSymbol, symbolChoices } from './artSymbols';
 import { DEFAULT_TV_CONFIG, normalizeTvConfig, editForDevice, configForDevice } from './config';
 import { workspaceDocument, parseWorkspace, type StoreImage } from './workspaceTransfer';
 
@@ -174,5 +177,110 @@ describe('frames in the board\'s own look', () => {
   it('falls back to a box of its own on a board with no frame to copy', () => {
     expect(styledBox([], 'zmanim')).toBeNull();
     expect(addContent([], 'zmanim').some(e => e.kind === 'box')).toBe(true);
+  });
+});
+
+describe('the options of a frame', () => {
+  const heritage = PREMIUM_DESIGNS[0].values.elements!;
+  const ivory = PREMIUM_DESIGNS[1].values.elements!;
+  const byBinding = (els: BoardElement[], b: string) => els.find(e => e.binding === b)!;
+
+  it('puts a plain panel behind content the arch was not drawn for, and none behind its own', () => {
+    const prayers = byBinding(ivory, 'prayers');
+    const zmanim = setContent(ivory, prayers.id, 'zmanim');
+    expect(byBinding(zmanim, 'zmanim').backdrop).toBe(true);
+    expect(byBinding(setContent(zmanim, prayers.id, 'lessons'), 'lessons').backdrop).toBeUndefined();
+    expect(styledBox(ivory, 'announcements')!.find(e => e.binding)!.backdrop).toBe(true);
+    expect(normalizeElements([{ ...byBinding(zmanim, 'zmanim') }])[0].backdrop).toBe(true);
+  });
+
+  it('takes turns, and its heading with it; nothing to take turns with is one content again', () => {
+    const prayers = byBinding(ivory, 'prayers');
+    const turns = setAlternates(ivory, prayers.id, ['announcements', 'lessons', 'prayers'], 30);
+    const content = turns.find(e => e.id === prayers.id)!;
+    expect(content.alternates).toEqual(['announcements', 'lessons']);
+    expect(content.alternateSeconds).toBe(30);
+    const heading = turns.find(e => e.name.startsWith('כותרת') && e.alternateTexts)!;
+    expect(heading.alternateTexts).toEqual(['זמני תפילות', 'הודעות', 'שיעורי תורה']);
+    expect(normalizeElements(turns).find(e => e.id === prayers.id)!.alternates).toEqual(['announcements', 'lessons']);
+    expect([0, 30, 60, 90].map(s => turnOf(3, 30, new Date(s * 1000)))).toEqual([0, 1, 2, 0]);
+    const back = setAlternates(turns, prayers.id, [], 30);
+    expect(back.find(e => e.id === prayers.id)!.alternates).toBeUndefined();
+    expect(normalizeElements(back).some(e => e.alternateTexts)).toBe(false);
+  });
+
+  it('lays a symbol over the arch of the heritage kit, which moves and hides with it', () => {
+    const prayers = byBinding(heritage, 'prayers');
+    expect(symbolChoices(heritage, prayers.id)!.choices.map(c => c.id)).toEqual(['none', 'book', 'scroll']);
+    expect(symbolChoices(ivory, byBinding(ivory, 'prayers').id)).toBeNull();
+    const plain = setSymbol(heritage, prayers.id, 'none');
+    expect(plain).toHaveLength(heritage.length + 1);
+    const over = plain.find(e => e.symbol)!;
+    expect(sectionOf(plain, prayers.id)).toContain(over.id);
+    expect(symbolChoices(plain, prayers.id)!.current).toBe('none');
+    // Changed, not added twice; and back to the drawing's own.
+    expect(setSymbol(plain, prayers.id, 'scroll').filter(e => e.symbol)).toHaveLength(1);
+    expect(setSymbol(plain, prayers.id, '')).toEqual(heritage);
+    // Sent to the other side, the symbol goes with its arch.
+    const r = placeSection(plain, prayers.id, 'right');
+    expect(r.elements.find(e => e.symbol)!.x - over.x).toBeCloseTo(r.elements.find(e => e.id === prayers.id)!.x - prayers.x);
+  });
+
+  it('names what a frame now stands over, so it can be replaced', () => {
+    const copy = styledBox(ivory, 'announcements')!;
+    const r = placeSection([...ivory, ...copy], copy[0].id, 'left');
+    expect(r.result).toBe('covers');
+    expect(r.otherIds).toEqual(sectionOf(ivory, byBinding(ivory, 'prayers').id));
+  });
+});
+
+describe('stretching, the size of new content, and going back to the kit', () => {
+  const ivory = PREMIUM_DESIGNS[1].values.elements!;
+  const box = (x: number, y: number, width: number, height: number) => ({ ...newElement('box'), x, y, width, height });
+
+  it('stretches and narrows from every side and corner, the parts inside keeping their share', () => {
+    const a = box(10, 10, 20, 40), b = box(15, 20, 10, 10);
+    const ids = [a.id, b.id];
+    const right = resizeElements([a, b], ids, 'e', 20, 0);
+    expect(right[0]).toMatchObject({ x: 10, width: 40 });
+    expect(right[1]).toMatchObject({ x: 20, width: 20 });
+    const top = resizeElements([a, b], ids, 'n', 0, 5);
+    expect(top[0]).toMatchObject({ y: 15, height: 35 });
+    const left = resizeElements([a, b], ids, 'w', -5, 0);
+    expect(left[0]).toMatchObject({ x: 5, width: 25 });
+    const corner = resizeElements([a, b], ids, 'se', 10, 10);
+    expect(corner[0]).toMatchObject({ x: 10, y: 10, width: 30, height: 50 });
+    // Never past the board, never thinner than 1%.
+    expect(resizeElements([a], [a.id], 'e', 500, 0)[0].width).toBe(90);
+    expect(resizeElements([a], [a.id], 'w', 500, 0)[0].width).toBeCloseTo(1);
+    expect(resizeElements([{ ...a, locked: true }], [a.id], 'e', 5, 0)[0].width).toBe(20);
+  });
+
+  it('gives the day\'s times put in the parasha\'s frame its size, in rows that fit it', () => {
+    const parasha = ivory.find(e => e.binding === 'parasha')!;
+    const zmanim = setContent(ivory, parasha.id, 'zmanim').find(e => e.id === parasha.id)!;
+    expect({ x: zmanim.x, y: zmanim.y, width: zmanim.width, height: zmanim.height }).toEqual({ x: parasha.x, y: parasha.y, width: parasha.width, height: parasha.height });
+    expect(zmanim.rowsPerPage).toBeGreaterThanOrEqual(2);
+    expect(zmanim.fontSize * zmanim.rowsPerPage! * 1.2).toBeLessThanOrEqual(zmanim.height);
+    // And back to a line: the line's own size again, not the rows'.
+    const back = setContent(setContent(ivory, parasha.id, 'zmanim'), parasha.id, 'parasha').find(e => e.id === parasha.id)!;
+    expect(back.fontSize).toBeGreaterThan(zmanim.fontSize);
+    // A list for a list keeps the size the gabbai gave it.
+    const prayers = { ...ivory.find(e => e.binding === 'prayers')!, rowsPerPage: 7, fontSize: 2.2 };
+    expect(fitContent(prayers, 'prayers', 'lessons')).toEqual({ rowsPerPage: 7, fontSize: 2.2 });
+  });
+
+  it('knows the kit a board came from, after changes too, and puts it back', () => {
+    const kits = BUILTIN_DESIGNS.filter(d => d.values.elements?.length);
+    expect(kits.length).toBeGreaterThan(10);
+    for (const design of kits) {
+      const config = applyDesign(structuredClone(DEFAULT_TV_CONFIG), design);
+      const els = config.elements;
+      const prayers = els.find(e => e.binding === 'prayers');
+      const changed = { ...config, elements: [...(prayers ? setContent(els, prayers.id, 'zmanim') : els.slice(1)), ...(styledBox(els, 'announcements') ?? [])] };
+      expect(kitOf(changed)?.id, design.name).toBe(design.id);
+      expect(resetToKit(changed, kitOf(changed)!).elements).toEqual(config.elements);
+    }
+    expect(kitOf({ ...structuredClone(DEFAULT_TV_CONFIG), elements: [box(1, 1, 5, 5)] })).toBeNull();
   });
 });
