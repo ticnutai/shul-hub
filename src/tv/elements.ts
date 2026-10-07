@@ -35,6 +35,46 @@ export interface BoardElement {
   alternateTexts?: string[];
   /** A symbol laid over the top of an arch (artSymbols.ts): which one. */
   symbol?: string;
+  /** The text's own font, of those the board loads; absent - the board's font. */
+  font?: ElementFont;
+  /** Absent: bold, as every part was drawn until now. */
+  weight?: 'normal' | 'bold';
+  italic?: boolean;
+  /** Absent: centred. */
+  align?: 'right' | 'center' | 'left';
+  /** A soft shadow under the letters, for text over a busy picture. */
+  shadow?: boolean;
+  /**
+   * Long text breaks into lines and keeps its size (true), or stays on one
+   * line and is made smaller to fit (false). Absent: what the part did until
+   * now (wraps(), below) - a text of the gabbai's wraps, a name or a date fits.
+   */
+  wrap?: boolean;
+}
+
+/** The fonts a part may wear: the families the board loads (themes.ts TV_FONTS_HREF). */
+export const ELEMENT_FONTS = {
+  frank: { name: 'פרנק רוהל', family: '"Frank Ruhl Libre"' },
+  david: { name: 'דוד', family: '"David Libre"' },
+  heebo: { name: 'חיבו', family: '"Heebo"' },
+  assistant: { name: 'אסיסטנט', family: '"Assistant"' },
+  rubik: { name: 'רוביק', family: '"Rubik"' },
+  secular: { name: 'סקולר', family: '"Secular One"' },
+} as const;
+export type ElementFont = keyof typeof ELEMENT_FONTS;
+
+/** Whether a part's long text breaks into lines (true) or is made smaller on one line. */
+export const wraps = (e: BoardElement) => e.wrap ?? (e.kind === 'text' && !e.binding);
+
+/** The letters of a part: its font, weight, slant, alignment and shadow. */
+export function textLook(e: BoardElement): CSSProperties {
+  return {
+    fontWeight: e.weight === 'normal' ? 400 : 700,
+    textAlign: e.align ?? 'center',
+    ...(e.font ? { fontFamily: `${ELEMENT_FONTS[e.font].family}, "Segoe UI", system-ui, sans-serif` } : {}),
+    ...(e.italic ? { fontStyle: 'italic' } : {}),
+    ...(e.shadow ? { textShadow: '0 0.15cqh 0.5cqh rgba(0, 0, 0, 0.55)' } : {}),
+  };
 }
 export type ElementScroll = 'pause' | 'loop';
 /** The content that can move in its frame: lists and paragraphs. */
@@ -88,6 +128,12 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...(Array.isArray(v.alternateTexts) && v.alternateTexts.every((t: unknown) => typeof t === 'string') && v.alternateTexts.length > 1
         ? { alternateTexts: v.alternateTexts.slice(0, 6).map((t: string) => t.slice(0, 80)), alternateSeconds: Math.round(n(v.alternateSeconds, 20, 5, 300)) } : {}),
       ...(typeof v.symbol === 'string' && /^[a-z]{1,20}$/.test(v.symbol) ? { symbol: v.symbol } : {}),
+      ...(typeof v.font === 'string' && v.font in ELEMENT_FONTS ? { font: v.font as ElementFont } : {}),
+      ...(v.weight === 'normal' || v.weight === 'bold' ? { weight: v.weight as 'normal' | 'bold' } : {}),
+      ...(v.italic === true ? { italic: true } : {}),
+      ...(v.align === 'right' || v.align === 'center' || v.align === 'left' ? { align: v.align as 'right' | 'center' | 'left' } : {}),
+      ...(v.shadow === true ? { shadow: true } : {}),
+      ...(typeof v.wrap === 'boolean' ? { wrap: v.wrap } : {}),
       ...(Array.isArray(v.zmanKeys) ? {zmanKeys:[...new Set(v.zmanKeys.filter((k:unknown)=>ZMAN_DISPLAY_KEYS.includes(k as typeof ZMAN_DISPLAY_KEYS[number])))] as BoardElement['zmanKeys']} : {}),
       name: typeof v.name === 'string' ? v.name.slice(0, 80) : d.name, text: typeof v.text === 'string' ? v.text.slice(0, 2000) : '',
       color: colour(v.color, d.color), fill: colour(v.fill, d.fill), image: safeImage(v.image) ? v.image : '',

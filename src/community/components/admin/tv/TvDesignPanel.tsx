@@ -175,6 +175,7 @@ import { occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
 import { editPage, pageLook, readPages } from "@/tv/partPages";
 import { PartPagesBar } from "./PartPagesBar";
+import { ElementTextTools } from "./ElementTextTools";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -1001,6 +1002,22 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   };
   useEffect(() => { setElementEditingEnabled(editing && !comparing); }, [editing, comparing, setElementEditingEnabled]);
   useEffect(() => { setElementDraft(null); selectElements([]); }, [scope, occasionScope, pageIndex, comparing, setElementDraft, selectElements]);
+  /**
+   * The text of the part clicked on the board: the same bar as in the list of
+   * parts. A double click on a text of the gabbai's writes into it there.
+   */
+  const partText = elementEditing.selected.some((id) => view.elements.some((e) => e.id === id && e.kind === "text")) ? (
+    <div className="space-y-1" data-testid="preview-text-tools">
+      <ElementTextTools
+        elements={view.elements}
+        ids={elementEditing.selected}
+        onPatch={(ids, p, what) =>
+          edit(`element-text:${ids.join(",")}:${what}`, (c) => ({ ...c, elements: normalizeElements(c.elements.map((x) => (ids.includes(x.id) && !x.locked ? { ...x, ...p } : x))) }))
+        }
+      />
+      <p className="text-[11px] text-muted-foreground">לחיצה כפולה על טקסט בלוח - כותבים בו ישירות. Enter לסיום, Esc לביטול.</p>
+    </div>
+  ) : null;
   const layerProps: LayerProps = {
     config: view,
     saved: scoped,
@@ -1507,7 +1524,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             title="6. חלקים חופשיים"
             hint="עמודים, עיטורים, מסגרות, תיבות, טקסט ותמונות - כל אחד שכבה משלו מעל הלוח: גרירה, שינוי גודל, קיבוץ, נעילה, סדר שכבות וספרייה של חלקים שמורים. בערכה מחלקים - זו הפריסה שלה."
           >
-            <ElementsEditor config={view} onEdit={edit} />
+            <ElementsEditor config={view} onEdit={edit} textToolsElsewhere={editing && Boolean(partText)} />
           </Section>
         </TabsContent>
         <TabsContent
@@ -2051,6 +2068,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                 onSelect={setSelected}
               />
             )}
+            {editing && partText}
             {controls}
           </div>
         </StudioPanel>
@@ -2244,6 +2262,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           />
         </div>
       )}
+      {editing && partText && <div className="mt-3">{partText}</div>}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {previewActions}
         <span className="ms-auto flex flex-wrap gap-2">

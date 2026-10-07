@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import type { TvConfig } from '@/tv/config';
 import { BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, ELEMENT_KINDS, ELEMENT_NAMES, MAX_ELEMENTS, alignElements, boundsOf, addContent, elementId, moveElements, newElement, normalizeElements, placeSection, sectionOf, sideOf, type BoardElement, type ElementBinding, type ElementSide } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
+import { ElementTextTools } from './ElementTextTools';
 import { BoardElements } from '@/tv/BoardElements';
 import { useElementEditing } from '@/tv/elementEditing';
 import { ElementLibrary } from './ElementLibrary';
@@ -13,8 +14,13 @@ import { downloadFile } from '@/tv/workspaceTransfer';
 import { uploadImages } from './uploadImages';
 import {ZMAN_DISPLAY_KEYS,ZMAN_DISPLAY_LABELS} from '@/community/lib/zmanim';
 
-type Props = { config: TvConfig; onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void };
-export function ElementsEditor({ config, onEdit }: Props) {
+type Props = {
+  config: TvConfig;
+  onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void;
+  /** The text bar is under the board's preview just now (editing on the board): not here as well. */
+  textToolsElsewhere?: boolean;
+};
+export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: Props) {
   const elements = config.elements;
   const { selected, select, snap, setSnap } = useElementEditing()!;
   const first = elements.find(e => e.id === selected[0]);
@@ -45,6 +51,8 @@ export function ElementsEditor({ config, onEdit }: Props) {
   };
   /** Each part with the section it moves with, and where that section stands now. */
   const sections = useMemo(() => new Map(elements.map(e => { const ids = sectionOf(elements, e.id); return [e.id, { ids, side: sideOf(boundsOf(elements, ids)) }] as const; })), [elements]);
+  const textPatch = (ids: string[], p: Partial<BoardElement>, what: string) =>
+    commit(elements.map(x => ids.includes(x.id) && !x.locked ? { ...x, ...p } : x), `element-text:${ids.join(',')}:${what}`);
   /** "Replace" from the message: the parts below are hidden, read from the board as it is then. */
   const hideParts = (ids: string[]) =>
     onEdit(`elements-replace:${ids.join(',')}`, c => ({ ...c, elements: c.elements.map(x => ids.includes(x.id) ? { ...x, hidden: true } : x) }));
@@ -106,9 +114,13 @@ export function ElementsEditor({ config, onEdit }: Props) {
         <div className="grid gap-2 sm:grid-cols-2">{ZMAN_DISPLAY_KEYS.map(key=><label key={key} className="flex gap-2 text-xs"><input type="checkbox" checked={(first.zmanKeys??ZMAN_DISPLAY_KEYS.filter(k=>!config.hidden.includes(`zman.${k}`))).includes(key)} onChange={ev=>{const keys=first.zmanKeys??ZMAN_DISPLAY_KEYS.filter(k=>!config.hidden.includes(`zman.${k}`));patch({zmanKeys:ev.target.checked?[...keys,key]:keys.filter(k=>k!==key)});}}/>{ZMAN_DISPLAY_LABELS[key]}</label>)}</div>
       </div>}
       <label className="text-xs">שם<input className="block w-full rounded border p-2" aria-label="שם האלמנט" value={first.name} onChange={e => patch({ name: e.target.value })} /></label>
-      {([['x','מיקום אופקי',0,100],['y','מיקום אנכי',0,100],['width','רוחב האלמנט',1,100],['height','גובה האלמנט',1,100],['rotation','סיבוב',-180,180],['fontSize','גודל טקסט',.5,20],['opacity','אטימות',0,1]] as const).map(([key,label,min,max]) => <label className="text-xs" key={key}>{label}<input type="number" className="block w-full rounded border p-2" aria-label={label} min={min} max={max} step={key === 'opacity' ? .1 : .5} value={Number(first[key].toFixed(2))} onChange={ev => { if (ev.target.value !== '') patch({ [key]: Number(ev.target.value) }); }} /></label>)}
+      {([['x','מיקום אופקי',0,100],['y','מיקום אנכי',0,100],['width','רוחב האלמנט',1,100],['height','גובה האלמנט',1,100],['rotation','סיבוב',-180,180],['opacity','אטימות',0,1]] as const).map(([key,label,min,max]) => <label className="text-xs" key={key}>{label}<input type="number" className="block w-full rounded border p-2" aria-label={label} min={min} max={max} step={key === 'opacity' ? .1 : .5} value={Number(first[key].toFixed(2))} onChange={ev => { if (ev.target.value !== '') patch({ [key]: Number(ev.target.value) }); }} /></label>)}
       <label className="text-xs">צבע<input type="color" aria-label="צבע האלמנט" value={first.color} onChange={e => patch({ color: e.target.value })} /></label>
-      {first.kind === 'text' && <><label className="text-xs">מקור התוכן<select className="block w-full rounded border p-2" aria-label="מקור תוכן האלמנט" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label>{!first.binding && <label className="col-span-2 text-xs">תוכן הטקסט<textarea className="block w-full rounded border p-2" aria-label="תוכן האלמנט" value={first.text} onChange={e => patch({ text: e.target.value })} /></label>}</>}
+      {first.kind === 'text' && <><label className="text-xs">מקור התוכן<select className="block w-full rounded border p-2" aria-label="מקור תוכן האלמנט" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label></>}
+      {/* The letters - size, font, bold, wrapping, the words - in the same bar as under the board's preview. */}
+      {first.kind === 'text' && <div className="col-span-full">{textToolsElsewhere
+        ? <p className="rounded border border-dashed p-2 text-xs text-muted-foreground" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות) נמצא מתחת לתצוגה המקדימה של הלוח.</p>
+        : <ElementTextTools elements={elements} ids={selected} withColor={false} onPatch={textPatch} />}</div>}
       {['box','frame'].includes(first.kind) && <label className="text-xs">מילוי<input type="color" aria-label="מילוי האלמנט" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={e => patch({ fill: e.target.value })} /><button type="button" onClick={() => patch({ fill: 'transparent' })}>ללא מילוי</button></label>}
     </fieldset>}
     <div className="space-y-2 rounded border border-primary/40 bg-primary/5 p-3" data-testid="add-live-content">

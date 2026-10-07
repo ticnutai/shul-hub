@@ -100,6 +100,8 @@ export function useFitText<T extends HTMLElement>(key: unknown) {
     // Hebrew type arrives after the first paint on a cold TV; measure again.
     void document.fonts?.ready.then(fit).catch(() => {});
 
+    // An old browser with no ResizeObserver fits once, as the board first stands.
+    if (typeof ResizeObserver === "undefined") return;
     let lastSize = "";
     const observer = new ResizeObserver((entries) => {
       const size = entries

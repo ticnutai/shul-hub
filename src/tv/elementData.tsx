@@ -1,7 +1,7 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, type CSSProperties, type ReactNode } from 'react';
 import { AutoScroll } from './AutoScroll';
 import { OverflowContext } from './overflowContext';
-import { turnOf, type BoardElement, type ElementScroll } from './elements';
+import { textLook, turnOf, wraps, type BoardElement, type ElementScroll } from './elements';
 import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import { useFitLine } from './useFitLine';
 import { useFitText } from './useFitText';
@@ -17,7 +17,8 @@ export function BoundElement({ element }: { element: BoardElement }) {
   const e = turns && data ? { ...element, binding: turns[turnOf(turns.length, element.alternateSeconds, data.now)] } : element;
   const deadlines=useDeadlines();
   const countdown=deadlines[0];
-  const style = { width: '100%', height: '100%', fontSize: `${e.fontSize}cqh`, fontWeight: 700 };
+  const look = textLook(e);
+  const style: CSSProperties = { width: '100%', height: '100%', fontSize: `${e.fontSize}cqh`, ...look };
   if (!data) {
     const labels = {clock:'12:00',analog:'◷',prayers:'זמני תפילות',lessons:'שיעורי תורה',title:'שם בית הכנסת',date:'תאריך עברי',zmanim:'זמני היום',footer:'פרשה ולימוד יומי',logos:'לוגואים',announcements:'הודעות',parasha:'פרשת השבוע',dafYomi:'דף יומי',amudYomi:'עמוד יומי',seasonal:'תוספות לתפילה'};
     return <div style={{ ...style, display: 'grid', placeItems: 'center' }}>{e.binding ? labels[e.binding] : e.text}</div>;
@@ -25,9 +26,10 @@ export function BoundElement({ element }: { element: BoardElement }) {
   if(e.binding==='prayers' && countdown?.stage==='panel') return <DeadlineCard alert={countdown}/>;
   if(e.binding==='logos') return <div data-content-binding="logos" style={{...style,display:'flex',justifyContent:'center',gap:'1cqw'}}>{data.logos?.map(l=><img key={l.url} src={l.url} alt={l.name} style={{maxWidth:'100%',height:'100%',objectFit:'contain'}} />)}</div>;
   // One line that shrinks to fit (a name, a date, the parasha); paragraphs wrap.
-  if(e.binding==='title'||e.binding==='date'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return <FitLine binding={e.binding} text={data[e.binding] ?? ''} fontSize={e.fontSize} />;
-  if((e.binding==='footer'||e.binding==='announcements') && e.scroll) return <Scrolling mode={e.scroll}><div data-content-binding={e.binding} dir="rtl" style={{ display: 'grid', placeItems: 'center', textAlign: 'center', whiteSpace: 'pre-wrap', lineHeight: 1.4, fontWeight: 700, fontSize: `${e.fontSize}cqh` }}>{data[e.binding]}</div></Scrolling>;
-  if(e.binding==='footer'||e.binding==='announcements') return <FitBlock binding={e.binding} text={data[e.binding] ?? ''} fontSize={e.fontSize} />;
+  // Made smaller to fit, or broken into lines at its own size: the part's "גלישת שורות" (wraps()).
+  if(e.binding==='title'||e.binding==='date'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
+  if((e.binding==='footer'||e.binding==='announcements') && e.scroll) return <Scrolling mode={e.scroll}><div data-content-binding={e.binding} dir="rtl" style={{ display: 'grid', alignItems: 'center', justifyItems: justify(e), whiteSpace: 'pre-wrap', lineHeight: 1.4, fontSize: `${e.fontSize}cqh`, ...look }}>{data[e.binding]}</div></Scrolling>;
+  if(e.binding==='footer'||e.binding==='announcements') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.4} /> : <FitBlock binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(data.now);
   if (e.binding === 'clock') return <div data-content-binding="clock" dir="ltr" style={{ ...style, display: 'grid', placeItems: 'center' }}>{parts}</div>;
   if (e.binding === 'analog') {
@@ -48,7 +50,7 @@ export function BoundElement({ element }: { element: BoardElement }) {
   const page = scrolling ? 0 : Math.floor(data.now.getTime() / 15000) % pages;
   const list = <div data-content-binding={e.binding} dir="rtl" style={{ ...style, display: 'flex', flexDirection: 'column', ...(scrolling ? { height: 'auto' } : {}) }}>
     {(scrolling ? rows : rows.slice(page * per, page * per + per)).map((row, i) => { const [label,time]=row; const key=e.binding==='zmanim'?data.zmanKeys?.[data.zmanim!.indexOf(row)]:undefined; return <div key={key??i} data-zman={key} className={deadlines.some(a=>a.event===key)?'tv-zman-warning':undefined} style={{ flex: scrolling ? `0 0 ${e.height / count}cqh` : `0 0 ${100/count}%`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1cqw', lineHeight: 1.2 }}>
-      {e.binding==='lessons' ? <><span style={{minWidth:0}}>{label.split(' · ')[0]}<small style={{display:'block',fontSize:'.72em',fontWeight:400,marginTop:'.4cqh'}}>{label.split(' · ').slice(1).join(' · ')}</small></span><span style={{flexShrink:0,textAlign:'left'}}><b dir="ltr">{time.split(' · ')[0]}</b><small style={{display:'block',fontSize:'.65em',fontWeight:400}}>{time.split(' · ').slice(1).join(' · ')}</small></span></> : <><FitLabel text={label} /><b dir="ltr" style={{ whiteSpace: 'nowrap' }}>{time}</b></>}
+      {e.binding==='lessons' ? <><span style={{minWidth:0}}>{label.split(' · ')[0]}<small style={{display:'block',fontSize:'.72em',fontWeight:400,marginTop:'.4cqh'}}>{label.split(' · ').slice(1).join(' · ')}</small></span><span style={{flexShrink:0,textAlign:'left'}}><b dir="ltr">{time.split(' · ')[0]}</b><small style={{display:'block',fontSize:'.65em',fontWeight:400}}>{time.split(' · ').slice(1).join(' · ')}</small></span></> : <>{wraps(e) ? <span style={{ flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.1 }}>{label}</span> : <FitLabel text={label} />}<b dir="ltr" style={{ whiteSpace: 'nowrap' }}>{time}</b></>}
     </div>;})}
     {!rows.length && <span style={{ margin: 'auto', fontSize: '.65em' }}>{e.binding==='zmanim'?'לא נבחרו זמני יום':`לא הוגדרו ${e.binding === 'prayers' ? 'תפילות להיום' : 'שיעורים להיום'}`}</span>}
   </div>;
@@ -71,14 +73,35 @@ function Scrolling({ mode, children }: { mode: ElementScroll; children: ReactNod
   );
 }
 
-function FitLine({ binding, text, fontSize }: { binding: string; text: string; fontSize: number }) {
-  const ref = useFitLine<HTMLDivElement>(text);
+/** Where a line stands across its box: the part's alignment, centred by default. */
+const justify = (e: BoardElement) => (e.align && e.align !== 'center' ? e.align : 'center');
+
+/** One line, made smaller until it fits across its box. */
+export function FitLine({ binding, text, e }: { binding?: string; text: string; e: BoardElement }) {
+  const ref = useFitLine<HTMLDivElement>(`${text}|${e.font}|${e.weight}|${e.italic}`);
   return (
     <div
       ref={ref}
       data-content-binding={binding}
       dir="rtl"
-      style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, fontWeight: 700, fontSize: `calc(${fontSize}cqh * var(--fit, 1))` }}
+      style={{ width: '100%', height: '100%', display: 'grid', alignItems: 'center', justifyItems: justify(e), whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.2, ...textLook(e), fontSize: `calc(${e.fontSize}cqh * var(--fit, 1))` }}
+    >
+      {text}
+    </div>
+  );
+}
+
+/**
+ * Text at its own size, broken into lines where it is long - never made
+ * smaller by itself. What does not fit is cut at the frame's edge.
+ */
+export function WrapText({ binding, text, e, lineHeight }: { binding?: string; text: ReactNode; e: BoardElement; lineHeight: number }) {
+  return (
+    <div
+      data-content-binding={binding}
+      data-wrap="true"
+      dir="rtl"
+      style={{ width: '100%', height: '100%', display: 'grid', alignItems: 'center', justifyItems: 'stretch', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', overflow: 'hidden', lineHeight, ...textLook(e), fontSize: `${e.fontSize}cqh` }}
     >
       {text}
     </div>
@@ -90,14 +113,14 @@ function FitLine({ binding, text, fontSize }: { binding: string; text: string; f
  * as the notice cards of the ordinary board are. A long notice used to run
  * out of its frame and over the part below it.
  */
-function FitBlock({ binding, text, fontSize }: { binding: string; text: string; fontSize: number }) {
-  const ref = useFitText<HTMLDivElement>(text);
+function FitBlock({ binding, text, e }: { binding: string; text: string; e: BoardElement }) {
+  const ref = useFitText<HTMLDivElement>(`${text}|${e.font}|${e.weight}`);
   return (
     <div
       ref={ref}
       data-content-binding={binding}
       dir="rtl"
-      style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', textAlign: 'center', whiteSpace: 'pre-wrap', overflow: 'hidden', lineHeight: 1.4, fontWeight: 700, fontSize: `calc(${fontSize}cqh * var(--fit, 1))` }}
+      style={{ width: '100%', height: '100%', display: 'grid', alignItems: 'center', justifyItems: 'stretch', whiteSpace: 'pre-wrap', overflow: 'hidden', lineHeight: 1.4, ...textLook(e), fontSize: `calc(${e.fontSize}cqh * var(--fit, 1))` }}
     >
       {text}
     </div>
@@ -118,8 +141,13 @@ function FitLabel({ text }: { text: string }) {
   );
 }
 
-/** A heading taking the same turns as the content of its frame. */
-export function TurningText({ texts, seconds }: { texts: string[]; seconds?: number }) {
+/**
+ * A text of the gabbai's own (a heading, a line written by hand): broken into
+ * lines at its size, or on one line made smaller to fit - as its "גלישת
+ * שורות" says. A heading that takes turns shows the words whose turn it is.
+ */
+export function PlainText({ e }: { e: BoardElement }) {
   const data = useContext(Context);
-  return <>{texts[data ? turnOf(texts.length, seconds, data.now) : 0]}</>;
+  const text = e.alternateTexts ? e.alternateTexts[data ? turnOf(e.alternateTexts.length, e.alternateSeconds, data.now) : 0] : e.text;
+  return wraps(e) ? <WrapText text={text} e={e} lineHeight={1.25} /> : <FitLine text={text} e={e} />;
 }

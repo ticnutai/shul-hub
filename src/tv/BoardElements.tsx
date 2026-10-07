@@ -1,7 +1,7 @@
-import { useEffect, useRef, useId } from 'react';
+import { useEffect, useRef, useId, useState } from 'react';
 import { useElementEditing } from './elementEditing';
-import { ElementDataProvider, BoundElement, TurningText, type ElementData } from './elementData';
-import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, resizeElements, type BoardElement, type ResizeHandle } from './elements';
+import { ElementDataProvider, BoundElement, PlainText, type ElementData } from './elementData';
+import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, resizeElements, type BoardElement, type ResizeHandle } from './elements';
 
 /** Where each handle stands on the selection's box, and the cursor it shows. */
 const HANDLE_AT: Record<ResizeHandle, { left: string; top: string; cursor: string }> = {
@@ -28,7 +28,7 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
   // A symbol laid over an arch (artSymbols.ts) fades into the drawing at its edges.
   if (e.kind === 'image' && e.image && e.crop) return <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...(e.symbol ? { maskImage: 'radial-gradient(closest-side, #000 72%, transparent 100%)', WebkitMaskImage: 'radial-gradient(closest-side, #000 72%, transparent 100%)' } : {}) }}><img src={e.image} alt={e.name} draggable={false} style={{ position: 'absolute', maxWidth: 'none', width: `${10000 / e.crop.width}%`, height: `${10000 / e.crop.height}%`, left: `${-100 * e.crop.x / e.crop.width}%`, top: `${-100 * e.crop.y / e.crop.height}%` }} /></div>;
   if (e.kind === 'image') return e.image ? <img src={e.image} alt={e.name} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : null;
-  if (e.kind === 'text') return <div dir="rtl" style={{ whiteSpace: 'pre-wrap', textAlign: 'center', fontWeight: 700, width: '100%', overflow: 'hidden', fontSize: `${e.fontSize}cqh` }}>{e.alternateTexts ? <TurningText texts={e.alternateTexts} seconds={e.alternateSeconds} /> : e.text}</div>;
+  if (e.kind === 'text') return <PlainText e={e} />;
   if (e.kind === 'column') return <svg viewBox="0 0 100 600" preserveAspectRatio="none" width="100%" height="100%" aria-hidden>
     <path fill={e.color} d="M0 0H100V18H0ZM6 22H94V38H6ZM12 48H88L79 75H21ZM25 78H75V535H25ZM17 539H83V558H17ZM7 562H93V579H7ZM0 583H100V600H0Z" />
     <path stroke="#fff" opacity=".42" strokeWidth="4" d="M34 84V529M47 84V529M61 84V529" />
@@ -49,11 +49,26 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
   }, [elements, enabled, setDraft]);
   const shown = enabled && editor.draft ? editor.draft : elements;
   const stop = () => { drag.current = null; editor?.setDraft(null); };
+  /** A text of the gabbai's being written into, on the board itself (double click). */
+  const [writing, setWriting] = useState<string | null>(null);
+  useEffect(() => { if (!enabled) setWriting(null); }, [enabled]);
+  const writable = (e: BoardElement) => e.kind === 'text' && !e.binding && !e.alternateTexts && !e.locked;
+  /**
+   * The press before this one: two on the same text in quick succession are a
+   * double click. The browser's own dblclick cannot tell: the first press
+   * captures the pointer for dragging, and the click is then the board's.
+   */
+  const lastDown = useRef<{ id: string; at: number } | null>(null);
   return <ElementDataProvider value={data}><div data-testid="board-elements" data-free-edit={enabled ? 'true' : undefined}
     tabIndex={enabled ? 0 : undefined} aria-label={enabled ? 'עריכת אלמנטים על הלוח' : undefined}
     style={{ position: 'absolute', inset: 0, pointerEvents: surface ? 'auto' : 'none', zIndex: 15, outline: 'none' }}
     onClick={enabled ? e => { if (!e.altKey) e.stopPropagation(); } : undefined}
-    onDoubleClick={enabled ? e => e.stopPropagation() : undefined}
+    onDoubleClick={enabled ? ev => {
+      ev.stopPropagation();
+      const node = (ev.target as Element).closest<HTMLElement>('[data-element-id]');
+      const e = node && elements.find(x => x.id === node.dataset.elementId);
+      if (e && writable(e)) { stop(); editor.select([e.id]); setWriting(e.id); }
+    } : undefined}
     onKeyDown={enabled ? ev => {
       if (ev.target !== ev.currentTarget || ev.altKey) return;
       const ids = editor.selected;
@@ -89,6 +104,8 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
     onPointerCancel={stop} onLostPointerCapture={stop}
     onPointerDown={enabled ? ev => {
       if (ev.button !== 0 || ev.altKey) return;
+      // Inside the text being written: the caret moves, nothing is dragged.
+      if ((ev.target as Element).closest('[data-writing]')) return;
       // A handle of the selection: stretch or narrow it, from that side.
       const handle = (ev.target as HTMLElement).dataset.elementHandle as ResizeHandle | undefined;
       if (handle && editor.selected.length) {
@@ -102,6 +119,13 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       const node = (ev.target as Element).closest<HTMLElement>('[data-element-id]');
       if (!node) { editor.select([]); return; }
       const e = elements.find(x => x.id === node.dataset.elementId); if (!e) return;
+      const at = Date.now(), last = lastDown.current;
+      lastDown.current = { id: e.id, at };
+      if (last?.id === e.id && at - last.at < 450 && writable(e)) {
+        ev.preventDefault(); ev.stopPropagation();
+        stop(); editor.select([e.id]); setWriting(e.id); lastDown.current = null;
+        return;
+      }
       ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.focus({ preventScroll: true });
       const family = e.group ? elements.filter(x => x.group === e.group).map(x => x.id) : [e.id];
       const ids = ev.shiftKey ? [...new Set([...editor.selected, ...family])] : editor.selected.includes(e.id) ? editor.selected : family;
@@ -113,7 +137,10 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
     } : undefined}>
     {shown.map(e => <div key={e.id} data-element-id={e.id} data-testid={surface ? `element-${e.id}` : undefined}
       style={{ ...elementStyle(e), pointerEvents: enabled ? 'auto' : 'none', touchAction: enabled ? 'none' : undefined, userSelect: enabled ? 'none' : undefined, cursor: enabled ? e.locked ? 'not-allowed' : 'move' : undefined }}>
-      <ElementArt element={e} />
+      {writing === e.id ? <WriteInPlace element={e} onDone={(text) => {
+        setWriting(null);
+        if (text !== null && text !== e.text) api.commit(elements.map(x => x.id === e.id ? { ...x, text } : x), `element-write:${e.id}`);
+      }} /> : <ElementArt element={e} />}
       {enabled && editor.selected.includes(e.id) && <span data-edit-ui="true" style={{ position: 'absolute', inset: 0, outline: '2px solid #38bdf8', pointerEvents: 'none' }} />}
     </div>)}
     {enabled && <SelectionHandles elements={shown} ids={editor.selected} />}
@@ -133,4 +160,40 @@ function SelectionHandles({ elements, ids }: { elements: BoardElement[]; ids: st
     {RESIZE_HANDLES.map(h => <span key={h} data-element-handle={h} role="button" aria-label={`שינוי גודל - ${HANDLE_NAMES[h]}`}
       style={{ position: 'absolute', left: HANDLE_AT[h].left, top: HANDLE_AT[h].top, width: 12, height: 12, margin: '-6px 0 0 -6px', background: '#38bdf8', border: '2px solid #fff', borderRadius: 3, boxShadow: '0 0 0 1px #0369a1', cursor: HANDLE_AT[h].cursor, pointerEvents: 'auto', touchAction: 'none' }} />)}
   </div>;
+}
+
+/**
+ * Writing into a text on the board itself: the words where they stand, in
+ * their own letters. Enter keeps them (Shift+Enter starts a new line), Esc
+ * leaves them as they were, and so does clicking away - it keeps them.
+ */
+function WriteInPlace({ element: e, onDone }: { element: BoardElement; onDone: (text: string | null) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const done = useRef(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Without scrolling: the board's frame clips its overflow, and a focus that
+    // scrolled it to the text left the whole board standing aside.
+    el.focus({ preventScroll: true });
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(range);
+  }, []);
+  const finish = (text: string | null) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(text);
+  };
+  return <div ref={ref} data-writing="true" contentEditable suppressContentEditableWarning dir="rtl" role="textbox" aria-multiline="true" aria-label={`כתיבה ב${e.name}`}
+    style={{ width: '100%', minHeight: '100%', outline: '2px dashed #38bdf8', outlineOffset: 2, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.25, cursor: 'text', userSelect: 'text', ...textLook(e), fontSize: `${e.fontSize}cqh`, background: 'rgba(56, 189, 248, 0.08)' }}
+    onKeyDown={ev => {
+      ev.stopPropagation();
+      if (ev.key === 'Escape') { ev.preventDefault(); finish(null); }
+      else if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finish((ev.currentTarget.innerText ?? '').replace(/\n$/, '').slice(0, 2000)); }
+    }}
+    onBlur={ev => finish((ev.currentTarget.innerText ?? '').replace(/\n$/, '').slice(0, 2000))}
+  >{e.text}</div>;
 }

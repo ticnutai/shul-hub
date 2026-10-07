@@ -259,3 +259,38 @@ describe("several at once, and back to the kit", () => {
     expect(named("עמוד שיש שמאל").hidden || named("עמוד שיש ימין").locked).toBe(false);
   });
 });
+
+describe("the letters, from one bar", () => {
+  it("sizes, sets the font, bold, alignment and wrapping of the chosen text, and its words", () => {
+    const start = { ...structuredClone(DEFAULT_TV_CONFIG), ...structuredClone(PREMIUM_DESIGNS[0].values) } as TvConfig;
+    render(<Harness start={start} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "בחירת כותרת תפילות" }));
+    const tools = screen.getByTestId("element-text-tools");
+    const size = named("כותרת תפילות").fontSize;
+    fireEvent.click(screen.getByRole("button", { name: "הגדלת הטקסט" }));
+    expect(named("כותרת תפילות").fontSize).toBeCloseTo(size + 0.25);
+    fireEvent.change(screen.getByRole("combobox", { name: "גופן" }), { target: { value: "david" } });
+    fireEvent.click(screen.getByRole("button", { name: "מודגש" }));
+    fireEvent.click(screen.getByRole("button", { name: "יישור לימין" }));
+    fireEvent.click(screen.getByRole("button", { name: "גלישת שורות" }));
+    expect(named("כותרת תפילות")).toMatchObject({ font: "david", weight: "normal", align: "right", wrap: false });
+    fireEvent.change(screen.getByRole("textbox", { name: "מה כתוב בטקסט" }), { target: { value: "תפילות השבוע" } });
+    expect(latest.elements.find((e) => e.text === "תפילות השבוע")).toBeTruthy();
+    // One bar: no second size field, no second words field, in the same panel.
+    expect(screen.queryByRole("spinbutton", { name: "גודל טקסט" })).toBeNull();
+    expect(screen.queryByLabelText("תוכן האלמנט")).toBeNull();
+    expect(tools).toBeTruthy();
+  });
+
+  it("changes several texts at once", () => {
+    const start = { ...structuredClone(DEFAULT_TV_CONFIG), ...structuredClone(PREMIUM_DESIGNS[0].values) } as TvConfig;
+    render(<Harness start={start} />);
+    fireEvent.click(screen.getByRole("checkbox", { name: "בחירת כותרת תפילות" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: "בחירת כותרת שיעורים" }));
+    expect(screen.getByText("הטקסט של: 2 טקסטים")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "צל לטקסט" }));
+    expect(named("כותרת תפילות").shadow && named("כותרת שיעורים").shadow).toBe(true);
+    // Several texts have no one set of words to write.
+    expect(screen.queryByRole("textbox", { name: "מה כתוב בטקסט" })).toBeNull();
+  });
+});

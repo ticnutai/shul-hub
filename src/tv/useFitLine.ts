@@ -52,6 +52,8 @@ export function useFitLine<T extends HTMLElement>(key: unknown, slack = 1) {
     };
     fit();
     void document.fonts?.ready.then(fit).catch(() => {});
+    // An old browser with no ResizeObserver fits once, as the board first stands.
+    if (typeof ResizeObserver === "undefined") return;
     let lastSize = "";
     const observer = new ResizeObserver((entries) => {
       const size = entries.map((e) => `${Math.round(e.contentRect.width)}x${Math.round(e.contentRect.height)}`).join("|");

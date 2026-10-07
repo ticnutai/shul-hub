@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, setAlternates, turnOf, resizeElements, fitContent, type BoardElement } from './elements';
+import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
 import { kitOf, resetToKit } from './kitReset';
 import { BUILTIN_DESIGNS, applyDesign } from './designs';
 import { setSymbol, symbolChoices } from './artSymbols';
@@ -282,5 +282,33 @@ describe('stretching, the size of new content, and going back to the kit', () =>
       expect(resetToKit(changed, kitOf(changed)!).elements).toEqual(config.elements);
     }
     expect(kitOf({ ...structuredClone(DEFAULT_TV_CONFIG), elements: [box(1, 1, 5, 5)] })).toBeNull();
+  });
+});
+
+describe('the letters of a part', () => {
+  const text = (p: Partial<BoardElement> = {}) => ({ ...newElement('text'), ...p });
+  it('draws as before when nothing is chosen: bold, centred, the board\'s font', () => {
+    expect(textLook(text())).toEqual({ fontWeight: 700, textAlign: 'center' });
+  });
+  it('wears its own font, weight, slant, alignment and shadow', () => {
+    const look = textLook(text({ font: 'david', weight: 'normal', italic: true, align: 'right', shadow: true }));
+    expect(look).toMatchObject({ fontWeight: 400, textAlign: 'right', fontStyle: 'italic' });
+    expect(String(look.fontFamily)).toContain('David Libre');
+    expect(look.textShadow).toBeTruthy();
+  });
+  it('wraps a text of the gabbai\'s, fits a name or a date - unless told otherwise', () => {
+    expect(wraps(text())).toBe(true);
+    expect(wraps(text({ binding: 'title' }))).toBe(false);
+    expect(wraps(text({ binding: 'title', wrap: true }))).toBe(true);
+    expect(wraps(text({ wrap: false }))).toBe(false);
+  });
+  it('keeps what is chosen through saving, and refuses what is not one of the choices', () => {
+    const [kept] = normalizeElements([text({ font: 'rubik', weight: 'normal', italic: true, align: 'left', shadow: true, wrap: false })]);
+    expect(kept).toMatchObject({ font: 'rubik', weight: 'normal', italic: true, align: 'left', shadow: true, wrap: false });
+    const [bad] = normalizeElements([{ ...text(), font: 'comic', weight: '900', align: 'justify', wrap: 'yes' }]);
+    expect(bad.font).toBeUndefined();
+    expect(bad.weight).toBeUndefined();
+    expect(bad.align).toBeUndefined();
+    expect(bad.wrap).toBeUndefined();
   });
 });
