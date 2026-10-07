@@ -173,6 +173,8 @@ import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
+import { editPage, pageLook, readPages } from "@/tv/partPages";
+import { PartPagesBar } from "./PartPagesBar";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
 import { TvEditInspector } from "./TvEditInspector";
@@ -610,22 +612,38 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
    * screen actually does and the preview is that screen's board. With no
    * screen chosen it is the shared board itself, unchanged.
    */
-  const scoped = occasionScope ? occasionLook(state.present, occasionScope) : configForDevice(state.present, scopeDevice);
+  /**
+   * Which page of a board of parts is being worked on (partPages.ts): page 1
+   * is the board; on any other, everything here - the preview, the kit, the
+   * frames, what they show - is that page's, and nothing else changes.
+   */
+  const [pageScope, setPageScope] = useState(0);
+  const pageIndex = occasionScope ? 0 : Math.min(pageScope, readPages(state.present).length - 1);
+  const scoped = occasionScope
+    ? occasionLook(state.present, occasionScope)
+    : pageIndex > 0
+      ? pageLook(state.present, pageIndex)
+      : configForDevice(state.present, scopeDevice);
   const comparing = shownVersion ?? (beforeAfter && saved.data ? { id: "saved", label: "מה שעל המסכים עכשיו", config: saved.data.config } : null);
-  const shownConfig = comparing ? comparing.config : state.present;
+  const shownConfig = comparing ? pageLook(comparing.config, pageIndex) : pageLook(state.present, pageIndex);
   const view = preview ? { ...scoped, ...preview } : scoped;
 
   const edit = useCallback(
     (key: string, update: (c: TvConfig) => TvConfig) =>
       dispatch({
         type: "edit",
-        key: `${occasionScope ?? scope}:${key}`,
+        key: `${occasionScope ?? scope}:page${pageIndex}:${key}`,
         // The controls are all (config) => config and none of them know that
-        // screens or occasions exist; this is the one place that decides where
-        // the change lands (see editForDevice, editOccasionDesign).
-        update: (c) => (occasionScope ? editOccasionDesign(c, occasionScope, update) : editForDevice(c, scopeDevice, update)),
+        // screens, occasions or pages exist; this is the one place that decides
+        // where the change lands (see editForDevice, editOccasionDesign, editPage).
+        update: (c) =>
+          occasionScope
+            ? editOccasionDesign(c, occasionScope, update)
+            : pageIndex > 0
+              ? editPage(c, pageIndex, update)
+              : editForDevice(c, scopeDevice, update),
       }),
-    [scope, scopeDevice, occasionScope],
+    [scope, scopeDevice, occasionScope, pageIndex],
   );
 
   // Keyboard undo/redo while the panel is open.
@@ -982,7 +1000,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     commit: (next, key = `elements:${crypto.randomUUID()}`) => edit(key, c => ({ ...c, elements: normalizeElements(next) })),
   };
   useEffect(() => { setElementEditingEnabled(editing && !comparing); }, [editing, comparing, setElementEditingEnabled]);
-  useEffect(() => { setElementDraft(null); selectElements([]); }, [scope, occasionScope, comparing, setElementDraft, selectElements]);
+  useEffect(() => { setElementDraft(null); selectElements([]); }, [scope, occasionScope, pageIndex, comparing, setElementDraft, selectElements]);
   const layerProps: LayerProps = {
     config: view,
     saved: scoped,
@@ -1328,6 +1346,16 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
 
       {guide && <BuildGuide done={guide} onStep={goToStep} onClose={() => setGuide(null)} />}
 
+      {/* The pages of a board of parts: above the tabs, since every tab edits the page chosen here. */}
+      {!occasionScope && (state.present.screenLayout === "composition" || readPages(state.present).length > 1) && (
+        <PartPagesBar
+          config={state.present}
+          current={pageIndex}
+          onSelect={setPageScope}
+          onEdit={(key, update) => dispatch({ type: "edit", key: `pages:${key}`, update })}
+        />
+      )}
+
       <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="design">עיצוב</TabsTrigger>
@@ -1492,7 +1520,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             hint="בערכה מחלקים, כל תוכן עומד במסגרת משלו: מדליקים מה שרוצים להציג, ובוחרים לו צד."
           >
             <p className="mb-3 text-sm" data-testid="composition-layout-notice">
-              בערכה מחלקים אין מסכים מתחלפים: כל מה שדלוק כאן מופיע על הלוח כל הזמן, במקום שלו. לשינוי גודל ולהזזה מדויקת - רשימת החלקים.
+              כאן קובעים מה מופיע בעמוד שנבחר למעלה ב"עמודי הלוח", ובאיזה צד. כל עמוד מסודר בנפרד, והלוח מתחלף בין העמודים לפי השניות של כל אחד. לשינוי גודל ולהזזה מדויקת - רשימת החלקים.
             </p>
             <PartsContent config={view} onEdit={edit} onManual={openPartsList} />
             <Button type="button" size="sm" variant="outline" className="mt-3" onClick={openPartsList}>
@@ -2005,14 +2033,15 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
               "שמור ושדר", ומתעדכן גם בעורך שבעמוד הניהול.
             </p>
             <div className="flex flex-wrap items-center gap-2">{previewActions}</div>
-            <SlideStrip
+            {/* A board of parts turns its pages (above the tabs), not these. */}
+            {view.screenLayout !== "composition" && <SlideStrip
               slides={board.slides}
               index={index}
               onPick={(i) => {
                 setPreviewIndex(i);
                 setCycle((c) => c + 1);
               }}
-            />
+            />}
             {editing && (
               <TvEditInspector
                 selected={selected}
@@ -2238,7 +2267,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           </Button>
         </span>
       </div>
-      <div className="mt-2">
+      {view.screenLayout !== "composition" && <div className="mt-2">
         <SlideStrip
           slides={board.slides}
           index={index}
@@ -2247,7 +2276,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             setCycle((c) => c + 1);
           }}
         />
-      </div>
+      </div>}
 
       {/* The same save as the bar at the top, kept under the preview.
 

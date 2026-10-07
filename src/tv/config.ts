@@ -443,9 +443,36 @@ export interface BoardLogo {
   urlDark?: string;
 }
 
+/**
+ * A page of a board of parts (partPages.ts). The first is the board itself
+ * and has no `look`; every other keeps its whole look - kit, frames, content,
+ * background - beside the board.
+ */
+export interface PartPage {
+  id: string;
+  name: string;
+  /** How long it stands before the next page. */
+  seconds: number;
+  look?: Partial<TvConfig>;
+}
+
+/**
+ * What a page of parts keeps of its own: the look of a board, the same keys
+ * a design carries (DESIGN_KEYS in designs.ts; a test holds them equal).
+ */
+export const PAGE_LOOK_KEYS: Array<keyof TvConfig> = [
+  "backgroundGradient", "backgroundImage", "backgroundOverlay", "backgroundDim", "backgroundTune",
+  "elements", "boardFrame", "boardFrameTune", "boardFrameImage", "frame",
+  "font", "textScale", "tracking", "styles", "titleStyle",
+  "screenLayout", "illustration", "spacing", "clockStyle",
+  "theme", "themeOverrides", "frameStyle", "frameLooks", "illustratedStyle",
+];
+
 export interface TvConfig {
   elementLibrary: SavedElementSet[];
   elements: BoardElement[];
+  /** The pages of a board of parts; none (or one) - the board is one page. */
+  partPages: PartPage[];
   screenLayout: ScreenLayout;
   /**
    * Which painted board the "illustrated" layout shows: a built-in id or the
@@ -755,6 +782,7 @@ export const DEFAULT_ILLUSTRATED_STYLE: IllustratedStyle = {
 export const DEFAULT_TV_CONFIG: TvConfig = {
   elementLibrary: [],
   elements: [],
+  partPages: [],
   perDevice: {},
   theme: "navy",
   font: "classic",
@@ -1241,6 +1269,32 @@ function retireSlideSwitches(c: TvConfig): TvConfig {
   };
 }
 
+/**
+ * The pages of a board of parts, as they come from storage: each page's look
+ * is checked exactly as a board is (it is one), so a page cannot carry what
+ * the board itself may not.
+ */
+function normalizePartPages(raw: unknown): PartPage[] {
+  // Page 1 is the board itself and has no look of its own: a list that starts otherwise is not pages.
+  if (!Array.isArray(raw) || (isObj(raw[0]) && raw[0].look !== undefined)) return [];
+  const seen = new Set<string>();
+  const pages = raw.slice(0, 12).flatMap((p, i): PartPage[] => {
+    if (!isObj(p) || typeof p.id !== "string" || !/^[\w-]{1,40}$/.test(p.id) || seen.has(p.id)) return [];
+    if (i > 0 && !isObj(p.look)) return [];
+    seen.add(p.id);
+    const page: PartPage = {
+      id: p.id,
+      name: typeof p.name === "string" && p.name.trim() ? p.name.trim().slice(0, 40) : `עמוד ${i + 1}`,
+      seconds: Math.round(num(p.seconds, 30, 5, 3600)),
+    };
+    if (i === 0) return [page];
+    const look = normalizeTvConfig({ ...(p.look as Record<string, unknown>), partPages: [] });
+    return [{ ...page, look: Object.fromEntries(PAGE_LOOK_KEYS.map((k) => [k, look[k]])) as Partial<TvConfig> }];
+  });
+  // A first page lost on the way leaves pages with nobody to be page 1.
+  return pages[0]?.id === (raw[0] as { id?: unknown })?.id ? pages : [];
+}
+
 export function normalizeTvConfig(raw: unknown): TvConfig {
   const c = retireSlideSwitches(normalizeStored(raw));
   if (c.screenLayout !== "illustrated" && !Object.values(c.perDevice).some((o) => o?.screenLayout === "illustrated")) return c;
@@ -1302,6 +1356,7 @@ function normalizeStored(stored: unknown): TvConfig {
   return {
     elementLibrary: normalizeElementLibrary(raw.elementLibrary),
     elements: normalizeElements(raw.elements),
+    partPages: normalizePartPages(raw.partPages),
     theme,
     font,
     textScale: num(raw.textScale, d.textScale, 0.8, 1.3),

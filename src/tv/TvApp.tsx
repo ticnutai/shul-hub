@@ -6,6 +6,7 @@ import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
 import { installUpdateNow, nativeAppInfo, updateText, useApkUpdate } from "./apkUpdate";
 import { configForDevice, SLIDE_KIND_LABELS, type TvConfig } from "./config";
+import { pageAt, pageLook } from "./partPages";
 import { useDeviceClass } from "./useDeviceClass";
 import { checkClock } from "./clock";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
@@ -205,12 +206,14 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   // The board as this slide wears it: an occasion's own screen in its design,
   // the ordinary screens in theirs (occasions.ts `designOn`).
   const occasionSlideId = slide?.id.startsWith("occasion:") ? slide.id : null;
+  // A board of parts with pages: the page whose turn it is, read off the clock (partPages.ts).
+  const page = pageAt(config, now);
   const drawConfig = useMemo<TvConfig>(
     () =>
       occasionSlideId
         ? boardConfig(baseConfig, { deviceClass, lookOverride: themeOverride, now: minuteNow, settings: data.settings, slideId: occasionSlideId })
-        : config,
-    [occasionSlideId, config, baseConfig, deviceClass, themeOverride, minuteNow, data.settings],
+        : pageLook(config, page),
+    [occasionSlideId, config, page, baseConfig, deviceClass, themeOverride, minuteNow, data.settings],
   );
 
   // Rotation is one timeout per slide, not a ticking counter. A 250 ms state
