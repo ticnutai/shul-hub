@@ -27,14 +27,36 @@ export function readPages(c: TvConfig): PartPage[] {
 const pick = (c: TvConfig): Partial<TvConfig> =>
   Object.fromEntries(PAGE_LOOK_KEYS.map(k => [k, structuredClone(c[k])])) as Partial<TvConfig>;
 
-/** The board as page `i` shows it: page 1 is the board; any other, its look over the board. */
+type Devices = TvConfig['perDevice'];
+const isLook = (k: string) => PAGE_LOOK_KEYS.includes(k as keyof TvConfig);
+/**
+ * One screen kind's own settings, split: what is a page's look (its frames on
+ * the phone, say) and what is the board's (its wording there).
+ */
+function split(devices: Devices, look: boolean): Devices {
+  const out: Devices = {};
+  for (const [d, o] of Object.entries(devices ?? {})) {
+    if (!o) continue;
+    const kept = Object.fromEntries(Object.entries(o).filter(([k]) => isLook(k) === look));
+    if (Object.keys(kept).length) (out as Record<string, unknown>)[d] = kept;
+  }
+  return out;
+}
+function merge(a: Devices, b: Devices): Devices {
+  const out: Devices = { ...a };
+  for (const [d, o] of Object.entries(b ?? {})) (out as Record<string, unknown>)[d] = { ...(a as Record<string, object>)[d], ...o };
+  return out;
+}
+
+/**
+ * The board as page `i` shows it: page 1 is the board; any other, its look
+ * over the board - and on each kind of screen, that page's own settings for it
+ * (`devices`), never page 1's frames on a phone.
+ */
 export function pageLook(c: TvConfig, i: number): TvConfig {
   const page = i > 0 ? c.partPages[i] : undefined;
   if (!page?.look) return c;
-  // The page's look on every kind of screen: a phone's own copy of page 1's frames is page 1's.
-  const perDevice = Object.fromEntries(Object.entries(c.perDevice).map(([d, o]) =>
-    [d, o && Object.fromEntries(Object.entries(o).filter(([k]) => !PAGE_LOOK_KEYS.includes(k as keyof TvConfig)))])) as TvConfig['perDevice'];
-  return { ...c, ...page.look, perDevice };
+  return { ...c, ...page.look, perDevice: merge(split(c.perDevice, false), page.devices ?? {}) };
 }
 
 /**
@@ -47,22 +69,41 @@ export function editPage(c: TvConfig, i: number, update: (c: TvConfig) => TvConf
   const after = update(pageLook(c, i));
   const board = { ...after } as TvConfig;
   for (const k of PAGE_LOOK_KEYS) (board as unknown as Record<string, unknown>)[k] = c[k];
-  board.perDevice = c.perDevice;
-  return { ...board, partPages: c.partPages.map((p, j) => (j === i ? { ...p, look: pick(after) } : p)) };
+  // A screen kind's settings made on this page: its look stays with the page,
+  // its wording goes to the board's, as from any page.
+  board.perDevice = merge(split(after.perDevice, false), split(c.perDevice, true));
+  const devices = split(after.perDevice, true);
+  return { ...board, partPages: c.partPages.map((p, j) => (j === i ? { ...p, look: pick(after), devices } : p)) };
 }
 
 /** Every page's look in order, the board's first: to reorder or remove pages without losing one. */
 function looks(c: TvConfig) {
-  return readPages(c).map((p, i) => ({ page: p, look: i === 0 ? pick(c) : p.look ?? pick(c) }));
+  return readPages(c).map((p, i) => ({
+    page: p,
+    look: i === 0 ? pick(c) : p.look ?? pick(c),
+    devices: i === 0 ? split(c.perDevice, true) : p.devices ?? {},
+  }));
 }
 function rebuild(c: TvConfig, list: ReturnType<typeof looks>): TvConfig {
   const [first, ...rest] = list;
-  const board = { ...c, ...first.look } as TvConfig;
+  // The first page's screen settings are the board's; the board's own wording stays.
+  const board = { ...c, ...first.look, perDevice: merge(split(c.perDevice, false), first.devices) } as TvConfig;
   const pages: PartPage[] = list.length < 2 ? [] : [
     { id: first.page.id, name: first.page.name, seconds: first.page.seconds },
-    ...rest.map(({ page, look }) => ({ id: page.id, name: page.name, seconds: page.seconds, look })),
+    ...rest.map(({ page, look, devices }) => ({ id: page.id, name: page.name, seconds: page.seconds, look, ...(Object.keys(devices).length ? { devices } : {}) })),
   ];
   return { ...board, partPages: pages };
+}
+
+/**
+ * Page `from` copied onto page `to`: its kit, frames, content and screen
+ * settings - to start a page from another one already made.
+ */
+export function copyPage(c: TvConfig, from: number, to: number): TvConfig {
+  const list = looks(c);
+  if (!list[from] || !list[to] || from === to) return c;
+  list[to] = { ...list[to], look: structuredClone(list[from].look), devices: structuredClone(list[from].devices) };
+  return rebuild(c, list);
 }
 
 const newPageId = (c: TvConfig) => {
@@ -81,7 +122,7 @@ export function addPage(c: TvConfig, from: number): { config: TvConfig; index: n
   if (list.length >= MAX_PAGES) return { config: c, index: from };
   const source = list[Math.min(from, list.length - 1)];
   const page: PartPage = { id: newPageId(c), name: `עמוד ${list.length + 1}`, seconds: source.page.seconds };
-  return { config: rebuild(c, [...list, { page, look: structuredClone(source.look) }]), index: list.length };
+  return { config: rebuild(c, [...list, { page, look: structuredClone(source.look), devices: structuredClone(source.devices) }]), index: list.length };
 }
 
 /** A page taken off. The first one taken off: the next becomes the board. */

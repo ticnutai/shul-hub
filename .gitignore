@@ -60,3 +60,6 @@ shots/
 # Screens photographed for diagnosis - evidence, not code.
 snap-*.png
 wall.png
+
+# Scratch scripts of one session (zz-preview.ts and the like): tried here, never kept.
+/zz-*

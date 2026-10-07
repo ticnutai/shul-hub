@@ -9,16 +9,19 @@
  * of parts at all, so there is one list of what takes turns, not two.
  */
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Copy, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Copy, Play, Square, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import type { TvConfig } from '@/tv/config';
-import { MAX_PAGES, addPage, movePage, readPages, removePage, setPage } from '@/tv/partPages';
+import { MAX_PAGES, addPage, copyPage, movePage, readPages, removePage, setPage } from '@/tv/partPages';
 
-export function PartPagesBar({ config, current, onSelect, onEdit }: {
+export function PartPagesBar({ config, current, onSelect, onEdit, playing = null, onPlay }: {
   config: TvConfig;
   current: number;
   onSelect: (index: number) => void;
+  /** The page the preview shows while the pages take their turns there; null - not playing. */
+  playing?: number | null;
+  onPlay?: (on: boolean) => void;
   /** An edit of the whole board (not of one page): the pages themselves. */
   onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void;
 }) {
@@ -37,6 +40,11 @@ export function PartPagesBar({ config, current, onSelect, onEdit }: {
     if (!window.confirm(`למחוק את "${page.name}"? המסגרות והתוכן שלו יימחקו. אפשר לבטל עם Ctrl+Z.`)) return;
     onEdit(`remove:${page.id}`, c => removePage(c, current));
     onSelect(Math.max(0, current - 1));
+  };
+  const copyFrom = (from: number) => {
+    if (!window.confirm(`להעתיק את "${pages[from].name}" אל "${page.name}"? הערכה, המסגרות והתוכן של "${page.name}" יוחלפו. אפשר לבטל עם Ctrl+Z.`)) return;
+    onEdit(`copy:${pages[from].id}:${page.id}`, c => copyPage(c, from, current));
+    toast.success(`"${page.name}" הוא עכשיו העתק של "${pages[from].name}".`);
   };
   const move = (by: -1 | 1) => {
     onEdit(`move:${page.id}`, c => movePage(c, current, by));
@@ -61,8 +69,10 @@ export function PartPagesBar({ config, current, onSelect, onEdit }: {
             role="tab"
             aria-selected={i === current}
             onClick={() => onSelect(i)}
-            className={`flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm transition ${i === current ? 'border-primary ring-2 ring-primary ring-offset-1' : 'hover:border-primary/50'}`}
+            data-playing={playing === i ? 'true' : undefined}
+            className={`flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm transition ${i === current ? 'border-primary ring-2 ring-primary ring-offset-1' : 'hover:border-primary/50'} ${playing === i ? 'bg-emerald-50 outline outline-2 outline-emerald-500 dark:bg-emerald-950/40' : ''}`}
           >
+            {playing === i && <Play className="size-3 fill-emerald-600 text-emerald-600" aria-label="מוצג עכשיו" />}
             <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
             <span>{p.name}</span>
             {pages.length > 1 && <span className="rounded bg-muted px-1 text-[10px] tabular-nums">{p.seconds} שנ׳</span>}
@@ -71,6 +81,12 @@ export function PartPagesBar({ config, current, onSelect, onEdit }: {
         <Button type="button" size="sm" variant="outline" onClick={add} disabled={pages.length >= MAX_PAGES} title="עמוד חדש - העתק של העמוד שנבחר, לשנות ממנו">
           <Copy className="size-4" aria-hidden /> עמוד חדש
         </Button>
+        {pages.length > 1 && onPlay && (
+          <Button type="button" size="sm" variant={playing !== null ? 'default' : 'outline'} aria-pressed={playing !== null} onClick={() => onPlay(playing === null)}
+            title="התצוגה המקדימה מתחלפת בין העמודים לפי השניות של כל אחד, כמו על הקיר">
+            {playing !== null ? <><Square className="size-4" aria-hidden /> עצירת ההחלפה</> : <><Play className="size-4" aria-hidden /> הצגת החלפה</>}
+          </Button>
+        )}
       </div>
       {pages.length > 1 && (
         <div className="flex flex-wrap items-end gap-3 border-t border-primary/20 pt-2" data-testid="part-page-settings">
@@ -103,11 +119,21 @@ export function PartPagesBar({ config, current, onSelect, onEdit }: {
             <Button type="button" size="sm" variant="outline" className="h-8" disabled={current === pages.length - 1} onClick={() => move(1)} aria-label="לאחר את העמוד" title="לאחר - יופיע אחרי העמוד שאחריו">
               לאחר <ChevronLeft className="size-4" aria-hidden />
             </Button>
+            <select aria-label="להעתיק לכאן עמוד אחר" value="" onChange={e => e.target.value !== '' && copyFrom(Number(e.target.value))}
+              className="h-8 rounded-md border bg-background px-2 text-sm" title="מחליף את העמוד הזה בהעתק של עמוד אחר">
+              <option value="">להעתיק לכאן…</option>
+              {pages.map((p, i) => i !== current && <option key={p.id} value={i}>{p.name}</option>)}
+            </select>
             <Button type="button" size="sm" variant="outline" className="h-8 text-destructive" onClick={remove} aria-label="מחיקת העמוד">
               <Trash2 className="size-4" aria-hidden /> מחיקה
             </Button>
           </div>
         </div>
+      )}
+      {playing !== null && (
+        <p className="text-xs text-emerald-800 dark:text-emerald-300" role="status" data-testid="part-pages-playing">
+          ▶ התצוגה מתחלפת בין העמודים. מוצג עכשיו: <b>{pages[playing]?.name}</b>. בחירת עמוד עוצרת את ההחלפה.
+        </p>
       )}
       {current > 0 && (
         <p className="text-xs" role="status" data-testid="part-page-editing">

@@ -19,6 +19,7 @@ import {
   useMinyanim,
   useSettings,
   useShiurim,
+  prayerLabel,
   DAYS_HE,
   minyanSubcategories,
   useMinyanOverrides,
@@ -28,7 +29,8 @@ import { specialDayTitle, specialZmanim, holyEndMinutesFor, todaysCategories } f
 import { formatTime, ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { HomeHero } from "@community/components/HomeHero";
 import { formatHebrewDate } from "@community/lib/hebrewDate";
-import { normalizeHomeHero } from "@community/lib/homeHero";
+import { israelMinutes, nextPrayer, normalizeHomeHero } from "@community/lib/homeHero";
+import { useNow } from "@community/lib/realtime";
 import { QuickAddButton } from "@community/components/QuickAddButton";
 import { normalizePrayerLayout } from "@community/components/PrayerLayoutPicker";
 import { DaySchedule } from "@community/components/DaySchedule";
@@ -139,6 +141,26 @@ export function CommunityHome() {
     [weekView, daysMode, minyanCategories, minyanim, settings, today, todayOverrides],
   );
 
+  /**
+   * The next prayer of today, for the strip: from every category of today,
+   * as the times above list them (the day's exceptions and cancellations too),
+   * looked at again every half minute.
+   */
+  const now = useNow(30_000);
+  const todaysPrayers = useMemo(
+    () =>
+      visibleCategories.flatMap((category) =>
+        resolveCategoryDay(minyanim, category, today, zmanim, todayOverrides).map((r) => ({
+          label: r.minyan.label || prayerLabel(minyanSubcategories(category), r.minyan.prayer),
+          time: r.time,
+          minutes: r.minutes,
+          cancelled: r.cancelled,
+        })),
+      ),
+    [visibleCategories, minyanim, today, zmanim, todayOverrides],
+  );
+  const upcoming = nextPrayer(todaysPrayers, israelMinutes(now));
+
   const hebrewDateLabel = formatHebrewDate(today);
   const dateLabel = new Intl.DateTimeFormat("he-IL", {
     weekday: "long",
@@ -164,6 +186,7 @@ export function CommunityHome() {
         dateLabel={dateLabel}
         sunrise={formatTime(zmanim.sunrise)}
         sunset={formatTime(zmanim.sunset)}
+        next={upcoming}
       />
 
       <main className="mx-auto grid max-w-5xl grid-cols-1 gap-x-6 gap-y-12 px-4 py-10 text-right sm:grid-cols-2 sm:py-12">

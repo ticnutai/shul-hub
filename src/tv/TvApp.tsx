@@ -212,7 +212,10 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
     () =>
       occasionSlideId
         ? boardConfig(baseConfig, { deviceClass, lookOverride: themeOverride, now: minuteNow, settings: data.settings, slideId: occasionSlideId })
-        : pageLook(config, page),
+        : page > 0
+          // The page's own look first, then this kind of screen's settings for it - one road, as the board's.
+          ? boardConfig(pageLook(baseConfig, page), { deviceClass, lookOverride: themeOverride, now: minuteNow, settings: data.settings })
+          : config,
     [occasionSlideId, config, page, baseConfig, deviceClass, themeOverride, minuteNow, data.settings],
   );
 

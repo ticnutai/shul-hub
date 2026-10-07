@@ -79,4 +79,35 @@ test("pages on the TV, taking turns", async ({ page }) => {
   expect([...seen].map((s) => s.split("/").pop()).sort()).toEqual(["heritage-wood.webp", "jerusalem-stone.webp"]);
   expect(errors).toEqual([]);
 });
+
+test("the pages turning in the preview, and a page copied onto another", async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  page.on("dialog", (d) => d.accept());
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  let c = applyDesign(structuredClone(DEFAULT_TV_CONFIG), PREMIUM_DESIGNS[0]);
+  c = editPage(addPage(c, 0).config, 1, (x) => applyDesign(x, BUILTIN_DESIGNS.find((d) => d.id === "d_premium_jerusalem-stone")!));
+  c = setPage(setPage(c, 0, { seconds: 5 }), 1, { seconds: 5 });
+  await serveEditor(page, JSON.parse(JSON.stringify(c)));
+  const res = await page.goto("/e2e/harness/editor.html").catch(() => null);
+  test.skip(!res, "the dev server is not running (npm run dev)");
+  await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 30_000 });
+  const bar = page.getByTestId("part-pages");
+  const art = () => page.locator(".tv-frame").first().locator("[data-element-id] img").first().getAttribute("src");
+  // Played: the preview shows each page in its turn, and the bar says which.
+  await bar.getByRole("button", { name: "הצגת החלפה" }).click();
+  await expect(bar.getByTestId("part-pages-playing")).toBeVisible();
+  const seen = new Set<string>();
+  for (let i = 0; i < 12; i++) { seen.add(((await art()) ?? "").split("/").pop()!); await page.waitForTimeout(1000); }
+  expect([...seen].sort()).toEqual(["heritage-wood.webp", "jerusalem-stone.webp"]);
+  // Choosing a page stops it, on that page.
+  await bar.getByRole("tab", { name: /עמוד 1/ }).click();
+  await expect(bar.getByTestId("part-pages-playing")).toHaveCount(0);
+  await expect.poll(art).toContain("heritage-wood");
+  // Page 2 copied onto page 1.
+  await bar.getByLabel("להעתיק לכאן עמוד אחר").selectOption({ label: "עמוד 2" });
+  await expect.poll(art).toContain("jerusalem-stone");
+  expect(errors).toEqual([]);
+});
 });

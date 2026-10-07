@@ -43,6 +43,10 @@ test("the text of the parts, from the preview", async ({ page, isMobile }) => {
   await title.click();
   await tools.getByRole("button", { name: "גלישת שורות" }).click();
   await expect(board.locator('[data-content-binding="title"][data-wrap="true"]')).toHaveCount(1);
+  // Broken into lines in a box one line tall: the bar says it is cut, and makes the box tall enough.
+  await expect(tools.getByTestId("text-cut")).toBeVisible();
+  await tools.getByRole("button", { name: "להגדיל את התיבה כדי שהכול ייכנס" }).click();
+  await expect(tools.getByTestId("text-cut")).toHaveCount(0);
   const after = (await column.boundingBox())!;
   expect(Math.abs(after.x - before.x)).toBeLessThan(1);
   // The parts list: in direct editing it points under the preview rather than showing a second bar.

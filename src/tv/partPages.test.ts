@@ -4,10 +4,10 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_TV_CONFIG, PAGE_LOOK_KEYS, normalizeTvConfig, type TvConfig } from './config';
+import { DEFAULT_TV_CONFIG, PAGE_LOOK_KEYS, configForDevice, editForDevice, normalizeTvConfig, type TvConfig } from './config';
 import { BUILTIN_DESIGNS, DESIGN_KEYS, applyDesign } from './designs';
 import { setContent } from './elements';
-import { addPage, editPage, movePage, pageAt, pageLook, readPages, removePage, setPage } from './partPages';
+import { addPage, copyPage, editPage, movePage, pageAt, pageLook, readPages, removePage, setPage } from './partPages';
 import { PREMIUM_DESIGNS } from './premiumDesigns';
 
 const kit = (i: number) => BUILTIN_DESIGNS.filter(d => d.values.elements?.length)[i];
@@ -93,5 +93,46 @@ describe('the pages of a board of parts', () => {
     // A page without its look, or pages with no page 1, are no pages.
     expect(normalizeTvConfig({ ...two, partPages: [two.partPages[1]] }).partPages).toEqual([]);
     expect(normalizeTvConfig({ ...two, partPages: [two.partPages[0], { id: 'x', name: 'x', seconds: 5 }] }).partPages).toHaveLength(1);
+  });
+});
+
+describe('a page on each kind of screen, and a page copied', () => {
+  const two = () => editPage(addPage(board(), 0).config, 1, c => applyDesign(c, kit(3)));
+
+  it('gives a page a phone of its own, and leaves page 1\'s phone alone', () => {
+    const c = two();
+    const phone = editPage(c, 1, p => editForDevice(p, 'mobile', x => ({ ...x, elements: x.elements.slice(0, 2) })));
+    expect(configForDevice(pageLook(phone, 1), 'mobile').elements).toHaveLength(2);
+    expect(configForDevice(pageLook(phone, 1), 'tv').elements).toEqual(pageLook(c, 1).elements);
+    // Page 1 on a phone: as it was.
+    expect(configForDevice(phone, 'mobile').elements).toEqual(c.elements);
+    expect(phone.partPages[1].devices?.mobile?.elements).toHaveLength(2);
+    // The board's own wording for the phone, written from page 2, is the board's.
+    const worded = editPage(phone, 1, p => editForDevice(p, 'mobile', x => ({ ...x, texts: { ...x.texts, 'header.title': 'קצר' } })));
+    expect(configForDevice(worded, 'mobile').texts['header.title']).toBe('קצר');
+    expect(worded.partPages[1].devices?.mobile?.texts).toBeUndefined();
+    // Saved and read back, the page keeps its phone.
+    const stored = normalizeTvConfig(JSON.parse(JSON.stringify(worded)));
+    expect(configForDevice(pageLook(stored, 1), 'mobile').elements).toHaveLength(2);
+  });
+
+  it('keeps each page\'s phone with it when the pages change places', () => {
+    const c = editPage(two(), 1, p => editForDevice(p, 'mobile', x => ({ ...x, elements: x.elements.slice(0, 2) })));
+    const swapped = movePage(c, 1, -1);
+    // Page 2 is first now: its phone is the board's phone.
+    expect(configForDevice(swapped, 'mobile').elements).toHaveLength(2);
+    expect(configForDevice(pageLook(swapped, 1), 'mobile').elements).toEqual(c.elements);
+  });
+
+  it('copies one page onto another, and only that one', () => {
+    const c = addPage(two(), 0).config;
+    const copied = copyPage(c, 1, 2);
+    expect(pageLook(copied, 2).elements).toEqual(pageLook(c, 1).elements);
+    expect(pageLook(copied, 1).elements).toEqual(pageLook(c, 1).elements);
+    expect(copied.elements).toEqual(c.elements);
+    expect(readPages(copied).map(p => p.name)).toEqual(readPages(c).map(p => p.name));
+    // Onto page 1: the board is the copy.
+    expect(copyPage(c, 1, 0).elements).toEqual(pageLook(c, 1).elements);
+    expect(copyPage(c, 1, 1)).toBe(c);
   });
 });

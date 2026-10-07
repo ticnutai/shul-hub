@@ -6,7 +6,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { HomeHero } from "./HomeHero";
-import { DEFAULT_HOME_HERO, HERO_LAYOUTS, HERO_LOOKS, heroShowsName, normalizeHomeHero, type HomeHero as Hero } from "@community/lib/homeHero";
+import { DEFAULT_HOME_HERO, HERO_LAYOUTS, HERO_LOOKS, heroShowsName, inWords, israelMinutes, nextPrayer, normalizeHomeHero, type HomeHero as Hero } from "@community/lib/homeHero";
 import { formatHebrewDate, hebrewNumeral } from "@community/lib/hebrewDate";
 
 afterEach(cleanup);
@@ -31,7 +31,7 @@ describe("the strip at the top of the home page", () => {
     expect(normalizeHomeHero(null)).toEqual(DEFAULT_HOME_HERO);
     expect(normalizeHomeHero({ layout: "huge", look: "neon", name: 1, date: "no" })).toEqual(DEFAULT_HOME_HERO);
     expect(normalizeHomeHero({ layout: "split", look: "emerald", name: "hide", subtitle: false, date: true, zmanim: false })).toEqual({
-      layout: "split", look: "emerald", name: "hide", subtitle: false, date: true, zmanim: false,
+      ...DEFAULT_HOME_HERO, layout: "split", look: "emerald", name: "hide", subtitle: false, date: true, zmanim: false,
     });
   });
 
@@ -77,5 +77,57 @@ describe("the strip at the top of the home page", () => {
     expect(hebrewNumeral(15)).toBe("ט״ו");
     expect(hebrewNumeral(5787)).toBe("תשפ״ז");
     expect(formatHebrewDate(new Date("2026-10-07T10:00:00+03:00"))).toBe("כ״ו תשרי תשפ״ז");
+  });
+});
+
+describe("the next prayer, a picture, and a phone's layout", () => {
+  const rows = [
+    { label: "שחרית", time: "06:15", minutes: 375 },
+    { label: "מנחה", time: "13:30", minutes: 810 },
+    { label: "ערבית", time: "18:30", minutes: 1110, cancelled: true },
+    { label: "ערבית ב׳", time: "20:00", minutes: 1200 },
+  ];
+  it("finds the next prayer that has not begun and is not called off", () => {
+    expect(nextPrayer(rows, 700)).toMatchObject({ label: "מנחה", inMinutes: 110 });
+    expect(nextPrayer(rows, 810)).toMatchObject({ label: "מנחה", inMinutes: 0 });
+    expect(nextPrayer(rows, 811)).toMatchObject({ label: "ערבית ב׳" });
+    expect(nextPrayer(rows, 1201)).toBeNull();
+  });
+  it("says how long until it in words", () => {
+    expect([0, 1, 25, 60, 61, 70, 120, 135, 180].map(inWords)).toEqual([
+      "עכשיו", "בעוד דקה", "בעוד 25 דקות", "בעוד שעה", "בעוד שעה ו־דקה", "בעוד שעה ו־10 דקות", "בעוד שעתיים", "בעוד שעתיים ו־15 דקות", "בעוד 3 שעות",
+    ]);
+    expect(israelMinutes(new Date("2026-10-07T10:25:00Z"))).toBe(13 * 60 + 25);
+  });
+  it("shows the next prayer in every layout that has a strip, and not when switched off", () => {
+    for (const layout of ["classic", "compact", "split", "cards"] as const) {
+      const { container } = render(
+        <HomeHero hero={{ ...DEFAULT_HOME_HERO, layout }} headerShowsName settings={{ name: "א" }} hebrewDate="ה" dateLabel="ד" sunrise="06:38" sunset="18:18" next={{ label: "מנחה", time: "13:30", minutes: 810, inMinutes: 25 }} preview />,
+      );
+      expect(container.textContent, layout).toContain("מנחה 13:30");
+      expect(container.textContent, layout).toContain("בעוד 25 דקות");
+      cleanup();
+    }
+    const { container } = render(<HomeHero hero={{ ...DEFAULT_HOME_HERO, next: false }} headerShowsName settings={{ name: "א" }} hebrewDate="ה" dateLabel="ד" sunrise="1" sunset="2" next={{ label: "מנחה", time: "13:30", minutes: 810, inMinutes: 25 }} preview />);
+    expect(container.textContent).not.toContain("מנחה");
+  });
+  it("draws a picture only from the synagogue's own storage, under its shade", () => {
+    const good = "https://bfiayuuhjtyccqobsjvl.supabase.co/storage/v1/object/public/community-media/hero/c1/x.jpg";
+    expect(normalizeHomeHero({ image: good }).image).toBe(good);
+    expect(normalizeHomeHero({ image: "https://evil.example/x.jpg" }).image).toBeNull();
+    expect(normalizeHomeHero({ image: 'javascript:alert(1)' }).image).toBeNull();
+    const { container } = draw({ image: good, shade: "light" });
+    const strip = container.querySelector<HTMLElement>('[data-testid="home-hero"]')!;
+    expect(strip.getAttribute("data-hero-look")).toBe("picture");
+    expect(strip.style.backgroundImage).toContain("hero/c1/x.jpg");
+  });
+  it("has a layout of its own on a phone, and the computer's elsewhere", () => {
+    const hero = { phoneLayout: "compact" as const, layout: "split" as const };
+    const phone = render(<HomeHero hero={{ ...DEFAULT_HOME_HERO, ...hero }} headerShowsName settings={{}} hebrewDate="" dateLabel="" sunrise="" sunset="" preview device="phone" />);
+    expect(phone.container.querySelector('[data-testid="home-hero"]')!.getAttribute("data-hero-layout")).toBe("compact");
+    cleanup();
+    const computer = render(<HomeHero hero={{ ...DEFAULT_HOME_HERO, ...hero }} headerShowsName settings={{}} hebrewDate="" dateLabel="" sunrise="" sunset="" preview device="computer" />);
+    expect(computer.container.querySelector('[data-testid="home-hero"]')!.getAttribute("data-hero-layout")).toBe("split");
+    expect(normalizeHomeHero({ phoneLayout: "giant" }).phoneLayout).toBeNull();
   });
 });

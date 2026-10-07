@@ -454,6 +454,8 @@ export interface PartPage {
   /** How long it stands before the next page. */
   seconds: number;
   look?: Partial<TvConfig>;
+  /** The page's own settings for a kind of screen (a phone, a laptop) - its look only. */
+  devices?: TvConfig["perDevice"];
 }
 
 /**
@@ -1289,7 +1291,12 @@ function normalizePartPages(raw: unknown): PartPage[] {
     };
     if (i === 0) return [page];
     const look = normalizeTvConfig({ ...(p.look as Record<string, unknown>), partPages: [] });
-    return [{ ...page, look: Object.fromEntries(PAGE_LOOK_KEYS.map((k) => [k, look[k]])) as Partial<TvConfig> }];
+    const devices = normalizePerDevice(p.devices);
+    return [{
+      ...page,
+      look: Object.fromEntries(PAGE_LOOK_KEYS.map((k) => [k, look[k]])) as Partial<TvConfig>,
+      ...(Object.keys(devices).length ? { devices } : {}),
+    }];
   });
   // A first page lost on the way leaves pages with nobody to be page 1.
   return pages[0]?.id === (raw[0] as { id?: unknown })?.id ? pages : [];

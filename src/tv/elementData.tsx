@@ -1,4 +1,4 @@
-import { createContext, useContext, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { AutoScroll } from './AutoScroll';
 import { OverflowContext } from './overflowContext';
 import { textLook, turnOf, wraps, type BoardElement, type ElementScroll } from './elements';
@@ -96,8 +96,10 @@ export function FitLine({ binding, text, e }: { binding?: string; text: string; 
  * smaller by itself. What does not fit is cut at the frame's edge.
  */
 export function WrapText({ binding, text, e, lineHeight }: { binding?: string; text: ReactNode; e: BoardElement; lineHeight: number }) {
+  const ref = useOverflowMark<HTMLDivElement>(`${typeof text === 'string' ? text : ''}|${e.fontSize}|${e.font}`);
   return (
     <div
+      ref={ref}
       data-content-binding={binding}
       data-wrap="true"
       dir="rtl"
@@ -150,4 +152,30 @@ export function PlainText({ e }: { e: BoardElement }) {
   const data = useContext(Context);
   const text = e.alternateTexts ? e.alternateTexts[data ? turnOf(e.alternateTexts.length, e.alternateSeconds, data.now) : 0] : e.text;
   return wraps(e) ? <WrapText text={text} e={e} lineHeight={1.25} /> : <FitLine text={text} e={e} />;
+}
+
+/**
+ * Text broken into lines that runs past the bottom of its box is cut there, on
+ * purpose (it is never made smaller unasked) - so it says so: `data-overflow`
+ * holds how much taller the box would have to be, for the editor to warn and
+ * offer to make it so (ElementTextTools). Nothing on the wall reads it.
+ */
+function useOverflowMark<T extends HTMLElement>(key: unknown) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const mark = () => {
+      const ratio = el.clientHeight > 0 ? el.scrollHeight / el.clientHeight : 1;
+      if (ratio > 1.02) el.dataset.overflow = ratio.toFixed(3);
+      else delete el.dataset.overflow;
+    };
+    mark();
+    void document.fonts?.ready.then(mark).catch(() => {});
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(mark);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [key]);
+  return ref;
 }

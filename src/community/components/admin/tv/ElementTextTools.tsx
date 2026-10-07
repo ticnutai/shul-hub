@@ -7,7 +7,8 @@
  * for the part clicked on the board itself, and in the list of parts. It is
  * the same component in both, so the two never offer different things.
  */
-import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Minus, Plus, WrapText } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Minus, Plus, TriangleAlert, WrapText } from 'lucide-react';
 
 import { ELEMENT_FONTS, wraps, type BoardElement, type ElementFont } from '@/tv/elements';
 
@@ -25,6 +26,7 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
   withText?: boolean;
 }) {
   const texts = elements.filter(e => ids.includes(e.id) && e.kind === 'text' && !e.locked);
+  const cut = useCutText(texts.map(e => e.id).join(','));
   if (!texts.length) return null;
   const first = texts[0];
   const targets = texts.map(e => e.id);
@@ -87,6 +89,16 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
       <p className="text-[11px] text-muted-foreground">
         {wrapping ? 'טקסט ארוך נשבר לשורות ושומר על הגודל שלו.' : 'טקסט ארוך נשאר בשורה אחת ומוקטן כדי שייכנס.'}
       </p>
+      {texts.some(e => cut[e.id]) && (
+        <div className="flex flex-wrap items-center gap-2 rounded border border-amber-400 bg-amber-50 px-2 py-1.5 text-xs text-amber-950" role="status" data-testid="text-cut">
+          <TriangleAlert className="size-4 shrink-0" aria-hidden />
+          <span className="flex-1">חלק מהטקסט לא נכנס בתיבה ונחתך בתחתית שלה.</span>
+          <button type="button" className="rounded border border-amber-500 bg-white px-2 py-1 font-medium hover:bg-amber-100"
+            onClick={() => texts.forEach(e => cut[e.id] && onPatch([e.id], { height: Math.min(100 - e.y, Math.round((e.height * cut[e.id] + 0.5) * 10) / 10) }, 'grow'))}>
+            להגדיל את התיבה כדי שהכול ייכנס
+          </button>
+        </div>
+      )}
       {withText && plain && (
         <label className="block text-xs">
           מה כתוב
@@ -97,4 +109,29 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
       )}
     </div>
   );
+}
+
+/**
+ * Which of these texts are cut at the bottom of their box just now, and by how
+ * much: read off the board (useOverflowMark in elementData.tsx marks them), a
+ * little after every change - the board draws the change first.
+ */
+function useCutText(key: string): Record<string, number> {
+  const [cut, setCut] = useState<Record<string, number>>({});
+  useEffect(() => {
+    const ids = key ? key.split(',') : [];
+    const read = () => {
+      const next: Record<string, number> = {};
+      for (const id of ids) {
+        const marks = [...document.querySelectorAll<HTMLElement>(`[data-element-id="${id}"] [data-overflow]`)];
+        const most = Math.max(0, ...marks.map(m => Number(m.dataset.overflow) || 0));
+        if (most > 1) next[id] = most;
+      }
+      setCut(c => (JSON.stringify(c) === JSON.stringify(next) ? c : next));
+    };
+    read();
+    const timer = window.setInterval(read, 700);
+    return () => window.clearInterval(timer);
+  }, [key]);
+  return cut;
 }

@@ -3,14 +3,16 @@
  * chose (lib/homeHero.ts). The same component draws the page itself and the
  * preview in the admin, so what is chosen is what is shown.
  */
-import type { CSSProperties, ReactNode } from "react";
-import { CalendarDays, Sunrise, Sunset } from "lucide-react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { CalendarDays, Clock, Sunrise, Sunset } from "lucide-react";
 
 import { InlineEdit } from "@community/components/InlineEdit";
-import { heroShowsName, type HeroLook, type HomeHero as Hero } from "@community/lib/homeHero";
+import { heroShowsName, inWords, type HeroLook, type HomeHero as Hero, type NextPrayer } from "@community/lib/homeHero";
+
+interface Look { className?: string; style?: CSSProperties; accent: string; card: string; dark: boolean }
 
 /** Each look: its ground, its letters, its gold, and its small cards. */
-const LOOK: Record<HeroLook, { className?: string; style?: CSSProperties; accent: string; card: string; dark: boolean }> = {
+const LOOK: Record<HeroLook, Look> = {
   royal: { className: "hero-surface", accent: "hsl(var(--accent))", card: "border-white/15 bg-white/10", dark: true },
   night: { style: { background: "linear-gradient(160deg, #0b1628, #1b2a4a)", color: "#f5ecd7" }, accent: "#e3c27a", card: "border-[#e3c27a]/30 bg-white/5", dark: true },
   parchment: { style: { background: "linear-gradient(160deg, #fbf5e6, #efe1bf)", color: "#3b2a12" }, accent: "#9a7425", card: "border-[#9a7425]/30 bg-white/60", dark: false },
@@ -30,6 +32,36 @@ const LOOK: Record<HeroLook, { className?: string; style?: CSSProperties; accent
   plain: { className: "border-b border-border bg-background text-foreground", accent: "#9a7425", card: "border-border bg-card", dark: false },
 };
 
+/**
+ * A picture of the synagogue behind the strip: under a shade, so the letters
+ * read on any picture - light letters on a dark shade, or dark on a light one.
+ */
+function pictureLook(image: string, shade: Hero["shade"]): Look {
+  const dark = shade === "dark";
+  const veil = dark ? "linear-gradient(rgba(8, 14, 28, 0.62), rgba(8, 14, 28, 0.72))" : "linear-gradient(rgba(255, 250, 240, 0.72), rgba(255, 250, 240, 0.8))";
+  return {
+    style: { backgroundImage: `${veil}, url("${image}")`, backgroundSize: "cover", backgroundPosition: "center", color: dark ? "#fff8ea" : "#2b2010" },
+    accent: dark ? "#f0cf86" : "#8a6a2a",
+    card: dark ? "border-white/25 bg-black/25 backdrop-blur-sm" : "border-black/10 bg-white/60 backdrop-blur-sm",
+    dark,
+  };
+}
+
+/** A phone's width (and the app's): where "another layout on a phone" applies. */
+function useIsPhone(): boolean {
+  const query = "(max-width: 639px)";
+  const [phone, setPhone] = useState(() => typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia(query).matches);
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+    const list = window.matchMedia(query);
+    const on = () => setPhone(list.matches);
+    on();
+    list.addEventListener?.("change", on);
+    return () => list.removeEventListener?.("change", on);
+  }, []);
+  return phone;
+}
+
 export interface HomeHeroProps {
   hero: Hero;
   /** The header right above shows the name (not a logo): the strip need not repeat it. */
@@ -39,16 +71,23 @@ export interface HomeHeroProps {
   dateLabel: string;
   sunrise: string;
   sunset: string;
+  /** The next prayer of today, if any is left (shown when hero.next). */
+  next?: NextPrayer | null;
   /** In the admin's preview: plain text, no editing in place. */
   preview?: boolean;
+  /** The admin's preview, as a phone or as a computer, whatever the admin's own screen is. */
+  device?: "phone" | "computer";
 }
 
-export function HomeHero({ hero, headerShowsName, settings, hebrewDate, dateLabel, sunrise, sunset, preview = false }: HomeHeroProps) {
-  if (hero.layout === "none") {
+export function HomeHero({ hero, headerShowsName, settings, hebrewDate, dateLabel, sunrise, sunset, next = null, preview = false, device }: HomeHeroProps) {
+  const isPhone = useIsPhone();
+  const phone = device ? device === "phone" : isPhone;
+  const layout = phone && hero.phoneLayout ? hero.phoneLayout : hero.layout;
+  if (layout === "none") {
     // Still one heading for the page, for screen readers - just not on the screen.
     return <h1 className="sr-only">{settings?.name ?? "בית הכנסת"}</h1>;
   }
-  const look = LOOK[hero.look];
+  const look = hero.image && layout !== "cards" ? pictureLook(hero.image, hero.shade) : LOOK[hero.look];
   const showName = heroShowsName(hero, headerShowsName);
   const editable = !preview && Boolean(settings?.id);
   const subtitleText = settings?.subtitle || "קהילה, תורה ותפילה";
@@ -70,46 +109,84 @@ export function HomeHero({ hero, headerShowsName, settings, hebrewDate, dateLabe
   const heading = (className: string) =>
     showName ? <h1 className={className}>{name}</h1> : <h1 className="sr-only">{nameText}</h1>;
 
+  const icon = (Icon: typeof Clock, size = "size-4") => <Icon className={`${size} shrink-0`} style={{ color: look.accent }} aria-hidden />;
   const date = hero.date ? (
     <div className="flex items-start justify-center gap-2 text-sm">
-      <CalendarDays className="mt-0.5 size-4 shrink-0" style={{ color: look.accent }} aria-hidden />
+      <span className="mt-0.5">{icon(CalendarDays)}</span>
       <div className="text-center">
         <p data-testid="hebrew-date">{hebrewDate}</p>
         <p className="mt-0.5 text-xs opacity-80" data-testid="gregorian-date">{dateLabel}</p>
       </div>
     </div>
   ) : null;
+  const shownNext = hero.next ? next : null;
+  const nextLine = shownNext ? (
+    <span className="flex flex-wrap items-center justify-center gap-x-1.5" data-testid="hero-next-prayer">
+      {icon(Clock)}
+      <span>התפילה הבאה:</span>
+      <b>{shownNext.label} {shownNext.time}</b>
+      <span className="opacity-80">· {inWords(shownNext.inMinutes)}</span>
+    </span>
+  ) : null;
   const times = hero.zmanim ? (
     <>
-      <span className="flex items-center gap-2"><Sunrise className="size-4" style={{ color: look.accent }} aria-hidden /> נץ {sunrise}</span>
-      <span className="flex items-center gap-2"><Sunset className="size-4" style={{ color: look.accent }} aria-hidden /> שקיעה {sunset}</span>
+      <span className="flex items-center gap-2">{icon(Sunrise)} נץ {sunrise}</span>
+      <span className="flex items-center gap-2">{icon(Sunset)} שקיעה {sunset}</span>
     </>
   ) : null;
-  // On a phone: the date on its own row, sunrise and sunset side by side under it.
-  const GRID = "grid grid-cols-2 gap-2 min-[420px]:grid-cols-[1.6fr_1fr_1fr]";
-  const span = (key: string) => (key === "date" ? "col-span-2 min-[420px]:col-span-1" : "");
-  const card = (children: ReactNode, key: string) => (
-    <div key={key} className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border px-3 py-2 text-sm ${span(key)} ${look.card}`}>{children}</div>
+
+  /**
+   * The small cards of "שני טורים" and "כרטיסים": on a phone two to a row, the
+   * date and the next prayer each a row of its own; wider, all on one row,
+   * the long ones given the room to stand on their lines.
+   */
+  const items: { key: string; body: ReactNode; wide: boolean }[] = [
+    ...(date ? [{ key: "date", body: date, wide: true }] : []),
+    ...(hero.zmanim
+      ? [
+          { key: "sunrise", body: <>{icon(Sunrise, "size-5")}<span>נץ {sunrise}</span></>, wide: false },
+          { key: "sunset", body: <>{icon(Sunset, "size-5")}<span>שקיעה {sunset}</span></>, wide: false },
+        ]
+      : []),
+    ...(shownNext
+      ? [{ key: "next", body: <>{icon(Clock, "size-5")}<span className="text-xs opacity-80">התפילה הבאה</span><b>{shownNext.label} {shownNext.time}</b><span className="text-xs opacity-80">{inWords(shownNext.inMinutes)}</span></>, wide: true }]
+      : []),
+  ];
+  // Four cards in half the strip ("שני טורים") stand two by two: in one row they were too narrow to read.
+  const grid = (cardClass: (key: string) => string, cardStyle?: CSSProperties, square = false) => (
+    <div
+      className={square ? "grid grid-cols-2 gap-2" : "grid grid-cols-2 gap-2 min-[420px]:[grid-template-columns:var(--hero-cols)]"}
+      style={{ "--hero-cols": items.map((i) => (i.wide ? "1.5fr" : "1fr")).join(" ") } as CSSProperties}
+    >
+      {(square ? [...items].sort((a, b) => Number(b.wide) - Number(a.wide)) : items).map((i) => (
+        <div key={i.key} data-hero-card={i.key}
+          className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border px-3 py-2 text-center text-sm ${i.wide && !square ? "col-span-2 min-[420px]:col-span-1" : ""} ${cardClass(i.key)}`}
+          style={cardStyle}>
+          {i.body}
+        </div>
+      ))}
+    </div>
   );
   const surface = (children: ReactNode, pad: string) => (
-    <section data-testid="home-hero" data-hero-layout={hero.layout} data-hero-look={hero.look} className={look.className} style={look.style}>
+    <section data-testid="home-hero" data-hero-layout={layout} data-hero-look={hero.image ? "picture" : hero.look} className={look.className} style={look.style}>
       <div className={`mx-auto max-w-5xl px-4 ${pad}`}>{children}</div>
     </section>
   );
 
-  if (hero.layout === "compact") {
+  if (layout === "compact") {
     return surface(
       <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-center">
         {showName ? heading("text-xl font-bold") : heading("")}
         {subtitle && <p className="text-sm" style={{ color: look.accent }}>{subtitle}</p>}
         {date}
         {times && <div className="flex items-center gap-5 text-sm">{times}</div>}
+        {nextLine && <div className="text-sm">{nextLine}</div>}
       </div>,
       "py-3 sm:py-4",
     );
   }
 
-  if (hero.layout === "split") {
+  if (layout === "split") {
     return surface(
       <div className="grid items-center gap-6 sm:grid-cols-2">
         <div className="text-center sm:text-right">
@@ -117,18 +194,13 @@ export function HomeHero({ hero, headerShowsName, settings, hebrewDate, dateLabe
           {heading("mt-2 text-3xl font-bold sm:text-4xl")}
           <div className="mx-auto mt-3 h-px w-32 sm:mx-0" style={{ background: `linear-gradient(90deg, transparent, ${look.accent}, transparent)` }} />
         </div>
-        {/* The date is the longest of the three: it gets the room to stand on its lines. */}
-        <div className={GRID}>
-          {date && card(date, "date")}
-          {hero.zmanim && card(<><Sunrise className="size-5" style={{ color: look.accent }} aria-hidden /><span>נץ {sunrise}</span></>, "sunrise")}
-          {hero.zmanim && card(<><Sunset className="size-5" style={{ color: look.accent }} aria-hidden /><span>שקיעה {sunset}</span></>, "sunset")}
-        </div>
+        {grid(() => look.card, undefined, items.length === 4)}
       </div>,
       "py-8 sm:py-10",
     );
   }
 
-  if (hero.layout === "cards") {
+  if (layout === "cards") {
     // No band: the cards themselves wear the look, on the page's own ground.
     return (
       <section data-testid="home-hero" data-hero-layout="cards" data-hero-look={hero.look} className="mx-auto max-w-5xl px-4 pt-6">
@@ -139,15 +211,7 @@ export function HomeHero({ hero, headerShowsName, settings, hebrewDate, dateLabe
           </div>
         )}
         {!showName && !subtitle && heading("")}
-        <div className={GRID}>
-          {[date && ["date", date], hero.zmanim && ["sunrise", <><Sunrise className="size-5" style={{ color: look.accent }} aria-hidden /><span>נץ {sunrise}</span></>], hero.zmanim && ["sunset", <><Sunset className="size-5" style={{ color: look.accent }} aria-hidden /><span>שקיעה {sunset}</span></>]]
-            .filter((x): x is [string, JSX.Element] => Boolean(x))
-            .map(([key, body]) => (
-              <div key={key} className={`flex min-h-[4.5rem] flex-col items-center justify-center gap-1 rounded-xl border px-3 py-2 text-sm shadow-sm ${span(key)} ${look.className ?? ""}`} style={look.style}>
-                {body}
-              </div>
-            ))}
-        </div>
+        {grid(() => `shadow-sm ${look.className ?? ""}`, look.style)}
       </section>
     );
   }
@@ -160,6 +224,7 @@ export function HomeHero({ hero, headerShowsName, settings, hebrewDate, dateLabe
       <div className="mx-auto mt-4 h-px w-40" style={{ background: `linear-gradient(90deg, transparent, ${look.accent}, transparent)` }} />
       {date && <div className="mt-4">{date}</div>}
       {times && <div className="mt-6 flex items-center justify-center gap-6 text-sm">{times}</div>}
+      {nextLine && <div className="mt-3 text-sm">{nextLine}</div>}
     </div>,
     showName ? "py-14 sm:py-16" : "py-8 sm:py-10",
   );

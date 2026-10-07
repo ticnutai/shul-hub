@@ -173,7 +173,7 @@ import { OccasionsEditor } from "./OccasionsEditor";
 import { LogoLibrary } from "./LogoLibrary";
 import { occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
-import { editPage, pageLook, readPages } from "@/tv/partPages";
+import { editPage, pageAt, pageLook, readPages } from "@/tv/partPages";
 import { PartPagesBar } from "./PartPagesBar";
 import { ElementTextTools } from "./ElementTextTools";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
@@ -620,14 +620,35 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
    */
   const [pageScope, setPageScope] = useState(0);
   const pageIndex = occasionScope ? 0 : Math.min(pageScope, readPages(state.present).length - 1);
-  const scoped = occasionScope
-    ? occasionLook(state.present, occasionScope)
-    : pageIndex > 0
-      ? pageLook(state.present, pageIndex)
-      : configForDevice(state.present, scopeDevice);
-  const comparing = shownVersion ?? (beforeAfter && saved.data ? { id: "saved", label: "מה שעל המסכים עכשיו", config: saved.data.config } : null);
-  const shownConfig = comparing ? pageLook(comparing.config, pageIndex) : pageLook(state.present, pageIndex);
-  const view = preview ? { ...scoped, ...preview } : scoped;
+  // Worked out once per change, not per render: the effects below that clear a
+  // selection when what is shown changes ran on every render while comparing.
+  const scoped = useMemo(
+    () =>
+      occasionScope
+        ? occasionLook(state.present, occasionScope)
+        : configForDevice(pageLook(state.present, pageIndex), scopeDevice),
+    [state.present, occasionScope, pageIndex, scopeDevice],
+  );
+  const savedConfig = saved.data?.config;
+  const comparing = useMemo(
+    () => shownVersion ?? (beforeAfter && savedConfig ? { id: "saved", label: "מה שעל המסכים עכשיו", config: savedConfig } : null),
+    [shownVersion, beforeAfter, savedConfig],
+  );
+  /**
+   * The pages taking their turns in the preview, as on the wall ("הצגת החלפה"):
+   * a tick a second while it plays, and none at all otherwise.
+   */
+  const [pagesPlaying, setPagesPlaying] = useState(false);
+  const [pagesTick, setPagesTick] = useState(() => Date.now());
+  useEffect(() => {
+    if (!pagesPlaying) return;
+    const timer = window.setInterval(() => setPagesTick(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [pagesPlaying]);
+  const playingPage = pagesPlaying ? pageAt(state.present, new Date(pagesTick)) : null;
+  const shownPage = playingPage ?? pageIndex;
+  const shownConfig = comparing ? pageLook(comparing.config, shownPage) : pageLook(state.present, shownPage);
+  const view = useMemo(() => (preview ? { ...scoped, ...preview } : scoped), [preview, scoped]);
 
   const edit = useCallback(
     (key: string, update: (c: TvConfig) => TvConfig) =>
@@ -641,7 +662,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           occasionScope
             ? editOccasionDesign(c, occasionScope, update)
             : pageIndex > 0
-              ? editPage(c, pageIndex, update)
+              ? editPage(c, pageIndex, (p) => editForDevice(p, scopeDevice, update))
               : editForDevice(c, scopeDevice, update),
       }),
     [scope, scopeDevice, occasionScope, pageIndex],
@@ -1368,7 +1389,9 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         <PartPagesBar
           config={state.present}
           current={pageIndex}
-          onSelect={setPageScope}
+          onSelect={(i) => { setPagesPlaying(false); setPageScope(i); }}
+          playing={playingPage}
+          onPlay={(on) => { setPagesTick(Date.now()); setPagesPlaying(on); }}
           onEdit={(key, update) => dispatch({ type: "edit", key: `pages:${key}`, update })}
         />
       )}
