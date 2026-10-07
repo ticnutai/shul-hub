@@ -3,7 +3,7 @@
  * frame, and every kind of live content can be added - not only the three
  * that once had buttons of their own.
  */
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -351,7 +351,7 @@ describe("the board kept as a kit of one's own", () => {
     fireEvent.change(screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }), { target: { value: "zmanim" } });
     fireEvent.click(screen.getByTestId("parts-save-kit"));
     fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה החדשה" }), { target: { value: "ארבע קשתות" } });
-    fireEvent.click(screen.getByRole("button", { name: "שמירה" }));
+    fireEvent.click(screen.getByRole("button", { name: "שמירת הערכה" }));
     expect(latest.designs).toHaveLength(1);
     const kit = latest.designs[0];
     expect(kit.name).toBe("ארבע קשתות");
@@ -365,11 +365,64 @@ describe("the board kept as a kit of one's own", () => {
     fireEvent.click(screen.getByRole("button", { name: "הסתרת שיעורי תורה" }));
     fireEvent.click(screen.getByTestId("parts-save-kit"));
     fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה החדשה" }), { target: { value: "ארבע קשתות" } });
-    fireEvent.click(screen.getByRole("button", { name: "שמירה" }));
+    fireEvent.click(screen.getByRole("button", { name: "שמירת הערכה" }));
     expect(ask).toHaveBeenCalled();
     expect(latest.designs).toHaveLength(1);
     expect(latest.designs[0].id).toBe(kit.id);
     expect(latest.designs[0].values.elements!.some((e) => e.hidden)).toBe(true);
     ask.mockRestore();
+  });
+});
+
+describe("content changing frames, a frame like the middle's, one's own boxes, and the letters of new content", () => {
+  it("swaps what two frames show from a frame's row", () => {
+    render(<PartsHarness start={board()} />);
+    const lessons = latest.elements.find((e) => e.binding === "lessons")!;
+    const parasha = latest.elements.find((e) => e.binding === "parasha")!;
+    fireEvent.change(screen.getByRole("combobox", { name: "להחליף תוכן של שיעורי תורה עם" }), { target: { value: parasha.id } });
+    expect(latest.elements.find((e) => e.id === lessons.id)!.binding).toBe("parasha");
+    expect(latest.elements.find((e) => e.id === parasha.id)!.binding).toBe("lessons");
+  });
+
+  it("adds a frame in the middle's style when asked", () => {
+    render(<PartsHarness start={board()} />);
+    const before = latest.elements.length;
+    const parasha = latest.elements.find((e) => e.binding === "parasha")!;
+    fireEvent.change(screen.getByRole("combobox", { name: "איזה תוכן להוסיף" }), { target: { value: "amudYomi" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "בסגנון של" }), { target: { value: parasha.id } });
+    fireEvent.click(screen.getByRole("button", { name: "הוספה" }));
+    const frame = latest.elements.slice(before).find((e) => e.kind === "image")!;
+    expect(frame.crop).toEqual(latest.elements.find((e) => e.name === "מסגרת מרכזית ופמוטים")!.crop);
+  });
+
+  it("keeps a frame in one's parts and boxes, and adds it again from the list", () => {
+    render(<PartsHarness start={board()} />);
+    const row = screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }).closest("[data-frame-of]") as HTMLElement;
+    fireEvent.change(within(row).getByRole("textbox", { name: "שם לתיבה של זמני תפילות" }), { target: { value: "תפילות בזהב" } });
+    fireEvent.click(within(row).getByRole("button", { name: "שמירת זמני תפילות בחלקים והתיבות שלי" }));
+    expect(latest.elementLibrary.map((l) => l.name)).toEqual(["תפילות בזהב"]);
+    const before = latest.elements.length;
+    const picker = screen.getByRole("combobox", { name: "איזה תוכן להוסיף" }) as HTMLSelectElement;
+    const mine = [...picker.options].find((o) => o.textContent === "תפילות בזהב")!;
+    fireEvent.change(picker, { target: { value: mine.value } });
+    expect(screen.queryByRole("radiogroup", { name: "איפה להוסיף" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "הוספה" }));
+    const added = latest.elements.slice(before);
+    expect(added.length).toBe(latest.elementLibrary[0].elements.length);
+    expect(new Set(added.map((e) => e.group)).size).toBe(1);
+    expect(added.every((e) => !latest.elementLibrary[0].elements.some((k) => k.id === e.id))).toBe(true);
+  });
+
+  it("writes new content in the letters set once, and leaves what is on the board", () => {
+    render(<PartsHarness start={board()} />);
+    const was = latest.elements.map((e) => ({ ...e }));
+    fireEvent.change(screen.getByRole("combobox", { name: "גופן לתוכן חדש" }), { target: { value: "david" } });
+    fireEvent.change(screen.getByRole("combobox", { name: "גודל לתוכן חדש" }), { target: { value: "1.3" } });
+    expect(latest.elementDefaults).toMatchObject({ font: "david", scale: 1.3 });
+    expect(latest.elements).toEqual(was);
+    fireEvent.change(screen.getByRole("combobox", { name: "איזה תוכן להוסיף" }), { target: { value: "seasonal" } });
+    fireEvent.click(screen.getByRole("button", { name: "הוספה" }));
+    const seasonal = latest.elements.find((e) => e.binding === "seasonal")!;
+    expect(seasonal.font).toBe("david");
   });
 });

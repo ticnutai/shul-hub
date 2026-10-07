@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, addIntoFrame, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
+import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, addIntoFrame, swapContent, styleSources, withDefaults, liveBox, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
 import { kitOf, resetToKit } from './kitReset';
 import { BUILTIN_DESIGNS, applyDesign } from './designs';
 import { setSymbol, symbolChoices } from './artSymbols';
-import { DEFAULT_TV_CONFIG, normalizeTvConfig, editForDevice, configForDevice } from './config';
+import { DEFAULT_TV_CONFIG, DEFAULT_ELEMENT_DEFAULTS, normalizeTvConfig, editForDevice, configForDevice } from './config';
 import { workspaceDocument, parseWorkspace, type StoreImage } from './workspaceTransfer';
 
 /** As the picture storage answers: one address per stored picture. */
@@ -348,5 +348,47 @@ describe('content added into a frame already there, and a board with no frame to
     expect(added.every(e => e.color === '#3e2809' && e.font === 'david')).toBe(true);
     // An empty board still gets a box to stand in.
     expect(addContent([], 'dafYomi').some(e => e.kind === 'box')).toBe(true);
+  });
+});
+
+describe('frames exchanging what they show, a frame in the middle\'s style, and the gabbai\'s letters', () => {
+  const ivory = PREMIUM_DESIGNS[1].values.elements!;
+  const by = (els: BoardElement[], b: string) => els.find(e => e.binding === b)!;
+  it('swaps the prayers of a side and the parasha of the middle: each in the other\'s frame, the date staying', () => {
+    const prayers = by(ivory, 'prayers'), parasha = by(ivory, 'parasha'), date = by(ivory, 'date');
+    const next = swapContent(ivory, prayers.id, parasha.id);
+    const side = next.find(e => e.id === prayers.id)!, middle = next.find(e => e.id === parasha.id)!;
+    expect(side.binding).toBe('parasha');
+    expect(middle.binding).toBe('prayers');
+    // Each where its frame is, at its frame's size.
+    expect({ x: side.x, y: side.y, w: side.width, h: side.height }).toEqual({ x: prayers.x, y: prayers.y, w: prayers.width, h: prayers.height });
+    expect({ x: middle.x, y: middle.y, w: middle.width, h: middle.height }).toEqual({ x: parasha.x, y: parasha.y, w: parasha.width, h: parasha.height });
+    // The side's heading says what it shows now; the date stays in the middle.
+    expect(next.find(e => e.name.startsWith('כותרת') && sectionOf(next, prayers.id).includes(e.id))!.text).toBe('פרשת השבוע');
+    expect(next.find(e => e.id === date.id)).toEqual(date);
+    // And back.
+    expect(swapContent(next, prayers.id, parasha.id).map(e => e.binding)).toEqual(ivory.map(e => e.binding));
+    expect(swapContent(ivory, prayers.id, prayers.id)).toBe(ivory);
+  });
+  it('copies the middle\'s wide frame when asked, with only the content asked for', () => {
+    const parasha = by(ivory, 'parasha');
+    const sources = styleSources(ivory);
+    expect(sources.map(f => f.binding)).toEqual(expect.arrayContaining(['prayers', 'lessons']));
+    expect(sources.some(f => sectionOf(ivory, f.e.id).includes(parasha.id))).toBe(true);
+    const copy = styledBox(ivory, 'amudYomi', parasha.id)!;
+    expect(copy.filter(e => e.binding)).toHaveLength(1);
+    expect(copy.find(e => e.binding)!.binding).toBe('amudYomi');
+    const frame = copy.find(e => e.kind === 'image')!;
+    expect(frame.crop).toEqual(ivory.find(e => e.name === 'מסגרת מרכזית ופמוטים')!.crop);
+  });
+  it('writes new content in the gabbai\'s letters, and only the text', () => {
+    const added = liveBox('dafYomi');
+    const styled = withDefaults(added, { color: '#123456', font: 'rubik', weight: 'normal', scale: 1.3 });
+    for (const [a, b] of added.map((e, i) => [e, styled[i]] as const)) {
+      if (a.kind === 'text') expect(b).toMatchObject({ color: '#123456', font: 'rubik', weight: 'normal', fontSize: Math.round(a.fontSize * 1.3 * 100) / 100 });
+      else expect(b).toEqual(a);
+    }
+    expect(withDefaults(added, DEFAULT_ELEMENT_DEFAULTS)).toEqual(added);
+    expect(normalizeTvConfig({ elementDefaults: { color: 'red', font: 'comic', weight: 'heavy', scale: 9 } }).elementDefaults).toEqual({ color: null, font: null, weight: null, scale: 1.6 });
   });
 });

@@ -1,4 +1,4 @@
-import { safeImage, normalizeElements, normalizeElementLibrary, type SavedElementSet, type BoardElement } from "./elements";
+import { ELEMENT_FONTS, safeImage, normalizeElements, normalizeElementLibrary, type SavedElementSet, type BoardElement, type ElementFont } from "./elements";
 import { normalizeFrameLooks, TITLE_STYLES, type FrameLooks, type TitleStyle } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
 import { normalizeBackgrounds, type SavedBackground } from "./backgroundItem";
@@ -470,8 +470,22 @@ export const PAGE_LOOK_KEYS: Array<keyof TvConfig> = [
   "theme", "themeOverrides", "frameStyle", "frameLooks", "illustratedStyle",
 ];
 
+/**
+ * How new content on a board of parts is written, as the gabbai set it once:
+ * its colour, font, weight, and a size against the kit's. Null - as the kit.
+ */
+export interface ElementDefaults {
+  color: string | null;
+  font: ElementFont | null;
+  weight: "normal" | "bold" | null;
+  /** The kit's size times this: 0.6 to 1.6. */
+  scale: number;
+}
+export const DEFAULT_ELEMENT_DEFAULTS: ElementDefaults = { color: null, font: null, weight: null, scale: 1 };
+
 export interface TvConfig {
   elementLibrary: SavedElementSet[];
+  elementDefaults: ElementDefaults;
   elements: BoardElement[];
   /** The pages of a board of parts; none (or one) - the board is one page. */
   partPages: PartPage[];
@@ -783,6 +797,7 @@ export const DEFAULT_ILLUSTRATED_STYLE: IllustratedStyle = {
 
 export const DEFAULT_TV_CONFIG: TvConfig = {
   elementLibrary: [],
+  elementDefaults: DEFAULT_ELEMENT_DEFAULTS,
   elements: [],
   partPages: [],
   perDevice: {},
@@ -1271,6 +1286,16 @@ function retireSlideSwitches(c: TvConfig): TvConfig {
   };
 }
 
+function normalizeElementDefaults(raw: unknown): ElementDefaults {
+  if (!isObj(raw)) return DEFAULT_ELEMENT_DEFAULTS;
+  return {
+    color: typeof raw.color === "string" && /^#[\da-f]{6}$/i.test(raw.color) ? raw.color : null,
+    font: typeof raw.font === "string" && raw.font in ELEMENT_FONTS ? (raw.font as ElementFont) : null,
+    weight: raw.weight === "normal" || raw.weight === "bold" ? raw.weight : null,
+    scale: Math.round(num(raw.scale, 1, 0.6, 1.6) * 100) / 100,
+  };
+}
+
 /**
  * The pages of a board of parts, as they come from storage: each page's look
  * is checked exactly as a board is (it is one), so a page cannot carry what
@@ -1362,6 +1387,7 @@ function normalizeStored(stored: unknown): TvConfig {
 
   return {
     elementLibrary: normalizeElementLibrary(raw.elementLibrary),
+    elementDefaults: normalizeElementDefaults(raw.elementDefaults),
     elements: normalizeElements(raw.elements),
     partPages: normalizePartPages(raw.partPages),
     theme,

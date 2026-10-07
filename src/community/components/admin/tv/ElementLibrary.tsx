@@ -33,7 +33,8 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
     </div>
   </section>
   <section data-testid="element-library" className="space-y-3 rounded-lg border bg-muted/20 p-3">
-    <h3 className="font-semibold">החלקים שלי</h3>
+    <h3 className="font-semibold">החלקים והתיבות שלי</h3>
+    <p className="text-xs text-muted-foreground">אותה רשימה מופיעה גם ב"הוספת תוכן" למעלה, וגם תיבה שנשמרה מ"עוד אפשרויות" של מסגרת נכנסת לכאן.</p>
     <p className="text-xs text-muted-foreground">שומרים בחירה פעם אחת ומוסיפים עותקים לכל לוח. הספרייה נשמרת עם הלוח ונכללת בקובץ הלוח.</p>
     <div className="flex flex-wrap gap-2">
       <input aria-label="שם פריט בספרייה" maxLength={80} placeholder="למשל: זוג עמודים מוזהבים" className="min-w-0 flex-1 rounded border bg-background px-2 py-1 text-sm" value={name} onChange={e => setName(e.target.value)} />

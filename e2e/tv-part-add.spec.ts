@@ -37,11 +37,18 @@ test("content added where it is wanted, and the board kept as a kit", async ({ p
   await expect(amud).toHaveCount(1);
   const behind = await amud.evaluate((el) => getComputedStyle(el.closest("[data-element-id]")!).backgroundColor);
   expect(behind).toBe("rgba(0, 0, 0, 0)");
+  // Swapped with the parasha: the amud in the middle's wide frame, the parasha in the arch.
+  const parts = page.getByTestId("parts-content");
+  await parts.getByLabel("להחליף תוכן של עמוד יומי עם").selectOption({ label: "פרשת השבוע" });
+  const middle = (await board.locator('[data-content-binding="amudYomi"]').boundingBox())!;
+  const frame = (await board.boundingBox())!;
+  expect(Math.abs(middle.x + middle.width / 2 - (frame.x + frame.width / 2))).toBeLessThan(frame.width * 0.05);
+  expect(middle.width).toBeGreaterThan(frame.width * 0.3);
 
   // Kept as a kit of one's own.
   await page.getByTestId("parts-save-kit").click();
   await page.getByLabel("שם הערכה החדשה").fill("אבן ירושלים - שלי");
-  await page.getByTestId("parts-kit-form").getByRole("button", { name: "שמירה" }).click();
+  await page.getByTestId("parts-kit-form").getByRole("button", { name: "שמירת הערכה" }).click();
   await page.getByRole("tab", { name: "עיצוב" }).click();
   const mine = page.getByText("אבן ירושלים - שלי", { exact: true });
   await mine.scrollIntoViewIfNeeded();

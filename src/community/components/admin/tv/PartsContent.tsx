@@ -29,6 +29,7 @@ import {
 } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
 import { AddContent } from './AddContent';
+import { MAX_ELEMENT_SETS, elementId, swapContent } from '@/tv/elements';
 import { DESIGN_PARTS, MAX_DESIGNS, captureDesign } from '@/tv/designs';
 
 /** When the content is longer than its frame. A notice shrinks, a list turns its pages - or either moves. */
@@ -85,6 +86,32 @@ export function PartsContent({ config, onEdit, onManual }: {
   /** "Replace" from the message of a frame sent over another: the one below is hidden. */
   const hideParts = (ids: string[]) =>
     onEdit(`parts-content:replace:${ids.join(',')}`, c => ({ ...c, elements: c.elements.map(x => ids.includes(x.id) ? { ...x, hidden: true } : x) }));
+
+  /** Two frames exchange what they show: each content takes the other frame's shape. */
+  const swap = (f: Frame, otherId: string) => {
+    const other = frames.find(x => x.e.id === otherId);
+    if (!other) return;
+    commit(swapContent(elements, f.e.id, otherId), `parts-content:swap:${f.e.id}:${otherId}`);
+    toast.success(`"${f.title}" ו"${other.title}" החליפו תוכן: כל אחד מקבל את הצורה של המסגרת שאליה עבר.`);
+  };
+  /** A frame kept as "my box": its picture, heading and content, to be added again from the list. */
+  const [boxName, setBoxName] = useState<Record<string, string>>({});
+  const saveBox = (f: Frame) => {
+    const name = (boxName[f.e.id] ?? f.title).trim().slice(0, 80);
+    if (!name) return;
+    const kept = elements.filter(e => f.ids.includes(e.id)).map(e => structuredClone(e));
+    const existing = config.elementLibrary.find(l => l.name === name);
+    if (existing && !window.confirm(`כבר יש תיבה בשם «${name}». להחליף אותה?`)) return;
+    if (!existing && config.elementLibrary.length >= MAX_ELEMENT_SETS) { toast.error(`הגעתם למספר התיבות המרבי (${MAX_ELEMENT_SETS}).`); return; }
+    onEdit(`element-library:save:${name}`, c => ({
+      ...c,
+      elementLibrary: existing
+        ? c.elementLibrary.map(l => (l.id === existing.id ? { ...l, elements: kept } : l))
+        : [...c.elementLibrary, { id: `box_${elementId().slice(3, 15)}`, name, elements: kept }],
+    }));
+    setBoxName(b => ({ ...b, [f.e.id]: '' }));
+    toast.success(`"${name}" נשמרה ב"החלקים והתיבות שלי" - היא ברשימת "הוספת תוכן".`);
+  };
 
   const change = (f: Frame, binding: ElementBinding) => {
     commit(setContent(elements, f.e.id, binding), `parts-content:${f.e.id}:binding`);
@@ -145,7 +172,7 @@ export function PartsContent({ config, onEdit, onManual }: {
           <form className="flex flex-wrap items-center gap-2 rounded-md border p-2" onSubmit={e => { e.preventDefault(); saveKit(); }} data-testid="parts-kit-form">
             <input autoFocus aria-label="שם הערכה החדשה" value={kitName} maxLength={40} placeholder="למשל: אבן ירושלים - ארבע קשתות"
               onChange={e => setKitName(e.target.value)} className="h-8 min-w-0 flex-1 basis-48 rounded border bg-background px-2 text-sm" />
-            <Button type="submit" size="sm" className="h-8">שמירה</Button>
+            <Button type="submit" size="sm" className="h-8">שמירת הערכה</Button>
             <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setKitName(null)}>ביטול</Button>
             <p className="w-full text-[11px] text-muted-foreground">נשמר הכול: המסגרות, מה שהן מציגות, המיקום, הצבעים והרקע. עם אותו שם - מחליף את הערכה הקודמת.</p>
           </form>
@@ -188,7 +215,11 @@ export function PartsContent({ config, onEdit, onManual }: {
         )}
       </div>
 
-      <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); editing?.select(ids); }} />
+      <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); editing?.select(ids); }}
+      library={config.elementLibrary}
+      defaults={config.elementDefaults}
+      onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))}
+      onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />
 
       {hidden.length > 0 && (
         <div className="space-y-1" data-testid="parts-hidden">
@@ -247,6 +278,15 @@ export function PartsContent({ config, onEdit, onManual }: {
               {ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}
             </select>
           </label>
+          {frames.filter(x => !x.e.hidden).length > 1 && (
+            <label className="flex items-center gap-1 text-xs text-muted-foreground" title="המסגרות נשארות במקומן, והתוכן עובר ביניהן - כל תוכן מקבל את הצורה של המסגרת שאליה עבר">
+              להחליף תוכן עם
+              <select aria-label={`להחליף תוכן של ${f.title} עם`} value="" onChange={ev => ev.target.value && swap(f, ev.target.value)} className={SELECT}>
+                <option value="">…</option>
+                {frames.filter(x => !x.e.hidden && x.e.id !== f.e.id).map(x => <option key={x.e.id} value={x.e.id}>{x.title}</option>)}
+              </select>
+            </label>
+          )}
           {SCROLLABLE.includes(f.binding) && (
             <label className="flex items-center gap-1 text-xs text-muted-foreground" title="מה קורה כשהתוכן ארוך מהמסגרת. תוכן שנכנס לא זז.">
               כשלא נכנס
@@ -317,6 +357,12 @@ export function PartsContent({ config, onEdit, onManual }: {
                 </select>
               </label>
             )}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-medium">שמירה בחלקים והתיבות שלי</span>
+              <input aria-label={`שם לתיבה של ${f.title}`} value={boxName[f.e.id] ?? f.title} maxLength={80}
+                onChange={ev => setBoxName(b => ({ ...b, [f.e.id]: ev.target.value }))} className="h-7 min-w-0 flex-1 basis-32 rounded border bg-background px-1 text-foreground" />
+              <Button type="button" size="sm" variant="outline" className="h-7" aria-label={`שמירת ${f.title} בחלקים והתיבות שלי`} onClick={() => saveBox(f)}>שמירה</Button>
+            </div>
             <label className="flex items-center gap-1.5" title="משטח חלק מאחורי התוכן, כדי שהקווים המצוירים במסגרת לא יעברו בתוך הטקסט">
               <input type="checkbox" aria-label={`רקע חלק מאחורי ${f.title}`} checked={Boolean(f.e.backdrop)} onChange={ev => patch(f, { backdrop: ev.target.checked || undefined }, 'backdrop')} />
               רקע חלק מאחורי התוכן (מסתיר את הקווים המצוירים במסגרת)

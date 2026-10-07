@@ -119,7 +119,11 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       {['box','frame'].includes(first.kind) && <div className="flex items-center gap-1 text-xs">מילוי<ColorPick label="מילוי האלמנט" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={v => patch({ fill: v })} /><button type="button" onClick={() => patch({ fill: 'transparent' })}>ללא מילוי</button></div>}
     </fieldset>}
     {/* The same adding as in the layout tab: a new frame, instead of a frame's content, or into a frame. */}
-    <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }} />
+    <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
+      library={config.elementLibrary}
+      defaults={config.elementDefaults}
+      onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))}
+      onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />
     <p className="text-xs text-muted-foreground">בכל שורה: ימין, אמצע או שמאל מזיזים את החלק יחד עם המסגרת שלו. אם בצד הזה כבר עומד חלק אחר, השניים מתחלפים. הסמל האחרון בוחר את החלק לגרירה ידנית על הלוח.</p>
     {/* Several parts at once: tick them (or Shift + click), then show, hide, lock or free them all. */}
     <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="פעולות על כמה חלקים" data-testid="elements-bulk">

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import type { ElementDefaults } from './config';
 import { ZMAN_DISPLAY_KEYS } from '@/community/lib/zmanim';
 /** Free elements share the board's config, undo history and renderer. Coordinates are percentages. */
 export const ELEMENT_KINDS = ['column', 'ornament', 'frame', 'box', 'text', 'image'] as const;
@@ -390,13 +391,21 @@ export const turnOf = (count: number, seconds: number | undefined, now: Date) =>
  * the middle of the board to be sent to its place. Null when the board has no
  * such frame to copy - then a plain box (liveBox) it is.
  */
-export function styledBox(all: BoardElement[], binding: ElementBinding): BoardElement[] | null {
-  const source = all
-    .filter(e => e.binding && FRAME_CONTENT.includes(e.binding) && !e.hidden)
-    .map(e => ({ e, ids: sectionOf(all, e.id) }))
-    .filter(({ ids }) => { const p = frameParts(all, ids); return p.own && p.frame; })
-    .sort((a, b) => areaOf(boundsOf(all, b.ids)) - areaOf(boundsOf(all, a.ids)))[0];
-  if (!source) return null;
+export function styledBox(all: BoardElement[], binding: ElementBinding, like?: string): BoardElement[] | null {
+  const chosen = like ? all.find(e => e.id === like && e.binding) : undefined;
+  const found = chosen
+    // The frame asked for ("בסגנון של"): its picture and what is drawn with it, and this one content - not its neighbours'.
+    ? (() => {
+        const ids = sectionOf(all, chosen.id);
+        return frameParts(all, ids).frame ? { e: chosen, ids: ids.filter(id => id === chosen.id || !all.find(x => x.id === id)?.binding) } : undefined;
+      })()
+    : all
+      .filter(e => e.binding && FRAME_CONTENT.includes(e.binding) && !e.hidden)
+      .map(e => ({ e, ids: sectionOf(all, e.id) }))
+      .filter(({ ids }) => { const p = frameParts(all, ids); return p.own && p.frame; })
+      .sort((a, b) => areaOf(boundsOf(all, b.ids)) - areaOf(boundsOf(all, a.ids)))[0];
+  if (!found) return null;
+  const source = found;
   const { heading, frame } = frameParts(all, source.ids);
   const box = boundsOf(all, source.ids);
   const dx = 50 - box.width / 2 - box.x;
@@ -416,7 +425,7 @@ export function styledBox(all: BoardElement[], binding: ElementBinding): BoardEl
 }
 
 /** New content on the board: in the board's look when it has one to copy, otherwise in a box of its own. */
-export const addContent = (all: BoardElement[], binding: ElementBinding) => styledBox(all, binding) ?? plainBox(all, binding) ?? liveBox(binding);
+export const addContent = (all: BoardElement[], binding: ElementBinding, like?: string) => styledBox(all, binding, like) ?? plainBox(all, binding) ?? liveBox(binding);
 
 /** The board's own letters: the ink, font and weight most of its live content wears. */
 function boardInk(all: BoardElement[]) {
@@ -557,5 +566,63 @@ export function liveFrames(all: BoardElement[]): LiveFrame[] {
     const heading = all.find(x => ids.includes(x.id) && x.kind === 'text' && !x.binding && x.text.trim());
     const shared = all.filter(x => ids.includes(x.id) && x.binding).length > 1;
     return { e, ids, binding: e.binding!, title: !shared && heading ? heading.text : BINDING_LABELS[e.binding!], side: sideOf(boundsOf(all, ids)) };
+  });
+}
+
+
+/**
+ * The frames a new one can be a copy of ("בסגנון של"): every frame drawn on
+ * the board that holds live content - the arch of a side, the wide frame of
+ * the middle - once each, named by what it shows.
+ */
+export function styleSources(all: BoardElement[]): LiveFrame[] {
+  const seen = new Set<string>();
+  return liveFrames(all).filter(f => {
+    if (f.e.hidden) return false;
+    const frame = frameParts(all, f.ids).frame;
+    if (!frame || seen.has(frame.id)) return false;
+    seen.add(frame.id);
+    return true;
+  });
+}
+
+/**
+ * Two frames exchange what they show: the frames stay where they are, in
+ * their own look, and each content takes the shape, size and heading of the
+ * frame it comes into - the daily amud in the wide frame of the middle, the
+ * parasha in the arch. What shares a frame (the date under the parasha) stays.
+ */
+export function swapContent(all: BoardElement[], aId: string, bId: string): BoardElement[] {
+  const a = all.find(e => e.id === aId), b = all.find(e => e.id === bId);
+  if (!a?.binding || !b?.binding || aId === bId || a.locked || b.locked) return all;
+  const into = (slot: BoardElement, from: BoardElement): BoardElement => {
+    const { alternates: _a, alternateSeconds: _s, zmanKeys: _z, scroll: _c, ...plain } = slot;
+    return {
+      ...retarget(plain, from.binding!),
+      ...(from.alternates?.length ? { alternates: from.alternates.filter(x => x !== from.binding), alternateSeconds: from.alternateSeconds } : {}),
+      ...(from.zmanKeys ? { zmanKeys: from.zmanKeys } : {}),
+      ...(from.scroll ? { scroll: from.scroll } : {}),
+    };
+  };
+  const newA = into(a, b), newB = into(b, a);
+  const pa = frameParts(all, sectionOf(all, aId)), pb = frameParts(all, sectionOf(all, bId));
+  return all.map(x =>
+    x.id === aId ? newA
+    : x.id === bId ? newB
+    : pa.own && x.id === pa.heading?.id ? headingFor(x, newA)
+    : pb.own && x.id === pb.heading?.id ? headingFor(x, newB)
+    : pa.own && x.id === pa.frame?.id ? { ...x, name: `מסגרת ${BINDING_LABELS[newA.binding!]}` }
+    : pb.own && x.id === pb.frame?.id ? { ...x, name: `מסגרת ${BINDING_LABELS[newB.binding!]}` }
+    : x);
+}
+
+/** New content in the gabbai's own letters, where set ("ברירת מחדל לתוכן חדש"): the text of what was added, not its frame. */
+export function withDefaults(added: BoardElement[], d: ElementDefaults): BoardElement[] {
+  return added.map(e => e.kind !== 'text' ? e : {
+    ...e,
+    ...(d.color ? { color: d.color } : {}),
+    ...(d.font ? { font: d.font } : {}),
+    ...(d.weight ? { weight: d.weight } : {}),
+    ...(d.scale !== 1 ? { fontSize: Math.round(e.fontSize * d.scale * 100) / 100 } : {}),
   });
 }
