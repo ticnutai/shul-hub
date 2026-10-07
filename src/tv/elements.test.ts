@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet } from './elements';
+import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, type BoardElement } from './elements';
 import { DEFAULT_TV_CONFIG, normalizeTvConfig, editForDevice, configForDevice } from './config';
 import { workspaceDocument, parseWorkspace, type StoreImage } from './workspaceTransfer';
 
@@ -88,5 +88,91 @@ describe('New Shul element persistence and transfer', () => {
   it('rejects unrelated or future package formats', async () => {
     await expect(parseWorkspace('{"format":"new-shul-board","version":99,"config":{}}', store)).rejects.toThrow();
     await expect(parseWorkspace('[]', store)).rejects.toThrow();
+  });
+});
+
+describe('placing a section on a side of the board', () => {
+  const byName = (els: BoardElement[], name: string) => els.find(e => e.name === name)!;
+  for (const design of PREMIUM_DESIGNS) {
+    it(`swaps the prayers and the lessons, frames and text together - ${design.name}`, () => {
+      const els = design.values.elements!;
+      const prayers = byName(els, 'תפילות היום'), lessons = byName(els, 'שיעורי היום');
+      const prayerSection = sectionOf(els, prayers.id).map(id => els.find(e => e.id === id)!.name);
+      expect(prayerSection).toEqual(expect.arrayContaining(['מסגרת תפילות', 'כותרת תפילות', 'תפילות היום']));
+      expect(prayerSection).not.toContain('שיעורי היום');
+      expect(sideOf(boundsOf(els, sectionOf(els, prayers.id)))).toBe('left');
+      const r = placeSection(els, prayers.id, 'right');
+      expect(r.result).toBe('swapped');
+      const after = (name: string) => byName(r.elements, name);
+      // Each moved by the same step as its frame, so nothing slid off its frame.
+      const step = after('מסגרת תפילות').x - byName(els, 'מסגרת תפילות').x;
+      expect(step).toBeGreaterThan(30);
+      expect(after('תפילות היום').x - prayers.x).toBeCloseTo(step);
+      expect(after('כותרת תפילות').x - byName(els, 'כותרת תפילות').x).toBeCloseTo(step);
+      expect(after('שיעורי היום').x - lessons.x).toBeCloseTo(-step);
+      expect(sideOf(boundsOf(r.elements, sectionOf(r.elements, prayers.id)))).toBe('right');
+      expect(sideOf(boundsOf(r.elements, sectionOf(r.elements, lessons.id)))).toBe('left');
+      // Everything else stays where it was.
+      const moved = new Set([...sectionOf(els, prayers.id), ...sectionOf(els, lessons.id)]);
+      for (const e of els) if (!moved.has(e.id)) expect(byName(r.elements, e.name)).toEqual(e);
+      // And back again.
+      expect(placeSection(r.elements, prayers.id, 'left').elements.map(e => e.x)).toEqual(els.map(e => e.x).map((x, i) => expect.closeTo(x, 5) as unknown as number));
+    });
+  }
+  it('does nothing where the section already stands, and refuses a locked one', () => {
+    const els = PREMIUM_DESIGNS[0].values.elements!;
+    const lessons = byName(els, 'שיעורי היום');
+    expect(placeSection(els, lessons.id, 'right').result).toBe('already');
+    const locked = els.map(e => e.name === 'מסגרת שיעורים' ? { ...e, locked: true } : e);
+    const r = placeSection(locked, byName(locked, 'תפילות היום').id, 'right');
+    expect(r.result).toBe('locked');
+    expect(r.elements).toBe(locked);
+  });
+  it('moves a lone box to an empty side, and centres it', () => {
+    const box = { ...newElement('box'), x: 34, y: 20, width: 32, height: 30 };
+    const text = { ...newElement('text'), x: 36, y: 25, width: 28, height: 10 };
+    const r = placeSection([box, text], text.id, 'left');
+    expect(r.result).toBe('moved');
+    expect(r.elements[0].x).toBe(2);
+    expect(r.elements[1].x).toBe(4);
+    expect(placeSection(r.elements, box.id, 'center').elements[0].x).toBe(34);
+  });
+});
+
+describe('frames in the board\'s own look', () => {
+  const designs = [...PREMIUM_DESIGNS, EMERALD_COMPOSITION];
+  for (const design of designs) {
+    it(`copies a frame of ${design.name} for new content, and changes what a frame shows`, () => {
+      const els = design.values.elements!;
+      const copy = styledBox(els, 'announcements');
+      expect(copy, 'a frame to copy').not.toBeNull();
+      expect(copy!.filter(e => e.binding)).toHaveLength(1);
+      expect(copy!.find(e => e.binding)!.binding).toBe('announcements');
+      expect(new Set(copy!.map(e => e.group)).size).toBe(1);
+      const all = [...els, ...copy!];
+      // In the middle, and moving alone.
+      const ids = sectionOf(all, copy![0].id);
+      expect(ids.sort()).toEqual(copy!.map(e => e.id).sort());
+      expect(sideOf(boundsOf(all, ids))).toBe('center');
+      // The prayers' frame showing the day's times.
+      const prayers = els.find(e => e.binding === 'prayers')!;
+      const changed = setContent(els, prayers.id, 'zmanim');
+      expect(changed.find(e => e.id === prayers.id)!.binding).toBe('zmanim');
+      expect(changed.filter((e, i) => e !== els[i]).length).toBeLessThanOrEqual(3);
+    });
+  }
+  it('takes the place of a hidden frame exactly', () => {
+    const els = PREMIUM_DESIGNS[0].values.elements!;
+    const prayers = sectionOf(els, els.find(e => e.binding === 'prayers')!.id);
+    const hidden = els.map(e => prayers.includes(e.id) ? { ...e, hidden: true } : e);
+    const copy = styledBox(hidden, 'announcements')!;
+    const r = placeSection([...hidden, ...copy], copy[0].id, 'left');
+    expect(r.result).toBe('moved');
+    const a = boundsOf(r.elements, r.ids), b = boundsOf(hidden, prayers);
+    expect(a.x + a.width / 2).toBeCloseTo(b.x + b.width / 2);
+  });
+  it('falls back to a box of its own on a board with no frame to copy', () => {
+    expect(styledBox([], 'zmanim')).toBeNull();
+    expect(addContent([], 'zmanim').some(e => e.kind === 'box')).toBe(true);
   });
 });

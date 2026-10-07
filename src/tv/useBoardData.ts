@@ -266,9 +266,17 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
   const slides: BoardSlide[] = [];
   const nowMs = now.getTime();
   const hidden = new Set(config.hidden);
+  /**
+   * A board of parts: what shows is decided by its parts (an announcements
+   * part, a shiurim part), and the ordinary board's switches and screens are
+   * not in its editor at all. They used to decide anyway, silently: the
+   * announcements part said "אין הודעות כרגע" with notices waiting, because
+   * no screen of the ordinary board had them.
+   */
+  const ofParts = config.screenLayout === "composition";
 
   for (const sc of config.slides) {
-    if (!sc.enabled) continue;
+    if (!sc.enabled && !(ofParts && (sc.kind === "prayer" || sc.kind === "announcements" || sc.kind === "shiurim"))) continue;
     // Split screen: the side column already shows the zmanim, so the prayer
     // slide uses its timeline layout (the one without a zmanim panel).
     const base = { seconds: sc.seconds, layout: config.screenLayout === "split" && sc.kind === "prayer" ? "timeline" : sc.layout };
@@ -341,7 +349,7 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
   }
 
   const built = slides.length ? slides : [{ id: "learning", kind: "learning", seconds: 30, layout: "cards" } as BoardSlide];
-  const board = config.screens?.length ? compose(built, config) : built;
+  const board = config.screens?.length && !ofParts ? compose(built, config) : built;
   return withOccasions(board, built, config, data, now);
 }
 

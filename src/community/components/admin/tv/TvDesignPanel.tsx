@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useElementEditing } from "@/tv/elementEditing";
 import { normalizeElements } from "@/tv/elements";
 import { ElementsEditor } from "./ElementsEditor";
+import { PartsContent } from "./PartsContent";
 import { WorkspaceTransfer } from "./WorkspaceTransfer";
 import { downloadFile } from "@/tv/workspaceTransfer";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
@@ -802,6 +803,11 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     const panel = search.get("panel");
     return panel && ["design", "layout", "content", "occasions", "tools"].includes(panel) ? panel : "design";
   });
+  /** The list of a board's parts, in the design tab. */
+  const openPartsList = () => {
+    setTab("design");
+    window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80);
+  };
 
   /** "ביטול שינויים" asks inline before it throws the draft away. */
   useEffect(() => {
@@ -1476,14 +1482,14 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         >
           {view.screenLayout === 'composition' ? <Section
             id="layout-elements"
-            title="פריסת חלקי הערכה"
-            hint="בערכה מחלקים, הפריסה היא מקום וגודל של כל חלק."
+            title="מה יופיע על הלוח, ובאיזה צד"
+            hint="בערכה מחלקים, כל תוכן עומד במסגרת משלו: מדליקים מה שרוצים להציג, ובוחרים לו צד."
           >
             <p className="mb-3 text-sm" data-testid="composition-layout-notice">
-              בערכה מחלקים אין מסכים מתחלפים ותיבות קבועות: כל חלק (תפילות, שעון, מסגרת, עמוד) עומד במקום שלו. מזיזים ומשנים גודל
-              ישירות על הלוח, או ברשימת החלקים.
+              בערכה מחלקים אין מסכים מתחלפים: כל מה שדלוק כאן מופיע על הלוח כל הזמן, במקום שלו. לשינוי גודל ולהזזה מדויקת - רשימת החלקים.
             </p>
-            <Button type="button" size="sm" variant="outline" onClick={() => { setTab("design"); window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80); }}>
+            <PartsContent config={view} onEdit={edit} onManual={openPartsList} />
+            <Button type="button" size="sm" variant="outline" className="mt-3" onClick={openPartsList}>
               לרשימת החלקים
             </Button>
           </Section> : <>
