@@ -59,8 +59,11 @@ export function GradientStudio({
   onApply,
   onPreview,
   current,
+  of,
 }: {
   applyLabel: string;
+  /** Whose gradient it is ("הלוח", "התיבות"), when there are two on the page. */
+  of?: string;
   onApply: (value: string | null) => void;
   /**
    * Shows what is being built on the board itself, without saving it.
@@ -194,7 +197,7 @@ export function GradientStudio({
               max={360}
               step={5}
               value={angle}
-              aria-label="זווית הגרדיאנט"
+              aria-label={of ? `זווית מעבר הצבעים של ${of}` : "זווית הגרדיאנט"}
               onChange={(e) => {
                 setTouched(true);
                 setAngle(Number(e.target.value));
@@ -223,7 +226,7 @@ export function GradientStudio({
           className={`mt-2 h-8 font-mono text-xs ${
             advanced && !isSafeGradient(advanced) ? "border-destructive" : ""
           }`}
-          aria-label="גרדיאנט CSS"
+          aria-label={of ? `מעבר הצבעים של ${of} (קוד)` : "גרדיאנט CSS"}
         />
         <p className="mt-1 text-[11px] text-muted-foreground">
           מה שנכתב כאן נשמר בדיוק כפי שהוא. שינוי של אחד הבקרים שלמעלה מחליף אותו בגרדיאנט פשוט.

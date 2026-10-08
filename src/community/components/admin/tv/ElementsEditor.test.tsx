@@ -8,7 +8,7 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_TV_CONFIG, type TvConfig } from "@/tv/config";
-import { BINDING_LABELS, ELEMENT_BINDINGS, boundsOf, normalizeElements, sectionOf, sideOf } from "@/tv/elements";
+import { BINDING_LABELS, ELEMENT_BINDINGS, boundsOf, liveFrames, normalizeElements, sectionOf, sideOf } from "@/tv/elements";
 import { PREMIUM_DESIGNS } from "@/tv/premiumDesigns";
 import { ElementEditingProvider } from "./ElementEditingProvider";
 import { ElementsEditor } from "./ElementsEditor";
@@ -35,20 +35,21 @@ const sideOfPart = (name: string) => {
 };
 
 describe("ElementsEditor - sides and live content", () => {
-  it("puts the lessons on the left and the prayers on the right, with their frames", () => {
+  it("on a board of parts leaves the content's sides to the layout tab, and keeps the decorations' here", () => {
     render(<Harness start={board()} />);
-    expect(sideOfPart("תפילות היום")).toBe("left");
-    expect(screen.getByRole("button", { name: "תפילות היום לשמאל" }).getAttribute("aria-pressed")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "שיעורי היום לשמאל" }));
-    expect(sideOfPart("שיעורי היום")).toBe("left");
-    expect(sideOfPart("מסגרת שיעורים")).toBe("left");
-    expect(sideOfPart("תפילות היום")).toBe("right");
-    expect(sideOfPart("כותרת תפילות")).toBe("right");
-    expect(screen.getByRole("button", { name: "תפילות היום לימין" }).getAttribute("aria-pressed")).toBe("true");
+    // The frames of content: their side is chosen in the layout tab, not here as well.
+    expect(screen.queryByRole("button", { name: "תפילות היום לשמאל" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "שיעורי היום לשמאל" })).toBeNull();
+    // The rest - what is not a frame of content - keeps its sides in this list.
+    const content = new Set(liveFrames(latest.elements).flatMap((f) => f.ids));
+    const other = latest.elements.find((e) => !content.has(e.id));
+    if (other) expect(screen.getByRole("button", { name: `${other.name} לימין` })).toBeTruthy();
+    // Every part can still be chosen to drag by hand.
+    expect(screen.getByRole("button", { name: "הזזה ידנית של תפילות היום" })).toBeTruthy();
   });
 
   it("offers every kind of live content, and adds the announcements in a frame", () => {
-    render(<Harness start={board()} />);
+    render(<PartsHarness start={board()} />);
     const picker = screen.getByRole("combobox", { name: "איזה תוכן להוסיף" }) as HTMLSelectElement;
     expect(picker.options).toHaveLength(ELEMENT_BINDINGS.length);
     for (const b of ["zmanim", "announcements", "logos", "dafYomi", "seasonal"] as const)
@@ -337,8 +338,12 @@ describe("adding content: where it goes, in the kit's look", () => {
     expect(sectionOf(latest.elements, parasha.id)).toContain(daf.id);
   });
 
-  it("is the same in the list of parts - one way of adding, not two", () => {
+  it("is in one place: on a board of parts in the layout tab, on an ordinary board in the list of parts", () => {
     render(<Harness start={board()} />);
+    expect(screen.queryByTestId("add-content")).toBeNull();
+    expect(screen.getByTestId("add-content-elsewhere")).toBeTruthy();
+    cleanup();
+    render(<Harness start={{ ...board(), screenLayout: "rotate" }} />);
     expect(screen.getAllByTestId("add-content")).toHaveLength(1);
     expect(screen.getByRole("radiogroup", { name: "איפה להוסיף" })).toBeTruthy();
   });

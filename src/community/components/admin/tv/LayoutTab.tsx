@@ -242,7 +242,7 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
               edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))
             }
           />
-          פרשת השבוע
+          פרשת השבוע - תגית קטנה מתחת לשם
         </label>
         <label className="flex items-center gap-3">
           <Switch
@@ -251,7 +251,7 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
               edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))
             }
           />
-          הדף היומי
+          הדף היומי - תגית קטנה מתחת לשם
         </label>
       </Section>
 

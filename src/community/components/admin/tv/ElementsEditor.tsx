@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Move, PanelLeft, PanelRight, PanelsLeftRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { TvConfig } from '@/tv/config';
-import { BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, ELEMENT_KINDS, ELEMENT_NAMES, MAX_ELEMENTS, alignElements, boundsOf, addContent, elementId, moveElements, newElement, normalizeElements, placeSection, sectionOf, sideOf, type BoardElement, type ElementBinding, type ElementSide } from '@/tv/elements';
+import { BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, ELEMENT_KINDS, ELEMENT_NAMES, MAX_ELEMENTS, alignElements, boundsOf, addContent, elementId, liveFrames, moveElements, newElement, normalizeElements, placeSection, sectionOf, sideOf, type BoardElement, type ElementBinding, type ElementSide } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
 import { ElementTextTools } from './ElementTextTools';
 import { AddContent } from './AddContent';
@@ -44,6 +44,13 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       return { ...e, id: elementId(), name: `${e.name} (עותק)`, x: Math.min(100 - e.width, e.x + 2), y: Math.min(100 - e.height, e.y + 2), locked: false, group: e.group ? groups.get(e.group)! : null };
     }); commit([...elements, ...added]); select(added.map(e => e.id));
   };
+  /**
+   * On a board of parts, the content and the side of each frame of content are
+   * the layout tab's ("מה יופיע על הלוח, ובאיזה צד"): here only the rest - the
+   * decorations, the pillars, a picture - has its side.
+   */
+  const parts = config.screenLayout === 'composition';
+  const inLayoutTab = useMemo(() => new Set(parts ? liveFrames(elements).flatMap(f => f.ids) : []), [parts, elements]);
   /** Each part with the section it moves with, and where that section stands now. */
   const sections = useMemo(() => new Map(elements.map(e => { const ids = sectionOf(elements, e.id); return [e.id, { ids, side: sideOf(boundsOf(elements, ids)) }] as const; })), [elements]);
   const textPatch = (ids: string[], p: Partial<BoardElement>, what: string) =>
@@ -118,13 +125,13 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         : <ElementTextTools elements={elements} ids={selected} withColor={false} onPatch={textPatch} />}</div>}
       {['box','frame'].includes(first.kind) && <div className="flex items-center gap-1 text-xs">מילוי<ColorPick label="מילוי האלמנט" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={v => patch({ fill: v })} /><button type="button" onClick={() => patch({ fill: 'transparent' })}>ללא מילוי</button></div>}
     </fieldset>}
-    {/* The same adding as in the layout tab: a new frame, instead of a frame's content, or into a frame. */}
-    <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
+    {/* Adding content: a new frame, instead of a frame's content, or into a frame. On a board of parts - in the layout tab. */}
+    {parts ? <p className="rounded-md border border-dashed p-3 text-sm" data-testid="add-content-elsewhere">הוספת תוכן (פרשת השבוע, הדף היומי, זמני היום ועוד), והצד של כל תוכן - בלשונית <b>פריסה</b>, תחת "מה יופיע על הלוח, ובאיזה צד".</p> : <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
       library={config.elementLibrary}
       defaults={config.elementDefaults}
       onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))}
-      onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />
-    <p className="text-xs text-muted-foreground">בכל שורה: ימין, אמצע או שמאל מזיזים את החלק יחד עם המסגרת שלו. אם בצד הזה כבר עומד חלק אחר, השניים מתחלפים. הסמל האחרון בוחר את החלק לגרירה ידנית על הלוח.</p>
+      onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />}
+    <p className="text-xs text-muted-foreground">{parts ? 'לחלקים שאינם תוכן (עיטורים, עמודים, תמונות): ' : ''}בכל שורה: ימין, אמצע או שמאל מזיזים את החלק יחד עם המסגרת שלו. אם בצד הזה כבר עומד חלק אחר, השניים מתחלפים. הסמל האחרון בוחר את החלק לגרירה ידנית על הלוח.</p>
     {/* Several parts at once: tick them (or Shift + click), then show, hide, lock or free them all. */}
     <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="פעולות על כמה חלקים" data-testid="elements-bulk">
       <label className="flex items-center gap-1.5">
@@ -146,7 +153,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         onChange={ev => select(s => ev.target.checked ? [...new Set([...s, e.id])] : s.filter(id => id !== e.id))} />
       <button type="button" className={`flex-1 text-right text-sm ${e.hidden ? 'text-muted-foreground line-through' : ''}`} onClick={ev => choose(e, ev.shiftKey)}>{e.name}{e.group ? ' · קבוצה' : ''}</button>
       <div className="flex items-center gap-0.5" role="group" aria-label={`מיקום של ${e.name}`} data-testid="element-side">
-        {([['right', 'ימין', PanelRight], ['center', 'אמצע', PanelsLeftRight], ['left', 'שמאל', PanelLeft]] as const).map(([side, label, Icon]) => <button key={side} type="button" aria-label={`${e.name} ל${label}`} aria-pressed={sec?.side === side} title={`להעביר ל${label}${tip}`} disabled={e.locked} onClick={() => place(e, side)} className={`grid size-7 place-items-center rounded border ${sec?.side === side ? 'border-primary bg-primary/10 text-primary' : 'border-transparent text-muted-foreground'} hover:border-primary hover:text-foreground disabled:opacity-40`}><Icon className="size-4" aria-hidden /></button>)}
+        {!inLayoutTab.has(e.id) && ([['right', 'ימין', PanelRight], ['center', 'אמצע', PanelsLeftRight], ['left', 'שמאל', PanelLeft]] as const).map(([side, label, Icon]) => <button key={side} type="button" aria-label={`${e.name} ל${label}`} aria-pressed={sec?.side === side} title={`להעביר ל${label}${tip}`} disabled={e.locked} onClick={() => place(e, side)} className={`grid size-7 place-items-center rounded border ${sec?.side === side ? 'border-primary bg-primary/10 text-primary' : 'border-transparent text-muted-foreground'} hover:border-primary hover:text-foreground disabled:opacity-40`}><Icon className="size-4" aria-hidden /></button>)}
         <button type="button" aria-label={`הזזה ידנית של ${e.name}`} title={`הזזה ידנית: בוחר את החלק${mates.length ? ' ואת מה שזז איתו' : ''}, ואז גוררים על הלוח`} disabled={e.locked} onClick={() => manual(e)} className="grid size-7 place-items-center rounded border border-transparent text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40"><Move className="size-4" aria-hidden /></button>
       </div>
       <button type="button" className="text-xs" aria-label={`${e.hidden ? 'הצגת' : 'הסתרת'} ${e.name}`} onClick={() => commit(elements.map(x => x.id === e.id ? { ...x, hidden: !x.hidden } : x))}>{e.hidden ? 'הצג' : 'הסתר'}</button>

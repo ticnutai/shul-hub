@@ -320,7 +320,7 @@ export function BackgroundLayer({
 
       <SubPart bare={!inParts} title="רקע משלכם" hint="צבע, מעבר צבעים או תמונה - בונים כאן ושומרים בגלריה.">
       <InnerCard testId={onBoard ? "background-now" : "box-background-now"} label={onBoard ? "הרקע של הלוח עכשיו" : "הרקע עכשיו"}>
-        <Segments label="סוג הרקע" value={source} onChange={(v) => setSource(v as Source)} options={sources} />
+        <Segments label={onBoard ? "סוג הרקע של הלוח" : "סוג הרקע של התיבות"} value={source} onChange={(v) => setSource(v as Source)} options={sources} />
 
         {source === "colour" && (
           <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -331,6 +331,7 @@ export function BackgroundLayer({
         {source === "gradient" && (
           <GradientStudio
             key={target}
+            of={onBoard ? "הלוח" : "התיבות"}
             applyLabel={onBoard ? "החלה על רקע הלוח" : frame ? `החלה על ${frameLabel(frame, saved.customBoxes)}` : "החלה על כל התיבות"}
             current={current && isSafeGradient(current) ? current : null}
             onPreview={preview}
