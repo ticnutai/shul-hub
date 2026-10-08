@@ -21,7 +21,7 @@ export interface DraftState {
   editedAt: number;
 }
 
-type DraftAction =
+export type DraftAction =
   | { type: "load"; config: TvConfig }
   /**
    * The stored board changed (a save elsewhere, a fix on the server). The

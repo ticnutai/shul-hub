@@ -1,13 +1,4 @@
-import { ElementEditingProvider } from "./ElementEditingProvider";
-import { useLocation } from 'react-router-dom';
-import { useElementEditing } from "@/tv/elementEditing";
-import { normalizeElements } from "@/tv/elements";
-import { ElementsEditor } from "./ElementsEditor";
-import { PartsContent } from "./PartsContent";
-import { WorkspaceTransfer } from "./WorkspaceTransfer";
-import { downloadFile } from "@/tv/workspaceTransfer";
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState, type ReactNode } from "react";
-import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   BellRing,
   Check,
@@ -15,151 +6,37 @@ import {
   Expand,
   Columns2,
   Rows2,
-  ImagePlus,
-  Minus,
   ArrowLeftRight,
   Pencil,
   Pause,
   Play,
-  Plus,
   Redo2,
-  RotateCcw,
   Save,
-  Trash2,
   Undo2,
   Maximize,
   PanelTopClose,
   Square,
 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useLocation } from 'react-router-dom';
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+
 import {
   ALERT_EVENT_LABELS,
   DEFAULT_TV_CONFIG,
-  SLIDE_KIND_LABELS,
-  SLIDE_LAYOUTS,
-  PRAYER_DAYS,
-  PRAYER_DAYS_LABELS,
   normalizeTvConfig,
   type AlertEvent,
   configForDevice,
   editForDevice,
   type TvConfig,
 } from "@/tv/config";
-import {
-  getTheme,
-  isSafeCssValue,
-  newCustomThemeId,
-  newGradientId,
-  THEME_VAR_LABELS,
-  type ThemeVar,
-} from "@/tv/themes";
-import { useDayZmanim } from "@/tv/useBoardData";
-import { nextCandleLighting } from "@/tv/shabbat";
-import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
-
-/** The screen layouts, with a small sketch of each for the picker. */
-const LAYOUT_CHOICES: Array<{
-  id: TvConfig["screenLayout"];
-  name: string;
-  hint: string;
-  sketch: ReactNode;
-}> = [
-  {
-    id: "rotate",
-    name: "סבב שקפים",
-    hint: "שקף אחד בכל פעם על כל המסך, מתחלף לפי הזמנים שקבעתם",
-    sketch: (
-      <>
-        <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
-        <i className="col-span-3 row-span-3 rounded-sm bg-current opacity-30" />
-      </>
-    ),
-  },
-  {
-    id: "split",
-    name: "מפוצל",
-    hint: "טור קבוע עם המניין הבא וזמני היום, ולידו השקפים מתחלפים",
-    sketch: (
-      <>
-        <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
-        <i className="col-span-2 row-span-3 rounded-sm bg-current opacity-30" />
-        <i className="row-span-3 rounded-sm bg-current opacity-55" />
-      </>
-    ),
-  },
-  {
-    id: "dashboard",
-    name: "לוח מלא",
-    hint: "הכל בבת אחת, בלי החלפות: תפילות, שעון, זמנים, הודעות ושיעורים",
-    sketch: (
-      <>
-        <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
-        <i className="row-span-2 rounded-sm bg-current opacity-40" />
-        <i className="rounded-sm bg-current opacity-55" />
-        <i className="row-span-2 rounded-sm bg-current opacity-40" />
-        <i className="rounded-sm bg-current opacity-30" />
-        <i className="col-span-3 h-1.5 rounded-sm bg-current opacity-60" />
-      </>
-    ),
-  },
-  {
-    id: "medallion",
-    name: "מדליון",
-    hint: "שעון במדליון בין היום לתאריך, תפילות וזמנים בשתי מסגרות גדולות ופס למטה - כל חלק ניתן לעיצוב",
-    sketch: (
-      <>
-        <i className="h-2 rounded-sm bg-current opacity-50" />
-        <i className="mx-auto h-3 w-3 rounded-full bg-current opacity-70" />
-        <i className="h-2 rounded-sm bg-current opacity-50" />
-        <i className="col-span-3 row-span-2 grid grid-cols-2 gap-1">
-          <i className="rounded-sm bg-current opacity-40" />
-          <i className="rounded-sm bg-current opacity-40" />
-        </i>
-        <i className="col-span-3 h-1.5 rounded-sm bg-current opacity-60" />
-      </>
-    ),
-  },
-  { id: 'composition', name: 'ערכה מחלקים', hint: 'גרפיקה מפורטת, טקסט ושעונים כשכבות עצמאיות. בחרו ערכה מקורית בלשונית עיצוב.', sketch: <i className="col-span-3 row-span-3 rounded border-2 border-current" /> },
-  // No painted template: a look is built from parts (backgrounds, boxes and
-  // frames, text), and a painted board that arrives is rebuilt from them
-  // (config.normalizeTvConfig). The medallion is its arrangement in frames.
-];
-
-/**
- * The decorative dress of the board. Each option shows a miniature of what
- * it does - a frame, an arch, a parchment - rather than only a name.
- */
-
-
-const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> = [
-  { id: "digital", name: "ספרות" },
-  { id: "analog", name: "שעון מחוגים" },
-  { id: "both", name: "שניהם" },
-];
-
-import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
-import type { DeviceMode } from "./devices";
-import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
-import { FrameSpacing } from "./BoardLook";
-import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
-import { BlankBoardStarter, BuildGuide, type BuildStep } from "./BlankBoardStarter";
-import { blankBoard, standardBoard } from "@/tv/blankBoard";
-import { SubPart } from "./Parts";
-import { uploadImages } from "./uploadImages";
-import { ReadabilityNote } from "./ReadabilityNote";
-import { TvVersions } from "./TvVersions";
-import { DesignLibrary } from "./DesignLibrary";
+import { mergeConfig, sameJson } from "@/tv/configMerge";
 import { findDesign } from "@/tv/designs";
-import { ScreenComposer } from "./ScreenComposer";
-import { SlideStrip, TvDeviceStudio } from "./TvPreview";
-import { useDraftSync } from "./tvDraftChannel";
-import { StudioPanel } from "./StudioPanel";
-import { FigmaImport } from "./FigmaImport";
-import { TransferPanel } from "./GradientStudio";
+import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
+import { useElementEditing } from "@/tv/elementEditing";
+import { normalizeElements } from "@/tv/elements";
 import {
   dataUrlToFile,
   toPortableIllustration,
@@ -167,27 +44,50 @@ import {
   type CustomIllustration,
   type PortableIllustration,
 } from "@/tv/illustrated";
-import { MedallionRows } from "./MedallionRows";
-import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
-import { OccasionsEditor } from "./OccasionsEditor";
-import { LogoLibrary } from "./LogoLibrary";
-import { occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
+import { occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editPage, pageAt, pageLook, readPages } from "@/tv/partPages";
-import { PartPagesBar } from "./PartPagesBar";
-import { AlertsSettings, type AlertExample } from "./AlertsSettings";
-import { ElementTextTools } from "./ElementTextTools";
-import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
 import { isAllowedEdit } from "@/tv/records";
-import { TvEditInspector } from "./TvEditInspector";
-import { SplitHandle } from "./SplitHandle";
-import { commitRecordEdits } from "./tvRecords";
-import { mergeConfig, sameJson } from "@/tv/configMerge";
+import { nextCandleLighting } from "@/tv/shabbat";
+import {
+  getTheme,
+  newCustomThemeId,
+  newGradientId,
+  THEME_VAR_LABELS,
+  type ThemeVar,
+} from "@/tv/themes";
+import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
+import { useDayZmanim } from "@/tv/useBoardData";
+import { downloadFile } from "@/tv/workspaceTransfer";
+
+import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
+
+import { type AlertExample } from "./AlertsSettings";
+import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
+import { ContentTab } from "./ContentTab";
+import { DesignTab } from "./DesignTab";
+import type { DeviceMode } from "./devices";
+import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { draftReducer } from "./draftState";
-import { useQueryClient } from "@tanstack/react-query";
-import { useTvSlides } from "./tvPreviewData";
+import { BARE_KEY, FOCUS_KEY, LAYOUT_KEY, SIDE_H_KEY, SIDE_HEIGHT_DEFAULT, SIDE_KEY, SIDE_SHARE_DEFAULT, STUDIO_CHROME, TOP_HEIGHT_DEFAULT, TOP_KEY, clampHeight, clampShare, clampSideHeight, readStored, writeStored } from "./editorLayout";
+import { ColorField, Section } from "./editorParts";
+import { ElementEditingProvider } from "./ElementEditingProvider";
+import { ElementTextTools } from "./ElementTextTools";
+import { type LayerProps } from "./LayerEditors";
+import { LayoutTab } from "./LayoutTab";
+import { OccasionsEditor } from "./OccasionsEditor";
+import { PartPagesBar } from "./PartPagesBar";
+import { ReadabilityNote } from "./ReadabilityNote";
+import { SplitHandle } from "./SplitHandle";
+import { StudioPanel } from "./StudioPanel";
+import { ToolsTab } from "./ToolsTab";
 import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdminData";
-import { ColorPick } from "./ColorPick";
+import { useDraftSync } from "./tvDraftChannel";
+import { TvEditInspector } from "./TvEditInspector";
+import { SlideStrip, TvDeviceStudio } from "./TvPreview";
+import { useTvSlides } from "./tvPreviewData";
+import { commitRecordEdits } from "./tvRecords";
+import { uploadImages } from "./uploadImages";
 
 /**
  * Live editor for the board's look and content rotation.
@@ -198,255 +98,6 @@ import { ColorPick } from "./ColorPick";
  * draft; consecutive edits of the same field (dragging a colour picker)
  * collapse into one history step so undo stays meaningful.
  */
-
-/* --------------------------------------------------------- small inputs -- */
-
-function Section({ title, hint, children, id }: { title: string; hint?: string; children: ReactNode; id?: string }) {
-  return (
-    <section id={id} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
-      <h3 className="text-base font-semibold">{title}</h3>
-      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
-      <div className="mt-3 space-y-3">{children}</div>
-    </section>
-  );
-}
-
-/**
- * One box's whole design - its shape, background, frame and text - put on
- * another box, or on all of them, in one click. A box with no design of its
- * own passes that on: the others go back to looking like every box.
- */
-function CopyBoxLook({
-  from,
-  looks,
-  customBoxes,
-  onCopy,
-}: {
-  from: FrameId;
-  looks: TvConfig["frameLooks"];
-  customBoxes: TvConfig["customBoxes"];
-  onCopy: (to: FrameId[], from: FrameId) => void;
-}) {
-  const label = (id: FrameId) => frameLabel(id, customBoxes);
-  const others = allFrameIds(customBoxes).filter((id) => id !== from);
-  const [to, setTo] = useState<string>("all");
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-2 border-t pt-2 text-xs" data-testid="copy-box-look">
-      <span className="font-medium">העתקת העיצוב של {label(from)} אל:</span>
-      <select
-        aria-label="העתקה אל"
-        value={to}
-        onChange={(e) => setTo(e.target.value)}
-        className="h-8 rounded-md border bg-background px-2 text-xs"
-      >
-        <option value="all">כל שאר התיבות</option>
-        {others.map((id) => (
-          <option key={id} value={id}>
-            {label(id)}
-            {looks[id] ? " •" : ""}
-          </option>
-        ))}
-      </select>
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        className="h-8"
-        onClick={() => {
-          const targets = to === "all" ? others : [to as FrameId];
-          onCopy(targets, from);
-          toast.success(
-            `העיצוב של ${label(from)} הועתק ${to === "all" ? "לכל שאר התיבות" : `ל${label(to as FrameId)}`}.`,
-          );
-        }}
-      >
-        העתקה
-      </Button>
-    </div>
-  );
-}
-
-
-/**
- * The design tab's topics, side by side at the top: a click jumps to its
- * section. Which one is on screen is marked as the page scrolls.
- */
-const DESIGN_TOPICS = [
-  { id: "design-sets", label: "ערכות" },
-  { id: "design-background", label: "רקע" },
-  { id: "design-boxes", label: "תיבות" },
-  { id: "design-frames", label: "מסגרות" },
-  { id: "design-text", label: "טקסט" },
-  { id: "design-elements", label: "חלקים" },
-] as const;
-
-function DesignTopics() {
-  const [current, setCurrent] = useState<string>(DESIGN_TOPICS[0].id);
-  useEffect(() => {
-    const seen = new Map<string, boolean>();
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) seen.set(e.target.id, e.isIntersecting);
-        const first = DESIGN_TOPICS.find((t) => seen.get(t.id));
-        if (first) setCurrent(first.id);
-      },
-      { rootMargin: "-180px 0px -45% 0px" },
-    );
-    for (const t of DESIGN_TOPICS) {
-      const el = document.getElementById(t.id);
-      if (el) observer.observe(el);
-    }
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <nav aria-label="נושאי העיצוב" className="flex flex-wrap gap-1.5" data-testid="design-topics">
-      {DESIGN_TOPICS.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          aria-current={current === t.id ? "true" : undefined}
-          onClick={() => {
-            setCurrent(t.id);
-            // Instant: a smooth scroll does not run while the window is in the background.
-            document.getElementById(t.id)?.scrollIntoView({ block: "start" });
-          }}
-          className={`h-9 flex-1 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition ${
-            current === t.id ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/50"
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
-
-/** Number with visible −/+ and ArrowUp/ArrowDown (the "spinner" users asked for). */
-function Stepper({
-  value,
-  min,
-  max,
-  step,
-  onChange,
-  label,
-  format = (v) => String(v),
-}: {
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  onChange: (v: number) => void;
-  label: string;
-  format?: (v: number) => string;
-}) {
-  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
-  return (
-    <div
-      className="inline-flex items-center rounded-md border bg-background"
-      role="group"
-      aria-label={label}
-    >
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8"
-        aria-label={`הקטנת ${label}`}
-        onClick={() => onChange(clamp(value - step))}
-        disabled={value <= min}
-      >
-        <Minus className="size-3.5" />
-      </Button>
-      <span
-        className="min-w-14 px-1 text-center text-sm tabular-nums"
-        tabIndex={0}
-        role="spinbutton"
-        aria-label={label}
-        aria-valuenow={value}
-        aria-valuemin={min}
-        aria-valuemax={max}
-        onKeyDown={(e) => {
-          if (e.key === "ArrowUp") {
-            e.preventDefault();
-            onChange(clamp(value + step));
-          } else if (e.key === "ArrowDown") {
-            e.preventDefault();
-            onChange(clamp(value - step));
-          }
-        }}
-      >
-        {format(value)}
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8"
-        aria-label={`הגדלת ${label}`}
-        onClick={() => onChange(clamp(value + step))}
-        disabled={value >= max}
-      >
-        <Plus className="size-3.5" />
-      </Button>
-    </div>
-  );
-}
-
-function ColorField({
-  label,
-  value,
-  themeValue,
-  overridden,
-  onChange,
-  onReset,
-}: {
-  label: string;
-  value: string;
-  themeValue: string;
-  overridden: boolean;
-  onChange: (v: string) => void;
-  onReset: () => void;
-}) {
-  const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
-  const isHex = /^#[0-9a-f]{6}$/i.test(value);
-  const valid = isSafeCssValue(text);
-  return (
-    <div className="flex items-center gap-2">
-      {isHex ? (
-        <ColorPick label={label} value={value} onChange={onChange} />
-      ) : (
-        <span title="ערך עם שקיפות - עריכה בטקסט" className="size-9 shrink-0 rounded border opacity-40" style={{ background: value }} aria-hidden />
-      )}
-      <div className="min-w-0 flex-1">
-        <div className="text-sm">{label}</div>
-        <Input
-          dir="ltr"
-          value={text}
-          aria-label={`${label} (ערך)`}
-          aria-invalid={!valid}
-          className={`h-7 font-mono text-xs ${valid ? "" : "border-destructive"}`}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (isSafeCssValue(e.target.value)) onChange(e.target.value.trim());
-          }}
-        />
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8 shrink-0"
-        aria-label={`החזרת ${label} לצבע הבסיס`}
-        title={`צבע הבסיס: ${themeValue}`}
-        disabled={!overridden}
-        onClick={onReset}
-      >
-        <RotateCcw className="size-3.5" />
-      </Button>
-    </div>
-  );
-}
 
 /* ---------------------------------------------------------------- panel -- */
 
@@ -1434,543 +1085,25 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          {/*
-            The topics side by side, always in sight: a click jumps to its
-            section. With them, which box the boxes, frames and text are for -
-            chosen once here rather than in three pickers of their own.
-          */}
-          <div
-            className="sticky top-16 z-[5] space-y-2 rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur min-[1700px]:col-span-2"
-            data-testid="parts-scope"
-          >
-            <DesignTopics />
-            <label className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="font-semibold">התיבות, המסגרות והטקסט של:</span>
-              <select
-                aria-label="התיבות, המסגרות והטקסט של"
-                value={partTarget}
-                onChange={(e) => setPartTarget(e.target.value)}
-                className="h-9 min-w-48 flex-1 rounded-md border bg-background px-2 text-sm"
-              >
-                <option value="frames">הכול - כל התיבות וכל הלוח</option>
-                <optgroup label="תיבה אחת">
-                  {allFrameIds(draft.customBoxes).map((id) => (
-                    <option key={id} value={`frame:${id}`}>
-                      {frameLabel(id, draft.customBoxes)}
-                      {scoped.frameLooks[id] ? " •" : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              </select>
-            </label>
-            <p className="text-[11px] text-muted-foreground">"•" - לתיבה יש עיצוב משלה.</p>
-            {partTarget.startsWith("frame:") && (
-              <CopyBoxLook
-                from={partTarget.slice(6) as FrameId}
-                looks={scoped.frameLooks}
-                customBoxes={draft.customBoxes}
-                onCopy={(to, from) =>
-                  edit(`copy-look:${from}:${to.join(",")}`, (c) => {
-                    const look = c.frameLooks[from];
-                    const frameLooks = { ...c.frameLooks };
-                    for (const id of to) {
-                      if (look) frameLooks[id] = structuredClone(look);
-                      else delete frameLooks[id];
-                    }
-                    return { ...c, frameLooks };
-                  })
-                }
-              />
-            )}
-          </div>
-
-          <Section
-            id="design-sets"
-            title="1. ערכות"
-            hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
-          >
-            <div className="space-y-5">
-              <SubPart title="התחלה מחדש" hint="לוח ריק שבונים צעד אחרי צעד, הלוח הרגיל של המערכת, או מחיקת הכול.">
-                <BlankBoardStarter
-                  unavailable={
-                    occasionScope || scope !== "all"
-                      ? 'התחלה מחדש היא ללוח כולו: בחרו למעלה "כל המסכים", וצאו מעיצוב המועד, כדי להשתמש בה.'
-                      : null
-                  }
-                  // Straight onto the board, past the scope: starting over is the whole board's.
-                  onCreate={(blocks) => {
-                    dispatch({ type: "edit", key: "start-over:blank", update: (c) => blankBoard(c, blocks) });
-                    setComposerScreen(0);
-                    setGuide([]);
-                  }}
-                  onStandard={() => dispatch({ type: "edit", key: "start-over:standard", update: (c) => standardBoard(c) })}
-                  onWipe={() => dispatch({ type: "edit", key: "start-over:wipe", update: () => structuredClone(DEFAULT_TV_CONFIG) })}
-                />
-              </SubPart>
-              <DesignLibrary config={view} onEdit={edit} />
-            </div>
-          </Section>
-
-          <Section
-            id="design-background"
-            title="2. רקע"
-            hint="מה שמאחורי הלוח: צבע, מעבר צבעים או תמונה (מוכנה או שלכם, עם צבע או מעבר מעליה), סליידרים לכל אחד, ושמירה בגלריה."
-          >
-            <BackgroundLayer {...layerProps} />
-          </Section>
-
-          <Section
-            id="design-boxes"
-            title="3. תיבות"
-            hint="הצורה של התיבה והרקע שלה - לכל התיבות או לתיבה שנבחרה למעלה."
-          >
-            <FramesLayer {...layerProps} target={partTarget} part="shape" />
-            <FramesLayer {...layerProps} target={partTarget} part="background" />
-          </Section>
-
-          <Section
-            id="design-frames"
-            title="4. מסגרות"
-            hint="מסגרת ללוח כולו (עמודים, פרוכת...), קו מסביב לתיבה וכמה היא בולטת, ומסגרת מיוחדת לתיבה מהגלריה (או מסגרת משלכם)."
-          >
-            <FramesLayer {...layerProps} target={partTarget} part="frames" />
-          </Section>
-
-          <Section
-            id="design-text"
-            title="5. טקסט"
-            hint="גופן, גודל, צבעים וסגנון הכותרת - לכל הלוח או לתיבה שנבחרה למעלה, ואם רוצים - לחלק מסוים בה (השעה, כותרת...)."
-          >
-            <TextLayer {...layerProps} target={partTarget} />
-          </Section>
-
-          <Section
-            id="design-elements"
-            title="6. חלקים חופשיים"
-            hint="עמודים, עיטורים, מסגרות, תיבות, טקסט ותמונות - כל אחד שכבה משלו מעל הלוח: גרירה, שינוי גודל, קיבוץ, נעילה, סדר שכבות וספרייה של חלקים שמורים. בערכה מחלקים - זו הפריסה שלה."
-          >
-            <ElementsEditor config={view} onEdit={edit} textToolsElsewhere={editing && Boolean(partText)} />
-          </Section>
+          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} />
         </TabsContent>
         <TabsContent
           value="layout"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          {view.screenLayout === 'composition' ? <Section
-            id="layout-elements"
-            title="מה יופיע על הלוח, ובאיזה צד"
-            hint="בערכה מחלקים, כל תוכן עומד במסגרת משלו: מדליקים מה שרוצים להציג, ובוחרים לו צד."
-          >
-            <p className="mb-3 text-sm" data-testid="composition-layout-notice">
-              כאן קובעים מה מופיע בעמוד שנבחר למעלה ב"עמודי הלוח", ובאיזה צד. כל עמוד מסודר בנפרד, והלוח מתחלף בין העמודים לפי השניות של כל אחד. לשינוי גודל ולהזזה מדויקת - רשימת החלקים.
-            </p>
-            <PartsContent config={view} onEdit={edit} onManual={openPartsList} />
-            <Button type="button" size="sm" variant="outline" className="mt-3" onClick={openPartsList}>
-              לרשימת החלקים
-            </Button>
-          </Section> : <>
-          <Section
-            id="layout-screens"
-            title="מסכים ומה עליהם"
-            hint="כמה מסכים, ומה מופיע בכל אחד. מסך אחד — הלוח עומד; כמה — הוא מתחלף ביניהם."
-          >
-            <ScreenComposer
-              config={scoped}
-              current={composerScreen}
-              onSelect={(i, s) => {
-                setComposerScreen(i);
-                setPreviewScreen(s.id);
-              }}
-              onLayouts={(layouts) => edit("layouts", (c) => ({ ...c, layouts }))}
-              onEdit={edit}
-              onOccasion={(o, day) => {
-                // Its screen shows only on its day: the preview goes there, and to it.
-                if (!o || !day) return previewAt(null);
-                previewAt(new Date(Date.parse(`${jerusalemDateKey(day)}T11:00:00+03:00`)));
-                setPreviewScreen(`occasion:${o.id}`);
-              }}
-              onChange={(screens, next) => {
-                setComposerScreen(next);
-                if (screens[next]) setPreviewScreen(screens[next].id);
-                // The Shabbat and day screens are occasions now: the first save
-                // here fixes the occasions as they were read from those screens,
-                // before the screens themselves are left behind.
-                edit("screens", (c) => ({ ...c, occasions: readOccasions(c), screens }));
-              }}
-            />
-          </Section>
-
-          <Section
-            title="זמני התפילות בלוח"
-            hint="מה הלוח מראה ואיך זה נכנס במסך. באתר ובאפליקציה זה נקבע בנפרד, בניהול המניינים."
-          >
-            <p className="mb-2 text-sm font-medium">אילו ימים הלוח מראה?</p>
-            <div className="mb-4 grid gap-2 sm:grid-cols-3" role="group" aria-label="אילו ימים הלוח מראה" data-testid="board-prayer-days">
-              {PRAYER_DAYS.map((value) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={draft.prayerDays === value}
-                  onClick={() => edit("prayerDays", (c) => ({ ...c, prayerDays: value }))}
-                  className={
-                    "rounded-lg border p-3 text-right transition-colors " +
-                    (draft.prayerDays === value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted")
-                  }
-                >
-                  <span className="block text-sm font-medium">{PRAYER_DAYS_LABELS[value].label}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">{PRAYER_DAYS_LABELS[value].description}</span>
-                </button>
-              ))}
-            </div>
-            <p className="mb-2 text-xs text-muted-foreground">
-              כל השבוע: כל יום מוצג בתורו — במסגרת התפילות של המדליון, או כמסך תפילות משלו. "הבא" ו"עבר" מסומנים רק
-              בתפילות של היום. איך התפילות של יום מסודרות — בפריסת שקופית התפילות, ברשימת המסכים.
-            </p>
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="w-32">
-                <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="rows-per-screen">
-                  מניינים במסך
-                </label>
-                <Input
-                  id="rows-per-screen"
-                  type="number"
-                  min={4}
-                  max={60}
-                  value={draft.prayerRowsPerScreen}
-                  onChange={(e) =>
-                    edit("rowsPerScreen", (c) => ({
-                      ...c,
-                      prayerRowsPerScreen: Math.min(60, Math.max(4, Number(e.target.value) || 14)),
-                    }))
-                  }
-                />
-              </div>
-              <p className="flex-1 text-xs text-muted-foreground">
-                יום עם הרבה מניינים לא נכנס במסך אחד: הלוח לוקח עוד מסך במקום להקטין את הטקסט. התשובה
-                תלויה במסך — טלוויזיה מעל ארון הקודש מחזיקה יותר ממסך קטן על מדף. השבירה תמיד במעבר בין
-                תפילות, שחרית לא תיחתך באמצע.
-              </p>
-            </div>
-            {scoped.screenLayout === "medallion" && <MedallionRows config={scoped} onEdit={edit} />}
-          </Section>
-
-          <Section title="פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים — המסכים שלו קובעים, גם בשבת.">
-            <div className="grid grid-cols-2 gap-2">
-              {LAYOUT_CHOICES.map((l) => (
-                <button
-                  key={l.id}
-                  type="button"
-                  aria-pressed={scoped.screenLayout === l.id}
-                  onClick={() => edit("layout", (c) => ({ ...c, screenLayout: l.id }))}
-                  className={`rounded-lg border p-2 text-right transition ${
-                    scoped.screenLayout === l.id
-                      ? "ring-2 ring-primary ring-offset-2"
-                      : "hover:border-primary/50"
-                  }`}
-                >
-                  <span
-                    className="mb-2 grid aspect-video grid-cols-3 grid-rows-[auto_1fr_1fr_1fr] gap-1 rounded-md bg-[#0b1628] p-1.5 text-[#f0c35c]"
-                    aria-hidden
-                  >
-                    {l.sketch}
-                  </span>
-                  <span className="block text-sm font-medium">{l.name}</span>
-                  <span className="block text-[11px] leading-tight text-muted-foreground">
-                    {l.hint}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <FrameSpacing config={view} onEdit={edit} />
-
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              שעון:
-              {CLOCK_CHOICES.map((c) => (
-                <Button
-                  key={c.id}
-                  type="button"
-                  size="sm"
-                  variant={scoped.clockStyle === c.id ? "default" : "outline"}
-                  aria-pressed={scoped.clockStyle === c.id}
-                  onClick={() => edit("clock", (cfg) => ({ ...cfg, clockStyle: c.id }))}
-                >
-                  {c.name}
-                </Button>
-              ))}
-            </div>
-          </Section>
-
-          <Section
-            title="כשהתוכן לא נכנס לתיבה"
-            hint="יום עם הרבה מניינים, שבוע של שיעורים, הודעה ארוכה: תיבה שאין בה מקום לכל - זזה לאט, כך שהכול עובר מול הקהל. תיבה שהכול נכנס בה לא זזה."
-          >
-            <div className="flex flex-wrap gap-2" role="group" aria-label="כשהתוכן לא נכנס">
-              {(
-                [
-                  ["off", "בלי גלילה", "כמו היום: חלון סביב המניין הבא, והשאר נחתך"],
-                  ["pause", "גלילה עם עצירות", "עומד למעלה, גולל לאט, עומד למטה וחוזר"],
-                  ["loop", "וילון רציף", "רץ בלי הפסקה; ההתחלה באה אחרי הסוף"],
-                ] as const
-              ).map(([id, name, note]) => (
-                <Button
-                  key={id}
-                  type="button"
-                  size="sm"
-                  title={note}
-                  variant={draft.overflow.mode === id ? "default" : "outline"}
-                  aria-pressed={draft.overflow.mode === id}
-                  onClick={() => edit("overflow", (c) => ({ ...c, overflow: { ...c.overflow, mode: id } }))}
-                >
-                  {name}
-                </Button>
-              ))}
-            </div>
-            {draft.overflow.mode !== "off" && (
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="מהירות הגלילה">
-                <span className="text-muted-foreground">מהירות:</span>
-                {(
-                  [
-                    ["slow", "איטית"],
-                    ["normal", "רגילה"],
-                  ] as const
-                ).map(([id, name]) => (
-                  <Button
-                    key={id}
-                    type="button"
-                    size="sm"
-                    variant={draft.overflow.speed === id ? "default" : "outline"}
-                    aria-pressed={draft.overflow.speed === id}
-                    onClick={() => edit("overflow-speed", (c) => ({ ...c, overflow: { ...c.overflow, speed: id } }))}
-                  >
-                    {name}
-                  </Button>
-                ))}
-              </div>
-            )}
-          </Section>
-
-          <Section title="לוגואים" hint="הלוגו של בית הכנסת, של תורמים - מספרייה משותפת לכל בתי הכנסת">
-            <LogoLibrary chosen={draft.logos} onChange={(logos) => edit("logos", (c) => ({ ...c, logos }))} />
-          </Section>
-
-          <Section title="ראש המסך">
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={scoped.header.logo}
-                onCheckedChange={(on) =>
-                  edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))
-                }
-              />
-              לוגו קרובים ליד שם בית הכנסת
-            </label>
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={scoped.header.parasha}
-                onCheckedChange={(on) =>
-                  edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))
-                }
-              />
-              פרשת השבוע
-            </label>
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={scoped.header.dafYomi}
-                onCheckedChange={(on) =>
-                  edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))
-                }
-              />
-              הדף היומי
-            </label>
-          </Section>
-
-          {/*
-            How each kind of content is drawn inside its box. What is on which
-            screen, and for how long, is the composer's ("מסכים ומה עליהם");
-            this list used to switch them on and off too, and the two disagreed.
-          */}
-          <Section
-            title="איך מוצג כל סוג תוכן"
-            hint='הפריסה של זמני התפילות, הלימוד, ההודעות והשיעורים בתוך התיבה שלהם. מה מופיע ובאיזה מסך - ב"מסכים ומה עליהם".'
-          >
-            <ul className="space-y-2" data-testid="content-layouts">
-              {draft.slides
-                .filter((s) => SLIDE_LAYOUTS[s.kind].length > 1)
-                .map((s) => (
-                  <li key={s.kind} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">
-                    <span className="min-w-28 font-medium">{SLIDE_KIND_LABELS[s.kind]}</span>
-                    <select
-                      aria-label={`פריסת ${SLIDE_KIND_LABELS[s.kind]}`}
-                      value={s.layout}
-                      onChange={(e) =>
-                        edit(`slide-layout:${s.kind}`, (c) => ({
-                          ...c,
-                          slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, layout: e.target.value } : x)),
-                        }))
-                      }
-                      className="h-8 rounded-md border bg-background px-2 text-sm"
-                    >
-                      {SLIDE_LAYOUTS[s.kind].map((l) => (
-                        <option key={l.id} value={l.id}>
-                          {l.label}
-                        </option>
-                      ))}
-                    </select>
-                  </li>
-                ))}
-            </ul>
-          </Section>
-          </>}
+          <LayoutTab draft={draft} scoped={scoped} view={view} edit={edit} openPartsList={openPartsList} composerScreen={composerScreen} setComposerScreen={setComposerScreen} setPreviewScreen={setPreviewScreen} previewAt={previewAt} />
         </TabsContent>
         <TabsContent
           value="content"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <Section
-            title="מצגת תמונות"
-            hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG."
-          >
-            <div className="flex flex-wrap items-center gap-3">
-              <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
-                <label className="cursor-pointer">
-                  <ImagePlus className="size-4" /> {uploading ? "מעלה…" : "הוספת תמונות"}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    className="sr-only"
-                    onChange={(e) => void upload(e.target.files)}
-                  />
-                </label>
-              </Button>
-              <span className="flex items-center gap-2 text-sm">
-                זמן לתמונה:
-                <Stepper
-                  label="זמן לתמונה"
-                  value={draft.slideshow.secondsPerImage}
-                  min={3}
-                  max={60}
-                  step={1}
-                  format={(v) => `${v} שנ׳`}
-                  onChange={(v) =>
-                    edit("sh-sec", (c) => ({
-                      ...c,
-                      slideshow: { ...c.slideshow, secondsPerImage: v },
-                    }))
-                  }
-                />
-              </span>
-            </div>
-            {draft.slideshow.images.length > 0 && (
-              <ul className="grid gap-2 sm:grid-cols-2">
-                {draft.slideshow.images.map((img, i) => (
-                  <li key={img.url + i} className="flex items-center gap-2 rounded-lg border p-2">
-                    <img src={img.url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
-                    <Input
-                      value={img.caption ?? ""}
-                      placeholder="כיתוב (לא חובה)"
-                      className="h-8 text-sm"
-                      onChange={(e) =>
-                        edit(`sh-cap:${i}`, (c) => ({
-                          ...c,
-                          slideshow: {
-                            ...c.slideshow,
-                            images: c.slideshow.images.map((x, j) =>
-                              j === i ? { ...x, caption: e.target.value || undefined } : x,
-                            ),
-                          },
-                        }))
-                      }
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8 shrink-0"
-                      aria-label="הסרת תמונה"
-                      onClick={() =>
-                        edit("sh-del", (c) => ({
-                          ...c,
-                          slideshow: {
-                            ...c.slideshow,
-                            images: c.slideshow.images.filter((_, j) => j !== i),
-                          },
-                        }))
-                      }
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          <Section
-            title="סרגל הודעה רץ"
-            hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (~45%) כל עוד הסרגל פעיל."
-          >
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={scoped.ticker.enabled}
-                onCheckedChange={(on) =>
-                  edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))
-                }
-              />
-              הצגת סרגל
-            </label>
-            <Textarea
-              value={scoped.ticker.text}
-              maxLength={400}
-              placeholder="למשל: ברוכים הבאים · שיעור העמוד היומי בכל יום ב-16:15"
-              onChange={(e) =>
-                edit("tk-text", (c) => ({ ...c, ticker: { ...c.ticker, text: e.target.value } }))
-              }
-            />
-          </Section>
-
-          <Section
-            title="תזכורות וספירה לאחור"
-            hint="תזכורות לפני סוף זמן קריאת שמע, סוף זמן תפילה, שקיעה ועוד: מתי הן מופיעות, באילו שלבים, ואיך הן נראות - צבעים, צורה, גודל ומיקום. ובסוף - ספירה לתפילה הבאה."
-          >
-            <AlertsSettings config={draft} countdown={scoped.countdown.enabled} edit={edit} onExample={showAlertExample} />
-          </Section>
+          <ContentTab draft={draft} scoped={scoped} edit={edit} uploading={uploading} upload={upload} showAlertExample={showAlertExample} />
         </TabsContent>
         <TabsContent
           value="tools"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <Section
-            title="גרסאות קודמות"
-            hint="כל שמירה שומרת כאן את מה שהיה על המסכים לפניה (40 האחרונות). אפשר להציג גרסה בתצוגה המקדימה, ולהחזיר אותה כטיוטה - ואז 'שמור ושדר' מעלה אותה למסכים."
-          >
-            <TvVersions
-              shown={shownVersion?.id ?? null}
-              onShow={(v) => {
-                setBeforeAfter(false);
-                setShownVersion(v);
-                if (v) showPreview();
-              }}
-              onRestore={(config, label) => {
-                setShownVersion(null);
-                dispatch({ type: "edit", key: `restore-version:${label}`, update: () => config });
-                toast.success(`הגרסה מ-${label} הוחזרה כטיוטה. "שמור ושדר" מעלה אותה למסכים; "צעד אחורה" (Ctrl+Z) מחזיר.`);
-              }}
-            />
-          </Section>
-
-          <div data-testid="board-transfer-section" className="scroll-mt-24 rounded-xl border p-4 space-y-4">
-            <h2 tabIndex={-1} className="font-semibold">ייבוא וייצוא</h2>
-            <WorkspaceTransfer config={draft} onImport={(config) => dispatch({ type: "edit", key: "workspace-import", update: () => config })} />
-            <TransferPanel onExport={doExport} onImport={doImport} />
-          </div>
-
-          <Section
-            title="ייבוא מפיגמה"
-            hint="קובץ המשתנים (Variables) של פיגמה הופך לצבעי הבסיס של הלוח. בלי טוקן ובלי חשבון - הקובץ נקרא כאן בדפדפן."
-          >
-            <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
-          </Section>
-
+          <ToolsTab draft={draft} view={view} edit={edit} dispatch={dispatch} shownVersion={shownVersion} setShownVersion={setShownVersion} setBeforeAfter={setBeforeAfter} showPreview={showPreview} doExport={doExport} doImport={doImport} figmaHandoff={figmaHandoff} />
         </TabsContent>
       </Tabs>
     </>
@@ -2377,54 +1510,4 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       <div className="order-3 space-y-4 lg:order-1">{!fullscreen && controls}</div>
     </div>
   );
-}
-
-
-/* ------------------------------------------------------ editor layout -- */
-
-const LAYOUT_KEY = "shul-hub.tv-editor.layout";
-const SIDE_KEY = "shul-hub.tv-editor.side-share";
-const TOP_KEY = "shul-hub.tv-editor.top-height";
-/** The board's share of the width, side by side - what the page gave it before. */
-const SIDE_SHARE_DEFAULT = 0.52;
-const TOP_HEIGHT_DEFAULT = 440;
-const SIDE_H_KEY = "shul-hub.tv-editor.side-height";
-const FOCUS_KEY = "shul-hub.tv-editor.focus";
-const BARE_KEY = "shul-hub.tv-editor.bare";
-/** Side by side, the board stopped at 520 px (with the studio's 72 around it): the same, until it is dragged. */
-const SIDE_HEIGHT_DEFAULT = 592;
-/** The studio's toolbar row and padding around the frame (TvDeviceStudio's fitHeight). */
-const STUDIO_CHROME = 72;
-
-/** Side by side: never under 260 px, never past the window. */
-function clampSideHeight(v: number): number {
-  const max = typeof window === "undefined" ? 1000 : Math.max(300, window.innerHeight - 24);
-  return Math.min(max, Math.max(260, v));
-}
-
-/** Neither side so narrow it is useless: a board under 30%, controls under 25%. */
-function clampShare(v: number): number {
-  return Math.min(0.75, Math.max(0.3, v));
-}
-
-/** A board at least readable, and room left for at least a few controls. */
-function clampHeight(v: number): number {
-  const max = typeof window === "undefined" ? 900 : Math.max(260, window.innerHeight - 260);
-  return Math.min(max, Math.max(220, v));
-}
-
-function readStored(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function writeStored(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    /* private mode: it simply is not remembered */
-  }
 }
