@@ -26,7 +26,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
       {READY_PARTS.map(item => <article key={item.id} className="overflow-hidden rounded border bg-background">
         <div className="relative aspect-video bg-slate-900" style={{ containerType: 'size' }}><BoardElements elements={item.elements} /></div>
         <div className="flex items-center justify-between gap-2 p-2">
-          <p className="min-w-0 truncate text-xs font-medium" title={item.name}>{item.name}</p>
+          <p className="min-w-0 line-clamp-2 break-words text-xs font-medium" title={item.name}>{item.name}</p>
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" aria-label={`הוספת ${item.name}`} disabled={config.elements.length + item.elements.length > MAX_ELEMENTS} onClick={() => insert('ready-part:insert', item.elements)}>הוספה</Button>
         </div>
       </article>)}
@@ -48,7 +48,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
       {config.elementLibrary.map(item => <article key={item.id} className="overflow-hidden rounded border bg-background">
         <div className="relative aspect-video bg-slate-900" style={{ containerType: 'size' }}><BoardElements elements={item.elements} /></div>
         <div className="space-y-2 p-2">
-          <p className="truncate text-sm font-medium">{item.name}</p>
+          <p className="line-clamp-2 break-words text-sm font-medium">{item.name}</p>
           <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" aria-label={`הוספת ${item.name} מהספרייה`} disabled={config.elements.length + item.elements.length > MAX_ELEMENTS} onClick={() => insert('element-library:insert', item.elements)}>הוספת עותק</Button>
             <button type="button" className="text-xs underline" aria-label={`הסרת ${item.name} מהספרייה`} onClick={() => setRemoving(item.id)}>הסרה</button>

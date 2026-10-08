@@ -51,8 +51,8 @@ function RowShell({
   return (
     <div className="flex items-center gap-3 px-4 py-3">
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium">{title}</p>
-        <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+        <p className="line-clamp-2 break-words font-medium sm:line-clamp-1">{title}</p>
+        <p className="break-words text-xs text-muted-foreground sm:truncate">{subtitle}</p>
       </div>
       <Button size="icon" variant="ghost" onClick={onEdit} aria-label="עריכה">
         <Pencil className="size-4" />
@@ -384,8 +384,8 @@ export function AnnouncementsAdmin() {
               {index + 1}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{announcement.title}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="line-clamp-2 break-words font-medium sm:line-clamp-1">{announcement.title}</p>
+              <p className="break-words text-xs text-muted-foreground sm:truncate">
                 {ANNOUNCEMENT_KINDS.find((kind) => kind.id === announcement.kind)?.label ?? ""}
                 {announcement.expires_at ? ` · בתוקף עד ${announcement.expires_at}` : ""}
                 {` · ${announcement.show_on_home ? "מופיעה גם בדף הבית" : "רק בטאב מודעות"}`}
@@ -676,8 +676,8 @@ export function ShiurimAdmin() {
               <GripVertical className="size-5" />
             </button>
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium">{s.title}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="line-clamp-2 break-words font-medium sm:line-clamp-1">{s.title}</p>
+              <p className="break-words text-xs text-muted-foreground sm:truncate">
                 {categories.find((category) => category.id === s.category_id)?.name ??
                   "ללא קטגוריה"}
                 {` · ${s.schedule_type === "daily" ? "בכל יום" : `יום ${DAYS_HE[s.day_of_week]}`} · ${s.time_text} · ${s.teacher}`}

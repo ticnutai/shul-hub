@@ -36,15 +36,18 @@ export function QuickAddButton() {
   if (loading || !isAdmin) return null;
 
   return (
+    <>
+    {/* Room at the page's foot, so its last lines can be scrolled out from under the button. */}
+    <div aria-hidden className="h-20 md:hidden" />
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
           size="icon"
-          className="fixed bottom-5 left-5 z-50 h-14 w-14 rounded-full shadow-2xl md:bottom-8 md:left-8"
+          className="fixed bottom-5 left-4 z-50 h-12 w-12 rounded-full shadow-2xl md:bottom-8 md:left-8 md:h-14 md:w-14"
           style={{ bottom: "calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
           aria-label="הוספה מהירה"
         >
-          <Plus className="size-7" />
+          <Plus className="size-6 md:size-7" />
         </Button>
       </DialogTrigger>
       <DialogContent
@@ -58,6 +61,7 @@ export function QuickAddButton() {
         <QuickAddTabs onDone={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 
