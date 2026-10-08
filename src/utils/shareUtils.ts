@@ -122,32 +122,6 @@ export function sharePasukLink(seferId: number, perek: number, pasukNum: number,
   }
 }
 
-/**
- * Copy commentary text to clipboard.
- */
-export function copyCommentary(text: string) {
-  navigator.clipboard.writeText(text);
-  toast.success("הפירוש הועתק ללוח");
-}
-
-export async function shareCommentary(options: ShareCommentaryOptions) {
-  const shareText = formatShareText(options);
-  
-  if (navigator.share) {
-    try {
-      await navigator.share({
-        title: `${options.mefaresh} - פירוש`,
-        text: shareText,
-      });
-    } catch {
-      // User cancelled
-    }
-  } else {
-    navigator.clipboard.writeText(shareText);
-    toast.success("הפירוש הועתק לשיתוף");
-  }
-}
-
 // ─────────────────────────────────────────────────────────────
 // Multi-pasuk sharing with full commentary content
 // ─────────────────────────────────────────────────────────────

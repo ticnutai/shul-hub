@@ -16,8 +16,3 @@ export const fixText = (text: string): string => {
   
   return fixed;
 };
-
-// Legacy function for backward compatibility - deprecated
-export const fixJsonContent = (content: string): string => {
-  return fixText(content);
-};

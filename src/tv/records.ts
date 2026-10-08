@@ -32,11 +32,6 @@ export function withRecordEdit(config: TvConfig, edit: RecordEdit): TvConfig {
   return { ...config, _records: [...(config._records ?? []).filter((e) => !same(e)), edit] };
 }
 
-export function pendingValue(config: TvConfig, table: RecordTable, id: string, field: string): string | number | undefined {
-  const e = config._records?.find((r) => r.table === table && r.id === id && !("delete" in r) && r.field === field);
-  return e && !("delete" in e) ? e.value : undefined;
-}
-
 type Row = { id: string } & Record<string, unknown>;
 
 function patchRows<T extends Row>(rows: T[] | null, table: RecordTable, edits: RecordEdit[]): T[] | null {

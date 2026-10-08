@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import type { IllustratedStyle } from "./config";
 import type { Illustration } from "./illustrated";
+import { rgba } from "./layerCss";
 
 /**
  * "התאמות תמונה" for a painted board: the picture is one image, so its
@@ -28,11 +29,6 @@ const FRAME_KEYS: FrameKey[] = ["panelR", "panelL", "plaqueR", "plaqueL", "barR"
 const ARCH = 0.22;
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
-function rgba(hex: string, alpha: number): string {
-  const n = parseInt(hex.slice(1), 16);
-  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${Math.round(alpha * 1000) / 1000})`;
-}
-
 /** Only panels are arched; plaques and bars stay rectangles. */
 const isArched = (key: FrameKey, look: IllustratedStyle) => look.frameShape === "arch" && key.startsWith("panel");
 

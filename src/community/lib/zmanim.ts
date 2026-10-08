@@ -152,11 +152,3 @@ export function formatTime(d: Date | null | undefined): string {
     timeZone: "Asia/Jerusalem",
   }).format(d);
 }
-
-/** מעגל את הזמן לדקה שלמה כלפי מטה */
-export function roundToMinute(d: Date | null): Date | null {
-  if (!d) return null;
-  const r = new Date(d);
-  r.setSeconds(0, 0);
-  return r;
-}

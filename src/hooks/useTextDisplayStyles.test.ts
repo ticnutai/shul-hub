@@ -125,7 +125,6 @@ describe("consuming components use useTextDisplayStyles for pasuk styling", () =
       "src/components/ClickableText.tsx",
       "src/components/CompactPasukView.tsx",
       "src/components/ChumashView.tsx",
-      "src/components/ContinuousTextView.tsx",
       "src/components/LuxuryTextView.tsx",
     ];
     for (const f of files) {

@@ -20,10 +20,6 @@ function read(): ReminderPrefs {
   return current;
 }
 
-export function getReminderPrefs(): ReminderPrefs {
-  return read();
-}
-
 export function setReminderPrefs(change: Partial<ReminderPrefs> | ((p: ReminderPrefs) => ReminderPrefs)): void {
   const prev = read();
   current = normalizeReminderPrefs(typeof change === "function" ? change(prev) : { ...prev, ...change });

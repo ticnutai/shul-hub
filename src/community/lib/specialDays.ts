@@ -22,17 +22,6 @@ import type { Zmanim } from "./zmanim";
 
 export type SpecialGroup = "noraim" | "sukkot" | "chanukah_purim" | "pesach_shavuot" | "fasts" | "shabbatot" | "other" | "national";
 
-export const GROUP_LABELS: Record<SpecialGroup, string> = {
-  noraim: "ימים נוראים",
-  sukkot: "סוכות",
-  chanukah_purim: "חנוכה ופורים",
-  pesach_shavuot: "פסח ושבועות",
-  fasts: "צומות",
-  shabbatot: "שבתות מיוחדות",
-  other: "ראש חודש ומועדים נוספים",
-  national: "ימים לאומיים (לא מוצגים)",
-};
-
 export interface SpecialDayDef {
   key: string;
   name: string;

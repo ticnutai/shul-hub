@@ -3,7 +3,7 @@ import { isAllowedEdit } from "@/tv/records";
 import { tvDb } from "./tvAdminData";
 
 /** Pure helpers live with the board (the draft window applies them too). */
-export { applyRecordEdits, EDITABLE_FIELDS, isAllowedEdit, moveAnnouncement, pendingValue, withRecordEdit } from "@/tv/records";
+export { applyRecordEdits, isAllowedEdit, moveAnnouncement, withRecordEdit } from "@/tv/records";
 
 /**
  * Writes the pending edits, one update per row. Stops at the first failure

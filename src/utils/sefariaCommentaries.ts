@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { SEFARIA_BOOK_NAMES, MEFARESH_MAPPING, AVAILABLE_COMMENTARIES, SefariaCommentary } from "@/types/sefaria";
+import { MEFARESH_MAPPING, AVAILABLE_COMMENTARIES, SefariaCommentary } from "@/types/sefaria";
 import { supabase } from "@/integrations/supabase/client";
 import { torahDB } from "@/utils/torahDB";
 
@@ -40,21 +40,6 @@ export const getSefariaSeferName = (seferId: number): string => {
     101: "Esther",
   };
   return seferMap[seferId] || "Genesis";
-};
-
-/**
- * Get English sefer name for internal use
- */
-export const getEnglishSeferName = (seferId: number): string => {
-  const seferMap: Record<number, string> = {
-    1: "bereishit",
-    2: "shemot",
-    3: "vayikra",
-    4: "bamidbar",
-    5: "devarim",
-    101: "esther",
-  };
-  return seferMap[seferId] || "bereishit";
 };
 
 /**

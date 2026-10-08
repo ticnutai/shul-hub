@@ -125,10 +125,6 @@ export function illustrationDef(id: string, custom: readonly CustomIllustration[
   return ILLUSTRATION_DEFS.find((d) => d.id === id) ?? custom.find((d) => d.id === id) ?? ILLUSTRATION_DEFS[0];
 }
 
-export function isBuiltinIllustration(id: string): id is IllustrationId {
-  return ILLUSTRATION_DEFS.some((d) => d.id === id);
-}
-
 /* ------------------------------------------------ imported painted boards -- */
 
 export const MAX_CUSTOM_ILLUSTRATIONS = 12;

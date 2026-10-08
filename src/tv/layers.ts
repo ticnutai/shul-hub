@@ -126,7 +126,3 @@ export function normalizeFrameStyle(raw: unknown): FrameStyle {
     imageWidth: two(n(r.imageWidth, d.imageWidth, 0.5, 6)),
   };
 }
-
-export function isNeutralTune(t: BackgroundTune): boolean {
-  return t.brightness === 1 && t.saturation === 1 && t.hue === 0 && t.blur === 0 && !t.tint;
-}

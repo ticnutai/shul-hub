@@ -17,7 +17,7 @@ import type { BackgroundTune, FrameStyle } from "./layers";
 
 const HEX6 = /^#[0-9a-f]{6}$/i;
 
-function rgba(hex: string, alpha: number): string {
+export function rgba(hex: string, alpha: number): string {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${Math.round(alpha * 1000) / 1000})`;
 }

@@ -16,11 +16,6 @@ export type ChavrutaRequest = Tables<"chavruta_requests">;
 export type ApprovedChavrutaRequest = Omit<ChavrutaRequest, "share_contact" | "status">;
 export type AdminMessage = Tables<"admin_messages">;
 
-export const DAY_TYPES = [
-  { id: "weekday", label: "ימות החול" },
-  { id: "friday", label: "יום שישי" },
-] as const;
-
 export const PRAYERS = [
   { id: "shacharit", label: "שחרית" },
   { id: "mincha", label: "מנחה" },

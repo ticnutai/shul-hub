@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@community/integrations/supabase/client";
 import { useEditMode } from "@community/lib/edit-mode";
@@ -147,35 +147,5 @@ export function InlineEdit({
       </span>
       <Pencil className="size-3 shrink-0 opacity-40 transition-opacity group-hover/inline:opacity-100" />
     </button>
-  );
-}
-
-/** Floating toggle button — visible only to admins; flips edit mode on/off. */
-export function EditModeToggle() {
-  const { editMode, setEditMode, canEdit } = useEditMode();
-  if (!canEdit) return null;
-  return (
-    <>
-      {editMode && (
-        <div className="fixed inset-x-0 top-0 z-50 bg-primary/90 py-1 text-center text-xs font-medium text-primary-foreground shadow">
-          מצב עריכה פעיל — לחץ על טקסט כדי לערוך ישירות
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={() => setEditMode(!editMode)}
-        aria-label={editMode ? "יציאה ממצב עריכה" : "מצב עריכה"}
-        title={editMode ? "יציאה ממצב עריכה" : "מצב עריכה"}
-        className={cn(
-          "fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-2xl transition-colors md:bottom-8 md:right-8",
-          editMode
-            ? "bg-primary text-primary-foreground ring-4 ring-primary/30"
-            : "border border-border bg-card text-foreground hover:bg-accent",
-        )}
-        style={{ bottom: "calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
-      >
-        {editMode ? <Check className="size-6" /> : <Pencil className="size-6" />}
-      </button>
-    </>
   );
 }

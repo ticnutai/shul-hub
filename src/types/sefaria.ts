@@ -69,13 +69,6 @@ export const MEFARESH_MAPPING: Record<string, string> = Object.fromEntries(
 );
 
 /**
- * Derived reverse mapping: English → Hebrew
- */
-export const MEFARESH_REVERSE_MAPPING: Record<string, string> = Object.fromEntries(
-  AVAILABLE_COMMENTARIES.map(c => [c.english, c.hebrew])
-);
-
-/**
  * Get all Hebrew names as array (for filters etc.)
  */
 export const ALL_MEFARSHIM_HEBREW = AVAILABLE_COMMENTARIES.map(c => c.hebrew);

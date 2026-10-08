@@ -49,21 +49,3 @@ export function useDeviceType(): DeviceType {
 
   return deviceType;
 }
-
-/**
- * Helper hooks for specific device checks
- */
-export function useIsMobileDevice() {
-  const deviceType = useDeviceType();
-  return deviceType === 'mobile';
-}
-
-export function useIsTabletDevice() {
-  const deviceType = useDeviceType();
-  return deviceType === 'tablet';
-}
-
-export function useIsDesktopDevice() {
-  const deviceType = useDeviceType();
-  return deviceType === 'desktop';
-}

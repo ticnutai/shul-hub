@@ -17,5 +17,3 @@ export function assertShulHubSupabase(rawUrl: string | undefined): asserts rawUr
     throw new Error(`Refusing unexpected Supabase project: ${host}`);
   }
 }
-
-export const SHUL_HUB_SUPABASE_HOST = SHUL_HUB_HOST;

@@ -143,45 +143,6 @@ export function getCurrentWeeklyParsha(il: boolean = true): WeeklyParsha | null 
 }
 
 /**
- * Check if we should load the weekly parsha automatically
- * Returns true if no saved state exists or if the weekly parsha has changed
- */
-export function shouldLoadWeeklyParsha(): boolean {
-  try {
-    const savedState = localStorage.getItem('lastReadingState');
-    if (!savedState) return true;
-    
-    const state = JSON.parse(savedState);
-    const lastTimestamp = state.timestamp;
-    const lastParshaId = state.selectedParsha;
-    
-    if (!lastTimestamp) return true;
-    
-    // Get the current week's parsha
-    const isIsrael = getCalendarPreference();
-    const currentParsha = getCurrentWeeklyParsha(isIsrael);
-    
-    if (!currentParsha) return false; // No parsha this week (e.g., during holidays)
-    
-    // Check if the parsha has changed
-    if (lastParshaId !== currentParsha.parshaId) {
-      return true;
-    }
-    
-    // Also check if more than 7 days have passed (weekly reset as backup)
-    const daysSinceLastVisit = (Date.now() - lastTimestamp) / (1000 * 60 * 60 * 24);
-    if (daysSinceLastVisit >= 7) {
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Error checking if should load weekly parsha:', error);
-    return true;
-  }
-}
-
-/**
  * Get the user's preference for Israel or Diaspora calendar
  * @returns true for Israel, false for Diaspora (default: true)
  */
