@@ -12,6 +12,7 @@ import { PasukLineActions } from "@/components/PasukLineActions";
 import { NotesDialog } from "@/components/NotesDialog";
 import { useFontAndColorSettings } from "@/contexts/FontAndColorSettingsContext";
 import { useBookmarks } from "@/contexts/BookmarksContext";
+import { markSafeFontFamily } from "@/lib/hebrewMarks";
 import { getAvailableCommentariesProgressive, prefetchNeighboringVerses, getPasukSefariaUrl, getMefareshSefariaUrl } from "@/utils/sefariaCommentaries";
 import { lazyLoadSefer } from "@/utils/lazyLoadSefer";
 import { SefariaCommentary, AVAILABLE_COMMENTARIES } from "@/types/sefaria";
@@ -387,7 +388,7 @@ export const Commentaries = () => {
                         <p
                           className="break-words w-full"
                           style={{
-                            fontFamily: settings.commentaryFont,
+                            fontFamily: markSafeFontFamily(settings.commentaryFont, commentary.text),
                             fontSize: `${settings.commentarySize}px`,
                             color: settings.commentaryColor,
                             fontWeight: settings.commentaryBold ? 'bold' : 'normal',
@@ -521,7 +522,7 @@ const CommentarySection = ({ commentary, seferId, perek, pasuk, isFavorite, onTo
                 <p
                   className="break-words w-full"
                   style={{
-                    fontFamily: settings.commentaryFont,
+                    fontFamily: markSafeFontFamily(settings.commentaryFont, commentary.text),
                     fontSize: `${settings.commentarySize}px`,
                     color: settings.commentaryColor,
                     fontWeight: settings.commentaryBold ? 'bold' : 'normal',

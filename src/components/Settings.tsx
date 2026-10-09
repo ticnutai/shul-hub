@@ -247,8 +247,8 @@ const ChumashThemePreview = ({ preview }: { preview: CustomAppTheme }) => {
 };
 
 const fonts = [
-  { value: "David", label: "דוד" },
-  { value: "Frank Ruehl Libre", label: "פרנק רוהל" },
+  { value: "David Libre", label: "דוד" },
+  { value: "Frank Ruhl Libre", label: "פרנק רוהל" },
   { value: "Miriam Libre", label: "מרים" },
   { value: "Rubik", label: "רוביק" },
   { value: "Heebo", label: "היבו" },

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useFontAndColorSettings } from "@/contexts/FontAndColorSettingsContext";
 import { useTextDisplayStyles } from "@/hooks/useTextDisplayStyles";
 import { TextHighlighter } from "@/components/TextHighlighter";
+import { markSafeFontFamily } from "@/lib/hebrewMarks";
 
 interface ChumashViewProps {
   pesukim: FlatPasuk[];
@@ -50,6 +51,8 @@ const ChumashViewComponent = ({
     }, {} as Record<string, { perek: number; parshaName: string; pesukim: FlatPasuk[] }>);
   }, [pesukim]);
 
+  const pesukimTexts = useMemo(() => pesukim.map((p) => p.text), [pesukim]);
+
   const handlePasukClick = useCallback((pasukId: number, pasuk: FlatPasuk) => {
     onPasukSelect?.(pasukId, pasuk);
   }, [onPasukSelect]);
@@ -60,7 +63,7 @@ const ChumashViewComponent = ({
         <div 
           className="bg-gradient-to-b from-[hsl(40,40%,96%)] to-[hsl(40,35%,94%)] dark:from-[hsl(220,20%,12%)] dark:to-[hsl(220,25%,10%)] rounded-xl shadow-lg border border-border/50 p-6 md:p-10"
           style={{
-            fontFamily: settings?.pasukFont || "'David Libre', 'Noto Serif Hebrew', serif",
+            fontFamily: markSafeFontFamily(settings?.pasukFont || "'David Libre', 'Noto Serif Hebrew', serif", pesukimTexts),
             textRendering: 'optimizeLegibility',
             WebkitFontSmoothing: 'antialiased',
           }}

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Bookmark, MessageSquare, X } from "lucide-react";
 import { useHighlights } from "@/contexts/HighlightsContext";
 import { useNotes } from "@/contexts/NotesContext";
+import { markSafeFontFamily } from "@/lib/hebrewMarks";
 import { toast } from "@/hooks/use-toast";
 import { useTextDisplayStyles } from "@/hooks/useTextDisplayStyles";
 
@@ -118,7 +119,7 @@ export const ClickableText = ({
       <div
         className={className}
         style={{
-          fontFamily,
+          fontFamily: markSafeFontFamily(fontFamily, text),
           fontSize: fontSize ? `calc(${fontSize} * ${displayStyles.fontScale})` : undefined,
           color,
           fontWeight,

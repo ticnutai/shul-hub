@@ -10,6 +10,7 @@ import { PasukDisplay } from "@/components/PasukDisplay";
 import { useTextDisplayStyles } from "@/hooks/useTextDisplayStyles";
 import { useFontAndColorSettings } from "@/contexts/FontAndColorSettingsContext";
 import { cn } from "@/lib/utils";
+import { markSafeFontFamily } from "@/lib/hebrewMarks";
 import { useBookmarks } from "@/contexts/BookmarksContext";
 import { useDisplayMode } from "@/contexts/DisplayModeContext";
 import { useSelection } from "@/contexts/SelectionContext";
@@ -214,7 +215,7 @@ export const CompactPasukView = memo(({ pesukim, seferId, expandAll = false }: C
                     <p 
                       dir="rtl"
                       style={{ 
-                        fontFamily: settings.pasukFont || "'David Libre', 'Noto Serif Hebrew', serif",
+                        fontFamily: markSafeFontFamily(settings.pasukFont || "'David Libre', 'Noto Serif Hebrew', serif", pasuk.text),
                         fontSize: `${Math.min((settings.pasukSize || 20) * (displayStyles.fontScale || 1), displayStyles.isMobile ? 22 : 26)}px`,
                         color: settings.pasukColor || 'hsl(var(--foreground))',
                         fontWeight: settings.pasukBold ? 700 : 400,

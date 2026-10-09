@@ -237,7 +237,7 @@ export const TehillimPane = () => {
       sefer_name: "תהילים",
       perek: chapter,
       pasuk_num: index + 1,
-      text: stripText(cleanLine(line), showNikud, showTaamim),
+      text: stripText(cleanLine(line), showNikud, showTaamim, tehillimSettings.tehillimFont),
       content: [],
     }));
 
@@ -329,7 +329,7 @@ export const TehillimPane = () => {
         >
           <span style={verseNumStyle} aria-hidden>{heNum(i + 1)}</span>
           <span className="min-w-0 flex-1" data-verse-text>
-            {stripText(cleanLine(line), showNikud, showTaamim)}
+            {stripText(cleanLine(line), showNikud, showTaamim, tehillimSettings.tehillimFont)}
           </span>
         </p>
       ))}

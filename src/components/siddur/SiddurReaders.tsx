@@ -19,7 +19,7 @@ import { siddurAppearance, siddurCardChrome, useSiddurDisplayStyle, useSiddurThe
 export type SiddurLineSettings = { siddurFont: string; siddurSize: number; siddurBold: boolean; siddurHeadingBold: boolean; siddurOpeningBold: boolean; siddurOpeningWordCount: 1 | 2 | 3; textAlignment: string; lineHeight: string; lineHeightCustom: number; showNikud: boolean; showTaamim: boolean; showInstructions?: boolean; letterSpacing: string; letterSpacingCustom: number; wordSpacing: number; };
 
 export const SiddurLine = ({ html, s }: { html: string; s: SiddurLineSettings }) => {
-  html = stripText(html, s.showNikud, s.showTaamim);
+  html = stripText(html, s.showNikud, s.showTaamim, s.siddurFont);
   const type = classifyLine(html);
   const lh = lineHeightCSS(s.lineHeight, s.lineHeightCustom);
   const nikudStyle = withNikudTypography(s.siddurFont, lh, s.showNikud, s.showTaamim);

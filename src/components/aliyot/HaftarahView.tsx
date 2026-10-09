@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { markSafeFontFamily } from "@/lib/hebrewMarks";
 import { toHebrewNumber } from "@/utils/hebrewNumbers";
 import { useFontAndColorSettings } from "@/contexts/FontAndColorSettingsContext";
 import {
@@ -120,7 +121,7 @@ export const HaftarahView = memo(({ regular, special }: HaftarahViewProps) => {
                   <p
                     className="text-right"
                     style={{
-                      fontFamily: settings?.pasukFont || "'David Libre', 'Noto Serif Hebrew', serif",
+                      fontFamily: markSafeFontFamily(settings?.pasukFont || "'David Libre', 'Noto Serif Hebrew', serif", verses.map((v) => v[2])),
                       fontSize: settings?.pasukSize ? `${settings.pasukSize}px` : "1.25rem",
                       lineHeight: 2.1,
                       color: settings?.pasukColor || "hsl(var(--foreground))",

@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import React from "react";
 import { loadSefariaCommentary, getSefariaSeferName, getMefareshSefariaUrl, getAvailableCommentaries } from "@/utils/sefariaCommentaries";
 import { useFontAndColorSettings } from "@/contexts/FontAndColorSettingsContext";
+import { markSafeFontFamily } from "@/lib/hebrewMarks";
 import { torahDB } from "@/utils/torahDB";
 import { TextHighlighter } from "./TextHighlighter";
 import { toHebrewNumber } from "@/utils/hebrewNumbers";
@@ -117,7 +118,7 @@ export const CommentaryExpandDialog = ({
             <div
               className="break-words w-full"
               style={{
-                fontFamily: settings.commentaryFont,
+                fontFamily: markSafeFontFamily(settings.commentaryFont, commentaryText),
                 fontSize: `${settings.commentarySize}px`,
                 color: settings.commentaryColor,
                 fontWeight: settings.commentaryBold ? 'bold' : 'normal',

@@ -13,6 +13,7 @@ import { CommentaryPickerDialog } from "@/components/CommentaryPickerDialog";
 import { Button } from "@/components/ui/button";
 import { Bookmark, BookmarkCheck, X, Share2, Mail, Link2, PanelsTopLeft, MoreHorizontal, BookOpen, Loader2, Library } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { markSafeFontFamily } from "@/lib/hebrewMarks";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -203,7 +204,7 @@ const CommentaryBlock = ({
       maxWidth: commentaryStyles.maxWidth,
       marginInline: "auto",
       marginBottom: commentaryStyles.gap,
-      fontFamily: settings.commentaryFont,
+      fontFamily: markSafeFontFamily(settings.commentaryFont, text),
       fontSize: `${settings.commentarySize || Math.max(fontSize - 4, 13)}px`,
       fontWeight: settings.commentaryBold ? 700 : 400,
       lineHeight: commentaryStyles.lineHeight,
@@ -439,7 +440,7 @@ const PasukRow = ({
         style={{
           maxWidth: pasukStyles.maxWidth,
           marginInline: "auto",
-          fontFamily: settings.pasukFont,
+          fontFamily: markSafeFontFamily(settings.pasukFont, pasuk.text),
           fontSize: `${fontSize}px`,
           fontWeight: settings.pasukBold ? 700 : 400,
           lineHeight: pasukStyles.lineHeight,
@@ -1008,7 +1009,7 @@ export const LuxuryTextView = ({
                 <div
                   dir="rtl"
                   style={{
-                    fontFamily: settings.pasukFont || template.fontFamily,
+                    fontFamily: markSafeFontFamily(settings.pasukFont || template.fontFamily, group.pesukim.map((p) => p.text)),
                     fontSize: `${effectiveSize}px`,
                     lineHeight: `${effectiveLineHeight}`,
                     textAlign: template.textAlign,
@@ -1056,7 +1057,7 @@ export const LuxuryTextView = ({
             className={template.innerClass}
             dir="rtl"
             style={{
-              fontFamily: settings.pasukFont || template.fontFamily,
+              fontFamily: markSafeFontFamily(settings.pasukFont || template.fontFamily, pesukim.map((p) => p.text)),
               fontSize: `${effectiveSize}px`,
               color: "hsl(var(--foreground))",
               lineHeight: `${effectiveLineHeight}`,

@@ -3,6 +3,7 @@
  * Split out of the prayer book's page (src/pages/Siddur.tsx).
  */
 import { normalizeHebrewText } from "@/utils/textUtils";
+import { FULL_MARKS_FONT, primaryFontFamily, stripMarksMissingFrom } from "@/lib/hebrewMarks";
 
 /* ─── Nusach list ────────────────────────────────────────── */
 export const NUSACHOT = [
@@ -152,12 +153,18 @@ export const NIKUD_RE   = /[\u05B0-\u05C7\u05F0-\u05F4\uFB1D-\uFB4E]/g;
 export const TAAMIM_RE  = /[\u0591-\u05AF]/g;
 export const NIKUD_STRIP = /[\u05B0-\u05BD\u05BF\u05C1-\u05C2\u05C4-\u05C5\u05C7]/g;
 
-export function stripText(text: string, showNikud: boolean, showTaamim: boolean): string {
+/**
+ * `fontFamily` (the reader's chosen font) also drops the few marks the font
+ * that will draw the text lacks - a meteg in David Libre, say - which would
+ * otherwise pull just those letters into a fallback font (see hebrewMarks.ts).
+ */
+export function stripText(text: string, showNikud: boolean, showTaamim: boolean, fontFamily?: string): string {
   // Normalize Hebrew presentation forms (e.g. שׁ) to standard letters + marks.
   // This keeps glyph metrics consistent across words in the same font.
   let t = normalizeHebrewText(text);
   if (!showTaamim) t = t.replace(TAAMIM_RE, "");
   if (!showNikud)  t = t.replace(NIKUD_STRIP, "");
+  if (fontFamily && showNikud) t = stripMarksMissingFrom(nikudFontFamily(fontFamily, showNikud, showTaamim), t);
   // Drop combining marks left without a base letter (they render on a dotted
   // circle and push the line out of alignment).
   t = t.replace(/(^|[\s>])[\u0591-\u05C7]+/g, "$1");
@@ -245,6 +252,27 @@ export function lineHeightCSS(lh: string, custom?: number): string {
   return "2.0";
 }
 
+// Fonts allowed to draw vocalised prayer text (TextDisplaySettings offers
+// only these for the Siddur and Tehillim); any other value moves to Noto.
+const NIKUD_CAPABLE_FONTS = new Set([
+  "Noto Serif Hebrew",
+  "David Libre",
+  "Frank Ruhl Libre",
+  "Heebo",
+]);
+
+/** The single font family that will draw the prayer text (see withNikudTypography). */
+export function nikudFontFamily(fontFamily: string, showNikud: boolean, showTaamim: boolean): string {
+  const requestedFamily = primaryFontFamily(fontFamily);
+  // Noto is bundled with the app and contains U+0591–U+05C7 in full. The
+  // other verified fonts contain niqqud + mark/mkmk positioning, but not the
+  // cantillation block. Use them for ordinary/vocalised prayer text and
+  // switch the entire run to Noto whenever te'amim are visible. (The odd
+  // mark they lack - meteg, rafe - is dropped by stripText.)
+  if (showTaamim) return FULL_MARKS_FONT;
+  return !showNikud || NIKUD_CAPABLE_FONTS.has(requestedFamily) ? requestedFamily : FULL_MARKS_FONT;
+}
+
 export function withNikudTypography(fontFamily: string, lineHeight: string, showNikud: boolean, showTaamim: boolean): React.CSSProperties {
   // CRITICAL: do NOT mix multiple Hebrew fonts in the fallback chain.
   // Browsers do per-glyph fallback: if the chosen font lacks (or weakly
@@ -264,22 +292,7 @@ export function withNikudTypography(fontFamily: string, lineHeight: string, show
   // That is exactly what makes isolated מ/ד/ה/ת clusters appear larger.
   // Keep user choice for fonts known to support marked Hebrew; otherwise use
   // the bundled Noto font for the whole run so Android never mixes glyphs.
-  const nikudCapableFonts = new Set([
-    "Noto Serif Hebrew",
-    "David Libre",
-    "Frank Ruhl Libre",
-    "Heebo",
-  ]);
-  const requestedFamily = fontFamily.replace(/["']/g, "").split(",")[0].trim();
-  // Noto is bundled with the app and contains U+0591–U+05C7 in full. The
-  // other verified fonts contain niqqud + mark/mkmk positioning, but not the
-  // complete cantillation block. Use them for ordinary/vocalised prayer text
-  // and switch the entire run to Noto whenever te'amim are visible.
-  const resolvedFamily = showTaamim
-    ? "Noto Serif Hebrew"
-    : (!showNikud || nikudCapableFonts.has(requestedFamily))
-      ? requestedFamily
-      : "Noto Serif Hebrew";
+  const resolvedFamily = nikudFontFamily(fontFamily, showNikud, showTaamim);
   const isSans = /sans|arial|tahoma|frank ruhl|noto sans/i.test(resolvedFamily);
   const generic = isSans ? 'sans-serif' : 'serif';
   // Keep the user's selected font for marked text as well. Quoting the family
