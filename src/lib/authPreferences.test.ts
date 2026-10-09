@@ -49,6 +49,35 @@ describe("auth preferences", () => {
     expect(sessionStorage.getItem("sb-project-auth-token")).toBe("temporary");
   });
 
+  it("keeps the signed-in session when remember-me is turned on after signing in: it moves, it is not dropped", () => {
+    // Signed in without "remember me" - the session lives in the tab only.
+    setAuthPersistence(false);
+    authSessionStorage.setItem("sb-project-auth-token", "signed-in");
+    // "Remember me" turned on (the setting, or the next sign-in screen): the session goes along.
+    setAuthPersistence(true);
+    expect(localStorage.getItem("sb-project-auth-token")).toBe("signed-in");
+    expect(sessionStorage.getItem("sb-project-auth-token")).toBeNull();
+    // The next visit (a new tab, the app opened again) is still signed in.
+    sessionStorage.clear();
+    expect(authSessionStorage.getItem("sb-project-auth-token")).toBe("signed-in");
+  });
+
+  it("keeps the session of this visit when remember-me is turned off, until the tab closes", () => {
+    setAuthPersistence(true);
+    authSessionStorage.setItem("sb-project-auth-token", "signed-in");
+    setAuthPersistence(false);
+    expect(authSessionStorage.getItem("sb-project-auth-token")).toBe("signed-in");
+    expect(localStorage.getItem("sb-project-auth-token")).toBeNull();
+  });
+
+  it("finds a session left in the other storage and carries it over, rather than signing out", () => {
+    setAuthPersistence(true);
+    sessionStorage.setItem("sb-project-auth-token", "left-behind");
+    expect(authSessionStorage.getItem("sb-project-auth-token")).toBe("left-behind");
+    expect(localStorage.getItem("sb-project-auth-token")).toBe("left-behind");
+    expect(sessionStorage.getItem("sb-project-auth-token")).toBeNull();
+  });
+
   it("clears remembered email without affecting unrelated settings", () => {
     localStorage.setItem("theme", "jerusalem");
     setRememberedEmail("person@example.com");

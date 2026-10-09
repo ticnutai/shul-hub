@@ -11,15 +11,23 @@ export function getAuthPersistence(): boolean {
   return localStorage.getItem(AUTH_PERSISTENCE_KEY) !== "false";
 }
 
+const isSessionKey = (key: string | null): key is string => Boolean(key?.startsWith("sb-") && key.endsWith("-auth-token"));
+
 export function setAuthPersistence(enabled: boolean) {
   if (!isBrowser()) return;
   localStorage.setItem(AUTH_PERSISTENCE_KEY, enabled ? "true" : "false");
 
-  // Remove stale Supabase sessions from the storage that is no longer selected.
-  const staleStorage = enabled ? sessionStorage : localStorage;
-  for (let index = staleStorage.length - 1; index >= 0; index -= 1) {
-    const key = staleStorage.key(index);
-    if (key?.startsWith("sb-") && key.endsWith("-auth-token")) staleStorage.removeItem(key);
+  // The signed-in session moves to the storage now chosen - it is not dropped.
+  // (Removing it from the old storage without carrying it over signed the
+  // user out at the next visit, though "remember me" was on.)
+  const from = enabled ? sessionStorage : localStorage;
+  const to = enabled ? localStorage : sessionStorage;
+  for (let index = from.length - 1; index >= 0; index -= 1) {
+    const key = from.key(index);
+    if (!isSessionKey(key)) continue;
+    const value = from.getItem(key);
+    if (value && !to.getItem(key)) to.setItem(key, value);
+    from.removeItem(key);
   }
 }
 
@@ -62,7 +70,18 @@ export function setRememberedEmail(email: string | null) {
 export const authSessionStorage = {
   getItem(key: string) {
     if (!isBrowser()) return null;
-    return (getAuthPersistence() ? localStorage : sessionStorage).getItem(key);
+    const chosen = getAuthPersistence() ? localStorage : sessionStorage;
+    const found = chosen.getItem(key);
+    if (found !== null) return found;
+    // A session left in the other storage (the choice changed in another tab,
+    // or by an older version) is found and carried over, rather than lost.
+    const other = chosen === localStorage ? sessionStorage : localStorage;
+    const stray = other.getItem(key);
+    if (stray !== null && isSessionKey(key)) {
+      chosen.setItem(key, stray);
+      other.removeItem(key);
+    }
+    return stray;
   },
   setItem(key: string, value: string) {
     if (!isBrowser()) return;
