@@ -100,7 +100,7 @@ const LOCAL_FILES: Record<string, Record<number, string>> = {
   Malbim: {
     1: "Malbim_on_Genesis",
     2: "Malbim_on_Exodus",
-    // Malbim on Leviticus is not available on Sefaria
+    3: "Malbim_on_Leviticus",
     4: "Malbim_on_Numbers",
     5: "Malbim_on_Deuteronomy",
   },
