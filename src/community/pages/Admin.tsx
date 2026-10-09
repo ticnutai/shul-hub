@@ -1,4 +1,5 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { AdminButtonsSettings } from "@community/components/admin/AdminButtonsSettings";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
 import { Building2, LayoutDashboard, LogOut, ShieldAlert, Tv } from "lucide-react";
@@ -197,6 +198,7 @@ export function AdminPage() {
               {/* The site as a whole first - its header and its themes - then
                   what stands on the home page. */}
               <SiteHeaderSettings />
+              <AdminButtonsSettings />
               <HomeHeroSettings />
               <SiteDesignShortcuts />
               <WidgetsAdmin />

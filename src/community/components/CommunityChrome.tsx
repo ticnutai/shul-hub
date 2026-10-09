@@ -6,6 +6,7 @@ import { NotificationCenter } from "@community/components/NotificationCenter";
 import { ReminderEngine } from "@community/components/ReminderEngine";
 import { PrimaryDestinationNav } from "@/components/PrimaryDestinationNav";
 import { AdminAiShortcut } from "./AdminAiShortcut";
+import { QuickAddButton } from "./QuickAddButton";
 import { readLogos } from "@community/lib/logos";
 import { useAccount } from "@community/lib/use-account";
 
@@ -108,6 +109,8 @@ export function GlobalAppHeader() {
              it, and nobody could tell from it who was signed in. */
           className="col-start-3 row-start-1 flex shrink-0 items-center justify-self-end gap-1"
         >
+          <AdminAiShortcut placement="header" />
+          <QuickAddButton placement="header" />
           <AccountChip />
           <NotificationCenter />
           <ReminderEngine />

@@ -18,6 +18,8 @@ export interface DisplaySettings {
   questionsExpanded: boolean;
   /** Whether verse cards are expanded in Chumash & Commentaries view. */
   chumashExpanded: boolean;
+  /** The admin's own buttons, shown or not, floating or in the top bar (src/community/lib/adminButtons.ts). */
+  adminButtons?: unknown;
 }
 
 interface DisplayModeContextType {
@@ -105,6 +107,8 @@ export const DisplayModeProvider = ({ children }: { children: ReactNode }) => {
     // so a fresh install and an upgraded account both open content by default.
     questionsExpanded: displaySettings?.questionsExpanded !== false,
     chumashExpanded: displaySettings?.chumashExpanded !== false,
+    // Checked where it is read (normalizeAdminButtons); kept here, or it is dropped on every read.
+    adminButtons: displaySettings?.adminButtons,
   }), [displaySettings]);
 
   const value = useMemo(() => ({ displaySettings: safeDisplaySettings, updateDisplaySettings, syncStatus: status }), [safeDisplaySettings, updateDisplaySettings, status]);

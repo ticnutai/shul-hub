@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -28,28 +28,69 @@ import { useAuth } from "@community/lib/use-auth";
 import { DAYS_HE, PRAYERS } from "@community/lib/data";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
 import { communityId } from "@/community/lib/community";
+import { useAdminButtons } from "@community/lib/adminButtons";
+import { FloatingDraggable } from "./FloatingDraggable";
 
-export function QuickAddButton() {
+/**
+ * "הוספה מהירה" for the admin: a round button floating in the corner, or a
+ * small one in the top bar - as he chose in the site's settings (adminButtons).
+ * Each place renders it with its own placement; only the chosen one shows.
+ */
+export function QuickAddButton({ placement = "floating" }: { placement?: "floating" | "header" }) {
   const { isAdmin, loading } = useAuth();
+  const { prefs, set } = useAdminButtons();
   const [open, setOpen] = useState(false);
+  const shown = !loading && isAdmin && prefs.quickAdd.on && prefs.quickAdd.floating === (placement === "floating");
 
-  if (loading || !isAdmin) return null;
+  // Floating, it takes the corner: the assistant's button stands above it rather than on it.
+  const atHome = !prefs.quickAdd.pos;
+  useEffect(() => {
+    if (!shown || placement !== "floating" || !atHome) return;
+    const root = document.documentElement;
+    root.style.setProperty("--quick-add-space", "4rem");
+    return () => {
+      root.style.removeProperty("--quick-add-space");
+    };
+  }, [shown, placement, atHome]);
+
+  if (!shown) return null;
 
   return (
     <>
     {/* Room at the page's foot, so its last lines can be scrolled out from under the button. */}
-    <div aria-hidden className="h-20 md:hidden" />
+    {placement === "floating" && <div aria-hidden className="h-20 md:hidden" />}
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          size="icon"
-          className="fixed bottom-5 left-4 z-50 h-12 w-12 rounded-full shadow-2xl md:bottom-8 md:left-8 md:h-14 md:w-14"
-          style={{ bottom: "calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
-          aria-label="הוספה מהירה"
+      {placement === "floating" ? (
+        <FloatingDraggable
+          pos={prefs.quickAdd.pos}
+          onMove={(pos) => set("quickAdd", { pos })}
+          home={{ left: "1rem", bottom: "calc(1.25rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))" }}
         >
-          <Plus className="size-6 md:size-7" />
-        </Button>
+          <DialogTrigger asChild>
+            <Button
+              size="icon"
+              className="h-12 w-12 rounded-full shadow-2xl md:h-14 md:w-14"
+              aria-label="הוספה מהירה"
+              title="הוספה מהירה - אפשר לגרור למקום אחר"
+              data-testid="quick-add-floating"
+            >
+              <Plus className="size-6 md:size-7" />
+            </Button>
+          </DialogTrigger>
+        </FloatingDraggable>
+      ) : (
+      <DialogTrigger asChild>
+          <button
+            type="button"
+            aria-label="הוספה מהירה"
+            title="הוספה מהירה"
+            data-testid="quick-add-header"
+            className="inline-flex size-9 items-center justify-center rounded-full border border-amber-400/45 bg-amber-400/10 text-amber-300 transition hover:bg-amber-400/20 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+          >
+            <Plus className="size-5" aria-hidden="true" />
+          </button>
       </DialogTrigger>
+      )}
       <DialogContent
         dir="rtl"
         className="max-h-[90dvh] w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto text-right"
