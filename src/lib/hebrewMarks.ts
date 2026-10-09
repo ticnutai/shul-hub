@@ -36,6 +36,19 @@ const MISSING_MARKS: Record<string, string> = {
   "Suez One": TAAMIM + METEG + RAFE + UPPER_LOWER_DOT,
 };
 
+/**
+ * The face that stands in for a chosen font where marks it lacks are needed
+ * (src/index.css, "Taamim <family>"): the Culmus "Taamey" twin of David and
+ * Frank Ruehl, Noto Serif Hebrew for the rest - every one scaled so its
+ * letters are exactly as tall as the chosen font's.
+ */
+export function fullMarksFamily(family: string): string {
+  return family in MISSING_MARKS ? `Taamim ${family}` : FULL_MARKS_FONT;
+}
+
+/** Fonts whose stand-in is their own design (the same letters, with every mark): used for all marked text. */
+export const TWIN_DESIGN = new Set(["David Libre", "Frank Ruhl Libre"]);
+
 const missingRe = new Map<string, RegExp>();
 const missingMarksRe = (family: string): RegExp | null => {
   const chars = MISSING_MARKS[family];
@@ -65,7 +78,8 @@ export function needsFullMarksFont(fontFamily: string | undefined, texts: string
  * moves to Noto Serif Hebrew so no single letter is drawn from another font.
  */
 export function markSafeFontFamily<T extends string | undefined>(fontFamily: T, texts: string | readonly string[]): T | string {
-  return needsFullMarksFont(fontFamily, texts) ? `'${FULL_MARKS_FONT}', serif` : fontFamily;
+  if (!needsFullMarksFont(fontFamily, texts)) return fontFamily;
+  return `'${fullMarksFamily(primaryFontFamily(fontFamily!))}', '${FULL_MARKS_FONT}', serif`;
 }
 
 /**

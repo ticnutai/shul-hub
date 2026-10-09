@@ -3,7 +3,7 @@
  * Split out of the prayer book's page (src/pages/Siddur.tsx).
  */
 import { normalizeHebrewText } from "@/utils/textUtils";
-import { FULL_MARKS_FONT, primaryFontFamily, stripMarksMissingFrom } from "@/lib/hebrewMarks";
+import { FULL_MARKS_FONT, TWIN_DESIGN, fullMarksFamily, primaryFontFamily, stripMarksMissingFrom } from "@/lib/hebrewMarks";
 
 /* ─── Nusach list ────────────────────────────────────────── */
 export const NUSACHOT = [
@@ -269,7 +269,9 @@ export function nikudFontFamily(fontFamily: string, showNikud: boolean, showTaam
   // cantillation block. Use them for ordinary/vocalised prayer text and
   // switch the entire run to Noto whenever te'amim are visible. (The odd
   // mark they lack - meteg, rafe - is dropped by stripText.)
-  if (showTaamim) return FULL_MARKS_FONT;
+  // David and Frank Ruehl have a twin with every mark (same design, same height): with niqqud, always the twin.
+  if (showNikud && TWIN_DESIGN.has(requestedFamily)) return fullMarksFamily(requestedFamily);
+  if (showTaamim) return fullMarksFamily(requestedFamily);
   return !showNikud || NIKUD_CAPABLE_FONTS.has(requestedFamily) ? requestedFamily : FULL_MARKS_FONT;
 }
 

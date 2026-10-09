@@ -1018,3 +1018,153 @@ html.custom button.rounded-md {
   font-weight: 700 900;
   font-display: block;
 }
+
+/* Te'amim (cantillation) in the chosen font's place. No web build of the
+   selectable fonts carries the cantillation block, and a letter whose mark is
+   missing is drawn whole from another font - a letter of another shape and
+   height. So text with te'amim is drawn in a face that has every mark: the
+   Culmus "Taamey" twin of David and Frank Ruehl (same design), and Noto Serif
+   Hebrew for the rest - each scaled (size-adjust) so its letters stand exactly
+   as tall as the chosen font's. Heights measured in Chromium: the ink height
+   of "הבדכ" (src/lib/hebrewMarks.ts maps a family to its face). Culmus fonts:
+   GPL with the font-embedding exception (assets/fonts/LICENSE-Culmus-Taamey.txt). */
+@font-face {
+  font-family: "Taamim David Libre";
+  src: url("./assets/fonts/TaameyDavidCLM-Medium.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 97.2%;
+}
+@font-face {
+  font-family: "Taamim David Libre";
+  src: url("./assets/fonts/TaameyDavidCLM-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 97.2%;
+}
+@font-face {
+  font-family: "Taamim Frank Ruhl Libre";
+  src: url("./assets/fonts/TaameyFrankCLM-Medium.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 106.3%;
+}
+@font-face {
+  font-family: "Taamim Frank Ruhl Libre";
+  src: url("./assets/fonts/TaameyFrankCLM-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 106.3%;
+}
+@font-face {
+  font-family: "Taamim Heebo";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 88.5%;
+}
+@font-face {
+  font-family: "Taamim Heebo";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 88.5%;
+}
+@font-face {
+  font-family: "Taamim Assistant";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 85.4%;
+}
+@font-face {
+  font-family: "Taamim Assistant";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 85.4%;
+}
+@font-face {
+  font-family: "Taamim Rubik";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 88.5%;
+}
+@font-face {
+  font-family: "Taamim Rubik";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 88.5%;
+}
+@font-face {
+  font-family: "Taamim Alef";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 80.8%;
+}
+@font-face {
+  font-family: "Taamim Alef";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 80.8%;
+}
+@font-face {
+  font-family: "Taamim Miriam Libre";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 89.2%;
+}
+@font-face {
+  font-family: "Taamim Miriam Libre";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 89.2%;
+}
+@font-face {
+  font-family: "Taamim Varela Round";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 91.5%;
+}
+@font-face {
+  font-family: "Taamim Varela Round";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 91.5%;
+}
+@font-face {
+  font-family: "Taamim Secular One";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 82.3%;
+}
+@font-face {
+  font-family: "Taamim Secular One";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 82.3%;
+}
+@font-face {
+  font-family: "Taamim Suez One";
+  src: url("./assets/fonts/NotoSerifHebrew-Regular.ttf") format("truetype");
+  font-weight: 400 600;
+  font-display: block;
+  size-adjust: 90.8%;
+}
+@font-face {
+  font-family: "Taamim Suez One";
+  src: url("./assets/fonts/NotoSerifHebrew-Bold.ttf") format("truetype");
+  font-weight: 700 900;
+  font-display: block;
+  size-adjust: 90.8%;
+}
