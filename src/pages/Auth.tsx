@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
+import { isNativeApp, startAppGoogleSignIn } from "@/lib/appGoogleSignIn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +55,16 @@ export const Auth = () => {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setAuthPersistence(rememberMe);
+    if (isNativeApp()) {
+      // Google does not sign in inside an app's window: the phone's browser, and back by the app's link (AppAuthLinks).
+      try {
+        await startAppGoogleSignIn(rememberMe);
+      } catch (e: any) {
+        toast.error(e?.message || "שגיאה בהתחברות עם גוגל");
+      }
+      setIsLoading(false);
+      return;
+    }
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,

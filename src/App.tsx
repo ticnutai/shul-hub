@@ -30,6 +30,7 @@ import { CommunityProvider } from "@/community/components/CommunityProvider";
 import { MetaSyncInitializer } from "@/components/MetaSyncInitializer";
 import { MobilePageSwipeNavigation } from "@/components/MobilePageSwipeNavigation";
 import { AndroidBackNavigation } from "@/components/AndroidBackNavigation";
+import { AppAuthLinks } from "@/components/AppAuthLinks";
 import { useOmerSeason } from "@/features/omer/hooks/useOmerSeason";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { EditModeProvider } from "@community/lib/edit-mode";
@@ -196,6 +197,7 @@ const App = () => {
                       >
                         <MobilePageSwipeNavigation />
                         <AndroidBackNavigation />
+                        <AppAuthLinks />
                         <OmerEntryPopup />
                         <Suspense fallback={null}>
                           <TvAdminWatcher />

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>חוזרים לאפליקציה</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f8f5ef; color: #1b2a4a;
+      font-family: "Heebo", Arial, sans-serif; text-align: center; padding: 24px; box-sizing: border-box; }
+    a { display: inline-block; margin-top: 16px; padding: 12px 24px; border-radius: 12px; background: #1b2a4a; color: #fff;
+      text-decoration: none; font-weight: 600; }
+    p { margin: 6px 0; }
+  </style>
+</head>
+<body>
+  <main>
+    <p id="msg">מחזירים אותך לאפליקציה…</p>
+    <a id="back" href="#" hidden>חזרה לאפליקציה</a>
+  </main>
+  <script>
+    // The app's Google sign-in comes back here from Lovable's sign-in (the
+    // tokens are in the address after "#"), and is passed on to the app that
+    // asked for it, by its own link. Only the synagogue's apps may receive it.
+    (function () {
+      var APPS = ["com.ticnutai.bsr3synagogue", "com.ticnutai.bsr3synagogue.pashtheme", "com.ticnutai.bsr3synagogue.edgetest"];
+      var app = new URLSearchParams(location.search).get("app");
+      var hash = location.hash;
+      var msg = document.getElementById("msg");
+      var back = document.getElementById("back");
+      // Never leave the tokens in this tab's address or history.
+      try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+      if (!app || APPS.indexOf(app) < 0) {
+        msg.textContent = "הקישור הזה מיועד לאפליקציה של בית הכנסת.";
+        return;
+      }
+      var target = app + "://auth-callback" + hash;
+      if (/[#&]error=/.test(hash)) msg.textContent = "ההתחברות עם גוגל לא הצליחה. חוזרים לאפליקציה…";
+      back.href = target;
+      back.hidden = false;
+      location.replace(target);
+    })();
+  </script>
+</body>
+</html>

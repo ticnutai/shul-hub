@@ -22,6 +22,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Google sign-in comes back from the phone's browser by this link (src/lib/appGoogleSignIn.ts). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/custom_url_scheme" android:host="auth-callback" />
+            </intent-filter>
+
         </activity>
 
         <!-- A minyan that rings like an alarm clock, over the lock screen (ShulAlarmPlugin). -->
