@@ -445,9 +445,13 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
       case "prev":
         go(-1);
         break;
-      case "goto":
-        goTo(typeof p.index === "number" ? p.index : String(p.slideId ?? p.kind ?? ""));
+      case "goto": {
+        const moved = goTo(typeof p.index === "number" ? p.index : String(p.slideId ?? p.kind ?? ""));
+        // "Stay on it": the page waits on the screen until the panel says to go on.
+        if (moved) setPausedTo(Boolean(p.hold));
+        if (!moved) l.log("warn", "command", `לא נמצאה שקופית למעבר: ${String(p.slideId ?? p.index ?? "")}`, { payload: p });
         break;
+      }
       case "theme": {
         // A set's id from the admin's "connected screens" (the command kept its old name).
         applyTheme(typeof p.theme === "string" ? p.theme : null);

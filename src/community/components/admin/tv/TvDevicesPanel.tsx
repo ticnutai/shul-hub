@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -195,7 +196,11 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
   // Until the saved config arrives, build from the defaults rather than an
   // empty object (buildSlides reads config.slides).
   const board = useTvSlides(mirrorConfig ?? DEFAULT_TV_CONFIG);
-  const index = Math.max(0, board.slides.findIndex((x) => x.id === s.slideId));
+  // A page just picked: shown at once, "עובר…" until the screen reports it (or 10 seconds pass).
+  const [pending, setPending] = useState<{ id: string; at: number } | null>(null);
+  const waiting = pending && pending.id !== s.slideId && Date.now() - pending.at < 10_000 ? pending : null;
+  const index = Math.max(0, board.slides.findIndex((x) => x.id === (waiting?.id ?? s.slideId)));
+  const [hold, setHold] = useState(true);
   // As the TV draws the slide it is on: an occasion's own screen in its design (TvApp's drawConfig).
   const shownId = board.slides[index]?.id ?? null;
   const occasionSlideId = shownId?.startsWith("occasion:") ? shownId : null;
@@ -337,8 +342,25 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
               המסך לא מדווח. השיקוף מציג את המצב האחרון שדווח. פרטים ביומן.
             </p>
           )}
-          <SlideStrip slides={board.slides} index={index} onPick={(i) => run("goto", "goto", { slideId: board.slides[i]?.id })} />
-          <p className="text-xs text-muted-foreground">לחיצה על שקופית מעבירה את המסך אליה.</p>
+          <SlideStrip
+            slides={board.slides}
+            index={index}
+            onPick={(i) => {
+              const slideId = board.slides[i]?.id;
+              if (!slideId) return;
+              setPending({ id: slideId, at: Date.now() });
+              void run("goto", "goto", { slideId, hold });
+            }}
+          />
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span>
+              {waiting ? "עובר… ממתין שהמסך יאשר" : "לחיצה על שקופית מעבירה את המסך אליה."}
+            </span>
+            <label className="flex items-center gap-2">
+              <Switch checked={hold} onCheckedChange={setHold} aria-label="להישאר על השקופית שנבחרה" />
+              {hold ? "נשאר עליה עד \"המשך סבב\"" : "קופץ אליה וממשיך להתחלף"}
+            </label>
+          </div>
         </div>
 
         <div className="space-y-4">

@@ -126,6 +126,9 @@ export function useTvDevices() {
       if (error) throw error;
       return (data ?? []) as TvDevice[];
     },
+    // The live feed below brings each report at once; this is the fallback when
+    // it drops - before it, a broken feed left the mirror standing until a reload.
+    refetchInterval: 8_000,
   });
 
   // Heartbeats and state reports arrive as UPDATEs; patch the cached row in
