@@ -8,3 +8,4 @@
 - [ ] Adapt admin navigation and action controls for narrow screens.
 - [ ] Adapt admin forms and content that overflow on mobile.
 - [ ] Verify mobile and desktop admin screens.
+- [ ] Fix clipped TV editor toolbar and preview shown in the user's screenshot.
