@@ -1,4 +1,7 @@
-import { useState } from "react";
+import {CatalogPreview} from './CatalogPreview';
+import {loadSharedCatalog,type SharedCatalog} from '@/tv/sharedCatalog';
+import {CATALOG_CATEGORIES,catalogCategory,type CatalogCategory} from '@/tv/catalogCategories';
+import { useEffect, useState } from "react";
 import { SubPart } from "./Parts";
 import { Plus, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -35,6 +38,14 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
   const [form, setForm] = useState<{ mode: "new" | "rename"; id?: string; name: string; parts: DesignPart[] } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const designs = config.designs;
+  const [catalog,setCatalog]=useState<SharedCatalog>();
+  const [catalogError,setCatalogError]=useState(false);
+  const [attempt,setAttempt]=useState(0);
+  const [category,setCategory]=useState<CatalogCategory>('הכול');
+  useEffect(()=>{let active=true;setCatalogError(false);loadSharedCatalog(attempt>0).then(c=>{if(active)setCatalog(c);}).catch(()=>{if(active)setCatalogError(true);});return()=>{active=false;};},[attempt]);
+  const extra=(catalog?.designs??[]).filter(d=>!BUILTIN_DESIGNS.some(b=>b.id===d.id));
+  const available=[...BUILTIN_DESIGNS,...extra];
+  const groups=[...DESIGN_GROUPS,{id:'shared',title:'אוסף New Shul — לכל הלוחות',hint:'כל ערכה זמינה בכל יום. בוחרים עותק ומשנים אותו בלוח בלבד.',ids:extra.map(d=>d.id)}];
 
   const commit = () => {
     if (!form) return;
@@ -64,9 +75,12 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         title="ערכות מוכנות"
         hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
       >
+      <label>נושא הערכות<select aria-label="נושא הערכות" className="m-2 rounded border bg-background p-2" value={category} onChange={e=>setCategory(e.target.value as CatalogCategory)}>{CATALOG_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label>
+      <p className="text-xs text-muted-foreground">הנושא מסנן את הספרייה בלבד ואינו מגביל את יום השימוש. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
+      {catalogError&&<p role="alert">לא ניתן לטעון את האוסף המשותף. הלוח והערכות הקיימות לא השתנו. <button type="button" className="underline" onClick={()=>setAttempt(n=>n+1)}>ניסיון נוסף</button></p>}
       <div className="space-y-4" data-testid="builtin-designs">
-      {DESIGN_GROUPS.map((group) => {
-        const shown = BUILTIN_DESIGNS.filter((d) => group.ids.includes(d.id) && !isHiddenReady(config, "design", d.id));
+      {groups.map((group) => {
+        const shown = available.filter((d) => group.ids.includes(d.id) && !isHiddenReady(config, "design", d.id) && (category==='הכול'||catalogCategory(d)===category));
         if (!shown.length) return null;
         return (
       <section key={group.id} data-design-group={group.id} className="space-y-1.5">
@@ -77,17 +91,18 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
           const wall = findBackdrop(d.values.backgroundImage ?? null);
           const frame = framePictureUrl(d.values.frameStyle?.image ?? null);
           // The new designs are seen as they really are: a picture of the board wearing them.
-          const artwork = group.id === "classic" ? undefined : `/new-shul-assets/thumbs/${d.id}.webp`;
+          const artwork = group.id === "classic" ? undefined : group.id === "shared" ? d.values.elements?.find(e=>e.image)?.image : `/new-shul-assets/thumbs/${d.id}.webp`;
           return (
             <div key={d.id} data-design-id={d.id} className="group relative overflow-hidden rounded-lg border text-right">
             <TileRemove name={d.name} ready onClick={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))} />
             <button
               type="button"
+              aria-label={`החלת ערכה ${d.name}`}
               onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
               className="block w-full text-right hover:bg-muted/40"
               title="ממלא את החלקים שכתובים מתחתיו - וכל חלק ניתן אחר כך לשינוי בנפרד"
             >
-              {artwork ? <img src={artwork} alt="" className="aspect-video w-full object-cover" loading="lazy" /> : <span
+              {group.id === 'shared' && d.values.elements?.length ? <CatalogPreview elements={d.values.elements}/> : artwork ? <img src={artwork} alt="" className="aspect-video w-full object-cover" loading="lazy" /> : <span
                 className="flex aspect-video items-center justify-center gap-1 p-2"
                 style={{ background: wall ? `url("${wall.thumb}") center / cover` : undefined }}
               >
@@ -121,7 +136,8 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             </button>
             <button
               type="button"
-              className="mx-2 mb-2 text-[11px] text-primary underline"
+              className="mx-2 mb-2 text-[11px] text-primary underline disabled:opacity-40"
+              disabled={designs.length>=MAX_DESIGNS}
               onClick={() => {
                 // A copy of one's own: renamed, changed, updated and deleted like any.
                 onEdit("design-copy", (cfg) => ({
@@ -143,7 +159,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       </div>
       <HiddenShelf
         testId="designs-hidden"
-        items={BUILTIN_DESIGNS.filter((d) => isHiddenReady(config, "design", d.id)).map((d) => ({ key: d.id, name: d.name }))}
+        items={available.filter((d) => isHiddenReady(config, "design", d.id)).map((d) => ({ key: d.id, name: d.name }))}
         onRestore={(id) => onEdit("design-show", (cfg) => showReady(cfg, "design", id))}
       />
       </SubPart>
@@ -157,7 +173,8 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
                 <div key={d.id} className="overflow-hidden rounded-lg border text-right">
                   <button
                     type="button"
-                    onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
+                    aria-label={`החלת ערכה ${d.name}`}
+              onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
                     className="block w-full text-right hover:bg-muted/50"
                     title="לחיצה שמה את העיצוב על הלוח (אפשר לבטל ב-Ctrl+Z)"
                   >
