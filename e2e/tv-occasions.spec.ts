@@ -161,6 +161,40 @@ test.describe("TV editor, occasions", () => {
     await expectNotFrozen(page, "occasion kits");
   });
 
+  test("an occasion's screen is a tab beside the board's pages, edited as a page is", async ({ page }) => {
+    // Asked for on ראש חודש: its screen beside "עמוד 1", to be worked on like
+    // any page - its kit, its parts - without going through the occasions list.
+    await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+    const bar = page.getByTestId("part-pages");
+    const rcTab = bar.locator('[data-occasion-tab="cal:rosh_chodesh"]');
+    // Not on today in every run: the tab shows for an occasion with a design too.
+    if (!(await rcTab.count())) {
+      await page.getByRole("tab", { name: "מועדים" }).click();
+      await row(page, "cal:rosh_chodesh").getByRole("button", { name: "הגדרות" }).click();
+      const dialog = page.getByTestId("occasion-dialog");
+      await dialog.getByLabel("עיצוב המועד").selectOption("d_premium_rc_night-moon");
+      await dialog.getByRole("button", { name: "סגירה" }).click();
+      await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+    }
+    await rcTab.click();
+    await expect(rcTab).toHaveAttribute("aria-selected", "true");
+    await expect(bar.getByTestId("part-page-occasion")).toContainText("ראש חודש");
+    await expect(page.getByTestId("occasion-design-banner")).toContainText("ראש חודש");
+
+    const preview = page.locator("[data-board-preview] .tv-frame").first();
+    const kit = page.getByTestId("builtin-designs").locator('[data-design-id="d_premium_rc_teal-dawn"] button[title^="ממלא"]');
+    await kit.click();
+    await expect(preview.locator('img[src*="rosh-chodesh-teal-dawn"]').first()).toBeVisible({ timeout: 10_000 });
+    await expect(rcTab).not.toContainText("בלי ערכה");
+
+    // Back to the board's own page: the occasion's kit stays with the occasion.
+    await bar.getByRole("tab", { name: /עמוד 1|הלוח/ }).first().click();
+    await expect(page.getByTestId("occasion-design-banner")).toHaveCount(0);
+    await expect(rcTab).toHaveAttribute("aria-selected", "false");
+    await expect(preview.locator('img[src*="rosh-chodesh-teal-dawn"]')).toHaveCount(0);
+    await expectNotFrozen(page, "occasion tab");
+  });
+
   test("a day of the shul's own: a Hebrew date, a line of text, and it is on", async ({ page }) => {
     await page.getByRole("button", { name: "הוספת מועד משלכם" }).click();
     const dialog = page.getByTestId("occasion-dialog");

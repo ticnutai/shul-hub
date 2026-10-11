@@ -45,7 +45,7 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
-import { occasionPagesNow, readOccasions } from "@/tv/occasions";
+import { nextDateOf, occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editPage, pageAt, pageLook, readPages } from "@/tv/partPages";
 import { isAllowedEdit } from "@/tv/records";
 import { nextCandleLighting } from "@/tv/shabbat";
@@ -60,7 +60,7 @@ import { applyImport, buildExport, exportFileName, parseImport, planIllustration
 import { useDayZmanim } from "@/tv/useBoardData";
 import { downloadFile } from "@/tv/workspaceTransfer";
 
-import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
+import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 
 import { type AlertExample } from "./AlertsSettings";
 import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
@@ -76,7 +76,7 @@ import { ElementTextTools } from "./ElementTextTools";
 import { type LayerProps } from "./LayerEditors";
 import { LayoutTab } from "./LayoutTab";
 import { OccasionsEditor } from "./OccasionsEditor";
-import { PartPagesBar } from "./PartPagesBar";
+import { PartPagesBar, type OccasionTab } from "./PartPagesBar";
 import { ReadabilityNote } from "./ReadabilityNote";
 import { SplitHandle } from "./SplitHandle";
 import { StudioPanel } from "./StudioPanel";
@@ -368,6 +368,20 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       on: dressed.occasion.designOn,
     };
   }, [view, board.data.settings, previewMinute]);
+  /**
+   * The occasions' screens offered beside the board's pages: those on at the
+   * preview's moment (ראש חודש, today), and those with a design of their own -
+   * each edited there exactly as a page is.
+   */
+  const occasionTabs = useMemo<OccasionTab[]>(() => {
+    const at = new Date(previewMinute * 60_000);
+    const settings = board.data.settings;
+    const { active } = occasionPagesNow(state.present, settings, at, (d) => zmanimFor(d, settings));
+    const on = new Set(active.map((a) => a.occasion.id));
+    return readOccasions(state.present)
+      .filter((o) => o.id === occasionScope || (o.enabled && o.display !== "off" && (on.has(o.id) || Boolean(o.design))))
+      .map((o) => ({ id: o.id, name: o.name, on: on.has(o.id), design: Boolean(o.design) }));
+  }, [state.present, board.data.settings, previewMinute, occasionScope]);
   const [dayLookShown, setDayLookShown] = useState(false);
   // Only a design that dresses the whole board changes the ordinary screens.
   const dayLook = dayLookShown && dayLookNow?.on === "board";
@@ -592,6 +606,20 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     setShabbatPreview(Boolean(at));
     setSimulatedNow(at);
     setPreviewIndex(0);
+  };
+  /** An occasion's screen worked on as a page: its day in the preview, on its screen, its design being edited. */
+  const openOccasion = (id: string) => {
+    const o = readOccasions(state.present).find((x) => x.id === id);
+    if (!o) return;
+    setPagesPlaying(false);
+    const on = occasionTabs.find((t) => t.id === id)?.on;
+    // On at the preview's moment: stay there; otherwise its next day, at midday.
+    const day = on ? null : nextDateOf(o, new Date());
+    if (!on && !day) return toast.error("לא נמצא תאריך קרוב למועד הזה");
+    previewAt(day ? new Date(Date.parse(`${jerusalemDateKey(day)}T11:00:00+03:00`)) : simulatedNow ?? new Date());
+    setPreviewScreen(`occasion:${id}`);
+    setOccasionScope(id);
+    if (!o.enabled) toast.warning(`"${o.name}" כבוי - הוא לא יופיע עד שתפעילו אותו בלשונית "מועדים".`);
   };
   /** Brings the board's preview into sight, from a control further down the page. */
   const showPreview = () =>
@@ -1038,11 +1066,23 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {guide && <BuildGuide done={guide} onStep={goToStep} onClose={() => setGuide(null)} />}
 
       {/* The pages of a board of parts: above the tabs, since every tab edits the page chosen here. */}
-      {!occasionScope && (state.present.screenLayout === "composition" || readPages(state.present).length > 1) && (
+      {(state.present.screenLayout === "composition" || readPages(state.present).length > 1 || occasionTabs.length > 0) && (
         <PartPagesBar
           config={state.present}
           current={pageIndex}
-          onSelect={(i) => { setPagesPlaying(false); setPageScope(i); }}
+          occasions={occasionTabs}
+          occasion={occasionScope}
+          onOccasion={openOccasion}
+          onSelect={(i) => {
+            setPagesPlaying(false);
+            if (occasionScope) {
+              // Back from an occasion to the board's own page, at the real time.
+              setOccasionScope(null);
+              previewAt(null);
+              setPreviewScreen(null);
+            }
+            setPageScope(i);
+          }}
           playing={playingPage}
           onPlay={(on) => { setPagesTick(Date.now()); setPagesPlaying(on); }}
           onEdit={(key, update) => dispatch({ type: "edit", key: `pages:${key}`, update })}

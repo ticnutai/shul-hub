@@ -9,15 +9,27 @@
  * of parts at all, so there is one list of what takes turns, not two.
  */
 import { toast } from 'sonner';
-import { ChevronLeft, ChevronRight, Copy, Play, Square, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, Play, Square, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import type { TvConfig } from '@/tv/config';
 import { MAX_PAGES, addPage, copyPage, movePage, readPages, removePage, setPage } from '@/tv/partPages';
 
-export function PartPagesBar({ config, current, onSelect, onEdit, playing = null, onPlay }: {
+/** An occasion's screen offered beside the pages: on now (or on the preview's day), or with a design of its own. */
+export interface OccasionTab { id: string; name: string; on: boolean; design: boolean }
+
+export function PartPagesBar({ config, current, onSelect, onEdit, playing = null, onPlay, occasions = [], occasion = null, onOccasion }: {
   config: TvConfig;
   current: number;
+  /**
+   * The occasions' screens, beside the board's own pages: ראש חודש appears
+   * here on its day, and is edited exactly as a page is - its kit, its parts,
+   * its look - in its own design, the pages left as they are.
+   */
+  occasions?: OccasionTab[];
+  /** The occasion being worked on; while one is, no page is. */
+  occasion?: string | null;
+  onOccasion?: (id: string) => void;
   onSelect: (index: number) => void;
   /** The page the preview shows while the pages take their turns there; null - not playing. */
   playing?: number | null;
@@ -67,10 +79,10 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
             key={p.id}
             type="button"
             role="tab"
-            aria-selected={i === current}
+            aria-selected={!occasion && i === current}
             onClick={() => onSelect(i)}
             data-playing={playing === i ? 'true' : undefined}
-            className={`flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm transition ${i === current ? 'border-primary ring-2 ring-primary ring-offset-1' : 'hover:border-primary/50'} ${playing === i ? 'bg-emerald-50 outline outline-2 outline-emerald-500 dark:bg-emerald-950/40' : ''}`}
+            className={`flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm transition ${!occasion && i === current ? 'border-primary ring-2 ring-primary ring-offset-1' : 'hover:border-primary/50'} ${playing === i ? 'bg-emerald-50 outline outline-2 outline-emerald-500 dark:bg-emerald-950/40' : ''}`}
           >
             {playing === i && <Play className="size-3 fill-emerald-600 text-emerald-600" aria-label="מוצג עכשיו" />}
             <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
@@ -78,6 +90,28 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
             {pages.length > 1 && <span className="rounded bg-muted px-1 text-[10px] tabular-nums">{p.seconds} שנ׳</span>}
           </button>
         ))}
+        {occasions.length > 0 && onOccasion && (
+          <>
+            <span className="text-xs text-muted-foreground" aria-hidden>ומהמועדים:</span>
+            {occasions.map(o => (
+              <button
+                key={o.id}
+                type="button"
+                role="tab"
+                aria-selected={occasion === o.id}
+                data-occasion-tab={o.id}
+                onClick={() => onOccasion(o.id)}
+                title={`${o.name}: המסך שלו ${o.on ? 'מופיע היום' : 'מופיע ביום שלו'} מכוח המועדים. לחיצה - עורכים אותו כמו עמוד, בעיצוב משלו.`}
+                className={`flex items-center gap-2 rounded-lg border border-dashed border-amber-500/70 bg-amber-50 px-3 py-1.5 text-sm transition dark:bg-amber-950/30 ${occasion === o.id ? 'border-solid ring-2 ring-amber-500 ring-offset-1' : 'hover:border-amber-600'}`}
+              >
+                <CalendarDays className="size-4 text-amber-700" aria-hidden />
+                <span>{o.name}</span>
+                {o.on && <span className="rounded bg-amber-200 px-1 text-[10px] text-amber-900">היום</span>}
+                {!o.design && <span className="text-[10px] text-muted-foreground">בלי ערכה</span>}
+              </button>
+            ))}
+          </>
+        )}
         <Button type="button" size="sm" variant="outline" onClick={add} disabled={pages.length >= MAX_PAGES} title="עמוד חדש - העתק של העמוד שנבחר, לשנות ממנו">
           <Copy className="size-4" aria-hidden /> עמוד חדש
         </Button>
@@ -88,7 +122,7 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
           </Button>
         )}
       </div>
-      {pages.length > 1 && (
+      {pages.length > 1 && !occasion && (
         <div className="flex flex-wrap items-end gap-3 border-t border-primary/20 pt-2" data-testid="part-page-settings">
           <label className="flex min-w-[9rem] flex-1 flex-col gap-1 text-xs text-muted-foreground">
             שם העמוד
@@ -135,7 +169,13 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
           ▶ התצוגה מתחלפת בין העמודים. מוצג עכשיו: <b>{pages[playing]?.name}</b>. בחירת עמוד עוצרת את ההחלפה.
         </p>
       )}
-      {current > 0 && (
+      {occasion && (
+        <p className="text-xs" role="status" data-testid="part-page-occasion">
+          ✏️ עורכים עכשיו את המסך של <b>{occasions.find(o => o.id === occasion)?.name ?? 'המועד'}</b> - כמו עמוד: ערכה, חלקים, רקע, מסגרות וטקסט, בעיצוב שלו בלבד.
+          הוא מופיע לבד ביום שלו; מתי ואיך הוא מוצג - בלשונית "מועדים".
+        </p>
+      )}
+      {current > 0 && !occasion && (
         <p className="text-xs" role="status" data-testid="part-page-editing">
           ✏️ עורכים עכשיו את <b>{page.name}</b> - הערכה, המסגרות והתוכן שלו בלבד. העמודים האחרים לא משתנים.
         </p>
