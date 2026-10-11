@@ -5,6 +5,8 @@ import { lazy, Suspense } from "react";
 import { Building2, LayoutDashboard, LogOut, ShieldAlert, Tv } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import "@community/components/admin/adminMobile.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MinyanimAdmin } from "@community/components/admin/MinyanimAdmin";
 import { MinyanOverridesAdmin } from "@community/components/admin/MinyanOverridesAdmin";
@@ -50,9 +52,25 @@ export function AdminPage() {
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
     "messages", "widgets", "users", "data", "qr", "ai", "api", "communities",
     ...(storeApp ? [] : ["apps", "tv"]),
-  ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
+  ].includes(requestedTab ?? "") ? (requestedTab ?? "minyanim") : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
+  const mobileSections = [
+    { value: "minyanim", label: "מניינים" },
+    { value: "announcements", label: "מודעות" },
+    { value: "shiurim", label: "שיעורים" },
+    { value: "chavrutot", label: "חברותות" },
+    { value: "chavruta-requests", label: "בקשות חברותא" },
+    { value: "messages", label: `הודעות${unread > 0 ? ` (${unread})` : ""}` },
+    { value: "widgets", label: "תצוגת דף הבית" },
+    { value: "users", label: "משתמשים" },
+    { value: "data", label: "ייצוא/ייבוא" },
+    { value: "qr", label: "קודי QR" },
+    { value: "ai", label: "עוזר חכם" },
+    { value: "api", label: "מפתח API" },
+    { value: "communities", label: manyShuls ? "בתי כנסת" : "פרטי בית הכנסת" },
+    ...(!storeApp ? [{ value: "apps", label: "הורדת אפליקציות" }, { value: "tv", label: "תצוגות" }] : []),
+  ];
 
   // Every admin has at least the synagogue they run, and its details (the
   // address, the location, its logos) live in its window under this button.
