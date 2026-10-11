@@ -114,7 +114,7 @@ export function CommunitySwitcher() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-10 max-w-[18rem] justify-between gap-2 px-3"
+          className="h-11 min-w-0 max-w-full flex-1 justify-between gap-2 px-3 sm:h-10 sm:max-w-[18rem] sm:flex-none"
           aria-label="בית הכנסת שבעריכה"
           data-testid="community-switcher"
         >
@@ -127,7 +127,7 @@ export function CommunitySwitcher() {
         </Button>
       </PopoverTrigger>
 
-      <PopoverContent align="start" dir="rtl" className="w-80 p-1.5 text-right">
+      <PopoverContent align="start" dir="rtl" className="w-80 max-w-[calc(100vw-1rem)] p-1.5 text-right">
         <p className="px-2 pb-1.5 pt-1 text-[11px] text-muted-foreground">
           כל מה שנערוך בדף הזה שייך לבית הכנסת שנבחר כאן.
         </p>

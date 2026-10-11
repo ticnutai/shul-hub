@@ -1162,14 +1162,14 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     );
   }
 
-  const top = layout === "top" && !fullscreen;
+  const top = layout === "top" && !fullscreen && isLarge;
   const side = layout === "side" && !fullscreen;
 
   // On the studio's own toolbar row, beside the device menu: one row above
   // the board, not three.
   const layoutButtons = (
     <>
-      <div className="inline-flex rounded-md border p-0.5" role="group" aria-label="פריסת העורך">
+      <div className="col-span-2 hidden rounded-md border p-0.5 sm:inline-flex" role="group" aria-label="פריסת העורך">
         <Button
           type="button"
           variant={layout === "side" ? "default" : "ghost"}
@@ -1438,7 +1438,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   return (
     <div
       ref={splitBox}
-      className={`gap-2 ${side ? "grid lg:gap-2" : "grid gap-5"}`}
+      className={`min-w-0 grid-cols-[minmax(0,1fr)] gap-2 ${side ? "grid lg:gap-2" : "grid gap-5"}`}
       style={
         side && isLarge
           ? { gridTemplateColumns: `minmax(0, ${1 - sideShare}fr) auto minmax(0, ${sideShare}fr)` }
@@ -1448,7 +1448,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {/* ------------------------------------------------ preview column -- */}
       <div
         ref={previewColumn}
-        className={`order-1 space-y-3 lg:order-3 ${fullscreen ? "overflow-auto bg-background p-4" : ""}`}
+        className={`order-1 min-w-0 space-y-3 lg:order-3 ${fullscreen ? "overflow-auto bg-background p-4" : ""}`}
       >
         {/* Pinned while the controls scroll. It is capped to the window
             height and scrolls inside itself, because a sticky block taller
@@ -1507,7 +1507,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       )}
 
       {/* ----------------------------------------------- controls column -- */}
-      <div className="order-3 space-y-4 lg:order-1">{!fullscreen && controls}</div>
+      <div className="order-3 min-w-0 space-y-4 lg:order-1">{!fullscreen && controls}</div>
     </div>
   );
 }
