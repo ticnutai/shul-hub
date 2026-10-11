@@ -1,4 +1,5 @@
 import { flags, gematriya, HDate, HebrewCalendar } from "@hebcal/core";
+import { roshChodeshOn } from "@community/lib/specialDays";
 import { civilDayProfile, eventsOn, parshaOfWeek, seasonalLine } from "@/lib/jewishDay";
 
 /**
@@ -171,7 +172,7 @@ export function upcomingDays(date: Date, days = 21, limit = 6, { national = fals
       const d = ev.getDate().greg();
       return {
         date: d,
-        title: hebrewName(ev.render("he")),
+        title: /^Rosh Chodesh /.test(ev.getDesc()) ? roshChodeshOn(d)?.title ?? hebrewName(ev.render("he")) : hebrewName(ev.render("he")),
         inDays: dayNumber(d) - dayNumber(start),
         major: Boolean(ev.getFlags() & (flags.CHAG | flags.MAJOR_FAST)),
       };

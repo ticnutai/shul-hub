@@ -20,14 +20,14 @@ export function BoundElement({ element }: { element: BoardElement }) {
   const look = textLook(e);
   const style: CSSProperties = { width: '100%', height: '100%', fontSize: `${e.fontSize}cqh`, ...look };
   if (!data) {
-    const labels = {clock:'12:00',analog:'◷',prayers:'זמני תפילות',lessons:'שיעורי תורה',title:'שם בית הכנסת',date:'תאריך עברי',zmanim:'זמני היום',footer:'פרשה ולימוד יומי',logos:'לוגואים',announcements:'הודעות',parasha:'פרשת השבוע',dafYomi:'דף יומי',amudYomi:'עמוד יומי',seasonal:'תוספות לתפילה'};
+    const labels = {clock:'12:00',analog:'◷',prayers:'זמני תפילות',lessons:'שיעורי תורה',title:'שם בית הכנסת',date:'תאריך עברי',occasion:'המועד היום',zmanim:'זמני היום',footer:'פרשה ולימוד יומי',logos:'לוגואים',announcements:'הודעות',parasha:'פרשת השבוע',dafYomi:'דף יומי',amudYomi:'עמוד יומי',seasonal:'תוספות לתפילה'};
     return <div style={{ ...style, display: 'grid', placeItems: 'center' }}>{e.binding ? labels[e.binding] : e.text}</div>;
   }
   if(e.binding==='prayers' && countdown?.stage==='panel') return <DeadlineCard alert={countdown}/>;
   if(e.binding==='logos') return <div data-content-binding="logos" style={{...style,display:'flex',justifyContent:'center',gap:'1cqw'}}>{data.logos?.map(l=><img key={l.url} src={l.url} alt={l.name} style={{maxWidth:'100%',height:'100%',objectFit:'contain'}} />)}</div>;
   // One line that shrinks to fit (a name, a date, the parasha); paragraphs wrap.
   // Made smaller to fit, or broken into lines at its own size: the part's "גלישת שורות" (wraps()).
-  if(e.binding==='title'||e.binding==='date'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
+  if(e.binding==='title'||e.binding==='date'||e.binding==='occasion'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
   if((e.binding==='footer'||e.binding==='announcements') && e.scroll) return <Scrolling mode={e.scroll}><div data-content-binding={e.binding} dir="rtl" style={{ display: 'grid', alignItems: 'center', justifyItems: justify(e), whiteSpace: 'pre-wrap', lineHeight: 1.4, fontSize: `${e.fontSize}cqh`, ...look }}>{data[e.binding]}</div></Scrolling>;
   if(e.binding==='footer'||e.binding==='announcements') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.4} /> : <FitBlock binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(data.now);

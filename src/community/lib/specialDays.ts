@@ -93,6 +93,36 @@ export function specialDaysOn(date: Date): SpecialDayDef[] {
   return SPECIAL_DAYS.filter((def) => descs.some((d) => def.match.test(d)));
 }
 
+/**
+ * Rosh Chodesh of `date`: the month it begins ("חשון"), and - when it is two
+ * days (the 30th of the month that ends, and the 1st of the new one) - which
+ * of the two this is. Null on any other day.
+ */
+export function roshChodeshOn(date: Date): { month: string; day: 1 | 2 | null; title: string } | null {
+  const rc = (d: Date) => eventsOnCivil(d).find((e) => /^Rosh Chodesh /.test(e.getDesc()));
+  const today = rc(date);
+  if (!today) return null;
+  const month = today.render("he-x-NoNikud").replace(/^ראש חודש\s*/, "").trim();
+  const same = (d: Date) => rc(d)?.getDesc() === today.getDesc();
+  const day: 1 | 2 | null = same(new Date(date.getTime() + 86_400_000)) ? 1 : same(new Date(date.getTime() - 86_400_000)) ? 2 : null;
+  // "היום הראשון", not "יום ראשון": beside the date, that would read as Sunday.
+  const title = `ראש חודש ${month}${day ? ` · ${day === 1 ? "היום הראשון" : "היום השני"}` : ""}`;
+  return { month, day, title };
+}
+
+/**
+ * What the day is called on the board, its special days in one line - Rosh
+ * Chodesh with its month and, on two days, which of them: "ראש חודש חשון ·
+ * יום ראשון". Empty on an ordinary day.
+ */
+export function dayTitleOn(date: Date): string {
+  const rc = roshChodeshOn(date);
+  return specialDaysOn(date)
+    .filter((d) => !d.national)
+    .map((d) => (d.key === "rosh_chodesh" && rc ? rc.title : d.name.replace(/\s*\([^)]*\)\s*$/, "")))
+    .join(" · ");
+}
+
 /** The next dates (YYYY-MM-DD, Jerusalem) a special day falls on, from `from` on. */
 export function nextDatesOf(key: string, from: Date, count = 1): string[] {
   const def = specialDayByKey(key);
@@ -391,9 +421,9 @@ export function combinedDay(def: SpecialDayDef, date: Date): { title: string; al
   const shabbat = jerusalemWeekday(date) === 6 && def.group !== "shabbatot";
   const others = specialDaysOn(date)
     .filter((d) => d.key !== def.key && !d.national)
-    .map((d) => d.name);
+    .map((d) => (d.key === "rosh_chodesh" ? roshChodeshOn(date)?.title ?? d.name : d.name));
   // The admin's list says "סוכות (יום טוב)"; the board says "סוכות".
-  let title = def.name.replace(/\s*\([^)]*\)\s*$/, "");
+  let title = def.key === "rosh_chodesh" ? roshChodeshOn(date)?.title ?? def.name : def.name.replace(/\s*\([^)]*\)\s*$/, "");
   if (shabbat) title = def.key.startsWith("chol_hamoed") ? `שבת ${title}` : `שבת · ${title}`;
   return { title, also: others, shabbat };
 }

@@ -4,7 +4,8 @@ import type { TvConfig } from './config';
 import { formatTime, ZMAN_DISPLAY_LABELS, ZMAN_DISPLAY_KEYS, type Zmanim } from '@/community/lib/zmanim';
 import { HDate } from '@hebcal/core';
 import { amudYomi, dafYomi, weeklyParasha, seasonalPrayers } from './learning';
-export interface ElementData { now: Date; prayers: [string, string][]; lessons: [string, string][]; title?: string; date?: string; zmanim?: [string,string][]; zmanKeys?: string[]; hiddenZmanKeys?: string[]; parasha?:string; dafYomi?:string; amudYomi?:string; seasonal?:string; footer?: string; logos?: {url:string;name:string}[]; announcements?: string }
+import { dayTitleOn } from '@community/lib/specialDays';
+export interface ElementData { now: Date; prayers: [string, string][]; lessons: [string, string][]; title?: string; date?: string; occasion?: string; zmanim?: [string,string][]; zmanKeys?: string[]; hiddenZmanKeys?: string[]; parasha?:string; dafYomi?:string; amudYomi?:string; seasonal?:string; footer?: string; logos?: {url:string;name:string}[]; announcements?: string }
 export function elementData(slides: BoardSlide[], now: Date, context?: {config:TvConfig; name:string; zmanim:Zmanim}): ElementData {
   const flat = (s: BoardSlide[]): BoardSlide[] => s.flatMap(x => x.kind === 'composed' ? flat(x.parts.flatMap(p => p.slide ? [p.slide] : [])) : [x]);
   const seen = new Set<string>();
@@ -26,6 +27,8 @@ export function elementData(slides: BoardSlide[], now: Date, context?: {config:T
   return { now, prayers, lessons,
     ...(context ? { title:config?.texts['header.title']??context.name,
       date:`${new HDate(now).renderGematriya(true)} · ${now.toLocaleDateString('he-IL',{weekday:'long',timeZone:'Asia/Jerusalem'})}`,
+      // The day's special days in a line - Rosh Chodesh with its month and, on two days, which: "ראש חודש חשון · היום הראשון".
+      occasion:dayTitleOn(now),
       zmanim:keys.map(k=>[config?.texts[`zman.${k}`]??ZMAN_DISPLAY_LABELS[k],formatTime(context.zmanim[k])] as [string,string]),
       zmanKeys:[...keys],hiddenZmanKeys:keys.filter(k=>config?.hidden.includes(`zman.${k}`)),
       parasha:weeklyParasha(now),dafYomi:`דף יומי: ${dafYomi(now)?.label??'—'}`,amudYomi:`עמוד יומי: ${amudYomi(now).label}`,seasonal:seasonalPrayers(now).text,

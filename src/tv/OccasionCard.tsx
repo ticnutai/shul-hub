@@ -9,6 +9,7 @@ import {
   specialZmanim,
   verseFor,
   type SpecialDayDef,
+  roshChodeshOn,
 } from "@community/lib/specialDays";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import { zmanimFor as zmanimOf } from "@community/lib/minyan-time";
@@ -74,6 +75,11 @@ function prayerLines(schedules: DaySchedule[]): { label: string; times: { time: 
 
 const SHABBAT_DEF: SpecialDayDef = { key: "shabbat", name: "שבת קודש", group: "shabbatot", match: /(?!)/ };
 const stripNote = (name: string) => name.replace(/\s*\([^)]*\)\s*$/, "");
+/** An occasion's name on its date: Rosh Chodesh with its month and, when it is two days, which of them. */
+const nameOn = (a: ActiveOccasion, date: Date) =>
+  a.occasion.when.type === "calendar" && a.occasion.when.key === "rosh_chodesh" && a.occasion.name === "ראש חודש"
+    ? roshChodeshOn(date)?.title ?? stripNote(a.occasion.name)
+    : stripNote(a.occasion.name);
 
 /** The calendar's day an occasion stands for (for its verse, colours and built-in pictures). */
 function defOf(a: ActiveOccasion): SpecialDayDef {
@@ -122,7 +128,7 @@ export function OccasionCard({ page, mode, now, settings, endMinutes, zmanimFor,
       o.title ??
       (festivalLeads
         ? combinedDay(def, date).title
-        : [stripNote(o.name), ...page.with.map((w) => stripNote(w.occasion.name))].join(" · "));
+        : [nameOn(main, date), ...page.with.map((w) => nameOn(w, date))].join(" · "));
 
     const inPage = new Set(all.flatMap((a) => (a.occasion.when.type === "calendar" ? [a.occasion.when.key] : [])));
     const also = specialDaysOn(date)

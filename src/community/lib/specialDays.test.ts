@@ -131,7 +131,8 @@ describe("days that meet, and their verses", () => {
 
   it("lists the other days of the date on a second line", async () => {
     const { combinedDay, specialDayByKey } = await import("./specialDays");
-    expect(combinedDay(specialDayByKey("chanukah")!, il("2026-12-10")).also).toContain("ראש חודש");
+    // Rosh Chodesh Tevet, with its month and which of its two days.
+    expect(combinedDay(specialDayByKey("chanukah")!, il("2026-12-10")).also.some((t) => /^ראש חודש טבת( · היום (הראשון|השני))?$/.test(t))).toBe(true);
   });
 
   it("has a verse with its source for the festivals and fasts", async () => {

@@ -4,7 +4,7 @@ import { ZMAN_DISPLAY_KEYS } from '@/community/lib/zmanim';
 /** Free elements share the board's config, undo history and renderer. Coordinates are percentages. */
 export const ELEMENT_KINDS = ['column', 'ornament', 'frame', 'box', 'text', 'image'] as const;
 export type ElementKind = typeof ELEMENT_KINDS[number];
-export const ELEMENT_BINDINGS = ['clock', 'analog', 'prayers', 'lessons', 'title', 'date', 'zmanim', 'footer', 'logos', 'announcements', 'parasha', 'dafYomi', 'amudYomi', 'seasonal'] as const;
+export const ELEMENT_BINDINGS = ['clock', 'analog', 'prayers', 'lessons', 'title', 'date', 'occasion', 'zmanim', 'footer', 'logos', 'announcements', 'parasha', 'dafYomi', 'amudYomi', 'seasonal'] as const;
 export type ElementBinding = typeof ELEMENT_BINDINGS[number];
 export const ELEMENT_NAMES: Record<ElementKind, string> = { column: 'עמוד קלאסי', ornament: 'עיטור', frame: 'מסגרת', box: 'תיבה', text: 'טקסט', image: 'תמונה' };
 export interface BoardElement {
@@ -166,7 +166,7 @@ export function alignElements(all: BoardElement[], ids: string[], alignment: Ele
 export const BINDING_LABELS: Record<ElementBinding, string> = {
   zmanim: 'זמני היום', announcements: 'הודעות', prayers: 'תפילות היום', lessons: 'שיעורי היום',
   seasonal: 'תוספות בתפילה', dafYomi: 'דף יומי', amudYomi: 'עמוד יומי', footer: 'פרשה ולימוד יומי',
-  logos: 'לוגואים', parasha: 'פרשת השבוע', date: 'תאריך עברי', title: 'שם בית הכנסת',
+  logos: 'לוגואים', parasha: 'פרשת השבוע', date: 'תאריך עברי', occasion: 'המועד היום', title: 'שם בית הכנסת',
   clock: 'שעון דיגיטלי', analog: 'שעון מחוגים',
 };
 
@@ -310,7 +310,7 @@ function frameParts(all: BoardElement[], ids: string[]) {
  * lines of three prayers or shiurim, showing anything else.
  */
 /** One line that shrinks to fit its box (a name, a date, the parasha). */
-const ONE_LINE: ElementBinding[] = ['title', 'date', 'parasha', 'dafYomi', 'amudYomi', 'seasonal', 'clock'];
+const ONE_LINE: ElementBinding[] = ['title', 'date', 'occasion', 'parasha', 'dafYomi', 'amudYomi', 'seasonal', 'clock'];
 
 /**
  * The type size and the rows for content in a box of this size - the box

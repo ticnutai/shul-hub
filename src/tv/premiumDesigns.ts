@@ -94,3 +94,46 @@ PREMIUM_DESIGNS.push(...EXTRA_ART_STYLES.map(([id, name, ink, light], index): Sa
     hidden: ['olive-mosaic', 'sky-porcelain'].includes(id) && e.name === 'שורת תחתית',
   })) },
 })));
+
+/**
+ * Rosh Chodesh: nine plates in the same ivory-region geometry (columns, the
+ * arch with the moon, the title plaque, the centre panel with Jerusalem by
+ * night, the side panels, the footer) - so they come apart into the same
+ * parts. Real photographs: the moon (NASA, public domain), the night sky
+ * (Poly Haven, CC0), Jerusalem by night (public domain); the frames drawn.
+ * The moon stands in the medallion, so the clock moves into the centre panel;
+ * the panel names the day ("ראש חודש חשון · היום הראשון"), the footer the
+ * prayer's additions (יעלה ויבוא, הלל).
+ */
+export const ROSH_CHODESH_ART = [
+  ['night-moon', 'לבנה בשמי לילה', '#fff1cc', false],
+  ['twilight', 'שביל החלב והמולד', '#fff1cc', false],
+  ['great-moon', 'ירח גדול מעל העיר', '#f2f6ff', false],
+  ['deep-phases', 'שלבי הירח בשמי לילה', '#f2f6ff', false],
+  ['teal-dawn', 'שחר תכלת וסהר', '#fff1d8', false],
+  ['onyx-gold', 'אוניקס וזהב בלילה', '#ffe6a8', false],
+  ['silver-phases', 'כסף ושלבי הירח', '#1f2f48', true],
+  ['stone-moon', 'אבן ירושלים וירח', '#4a3117', true],
+  ['mix', 'לילה, שלבי הירח ואבן ירושלים', '#fff1cc', false],
+] as const;
+PREMIUM_DESIGNS.push(...ROSH_CHODESH_ART.map(([id, name, ink, light]): SavedDesign => {
+  const at = (e: BoardElement, x: number, y: number, width: number, height: number, fontSize: number): BoardElement => ({ ...e, x, y, width, height, fontSize });
+  const elements = ivory.values.elements!
+    .filter((e) => e.binding !== 'analog')
+    .map((e, i): BoardElement => {
+      const own = { ...structuredClone(e), id: `premium_rc_${id}_${i}`, color: ink };
+      if (e.kind === 'image') return { ...own, image: `/new-shul-assets/rosh-chodesh-${id}.webp` };
+      if (e.binding === 'parasha') return at({ ...own, name: 'המועד היום', binding: 'occasion' }, 32.5, 34.5, 35, 9, 6.4);
+      if (e.binding === 'date') return at(own, 36, 44.5, 28, 6.5, 4.2);
+      if (e.name === 'שורת תחתית') return at({ ...own, name: 'תוספות בתפילה', binding: 'seasonal', text: '' }, 13, 88.5, 74, 8, 3.8);
+      return own;
+    });
+  const text = (name: string, binding: BoardElement['binding'], x: number, y: number, width: number, height: number, fontSize: number) =>
+    ({ ...newElement('text'), id: `premium_rc_${id}_${binding}`, name, text: '', binding, x, y, width, height, fontSize, color: ink });
+  elements.push(text('פרשת השבוע', 'parasha', 37, 51.5, 26, 5.5, 3.6), text('שעון דיגיטלי', 'clock', 43, 58, 14, 8, 5.6));
+  return {
+    id: `d_premium_rc_${id}`, name: `${name} · ראש חודש`, parts: ['background', 'frames', 'text', 'layout'],
+    theme: light ? 'stone' : 'navy', colours: { '--tv-text': ink, '--tv-accent': '#d3ae60' },
+    values: { ...structuredClone(ivory.values), elements },
+  };
+}));

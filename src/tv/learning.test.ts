@@ -73,7 +73,9 @@ describe("weeklyParasha", () => {
 describe("upcomingDays", () => {
   it("leaves out the state's civil calendar (אהל אברהם, שמחת תורה 2026)", () => {
     const titles = upcomingDays(new Date(2026, 9, 3), 21, 20).map((d) => d.title);
-    expect(titles).toContain("ראש חודש חשון");
+    // Two days this year (Tishrei has 30): each named.
+    expect(titles).toContain("ראש חודש חשון · היום הראשון");
+    expect(titles).toContain("ראש חודש חשון · היום השני");
     expect(titles.some((t) => /רבין|העליה/.test(t))).toBe(false);
     expect(upcomingDays(new Date(2026, 9, 3), 21, 20, { national: true }).some((d) => /רבין|העליה/.test(d.title))).toBe(false);
   });

@@ -334,6 +334,9 @@ export function seasonalLine(p: DayProfile): string {
     p.ledavidSeason && "לדוד ה' אורי וישעי",
     p.rainSeason ? "משיב הרוח ומוריד הגשם" : "מוריד הטל",
     p.talUmatar ? "ותן טל ומטר לברכה" : "ותן ברכה",
+    // Rosh Chodesh: its own addition to the Amidah and to Birkat Hamazon, and the half Hallel.
+    p.roshChodesh && "יעלה ויבוא",
+    p.roshChodesh && "חצי הלל",
   ]
     .filter(Boolean)
     .join(" · ");
