@@ -492,6 +492,17 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const [isLarge, setIsLarge] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
   /** The site's header is pinned too: the board is pinned under it, not behind it. */
   const [headerOffset, setHeaderOffset] = useState(0);
+  /** The pinned board's height, so that what scrolls under it stops below it (scroll-padding). */
+  const [pinnedHeight, setPinnedHeight] = useState(0);
+  const pinnedObserver = useRef<ResizeObserver | null>(null);
+  // A callback: the pinned block comes and goes with the layout (side, full screen).
+  const pinnedRef = useCallback((el: HTMLDivElement | null) => {
+    pinnedObserver.current?.disconnect();
+    pinnedObserver.current = null;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    pinnedObserver.current = new ResizeObserver(() => setPinnedHeight(Math.round(el.getBoundingClientRect().height)));
+    pinnedObserver.current.observe(el);
+  }, []);
   const [windowHeight, setWindowHeight] = useState(() => (typeof window === "undefined" ? 900 : window.innerHeight));
   useEffect(() => {
     const measure = () => {
@@ -1545,14 +1556,21 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           style={
             fullscreen || !isLarge
               ? undefined
-              : { top: headerOffset + 8, maxHeight: `calc(100dvh - ${headerOffset + 16}px)` }
+              : {
+                  top: headerOffset + 8,
+                  maxHeight: `calc(100dvh - ${headerOffset + 16}px)`,
+                  // Scrolling to a control stops it under the pinned board (and
+                  // above the save bar at the foot), never behind them.
+                  scrollPaddingTop: pinnedHeight + 8,
+                  scrollPaddingBottom: 64,
+                }
           }
         >
           {/* The board itself pinned at the top of the column: what is under it
               (the panel being edited, the text bar) scrolls beneath it, so the
               change is always in sight. It scrolled away with them, and the
               board being edited could not be seen (11.10.2026). */}
-          <div className={fullscreen ? "" : "lg:sticky lg:top-0 lg:z-20 lg:bg-background lg:pb-1"} data-testid="preview-pinned">
+          <div ref={pinnedRef} className={fullscreen ? "" : "lg:sticky lg:top-0 lg:z-20 lg:bg-background lg:pb-1"} data-testid="preview-pinned">
             {studioView}
           </div>
           {underPreview}

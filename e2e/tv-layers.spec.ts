@@ -210,13 +210,13 @@ test.describe("TV editor, by layer", () => {
   });
 
   test("a ready design puts a whole look on the board, built from parts", async ({ page }) => {
-    await page.getByTestId("builtin-designs").getByRole("button", { name: /^וילון כחול וזהב/ }).click();
+    await page.getByTestId("builtin-designs").getByRole("button", { name: /^החלת ערכה וילון כחול וזהב/ }).click();
     const med = root(page).locator(".tv-med");
     await expect(med).toBeVisible();
     await expect(root(page)).toHaveClass(/has-frame-image/);
     await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(27, 52, 148)");
     // And every part stays its own: another background leaves the frames alone.
-    await page.getByTestId("builtin-designs").getByRole("button", { name: /^לוחות הברית מאבן/ }).click();
+    await page.getByTestId("builtin-designs").getByRole("button", { name: /^החלת ערכה לוחות הברית מאבן/ }).click();
     await expect(root(page)).toHaveClass(/has-frame-arch/);
     await expect(root(page)).not.toHaveClass(/has-frame-image/);
     await expectNotFrozen(page, "ready designs");

@@ -174,7 +174,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
                   <button
                     type="button"
                     aria-label={`החלת ערכה ${d.name}`}
-              onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
+                    onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
                     className="block w-full text-right hover:bg-muted/50"
                     title="לחיצה שמה את העיצוב על הלוח (אפשר לבטל ב-Ctrl+Z)"
                   >

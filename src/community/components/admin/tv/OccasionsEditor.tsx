@@ -739,6 +739,9 @@ function OccasionDialog({
                 </optgroup>
               )}
             </select>
+            <p className="text-[11px] text-muted-foreground">
+              ערכות מ"אוסף New Shul" המשותף: פותחים את המסך של המועד (🎨, או הלשונית שלו ליד "עמוד 1") ובוחרים שם - עותק נשמר למועד.
+            </p>
             {o.design && (
               <div className="space-y-1 text-sm" role="radiogroup" aria-label="איפה העיצוב חל" data-testid="occasion-design-on">
                 <label className="flex items-start gap-2">

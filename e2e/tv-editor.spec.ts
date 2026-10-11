@@ -323,14 +323,14 @@ test.describe("TV editor", () => {
     await library.getByRole("checkbox", { name: "מסגרות" }).uncheck();
     await library.getByRole("checkbox", { name: "טקסט" }).uncheck();
     await library.getByRole("button", { name: "שמירת הערכה" }).click();
-    await expect(library.getByRole("button", { name: /^רקע ירוק/ })).toBeVisible();
+    await expect(library.getByRole("button", { name: /^החלת ערכה רקע ירוק/ })).toBeVisible();
     await expect(library.getByText("רקע", { exact: true })).toBeVisible();
     await expectNotFrozen(page, "design saved");
 
     // Another background - a picture - and the design brings its own back.
     await page.getByTestId("background-gallery").getByRole("button", { name: "שמיים בערב", exact: true }).click();
     await expect(root).toHaveClass(/has-bg-image/);
-    await library.getByRole("button", { name: /^רקע ירוק/ }).click();
+    await library.getByRole("button", { name: /^החלת ערכה רקע ירוק/ }).click();
     await expect(root).toHaveClass(/has-bg-gradient/);
     await expect(root).not.toHaveClass(/has-bg-image/);
     await expect(root).toBeVisible();
@@ -340,12 +340,12 @@ test.describe("TV editor", () => {
     await library.getByRole("button", { name: "שינוי שם" }).click();
     await library.getByLabel("שם הערכה").fill("רקע אחר");
     await library.getByRole("button", { name: "שינוי השם" }).click();
-    await expect(library.getByRole("button", { name: /^רקע אחר/ })).toBeVisible();
+    await expect(library.getByRole("button", { name: /^החלת ערכה רקע אחר/ })).toBeVisible();
     await expectNotFrozen(page, "design renamed");
 
     await library.getByRole("button", { name: "מחיקה" }).click();
     await library.getByRole("button", { name: "למחוק?" }).click();
-    await expect(library.getByRole("button", { name: /^רקע אחר/ })).toHaveCount(0);
+    await expect(library.getByRole("button", { name: /^החלת ערכה רקע אחר/ })).toHaveCount(0);
     await expectNotFrozen(page, "design deleted");
   });
 
