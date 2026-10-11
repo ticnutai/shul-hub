@@ -296,7 +296,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   }, [pagesPlaying]);
   const playingPage = pagesPlaying ? pageAt(state.present, new Date(pagesTick)) : null;
   const shownPage = playingPage ?? pageIndex;
-  const shownConfig = comparing ? pageLook(comparing.config, shownPage) : pageLook(state.present, shownPage);
+  // Working on an occasion: the preview is its design, the very one being edited (TvPreview `dressed`).
+  const shownConfig = comparing ? pageLook(comparing.config, shownPage) : occasionScope ? scoped : pageLook(state.present, shownPage);
   const view = useMemo(() => (preview ? { ...scoped, ...preview } : scoped), [preview, scoped]);
 
   const edit = useCallback(
@@ -1182,6 +1183,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           preview={comparing ? null : preview}
           {...board}
           dayLook={dayLook}
+          dressed={Boolean(occasionScope) && !comparing}
           fullscreen
           config={shownConfig}
           index={index}
@@ -1368,6 +1370,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         preview={comparing ? null : preview}
         {...board}
         dayLook={dayLook}
+        dressed={Boolean(occasionScope) && !comparing}
         config={shownConfig}
         index={index}
         cycle={cycle}

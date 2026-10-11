@@ -214,6 +214,43 @@ test.describe("TV editor, occasions", () => {
     await expectNotFrozen(page, "pinned occasion");
   });
 
+  test("an occasion's screen, edited on the board itself: a ready part added, dragged, and the screen stays the occasion's", async ({ page }) => {
+    // Reported on ראש חודש: "עריכה ישירה בלוח" brought back the first page, and
+    // the parts added to the occasion's kit could not be moved (11.10.2026).
+    await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+    const bar = page.getByTestId("part-pages");
+    const rcTab = bar.locator('[data-occasion-tab="cal:rosh_chodesh"]');
+    if (!(await rcTab.count())) await bar.getByLabel("הוספת מועד לפס").selectOption("cal:rosh_chodesh");
+    else await rcTab.click();
+    await page.getByTestId("builtin-designs").locator('[data-design-id="d_premium_rc_night-moon"] button[title^="ממלא"]').click();
+    const preview = page.locator("[data-board-preview] .tv-frame").first();
+    await expect(preview.locator('img[src*="rosh-chodesh-night-moon"]').first()).toBeVisible({ timeout: 10_000 });
+
+    // A ready part added to the occasion's kit.
+    const library = page.getByTestId("ready-parts");
+    await library.getByRole("button", { name: "הוספת שיש מואר · מסגרת שעון" }).click();
+
+    // Editing on the board: still the occasion's screen.
+    await page.getByRole("button", { name: "עריכה ישירה בלוח" }).first().click();
+    await expect(page.getByTestId("occasion-design-banner")).toBeVisible();
+    await expect(preview.locator('img[src*="rosh-chodesh-night-moon"]').first()).toBeVisible();
+    await expect(preview.locator('[data-free-edit="true"]')).toHaveCount(1);
+
+    // The part just added (selected) dragged on the board itself.
+    const box = await preview.locator('[data-free-edit="true"]').boundingBox();
+    const sel = page.getByLabel("מיקום אופקי");
+    const x0 = Number(await sel.inputValue());
+    const ids = await page.evaluate(() => [...document.querySelectorAll('[data-board-preview] [data-free-edit="true"] [data-element-id]')].map((e) => (e as HTMLElement).dataset.elementId));
+    const last = preview.locator(`[data-free-edit="true"] [data-element-id="${ids.at(-1)}"]`);
+    const b = (await last.boundingBox())!;
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + box!.width * 0.1, b.y + b.height / 2, { steps: 8 });
+    await page.mouse.up();
+    await expect.poll(async () => Number(await sel.inputValue())).toBeGreaterThan(x0 + 5);
+    await expectNotFrozen(page, "occasion part dragged");
+  });
+
   test("a day of the shul's own: a Hebrew date, a line of text, and it is on", async ({ page }) => {
     await page.getByRole("button", { name: "הוספת מועד משלכם" }).click();
     const dialog = page.getByTestId("occasion-dialog");
