@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router-dom";
-import { AlertTriangle } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNow } from "@community/lib/realtime";
 import { formatDuration } from "@/tv/device";
@@ -26,18 +27,7 @@ export default function TvAdmin() {
 
   return (
     <div className="space-y-4">
-      {offline.map((d) => {
-        const h = deviceHealth(d, now);
-        return (
-          <div key={d.id} role="alert" data-focus-hide className="flex items-center gap-3 rounded-xl border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
-            <AlertTriangle className="size-5 shrink-0" />
-            <span>
-              <b>{d.name}</b> מנותק{h.silentMs ? ` כבר ${formatDuration(h.silentMs)}` : ""}. הסיבה תופיע ביומן כשהמסך יחזור (הוא שומר
-              יומן בזמן הניתוק). אם זה נמשך: בדקו חשמל, Wi-Fi וראוטר.
-            </span>
-          </div>
-        );
-      })}
+      {offline.length > 0 && <OfflineAlert offline={offline} now={now} />}
 
       <Tabs
         dir="rtl"
@@ -66,6 +56,58 @@ export default function TvAdmin() {
           <TvLogsPanel />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+const OPEN_KEY = "tv-admin.offline-open";
+
+/**
+ * The screens that went silent: one short line, the details opened from it.
+ * A full red box for each took a third of the editor (אושר של יהודי, 11.10.2026);
+ * the line stays, so a screen that went down is never missed.
+ */
+function OfflineAlert({ offline, now }: { offline: ReturnType<typeof useTvDevices>["data"] & object; now: number }) {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem(OPEN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggle = () => {
+    setOpen((v) => {
+      try {
+        localStorage.setItem(OPEN_KEY, v ? "0" : "1");
+      } catch {
+        /* a private window: it opens closed next time */
+      }
+      return !v;
+    });
+  };
+  return (
+    <div role="alert" data-focus-hide data-testid="offline-alert" className="rounded-xl border border-red-300 bg-red-50 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100">
+      <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-1.5 text-right">
+        <AlertTriangle className="size-4 shrink-0" aria-hidden />
+        <span className="min-w-0 flex-1 truncate">
+          <b>{offline.length === 1 ? "מסך אחד מנותק" : `${offline.length} מסכים מנותקים`}</b>: {offline.map((d) => d.name).join(", ")}
+        </span>
+        <span className="shrink-0 text-xs underline">{open ? "הסתרת הפרטים" : "פרטים"}</span>
+        <ChevronDown className={`size-4 shrink-0 transition ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {open && (
+        <ul className="space-y-1 border-t border-red-200 px-3 py-2 dark:border-red-900">
+          {offline.map((d) => {
+            const h = deviceHealth(d, now);
+            return (
+              <li key={d.id}>
+                <b>{d.name}</b> מנותק{h.silentMs ? ` כבר ${formatDuration(h.silentMs)}` : ""}.
+              </li>
+            );
+          })}
+          <li className="text-xs">הסיבה תופיע ביומן כשהמסך יחזור (הוא שומר יומן בזמן הניתוק). אם זה נמשך: בדקו חשמל, רשת אלחוטית וראוטר.</li>
+        </ul>
+      )}
     </div>
   );
 }

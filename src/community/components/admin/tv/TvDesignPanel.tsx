@@ -492,9 +492,11 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const [isLarge, setIsLarge] = useState(() => typeof window !== "undefined" && window.innerWidth >= 1024);
   /** The site's header is pinned too: the board is pinned under it, not behind it. */
   const [headerOffset, setHeaderOffset] = useState(0);
+  const [windowHeight, setWindowHeight] = useState(() => (typeof window === "undefined" ? 900 : window.innerHeight));
   useEffect(() => {
     const measure = () => {
       setIsLarge(window.innerWidth >= 1024);
+      setWindowHeight(window.innerHeight);
       const header = document.querySelector<HTMLElement>('[data-testid="global-app-header"]');
       setHeaderOffset(header ? Math.round(header.getBoundingClientRect().height) : 0);
     };
@@ -1381,7 +1383,9 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         onSelect={setSelected}
         onEdit={edit}
         large={top || fullscreen}
-        fitHeight={top ? topHeight : side && isLarge ? sideHeight : undefined}
+        // Side by side the board is pinned over what is under it: never so tall
+        // that nothing under it could be reached (60% of the window at most).
+        fitHeight={top ? topHeight : side && isLarge ? Math.min(sideHeight, Math.max(260, Math.round((windowHeight - headerOffset) * 0.6))) : undefined}
         toolbarExtra={layoutButtons}
         bare={bare}
         onRequestEdit={editOnBoardAt}
@@ -1544,7 +1548,13 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
               : { top: headerOffset + 8, maxHeight: `calc(100dvh - ${headerOffset + 16}px)` }
           }
         >
-          {studioView}
+          {/* The board itself pinned at the top of the column: what is under it
+              (the panel being edited, the text bar) scrolls beneath it, so the
+              change is always in sight. It scrolled away with them, and the
+              board being edited could not be seen (11.10.2026). */}
+          <div className={fullscreen ? "" : "lg:sticky lg:top-0 lg:z-20 lg:bg-background lg:pb-1"} data-testid="preview-pinned">
+            {studioView}
+          </div>
           {underPreview}
 
           {/* In full screen only this column is on the screen - the browser
