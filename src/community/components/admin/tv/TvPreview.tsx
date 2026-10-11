@@ -486,10 +486,10 @@ export function TvDeviceStudio({
   }
 
   return (
-    <div className={`space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
+    <div className={`min-w-0 max-w-full space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
       {editing && <EditHighlight hovered={hovered} selected={selected} />}
       {editing && <SnapGuides xRef={guideX} yRef={guideY} />}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
         <DeviceToolbar
           compare={compare}
           onCompare={setCompare}
@@ -500,7 +500,7 @@ export function TvDeviceStudio({
           onView={choice.setView}
           onActualSize={setActualSize}
         />
-        {toolbarExtra && <div className="ms-auto flex flex-wrap items-center gap-2">{toolbarExtra}</div>}
+        {toolbarExtra && <div className="grid w-full min-w-0 grid-cols-2 gap-2 [&>button]:h-auto [&>button]:whitespace-normal [&>button]:py-2 sm:ms-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center">{toolbarExtra}</div>}
       </div>
       {choice.mode === "all" && compare ? (
         <div className="grid grid-cols-2 items-end gap-x-4 gap-y-5 rounded-xl bg-muted/30 p-3 sm:grid-cols-6">
@@ -525,7 +525,7 @@ export function TvDeviceStudio({
         </div>
       ) : (
         <div
-          className="group relative rounded-xl bg-muted/30 p-3"
+          className="group relative min-w-0 max-w-full rounded-xl bg-muted/30 p-3"
           onDoubleClick={!editing && onRequestEdit ? (e) => onRequestEdit(e.clientX, e.clientY) : undefined}
         >
           {!editing && onRequestEdit && (
