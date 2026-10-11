@@ -27,6 +27,7 @@ import { holyOccasionOn, type BoardData, type BoardSlide } from "./useBoardData"
 import { checkClock } from "./clock";
 import { OccasionCard } from "./OccasionCard";
 import { occasionPagesNow } from "./occasions";
+import { findDesign } from "./designs";
 import { zmanimFor } from "@community/lib/minyan-time";
 import { ALERT_ICONS, alertLookVars, currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
 import { DeadlineContext } from './DeadlineContext';
@@ -143,8 +144,21 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   }, [config.frame, config.spacing, config.tracking, config.backgroundTune, config.frameStyle]);
   const tint = config.backgroundTune.tint;
 
-  // An occasion's card on the whole board: drawn over it, like a picture.
-  const occasionStage = slide?.kind === "occasion" ? slide : null;
+  // An occasion's card on the whole board: drawn over it, like a picture -
+  // unless the occasion wears a board of parts (a ראש חודש kit, say): that
+  // board is its screen, with the day's name, the times and the additions to
+  // the prayers in its own places. The card over it hid the kit entirely, so
+  // a kit picked for an occasion changed nothing that could be seen.
+  const occasionSlide = slide?.kind === "occasion" ? slide : null;
+  // Its own design only: a board that is a kit every day keeps the card on its occasions.
+  const occasionKit =
+    Boolean(occasionSlide) &&
+    config.screenLayout === "composition" &&
+    config.elements.length > 0 &&
+    [occasionSlide!.page.main, ...occasionSlide!.page.with].some(
+      (a) => findDesign(config, a.occasion.design)?.values.screenLayout === "composition",
+    );
+  const occasionStage = occasionKit ? null : occasionSlide;
   // On Shabbat and festivals the screen already shows its times: no countdowns or pop-ups.
   const shabbatNowOn = holyOccasionOn(slides);
   // A line along the bottom of the ordinary screens, for the occasion that asked for one.
@@ -181,7 +195,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   // The occasion's line along the bottom, when it is up: the countdown goes
   // into it rather than under it - both stood centred at the foot of the
   // board, and הושענא רבה covered "הדלקת נרות בעוד" (אהל אברהם, 2.10.2026).
-  const bannerShown = !occasionStage && Boolean(bannerPage) && !occasionScreen;
+  const bannerShown = !occasionSlide && Boolean(bannerPage) && !occasionScreen;
   /**
    * The bars of the screen up now: the composer's "שם בית הכנסת", "שעון" and
    * "שורת הפרשה והנרות" switches. Saved on every screen from the start and
@@ -206,7 +220,9 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     config.screenLayout === "medallion" ||
     (!occasionScreen && composed.parts.some((p) => p.block === "prayers" || p.block === "zmanim"));
   // An occasion's screen always takes the whole stage, whatever the layout.
-  const layout = occasionStage
+  const layout = occasionKit
+    ? "composition"
+    : occasionStage
     ? "rotate"
     : composed && !(mergedLook && screenFitsLook)
       ? "rotate"
@@ -422,6 +438,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
           />
         ) : (
           bannerPage &&
+          !occasionSlide &&
           !occasionScreen && (
             <OccasionCard
               page={bannerPage}

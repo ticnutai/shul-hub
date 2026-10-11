@@ -92,6 +92,31 @@ test.describe("TV editor, occasions", () => {
     await expectNotFrozen(page, "occasion design");
   });
 
+  test("a ready ראש חודש kit picked in its settings is its screen; each of its screens can be hidden", async ({ page }) => {
+    // Picked, and nothing changed: the kit's id was dropped on saving, and the
+    // card covered the board anyway (אושר של יהודי, 11.10.2026).
+    await row(page, "cal:rosh_chodesh").getByRole("button", { name: "הגדרות" }).click();
+    const dialog = page.getByTestId("occasion-dialog");
+    await dialog.getByLabel("עיצוב המועד").selectOption({ label: "לבנה בשמי לילה · ראש חודש" });
+    await expect(dialog.getByLabel("עיצוב המועד")).toHaveValue("d_premium_rc_night-moon");
+    await dialog.getByRole("button", { name: "סגירה" }).click();
+    await expect(row(page, "cal:rosh_chodesh")).toContainText("עם עיצוב");
+    await list(page).getByLabel("תצוגה לתאריך").fill("2026-10-11");
+    const chips = page.getByRole("tablist", { name: "שקופיות" });
+    await chips.getByRole("tab", { name: /ראש חודש/ }).first().click();
+    const frame = page.locator(".tv-frame").first();
+    await expect(frame.locator('img[src*="rosh-chodesh-night-moon"]').first()).toBeVisible({ timeout: 10_000 });
+    await expect(frame.locator(".tv-occasion")).toHaveCount(0);
+    await expect(frame).toContainText("ראש חודש חשון");
+
+    // Its own screen hidden: no ראש חודש screen among the slides that day.
+    await row(page, "cal:rosh_chodesh").getByRole("button", { name: "הגדרות" }).click();
+    await dialog.getByRole("switch", { name: "מסך המועד מוצג" }).click();
+    await dialog.getByRole("button", { name: "סגירה" }).click();
+    await expect(chips.getByRole("tab", { name: /ראש חודש/ })).toHaveCount(0);
+    await expectNotFrozen(page, "rosh chodesh kit");
+  });
+
   test("a day of the shul's own: a Hebrew date, a line of text, and it is on", async ({ page }) => {
     await page.getByRole("button", { name: "הוספת מועד משלכם" }).click();
     const dialog = page.getByTestId("occasion-dialog");

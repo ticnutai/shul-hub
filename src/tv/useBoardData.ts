@@ -422,7 +422,7 @@ function withOccasions(board: BoardSlide[], built: BoardSlide[], config: TvConfi
       ];
     }
     const blocks = [...new Set([o, ...page.with.map((w) => w.occasion)].flatMap((x) => x.blocks))];
-    const parts: ComposedPart[] = blocks.flatMap((block) => (byBlock.get(block) ?? []).map((slide) => ({ block, slide })));
+    const parts: ComposedPart[] = o.blocksOff ? [] : blocks.flatMap((block) => (byBlock.get(block) ?? []).map((slide) => ({ block, slide })));
     if (!parts.length) return [card];
     const name = `${o.name} · מהלוח`;
     return [

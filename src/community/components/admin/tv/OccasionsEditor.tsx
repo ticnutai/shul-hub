@@ -324,6 +324,39 @@ function OccasionDialog({
 
           {def && <TimetableSection def={def} />}
 
+          <section className="space-y-2" data-testid="occasion-screens">
+            <h3 className="font-medium">המסכים של המועד</h3>
+            <p className="text-[11px] text-muted-foreground">כל מסך אפשר להסתיר כאן ולהחזיר מתי שרוצים, בלי למחוק את מה שהוגדר בו.</p>
+            <label className="flex items-center gap-3">
+              <Switch
+                checked={o.display !== "off"}
+                onCheckedChange={(on) => onPatch({ display: on ? "turns" : "off" })}
+                aria-label="מסך המועד מוצג"
+              />
+              <span>
+                <b>מסך המועד</b>
+                <span className="block text-[11px] text-muted-foreground">
+                  {o.display === "off" ? "מוסתר - המועד לא מקבל מסך משלו" : "הכרטיס של המועד, או הערכה שבחרתם לו למטה"}
+                </span>
+              </span>
+            </label>
+            {!o.screen && o.blocks.length > 0 && (
+              <label className="flex items-center gap-3">
+                <Switch
+                  checked={!o.blocksOff}
+                  onCheckedChange={(on) => onPatch({ blocksOff: !on })}
+                  aria-label="המסך הנוסף מהלוח מוצג"
+                />
+                <span>
+                  <b>{o.name} · מהלוח</b>
+                  <span className="block text-[11px] text-muted-foreground">
+                    {o.blocksOff ? "מוסתר - מה שסימנתם בו נשמר להחזרה" : "המסך הנוסף עם מה שסימנתם מהלוח הרגיל"}
+                  </span>
+                </span>
+              </label>
+            )}
+          </section>
+
           <section className="space-y-2">
             <h3 className="font-medium">שם</h3>
             {own && (
@@ -676,8 +709,15 @@ function OccasionDialog({
               className="h-9 rounded-md border bg-background px-2"
             >
               <option value="">כרגיל</option>
+              <optgroup label="ערכות לראש חודש">
+                {BUILTIN_DESIGNS.filter((d) => d.id.startsWith("d_premium_rc_")).map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name}
+                  </option>
+                ))}
+              </optgroup>
               <optgroup label="ערכות מוכנות">
-                {BUILTIN_DESIGNS.map((d) => (
+                {BUILTIN_DESIGNS.filter((d) => !d.id.startsWith("d_premium_rc_")).map((d) => (
                   <option key={d.id} value={d.id}>
                     {d.name}
                   </option>

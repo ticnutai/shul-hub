@@ -120,6 +120,8 @@ export interface Occasion {
   seconds: number;
   elements: CardElement[];
   blocks: BlockId[];
+  /** The extra screen of those blocks ("<name> · מהלוח") hidden, the blocks still ticked for when it is shown again. */
+  blocksOff?: boolean;
   items: OccasionItem[];
   /** "art:<id>" (a Shabbat drawing), "style:<n>" (a built-in design), or an uploaded picture's https URL. */
   pictures: string[];
@@ -406,6 +408,7 @@ export function normalizeOccasions(
       seconds: clamp(r.seconds, d.seconds, 10, 600),
       elements: CARD_ELEMENTS.filter((e) => Array.isArray(r.elements) && r.elements.includes(e)),
       blocks: OCCASION_BLOCKS.filter((b) => blockIds.includes(b) && Array.isArray(r.blocks) && r.blocks.includes(b)),
+      ...(r.blocksOff === true ? { blocksOff: true } : {}),
       items,
       pictures: (Array.isArray(r.pictures) ? r.pictures : [])
         .filter((p): p is string => typeof p === "string" && PICTURE_RE.test(p.trim()))
@@ -419,7 +422,11 @@ export function normalizeOccasions(
         ),
       ].slice(0, MAX_OCCASION_UPLOADS),
       pictureSeconds: clamp(r.pictureSeconds, d.pictureSeconds, 5, 600),
-      design: typeof r.design === "string" && /^d_[a-z0-9_]{2,20}$/.test(r.design) ? r.design : null,
+      // Any design's id: the admin's own (d_xxxxxxxx) and the ready ones, whose
+      // ids carry hyphens and run longer (d_premium_rc_night-moon). Read with
+      // the old, narrower pattern, a ready design picked for an occasion was
+      // dropped on saving and the occasion stayed as it was.
+      design: typeof r.design === "string" && /^d_[a-z0-9_-]{2,48}$/.test(r.design) ? r.design : null,
       designOn: r.designOn === "board" ? "board" : "screen",
       // Kept only with its card on it: without the card it would not be the occasion's screen.
       screen: (() => {
