@@ -117,6 +117,50 @@ test.describe("TV editor, occasions", () => {
     await expectNotFrozen(page, "rosh chodesh kit");
   });
 
+  test("🎨 on an occasion with no kit and with one: add a kit, swap it, change its parts, copy one of one's own", async ({ page }) => {
+    const rc = row(page, "cal:rosh_chodesh");
+    const preview = page.locator("[data-board-preview] .tv-frame").first();
+    const library = page.getByTestId("builtin-designs");
+    // The kit's own button (beside it: ✕ to hide it, and "שכפול לעריכה").
+    const kit = (id: string) => library.locator(`[data-design-id="d_premium_rc_${id}"] button[title^="ממלא"]`);
+
+    // No kit yet: its screen is the card.
+    await rc.getByTestId("occasion-design").click();
+    await expect(page.getByTestId("occasion-design-banner")).toContainText("ראש חודש");
+    await expect(preview.locator(".tv-occasion")).toBeVisible({ timeout: 10_000 });
+
+    // A kit added from the ready ones: the kit is its screen.
+    await kit("night-moon").click();
+    await expect(preview.locator('img[src*="rosh-chodesh-night-moon"]').first()).toBeVisible({ timeout: 10_000 });
+    await expect(preview.locator(".tv-occasion")).toHaveCount(0);
+
+    // Swapped for another.
+    await kit("teal-dawn").click();
+    await expect(preview.locator('img[src*="rosh-chodesh-teal-dawn"]').first()).toBeVisible();
+    await expect(preview.locator('img[src*="rosh-chodesh-night-moon"]')).toHaveCount(0);
+
+    // One of its parts changed: the parasha line hidden, in the occasion's design only.
+    await page.getByRole("button", { name: "הסתרת פרשת השבוע" }).first().click();
+    await expect(page.getByRole("button", { name: "הצגת פרשת השבוע" }).first()).toBeVisible();
+
+    // A ready kit copied, inside the occasion, to edit as one's own.
+    const copy = library.locator('[data-design-id="d_premium_rc_onyx-gold"]').getByRole("button", { name: "שכפול לעריכה" });
+    await copy.click();
+    await expect(page.getByTestId("design-library")).toContainText("(שלי)");
+
+    // Back to the board: the board itself never wore any of it.
+    await page.getByTestId("occasion-design-banner").getByRole("button", { name: "חזרה לעיצוב הלוח" }).click();
+    await page.getByRole("tab", { name: "מועדים" }).click();
+    await expect(rc).toContainText("עם עיצוב");
+
+    // An occasion that has a kit: 🎨 again, and another kit put on it.
+    await rc.getByTestId("occasion-design").click();
+    await expect(preview.locator('img[src*="rosh-chodesh-teal-dawn"]').first()).toBeVisible({ timeout: 10_000 });
+    await kit("silver-phases").click();
+    await expect(preview.locator('img[src*="rosh-chodesh-silver-phases"]').first()).toBeVisible();
+    await expectNotFrozen(page, "occasion kits");
+  });
+
   test("a day of the shul's own: a Hebrew date, a line of text, and it is on", async ({ page }) => {
     await page.getByRole("button", { name: "הוספת מועד משלכם" }).click();
     const dialog = page.getByTestId("occasion-dialog");
