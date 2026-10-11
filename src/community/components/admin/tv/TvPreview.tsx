@@ -72,25 +72,29 @@ export function SlideStrip({
   slides,
   index,
   onPick,
+  entries,
 }: {
   slides: BoardSlide[];
   index: number;
   onPick: (i: number) => void;
+  /** Only these slides, under these names (distinctSlides); absent - every slide. */
+  entries?: { index: number; label: string }[];
 }) {
+  const shown = entries ?? slides.map((s, i) => ({ index: i, label: slideLabel(s) }));
   return (
     <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="שקופיות">
-      {slides.map((s, i) => (
+      {shown.map((e, n) => (
         <button
-          key={s.id + i}
+          key={`${slides[e.index]?.id ?? ""}${e.index}`}
           type="button"
           role="tab"
-          aria-selected={i === index}
-          onClick={() => onPick(i)}
+          aria-selected={e.index === index}
+          onClick={() => onPick(e.index)}
           className={`rounded-full border px-2.5 py-1 text-xs transition ${
-            i === index ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-secondary"
+            e.index === index ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-secondary"
           }`}
         >
-          {i + 1}. {slideLabel(s)}
+          {n + 1}. {e.label}
         </button>
       ))}
     </div>

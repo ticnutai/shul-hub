@@ -18,6 +18,7 @@ import { DEFAULT_TV_CONFIG, normalizeTvConfig, type TvConfig } from "./config";
 import { readOccasions, type Occasion } from "./occasions";
 import { TvBoard } from "./TvBoard";
 import { buildSlides, type BoardData } from "./useBoardData";
+import { distinctIndex, distinctSlides } from "@community/components/admin/tv/tvPreviewData";
 
 afterEach(cleanup);
 
@@ -96,5 +97,30 @@ describe("hiding an occasion's screens", () => {
 
   it("the occasion's own screen hides too", () => {
     expect(ids(board({ display: "off" })).some((id) => id.startsWith("occasion:cal:rosh_chodesh"))).toBe(false);
+  });
+});
+
+describe("on a board of parts", () => {
+  // Everything is in one picture there: the board's turns look exactly alike.
+  const parts = applyDesign(structuredClone(DEFAULT_TV_CONFIG), findDesign(DEFAULT_TV_CONFIG, "d_premium_black-onyx")!);
+  const slides = (c: TvConfig) => buildSlides(data, c, RC_DAY_1, z);
+
+  it("an occasion adds no screen of the board's blocks - it would be the board again", () => {
+    const ids = slides(board({ blocks: ["learning"] }, parts)).map((s) => s.id);
+    expect(ids).toContain("occasion:cal:rosh_chodesh");
+    expect(ids).not.toContain("occasion:cal:rosh_chodesh:blocks");
+  });
+
+  it("the screens panel offers the board once and each occasion's screen, not seven look-alikes", () => {
+    const c = board({ blocks: ["learning"] }, parts);
+    const all = slides(c);
+    expect(all.length).toBeGreaterThan(2);
+    const entries = distinctSlides(all, c);
+    expect(entries.map((e) => e.label)).toEqual(["הלוח", "ראש חודש"]);
+    // An ordinary slide up on the wall shows as "הלוח".
+    const ordinary = all.findIndex((s, i) => s.kind !== "occasion" && i !== entries[0].index);
+    if (ordinary >= 0) expect(distinctIndex(all, entries, ordinary)).toBe(entries[0].index);
+    // Any other board: every slide, as before.
+    expect(distinctSlides(slides(board({ blocks: ["learning"] })), DEFAULT_TV_CONFIG).length).toBe(slides(board({ blocks: ["learning"] })).length);
   });
 });

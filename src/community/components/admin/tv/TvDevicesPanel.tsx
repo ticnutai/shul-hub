@@ -41,7 +41,7 @@ import { boardConfig } from "@/tv/boardConfig";
 import { useSettings } from "@community/lib/data";
 import { formatDuration } from "@/tv/device";
 import { SlideStrip, TvPreview } from "./TvPreview";
-import { useTvSlides } from "./tvPreviewData";
+import { distinctIndex, distinctSlides, useTvSlides } from "./tvPreviewData";
 import {
   deleteDevice,
   deviceHealth,
@@ -201,6 +201,8 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
   const waiting = pending && pending.id !== s.slideId && Date.now() - pending.at < 10_000 ? pending : null;
   const index = Math.max(0, board.slides.findIndex((x) => x.id === (waiting?.id ?? s.slideId)));
   const [hold, setHold] = useState(true);
+  // On a board of parts, only the slides that look different: the board, and each occasion's screen.
+  const entries = useMemo(() => distinctSlides(board.slides, mirrorConfig ?? DEFAULT_TV_CONFIG), [board.slides, mirrorConfig]);
   // As the TV draws the slide it is on: an occasion's own screen in its design (TvApp's drawConfig).
   const shownId = board.slides[index]?.id ?? null;
   const occasionSlideId = shownId?.startsWith("occasion:") ? shownId : null;
@@ -344,7 +346,8 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
           )}
           <SlideStrip
             slides={board.slides}
-            index={index}
+            entries={entries}
+            index={distinctIndex(board.slides, entries, index)}
             onPick={(i) => {
               const slideId = board.slides[i]?.id;
               if (!slideId) return;

@@ -422,7 +422,13 @@ function withOccasions(board: BoardSlide[], built: BoardSlide[], config: TvConfi
       ];
     }
     const blocks = [...new Set([o, ...page.with.map((w) => w.occasion)].flatMap((x) => x.blocks))];
-    const parts: ComposedPart[] = o.blocksOff ? [] : blocks.flatMap((block) => (byBlock.get(block) ?? []).map((slide) => ({ block, slide })));
+    // On a board of parts that screen would draw the board itself again - a
+    // second "ראש חודש" that looked like the ordinary board (אושר של יהודי,
+    // 11.10.2026) - so it is not made there at all.
+    const parts: ComposedPart[] =
+      o.blocksOff || config.screenLayout === "composition"
+        ? []
+        : blocks.flatMap((block) => (byBlock.get(block) ?? []).map((slide) => ({ block, slide })));
     if (!parts.length) return [card];
     const name = `${o.name} · מהלוח`;
     return [

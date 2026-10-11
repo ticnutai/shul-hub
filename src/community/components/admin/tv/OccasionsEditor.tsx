@@ -340,7 +340,7 @@ function OccasionDialog({
                 </span>
               </span>
             </label>
-            {!o.screen && o.blocks.length > 0 && (
+            {!o.screen && o.blocks.length > 0 && config.screenLayout !== "composition" && (
               <label className="flex items-center gap-3">
                 <Switch
                   checked={!o.blocksOff}
@@ -522,7 +522,13 @@ function OccasionDialog({
                 </label>
               ))}
             </div>
-            {o.screen ? (
+            {config.screenLayout === "composition" && !o.screen ? (
+              // A board of parts shows all of it in one picture: a screen of its blocks would be the board again.
+              <p className="rounded-md bg-muted/60 p-2 text-[11px] text-muted-foreground" data-testid="occasion-parts-board">
+                הלוח שלכם בנוי מחלקים, וכל התוכן שלו מוצג בתמונה אחת - לכן למועד אין מסך נוסף "מהלוח". כאן נקבע מה בתוך
+                הכרטיס; את המסך של המועד מעצבים כמו עמוד (🎨, או הלשונית שלו ליד "עמוד 1").
+              </p>
+            ) : o.screen ? (
               // One place decides what stands beside the card, and where.
               <p className="rounded-md bg-muted/60 p-2 text-[11px] text-muted-foreground" data-testid="occasion-arranged">
                 למועד הזה יש מסך משלו, מסודר בלשונית <b>פריסה</b> ("מסכים ומה עליהם"): שם בוחרים מה עומד ליד הכרטיס - תפילות,

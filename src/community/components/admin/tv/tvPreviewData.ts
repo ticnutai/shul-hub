@@ -19,6 +19,35 @@ export function useTvSlides(config: TvConfig, nowOverride?: Date | null) {
   return { data, now, zmanim, slides };
 }
 
+/** A slide's own occasion screen: its card, or a screen built around the card. */
+const isOccasionSlide = (s: BoardSlide) =>
+  s.kind === "occasion" || (s.kind === "composed" && s.id.startsWith("occasion:"));
+
+/**
+ * The slides a screen can be sent to that look different from each other.
+ *
+ * A board of parts draws everything in one picture: the prayers, the daf, the
+ * announcements and the lessons are all on it at once, so its turns between
+ * them look exactly alike - the screens panel offered seven buttons, five of
+ * which changed nothing (אושר של יהודי, 11.10.2026). There the board is one
+ * button ("הלוח"), and each occasion's screen another. Any other board: every
+ * slide, as it is. `index` is the slide's place in the full list.
+ */
+export function distinctSlides(slides: BoardSlide[], config: Pick<TvConfig, "screenLayout">): { index: number; label: string }[] {
+  if (config.screenLayout !== "composition") return slides.map((s, index) => ({ index, label: slideLabel(s) }));
+  const out: { index: number; label: string }[] = [];
+  const board = slides.findIndex((s) => !isOccasionSlide(s));
+  if (board >= 0) out.push({ index: board, label: "הלוח" });
+  slides.forEach((s, index) => isOccasionSlide(s) && out.push({ index, label: slideLabel(s) }));
+  return out;
+}
+
+/** Which of those entries the slide up now is: on a board of parts, any ordinary slide is "הלוח". */
+export function distinctIndex(slides: BoardSlide[], entries: { index: number }[], index: number): number {
+  if (entries.some((e) => e.index === index)) return index;
+  return slides[index] && !isOccasionSlide(slides[index]) ? (entries[0]?.index ?? index) : index;
+}
+
 export function slideLabel(s: BoardSlide): string {
   switch (s.kind) {
     case "prayer":
