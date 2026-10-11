@@ -1,0 +1,54 @@
+import {test,expect} from '@playwright/test';
+import {serveEditor} from './support/tvEditor';
+import {DEFAULT_TV_CONFIG,normalizeTvConfig} from '../src/tv/config';
+import {parseSharedCatalog} from '../src/tv/sharedCatalog';
+import {readFileSync} from 'node:fs';
+const raw=JSON.parse(readFileSync('public/new-shul-catalog.json','utf8'));
+test('catalog preserves images, masks and bindings through central normalizer',()=>{
+ const parsed=parseSharedCatalog(raw);
+ expect(parsed.designs).toHaveLength(77);expect(parsed.parts).toHaveLength(849);
+ for(const d of parsed.designs){
+  const source=raw.designs.find(x=>x.id===d.id);
+  expect(d.values.elements?.length??0).toBe(source.values.elements?.length??0);
+  for(const e of d.values.elements??[]){
+   const s=source.values.elements.find(x=>x.id===e.id);
+   expect(e.image).toBe(s.image);expect(e.binding).toBe(s.binding);expect(e.sourceMask).toEqual(s.sourceMask);
+  }
+ }
+});
+test('central editor shares categorized themes and parts without changing a board on open',async({page})=>{
+ test.setTimeout(60000);page.setDefaultTimeout(15000);await page.setViewportSize({width:1600,height:1000});
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+ const original=JSON.parse(JSON.stringify(DEFAULT_TV_CONFIG));
+ const server=await serveEditor(page,original);
+ await page.goto('/e2e/harness/editor.html');
+ await expect(page.locator('.tv-frame .tv-root').first()).toBeVisible({timeout:30000});
+ await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
+ const library=page.getByTestId('design-library');
+ await library.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
+ await expect(library.locator('[data-design-id^="d_rc_"]')).toHaveCount(7);
+ expect(server.writes()).toBe(0);expect(server.saved()).toEqual(original);
+ await library.getByLabel('נושא הערכות',{exact:true}).selectOption('הכול');
+ const ids=await library.locator('[data-design-id]').evaluateAll(els=>els.map(e=>e.getAttribute('data-design-id')));
+ expect(new Set(ids).size).toBe(ids.length);
+ await library.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
+ const card=library.locator('[data-design-id="d_rc_antique"]');
+ await card.getByRole('button',{name:'שכפול לעריכה',exact:true}).click();
+ await card.getByRole('button',{name:'החלת ערכה ראש חודש · שערי הלבנה',exact:true}).click();
+ await expect(page.locator('.tv-frame [data-element-id]')).toHaveCount(26);
+ const parts=page.getByTestId('shared-catalog-parts');
+ await parts.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
+ await parts.getByLabel('חלקים מאיזו ערכה').selectOption('d_rc_antique');
+ await expect(parts.getByTestId('shared-count')).toHaveText('26 חלקים זמינים');
+ const addedPart=raw.parts.filter(p=>p.designId==='d_rc_antique')[21];
+ await parts.getByLabel('חיפוש בקטלוג המשותף').fill(addedPart.name);
+ await parts.getByRole('button',{name:'הוספת חלק משותף '+addedPart.name,exact:true}).click();
+ await page.getByRole('button',{name:/שמור ושדר/}).first().click();
+ await expect.poll(()=>server.writes()).toBeGreaterThan(0);
+ const saved=normalizeTvConfig(server.saved());
+ expect(saved.elements).toHaveLength(27);expect(saved.designs).toHaveLength(1);
+ expect(new Set(saved.elements.map(e=>e.id)).size).toBe(27);
+ await page.reload();await expect(page.locator('.tv-frame [data-element-id]')).toHaveCount(27);
+ await page.screenshot({path:'../outputs/central-global-catalog-editor.png'});
+ expect(errors).toEqual([]);
+});

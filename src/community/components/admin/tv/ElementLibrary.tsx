@@ -1,3 +1,4 @@
+import {SharedCatalogLibrary} from './SharedCatalogLibrary';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
     onSelect(added.map(e => e.id));
   };
   return <div className="space-y-3">
+  <SharedCatalogLibrary mode="parts" config={config} onEdit={onEdit} onSelect={onSelect}/>
   <section data-testid="ready-parts" className="space-y-3 rounded-lg border bg-muted/20 p-3">
     <h3 className="font-semibold">חלקים מוכנים מהערכות</h3>
     <p className="text-xs text-muted-foreground">עמודים, קשתות, מסגרות שעון ופמוטים מתוך הערכות - כל אחד לבד, בלי הקיר שמסביבו. מוסיפים לכל לוח, גם לוח רגיל, ומזיזים ומגדילים כרצונכם.</p>
