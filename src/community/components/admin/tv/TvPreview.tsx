@@ -161,8 +161,16 @@ export function TvDeviceStudio({
   onResizeReset,
   onRequestEdit,
   dayLook = false,
+  dressed = false,
   ...props
 }: BoardProps & {
+  /**
+   * The board given is already an occasion's design, the one being edited:
+   * drawn as it is, not dressed again. Dressed again it was a copy, and the
+   * parts on the preview could not be dragged or changed - they were not the
+   * parts being edited (ראש חודש, 11.10.2026).
+   */
+  dressed?: boolean;
   /**
    * The board as the screens wear it at this moment: with the design of the
    * occasion that is on (dayLooks.ts), as TvApp and the connected-screens tab
@@ -232,7 +240,7 @@ export function TvDeviceStudio({
   const occasionSlideId = shownId?.startsWith("occasion:") ? shownId : null;
   const boardFor = (id: DeviceId) => {
     const own = configForDevice(props.config, classOfPreviewDevice(id));
-    const c = dayLook || occasionSlideId ? applyDayLook(own, props.now, props.data.settings, occasionSlideId) : own;
+    const c = !dressed && (dayLook || occasionSlideId) ? applyDayLook(own, props.now, props.data.settings, occasionSlideId) : own;
     return preview ? { ...c, ...preview } : c;
   };
   const [actualSize, setActualSize] = useState(false);
