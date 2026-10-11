@@ -142,7 +142,7 @@ export function UsersAdmin() {
               className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:px-6"
             >
               <div className="min-w-0">
-                <p className="flex items-center gap-2 font-medium">
+                <p className="flex flex-wrap items-center gap-2 break-words font-medium">
                   {user.name || "ללא שם"}
                   {user.role === "admin" && (
                     <ShieldCheck className="size-4 text-gold" aria-label="מנהל" />

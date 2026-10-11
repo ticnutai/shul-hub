@@ -5,6 +5,8 @@ import { lazy, Suspense } from "react";
 import { Building2, LayoutDashboard, LogOut, ShieldAlert, Tv } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import "@community/components/admin/adminMobile.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MinyanimAdmin } from "@community/components/admin/MinyanimAdmin";
 import { MinyanOverridesAdmin } from "@community/components/admin/MinyanOverridesAdmin";
@@ -50,9 +52,25 @@ export function AdminPage() {
     "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
     "messages", "widgets", "users", "data", "qr", "ai", "api", "communities",
     ...(storeApp ? [] : ["apps", "tv"]),
-  ].includes(requestedTab ?? "") ? requestedTab! : "minyanim";
+  ].includes(requestedTab ?? "") ? (requestedTab ?? "minyanim") : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
+  const mobileSections = [
+    { value: "minyanim", label: "מניינים" },
+    { value: "announcements", label: "מודעות" },
+    { value: "shiurim", label: "שיעורים" },
+    { value: "chavrutot", label: "חברותות" },
+    { value: "chavruta-requests", label: "בקשות חברותא" },
+    { value: "messages", label: `הודעות${unread > 0 ? ` (${unread})` : ""}` },
+    { value: "widgets", label: "תצוגת דף הבית" },
+    { value: "users", label: "משתמשים" },
+    { value: "data", label: "ייצוא/ייבוא" },
+    { value: "qr", label: "קודי QR" },
+    { value: "ai", label: "עוזר חכם" },
+    { value: "api", label: "מפתח API" },
+    { value: "communities", label: "בתי כנסת ופרטים" },
+    ...(!storeApp ? [{ value: "apps", label: "הורדת אפליקציות" }, { value: "tv", label: "תצוגות" }] : []),
+  ];
 
   // Every admin has at least the synagogue they run, and its details (the
   // address, the location, its logos) live in its window under this button.
@@ -88,17 +106,17 @@ export function AdminPage() {
           beside its controls and needs the whole screen. */}
       <main
         dir="rtl"
-        className={`mx-auto px-3 py-5 text-right sm:px-4 sm:py-8 ${activeTab === "tv" ? "max-w-[1800px]" : "max-w-5xl"}`}
+        className={`gabbai-admin mx-auto min-w-0 px-3 py-5 text-right sm:px-4 sm:py-8 ${activeTab === "tv" ? "max-w-[1800px]" : "max-w-5xl"}`}
         data-focus-tight
       >
         {/* data-focus-hide: hidden while the TV editor is in its work mode (tvEdit.css). */}
         <div className="flex flex-wrap items-center justify-between gap-3" data-focus-hide>
-          <div>
+          <div className="min-w-0 max-w-full">
             <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
             <ShulNow />
-            <p className="mt-1 text-sm text-muted-foreground">{session?.user.email}</p>
+            <p className="mt-1 break-all text-sm text-muted-foreground">{session?.user.email}</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             {/* Beside the switcher rather than among the tabs: it is about all
                 the synagogues, and the tabs below are about the one chosen. */}
             {isAdmin && (
@@ -139,11 +157,25 @@ export function AdminPage() {
             className="mt-5 min-w-0 text-right sm:mt-6"
             data-focus-tight
           >
+            <div className="sticky top-[var(--app-header-height,7rem)] z-20 bg-background py-2 sm:hidden" data-focus-hide>
+              <Select dir="rtl" value={activeTab} onValueChange={openTab}>
+                <SelectTrigger aria-label="מדור ניהול" className="h-12 w-full font-semibold">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent dir="rtl" position="popper" className="max-h-[60dvh]">
+                  {mobileSections.map((section) => (
+                    <SelectItem key={section.value} value={section.value} className="min-h-11 py-3">
+                      {section.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <TabsList
               dir="rtl"
               aria-label="מדורי ניהול"
               data-focus-hide
-              className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
+              className="hidden h-auto w-full flex-wrap justify-start gap-1 px-1 py-1.5 text-right [&>button]:whitespace-nowrap sm:flex"
             >
               <TabsTrigger value="ai">✨ עוזר חכם</TabsTrigger>
               <TabsTrigger value="api">🔑 מפתח API</TabsTrigger>

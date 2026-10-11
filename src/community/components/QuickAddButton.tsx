@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import "@community/components/admin/adminMobile.css";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { DAYS_HE, PRAYERS } from "@community/lib/data";
@@ -93,7 +94,7 @@ export function QuickAddButton({ placement = "floating" }: { placement?: "floati
       )}
       <DialogContent
         dir="rtl"
-        className="max-h-[90dvh] w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto text-right"
+        className="gabbai-quick-add max-h-[90dvh] w-[calc(100vw-1rem)] max-w-2xl overflow-y-auto p-4 text-right sm:p-6"
       >
         <DialogHeader className="text-right">
           <DialogTitle>הוספה מהירה</DialogTitle>
@@ -110,7 +111,7 @@ function QuickAddTabs({ onDone }: { onDone: () => void }) {
   const [tab, setTab] = useState("announcement");
   return (
     <Tabs value={tab} onValueChange={setTab} className="mt-2">
-      <TabsList className="flex h-auto flex-wrap justify-start">
+      <TabsList className="grid h-auto w-full grid-cols-2 gap-1 sm:grid-cols-4">
         <TabsTrigger value="announcement">מודעה</TabsTrigger>
         <TabsTrigger value="shiur">שיעור</TabsTrigger>
         <TabsTrigger value="chavruta">חברותא</TabsTrigger>

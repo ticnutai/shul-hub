@@ -198,7 +198,7 @@ export function WidgetsAdmin() {
         items={zmanim}
         onChange={setZmanim}
       />
-      <Button onClick={save} disabled={saving}>
+      <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
         <Smartphone className="size-4" /> שמירת תצוגת דף הבית
       </Button>
     </div>

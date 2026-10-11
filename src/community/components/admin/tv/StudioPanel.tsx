@@ -235,7 +235,7 @@ export function StudioPanel({
 
   if (box.hidden) {
     return (
-      <button
+      <Button
         type="button"
         data-design-mode-ui
         onClick={() => setBox((b) => ({ ...b, hidden: false }))}
@@ -243,7 +243,7 @@ export function StudioPanel({
         aria-label="פתיחת העורך"
       >
         <PencilRuler className="size-5" /> פתיחת העורך
-      </button>
+      </Button>
     );
   }
 
@@ -257,7 +257,7 @@ export function StudioPanel({
       style={{ left: box.x, top: box.y, width: box.w, height: box.collapsed ? "auto" : box.h }}
     >
       <div
-        className="flex cursor-move select-none items-center gap-1 border-b bg-muted/60 px-2 py-1.5"
+        className="flex cursor-move touch-none select-none flex-wrap items-center gap-1 border-b bg-muted/60 px-2 py-1.5"
         onPointerDown={begin("move")}
         onPointerMove={onMove}
         onPointerUp={end}
@@ -266,14 +266,14 @@ export function StudioPanel({
         title="גררו כדי להזיז · לחיצה כפולה: כיווץ"
       >
         <GripHorizontal className="size-4 text-muted-foreground" />
-        <span className="text-sm font-semibold">{title}</span>
-        <span className="ms-2 min-w-0 truncate text-xs text-muted-foreground">{status}</span>
-        <span className="ms-auto flex items-center">
+        <span className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</span>
+        <span className="order-last w-full truncate text-xs text-muted-foreground sm:order-none sm:ms-2 sm:w-auto">{status}</span>
+        <span className="ms-auto flex shrink-0 items-center">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="hidden size-7 sm:inline-flex"
             aria-label="הצמדה לימין"
             title="הצמדה לימין"
             onClick={() => dock("right")}
@@ -284,7 +284,7 @@ export function StudioPanel({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="hidden size-7 sm:inline-flex"
             aria-label="הצמדה לשמאל"
             title="הצמדה לשמאל"
             onClick={() => dock("left")}
@@ -295,7 +295,7 @@ export function StudioPanel({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-11 sm:size-7"
             aria-label={box.collapsed ? "הרחבת העורך" : "כיווץ העורך"}
             title={box.collapsed ? "הרחבה" : "כיווץ לשורת הכותרת"}
             onClick={() => setBox((b) => ({ ...b, collapsed: !b.collapsed }))}
@@ -306,7 +306,7 @@ export function StudioPanel({
             type="button"
             variant="ghost"
             size="icon"
-            className="size-7"
+            className="size-11 sm:size-7"
             aria-label="הסתרת העורך"
             title="הסתרה - לראות את הלוח במלואו"
             onClick={() => setBox((b) => ({ ...b, hidden: true }))}
@@ -317,7 +317,7 @@ export function StudioPanel({
       </div>
       {!box.collapsed && (
         <>
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">{children}</div>
+          <div className="gabbai-admin min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-3">{children}</div>
           {/* Eight handles: four edges and four corners. */}
           {HANDLES.map((h) => (
             <div

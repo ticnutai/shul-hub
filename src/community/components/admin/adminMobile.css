@@ -1,0 +1,38 @@
+/* Mobile touch and form sizing belongs to the admin surface, not public pages. */
+@media (max-width: 639px) {
+  .gabbai-admin [role="tabpanel"] {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .gabbai-admin :is(input:not([type="checkbox"]):not([type="range"]):not([type="color"]), textarea, [role="combobox"]),
+  .gabbai-quick-add :is(input:not([type="checkbox"]):not([type="range"]):not([type="color"]), textarea, [role="combobox"]) {
+    min-width: 0;
+    max-width: 100%;
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .gabbai-admin button:not([role="switch"]),
+  .gabbai-quick-add button:not([role="switch"]) {
+    min-height: 44px;
+  }
+
+  .gabbai-admin button:has(> svg:only-child) {
+    min-width: 44px;
+    flex-shrink: 0;
+  }
+
+  .gabbai-admin form {
+    min-width: 0;
+    scroll-margin-top: 12rem;
+  }
+
+  .gabbai-admin form > div:has(> button[type="submit"]) {
+    flex-wrap: wrap;
+  }
+
+  .gabbai-admin form button[type="submit"] {
+    flex: 1 1 auto;
+  }
+}

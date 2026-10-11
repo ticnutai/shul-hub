@@ -50,7 +50,7 @@ export default function TvAdmin() {
       >
         <TabsList
           data-focus-hide
-          className="admin-tabs-scroll flex h-auto w-full flex-nowrap justify-start gap-1 overflow-x-auto px-1 py-1.5 text-right [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&>button]:shrink-0 [&>button]:whitespace-nowrap sm:flex-wrap sm:overflow-visible"
+          className="grid h-auto w-full grid-cols-1 gap-1 px-1 py-1.5 text-right sm:flex sm:flex-wrap"
         >
           <TabsTrigger value="design">התצוגות והעיצוב</TabsTrigger>
           <TabsTrigger value="screens">מסכים מחוברים</TabsTrigger>

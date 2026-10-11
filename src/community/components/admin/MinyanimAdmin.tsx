@@ -792,7 +792,7 @@ export function MinyanimAdmin() {
               data-reorder-kind="minyan"
               data-testid={`minyan-row-${m.id}`}
               className={
-                "flex items-center gap-3 px-4 py-3 " +
+                "flex flex-wrap items-center gap-2 px-3 py-3 sm:flex-nowrap sm:gap-3 sm:px-4 " +
                 (draggedMinyanId === m.id ? "opacity-50" : "")
               }
             >
@@ -820,8 +820,8 @@ export function MinyanimAdmin() {
               >
                 <GripVertical className="size-5" />
               </button>
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-2 font-medium">
+              <div className="min-w-0 basis-[calc(100%-4rem)] sm:basis-auto sm:flex-1">
+                <div className="flex min-w-0 flex-wrap items-center gap-2 font-medium">
                   <InlineEdit
                     table="minyanim"
                     id={m.id}
@@ -831,8 +831,8 @@ export function MinyanimAdmin() {
                     alwaysEditable
                     ariaLabel={`עריכת שם המניין ${m.label}`}
                     className="min-w-0"
-                    inputClassName="w-full min-w-40"
-                    display={<span className="truncate">{m.label}</span>}
+                    inputClassName="w-full min-w-0 sm:min-w-40"
+                    display={<span className="break-words sm:truncate">{m.label}</span>}
                   />
                   {!m.active && <span className="mr-2 text-xs text-muted-foreground">(מוסתר)</span>}
                   {(m.active_from || m.active_until) && (

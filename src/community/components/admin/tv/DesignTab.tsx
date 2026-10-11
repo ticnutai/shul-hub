@@ -36,7 +36,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         chosen once here rather than in three pickers of their own.
       */}
       <div
-        className="sticky top-16 z-[5] space-y-2 rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur min-[1700px]:col-span-2"
+        className="space-y-2 rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur sm:sticky sm:top-16 sm:z-[5] min-[1700px]:col-span-2"
         data-testid="parts-scope"
       >
         <DesignTopics />
@@ -46,7 +46,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
             aria-label="התיבות, המסגרות והטקסט של"
             value={partTarget}
             onChange={(e) => setPartTarget(e.target.value)}
-            className="h-9 min-w-48 flex-1 rounded-md border bg-background px-2 text-sm"
+            className="h-11 w-full min-w-0 flex-1 rounded-md border bg-background px-2 text-base sm:h-9 sm:min-w-48 sm:text-sm"
           >
             <option value="frames">הכול - כל התיבות וכל הלוח</option>
             <optgroup label="תיבה אחת">

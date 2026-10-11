@@ -11,6 +11,10 @@
 
 <!-- LOVABLE:END -->
 
+## Admin presentation
+- Keep mobile touch-target and form sizing scoped to the gabbai admin surface and quick-add dialog; public reading pages must retain their own sizing.
+- Mobile admin section selection and desktop tabs share the existing URL-selected section, so navigation never changes saving or permissions.
+
 ## TV app (android-tv) signing
 
 `public/tv.apk` is what every board box downloads to update itself

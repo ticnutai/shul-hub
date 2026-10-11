@@ -373,7 +373,7 @@ export function DeviceToolbar({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 gap-1.5 px-2.5 text-xs"
+          className="h-11 max-w-full gap-1.5 px-2.5 text-sm sm:h-8 sm:text-xs"
           aria-label={`בחירת מכשיר לתצוגה: ${label}`}
           data-testid="device-menu"
         >
@@ -388,7 +388,7 @@ export function DeviceToolbar({
           <ChevronDown className="size-3.5 opacity-60" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent dir="rtl" align="start" className="w-80 space-y-3 p-3 text-right">
+      <PopoverContent dir="rtl" align="start" className="w-80 max-w-[calc(100vw-1rem)] space-y-3 p-3 text-right">
         <div className="grid grid-cols-2 gap-1 rounded-lg border bg-muted/40 p-1" role="radiogroup" aria-label="מכשיר לתצוגה">
           {[...DEVICE_ORDER, "all" as const].map((id) => {
             const Icon = id === "all" ? LayoutGrid : DEVICES[id].icon;

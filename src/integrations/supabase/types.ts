@@ -1215,6 +1215,41 @@ export type Database = {
           },
         ]
       }
+      tv_config_versions: {
+        Row: {
+          community_id: string
+          config: Json
+          id: string
+          replaced_at: string
+          saved_at: string
+          saved_by: string | null
+        }
+        Insert: {
+          community_id: string
+          config: Json
+          id?: string
+          replaced_at?: string
+          saved_at: string
+          saved_by?: string | null
+        }
+        Update: {
+          community_id?: string
+          config?: Json
+          id?: string
+          replaced_at?: string
+          saved_at?: string
+          saved_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tv_config_versions_community_id_fkey"
+            columns: ["community_id"]
+            isOneToOne: false
+            referencedRelation: "communities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tv_devices: {
         Row: {
           app_version: string | null
@@ -1381,6 +1416,27 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_api_keys: {
+        Row: {
+          api_key: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          api_key?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_bookmarks: {
         Row: {
