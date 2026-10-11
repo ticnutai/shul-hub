@@ -369,19 +369,30 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     };
   }, [view, board.data.settings, previewMinute]);
   /**
-   * The occasions' screens offered beside the board's pages: those on at the
-   * preview's moment (ראש חודש, today), and those with a design of their own -
-   * each edited there exactly as a page is.
+   * The occasions' screens offered beside the board's pages: the one on at the
+   * preview's moment (ראש חודש, today) by itself, and those the gabbai added by
+   * hand to prepare before their day - each edited there exactly as a page is.
    */
+  // The real minute, apart from any day the preview is showing (ticks with the board's clock).
+  const todayMinute = Math.floor((simulatedNow ? Date.now() : board.now.getTime()) / 600_000) * 10;
   const occasionTabs = useMemo<OccasionTab[]>(() => {
-    const at = new Date(previewMinute * 60_000);
     const settings = board.data.settings;
-    const { active } = occasionPagesNow(state.present, settings, at, (d) => zmanimFor(d, settings));
-    const on = new Set(active.map((a) => a.occasion.id));
+    const onAt = (at: Date) =>
+      occasionPagesNow(state.present, settings, at, (d) => zmanimFor(d, settings))
+        .active.filter((a) => a.occasion.display !== "off")
+        .map((a) => a.occasion.id);
+    // "היום" is the real day; the day the preview shows brings its occasion in too.
+    const on = new Set(onAt(new Date(todayMinute * 60_000)));
+    const shownDay = new Set(onAt(new Date(previewMinute * 60_000)));
+    const pinned = new Set(state.present.pinnedOccasions);
     return readOccasions(state.present)
-      .filter((o) => o.id === occasionScope || (o.enabled && o.display !== "off" && (on.has(o.id) || Boolean(o.design))))
-      .map((o) => ({ id: o.id, name: o.name, on: on.has(o.id), design: Boolean(o.design) }));
-  }, [state.present, board.data.settings, previewMinute, occasionScope]);
+      .filter((o) => o.id === occasionScope || on.has(o.id) || pinned.has(o.id) || (!occasionScope && shownDay.has(o.id)))
+      .map((o) => ({ id: o.id, name: o.name, on: on.has(o.id), design: Boolean(o.design), pinned: pinned.has(o.id) }));
+  }, [state.present, board.data.settings, previewMinute, todayMinute, occasionScope]);
+  const addableOccasions = useMemo(() => {
+    const shown = new Set(occasionTabs.map((t) => t.id));
+    return readOccasions(state.present).filter((o) => !shown.has(o.id)).map((o) => ({ id: o.id, name: o.name }));
+  }, [state.present, occasionTabs]);
   const [dayLookShown, setDayLookShown] = useState(false);
   // Only a design that dresses the whole board changes the ordinary screens.
   const dayLook = dayLookShown && dayLookNow?.on === "board";
@@ -613,10 +624,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     if (!o) return;
     setPagesPlaying(false);
     const on = occasionTabs.find((t) => t.id === id)?.on;
-    // On at the preview's moment: stay there; otherwise its next day, at midday.
+    // On today: the real time; otherwise its next day, at midday.
     const day = on ? null : nextDateOf(o, new Date());
     if (!on && !day) return toast.error("לא נמצא תאריך קרוב למועד הזה");
-    previewAt(day ? new Date(Date.parse(`${jerusalemDateKey(day)}T11:00:00+03:00`)) : simulatedNow ?? new Date());
+    previewAt(day ? new Date(Date.parse(`${jerusalemDateKey(day)}T11:00:00+03:00`)) : null);
     setPreviewScreen(`occasion:${id}`);
     setOccasionScope(id);
     if (!o.enabled) toast.warning(`"${o.name}" כבוי - הוא לא יופיע עד שתפעילו אותו בלשונית "מועדים".`);
@@ -1073,6 +1084,20 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           occasions={occasionTabs}
           occasion={occasionScope}
           onOccasion={openOccasion}
+          addable={addableOccasions}
+          onPin={(id) => {
+            dispatch({ type: "edit", key: `pin:${id}`, update: (c) => ({ ...c, pinnedOccasions: [...new Set([...c.pinnedOccasions, id])].slice(0, 20) }) });
+            openOccasion(id);
+          }}
+          onUnpin={(id) => {
+            dispatch({ type: "edit", key: `unpin:${id}`, update: (c) => ({ ...c, pinnedOccasions: c.pinnedOccasions.filter((x) => x !== id) }) });
+            // Taken off while being worked on: back to the board's own page.
+            if (occasionScope === id) {
+              setOccasionScope(null);
+              previewAt(null);
+              setPreviewScreen(null);
+            }
+          }}
           onSelect={(i) => {
             setPagesPlaying(false);
             if (occasionScope) {

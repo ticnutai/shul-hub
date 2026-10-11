@@ -167,15 +167,8 @@ test.describe("TV editor, occasions", () => {
     await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
     const bar = page.getByTestId("part-pages");
     const rcTab = bar.locator('[data-occasion-tab="cal:rosh_chodesh"]');
-    // Not on today in every run: the tab shows for an occasion with a design too.
-    if (!(await rcTab.count())) {
-      await page.getByRole("tab", { name: "מועדים" }).click();
-      await row(page, "cal:rosh_chodesh").getByRole("button", { name: "הגדרות" }).click();
-      const dialog = page.getByTestId("occasion-dialog");
-      await dialog.getByLabel("עיצוב המועד").selectOption("d_premium_rc_night-moon");
-      await dialog.getByRole("button", { name: "סגירה" }).click();
-      await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
-    }
+    // Not on today in every run: then it is added by hand, as any occasion can be.
+    if (!(await rcTab.count())) await bar.getByLabel("הוספת מועד לפס").selectOption("cal:rosh_chodesh");
     await rcTab.click();
     await expect(rcTab).toHaveAttribute("aria-selected", "true");
     await expect(bar.getByTestId("part-page-occasion")).toContainText("ראש חודש");
@@ -193,6 +186,32 @@ test.describe("TV editor, occasions", () => {
     await expect(rcTab).toHaveAttribute("aria-selected", "false");
     await expect(preview.locator('img[src*="rosh-chodesh-teal-dawn"]')).toHaveCount(0);
     await expectNotFrozen(page, "occasion tab");
+  });
+
+  test("beside the pages: the occasion on today by itself; any other only when added by hand, and ✕ takes it off", async ({ page }) => {
+    // הושענא רבה had a design of its own and stood in the bar all year (אושר של יהודי, 11.10.2026).
+    await row(page, "cal:hoshana_raba").getByRole("button", { name: "הגדרות" }).click();
+    const dialog = page.getByTestId("occasion-dialog");
+    await dialog.getByLabel("עיצוב המועד").selectOption("d_wood");
+    await dialog.getByRole("button", { name: "סגירה" }).click();
+    await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+    const bar = page.getByTestId("part-pages");
+    const hr = bar.locator('[data-occasion-tab="cal:hoshana_raba"]');
+    await expect(hr).toHaveCount(0);
+
+    // Added by hand: its tab, worked on at once, on its day.
+    await bar.getByLabel("הוספת מועד לפס").selectOption("cal:hoshana_raba");
+    await expect(hr).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("occasion-design-banner")).toContainText("הושענא רבה");
+    await expect(page.locator("[data-board-preview] .tv-frame").first()).toContainText("הושענא רבה", { timeout: 10_000 });
+
+    // ✕: off the bar, back to the board's own page; the occasion and its design stay.
+    await bar.getByRole("button", { name: "הסרת הושענא רבה מהפס" }).click();
+    await expect(hr).toHaveCount(0);
+    await expect(page.getByTestId("occasion-design-banner")).toHaveCount(0);
+    await page.getByRole("tab", { name: "מועדים" }).click();
+    await expect(row(page, "cal:hoshana_raba")).toContainText("עם עיצוב");
+    await expectNotFrozen(page, "pinned occasion");
   });
 
   test("a day of the shul's own: a Hebrew date, a line of text, and it is on", async ({ page }) => {

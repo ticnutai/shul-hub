@@ -16,9 +16,17 @@ import type { TvConfig } from '@/tv/config';
 import { MAX_PAGES, addPage, copyPage, movePage, readPages, removePage, setPage } from '@/tv/partPages';
 
 /** An occasion's screen offered beside the pages: on now (or on the preview's day), or with a design of its own. */
-export interface OccasionTab { id: string; name: string; on: boolean; design: boolean }
+export interface OccasionTab {
+  id: string;
+  name: string;
+  /** On today (or on the preview's day): there by itself. */
+  on: boolean;
+  design: boolean;
+  /** Added by hand, to work on before its day: taken off with ✕. */
+  pinned: boolean;
+}
 
-export function PartPagesBar({ config, current, onSelect, onEdit, playing = null, onPlay, occasions = [], occasion = null, onOccasion }: {
+export function PartPagesBar({ config, current, onSelect, onEdit, playing = null, onPlay, occasions = [], occasion = null, onOccasion, addable = [], onPin, onUnpin }: {
   config: TvConfig;
   current: number;
   /**
@@ -30,6 +38,10 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
   /** The occasion being worked on; while one is, no page is. */
   occasion?: string | null;
   onOccasion?: (id: string) => void;
+  /** The occasions that can be added by hand: every one not in the bar already. */
+  addable?: { id: string; name: string }[];
+  onPin?: (id: string) => void;
+  onUnpin?: (id: string) => void;
   onSelect: (index: number) => void;
   /** The page the preview shows while the pages take their turns there; null - not playing. */
   playing?: number | null;
@@ -90,26 +102,53 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
             {pages.length > 1 && <span className="rounded bg-muted px-1 text-[10px] tabular-nums">{p.seconds} שנ׳</span>}
           </button>
         ))}
-        {occasions.length > 0 && onOccasion && (
+        {onOccasion && (occasions.length > 0 || addable.length > 0) && (
           <>
             <span className="text-xs text-muted-foreground" aria-hidden>ומהמועדים:</span>
             {occasions.map(o => (
-              <button
+              <span
                 key={o.id}
-                type="button"
-                role="tab"
-                aria-selected={occasion === o.id}
-                data-occasion-tab={o.id}
-                onClick={() => onOccasion(o.id)}
-                title={`${o.name}: המסך שלו ${o.on ? 'מופיע היום' : 'מופיע ביום שלו'} מכוח המועדים. לחיצה - עורכים אותו כמו עמוד, בעיצוב משלו.`}
-                className={`flex items-center gap-2 rounded-lg border border-dashed border-amber-500/70 bg-amber-50 px-3 py-1.5 text-sm transition dark:bg-amber-950/30 ${occasion === o.id ? 'border-solid ring-2 ring-amber-500 ring-offset-1' : 'hover:border-amber-600'}`}
+                className={`flex items-center rounded-lg border border-dashed border-amber-500/70 bg-amber-50 text-sm transition dark:bg-amber-950/30 ${occasion === o.id ? 'border-solid ring-2 ring-amber-500 ring-offset-1' : 'hover:border-amber-600'}`}
               >
-                <CalendarDays className="size-4 text-amber-700" aria-hidden />
-                <span>{o.name}</span>
-                {o.on && <span className="rounded bg-amber-200 px-1 text-[10px] text-amber-900">היום</span>}
-                {!o.design && <span className="text-[10px] text-muted-foreground">בלי ערכה</span>}
-              </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={occasion === o.id}
+                  data-occasion-tab={o.id}
+                  onClick={() => onOccasion(o.id)}
+                  title={`${o.name}: ${o.on ? 'חל היום, ולכן מופיע כאן לבד' : 'נוסף ידנית - על המסכים הוא מופיע רק ביום שלו'}. לחיצה - עורכים את המסך שלו כמו עמוד, בעיצוב משלו.`}
+                  className="flex items-center gap-2 px-3 py-1.5"
+                >
+                  <CalendarDays className="size-4 text-amber-700" aria-hidden />
+                  <span>{o.name}</span>
+                  {o.on && <span className="rounded bg-amber-200 px-1 text-[10px] text-amber-900">היום</span>}
+                  {!o.design && <span className="text-[10px] text-muted-foreground">בלי ערכה</span>}
+                </button>
+                {o.pinned && !o.on && onUnpin && (
+                  <button
+                    type="button"
+                    aria-label={`הסרת ${o.name} מהפס`}
+                    title="הסרה מהפס בלבד - המועד, העיצוב שלו והמידע שלו נשארים"
+                    onClick={() => onUnpin(o.id)}
+                    className="me-1 grid size-5 place-items-center rounded-full text-xs text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
             ))}
+            {addable.length > 0 && onPin && (
+              <select
+                aria-label="הוספת מועד לפס"
+                value=""
+                onChange={e => e.target.value && onPin(e.target.value)}
+                className="h-8 rounded-lg border border-dashed border-amber-500/70 bg-background px-2 text-sm"
+                title="מועד שלא חל היום - כדי להכין את המסך שלו מראש. על המסכים הוא יופיע רק ביום שלו."
+              >
+                <option value="">+ הוספת מועד…</option>
+                {addable.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            )}
           </>
         )}
         <Button type="button" size="sm" variant="outline" onClick={add} disabled={pages.length >= MAX_PAGES} title="עמוד חדש - העתק של העמוד שנבחר, לשנות ממנו">

@@ -773,6 +773,13 @@ export interface TvConfig {
   texts: Record<string, string>;
   /** Elements taken off the board: element keys, or "ann:<id>", "shiur:<id>", "minyan:<id>". */
   hidden: string[];
+  /**
+   * Occasions the gabbai added by hand to the editor's pages bar, to work on
+   * their screens before their day (occasions.ts ids). The occasion on today
+   * is there by itself; these only in the editor - on the wall each still
+   * appears on its own day alone.
+   */
+  pinnedOccasions: string[];
   /** Areas drawn mirror-wise (clock on the other side, panels swapped). */
   flipped: FlipArea[];
   /** Per-element look, keyed like `texts` (see ElementStyle). */
@@ -864,6 +871,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   slideshow: { images: [], secondsPerImage: 8 },
   texts: {},
   hidden: [],
+  pinnedOccasions: [],
   flipped: [],
   customThemes: [],
   designs: [],
@@ -1505,6 +1513,9 @@ function normalizeStored(stored: unknown): TvConfig {
         .map(([k, v]) => [k, v.slice(0, 300)]),
     ),
     hidden: [...new Set((Array.isArray(raw.hidden) ? raw.hidden : []).filter((k): k is string => typeof k === "string" && KEY_RE.test(k)))].slice(0, 300),
+    pinnedOccasions: [
+      ...new Set((Array.isArray(raw.pinnedOccasions) ? raw.pinnedOccasions : []).filter((k): k is string => typeof k === "string" && /^[a-z0-9:_-]{1,40}$/i.test(k))),
+    ].slice(0, 20),
     flipped: FLIP_AREAS.filter((a) => Array.isArray(raw.flipped) && raw.flipped.includes(a)),
     customThemes,
     designs,
