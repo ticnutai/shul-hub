@@ -8,6 +8,9 @@ export function ElementEditingProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useState(false);
   const [selected, select] = useState<string[]>([]);
   const [snap, setSnap] = useState(true);
+  const [gridStep,setGridStep]=useState(5);
+  const [showGrid,setShowGrid]=useState(false);
+  const [linkSection,setLinkSection]=useState(true);
   const [draft, setDraft] = useState<BoardElement[] | null>(null);
-  return <ElementEditingContext.Provider value={{ api, enabled, setEnabled, selected, select, snap, setSnap, draft, setDraft }}>{children}</ElementEditingContext.Provider>;
+  return <ElementEditingContext.Provider value={{ api, enabled, setEnabled, selected, select, snap, setSnap,gridStep,setGridStep,showGrid,setShowGrid,linkSection,setLinkSection, draft, setDraft }}>{children}</ElementEditingContext.Provider>;
 }

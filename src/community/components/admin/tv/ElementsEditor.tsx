@@ -15,6 +15,7 @@ import { downloadFile } from '@/tv/workspaceTransfer';
 import { uploadImages } from './uploadImages';
 import {ZMAN_DISPLAY_KEYS,ZMAN_DISPLAY_LABELS} from '@/community/lib/zmanim';
 import { ColorPick } from './ColorPick';
+import {SECTION_SHAPES,setSectionShape,sectionGeometry,linkedSection} from '@/tv/sectionGeometry';
 
 type Props = {
   config: TvConfig;
@@ -24,16 +25,17 @@ type Props = {
 };
 export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: Props) {
   const elements = config.elements;
-  const { selected, select, snap, setSnap } = useElementEditing()!;
+  const { selected, select, snap, setSnap,gridStep,setGridStep,showGrid,setShowGrid,linkSection,setLinkSection } = useElementEditing()!;
   const first = elements.find(e => e.id === selected[0]);
   const commit = (next: BoardElement[], key = `elements:${crypto.randomUUID()}`) => onEdit(key, c => ({ ...c, elements: normalizeElements(next) }));
   const patch = (p: Partial<BoardElement>) => {
-    if (first && ('x' in p || 'y' in p)) { commit(moveElements(elements, selected, (p.x ?? first.x) - first.x, (p.y ?? first.y) - first.y)); return; }
+    if(first&&linkSection){for(const key of ['width','height','rotation'] as const)if(key in p){commit(sectionGeometry(elements,first.id,key,p[key]!));return;}}
+    if (first && ('x' in p || 'y' in p)) { commit(moveElements(elements, linkSection?linkedSection(elements,first.id):selected, (p.x ?? first.x) - first.x, (p.y ?? first.y) - first.y)); return; }
     commit(elements.map(e => selected.includes(e.id) && !e.locked ? { ...e, ...p } : e), `element-property:${selected.join(',')}:${Object.keys(p).join(',')}`);
   };
   const choose = (e: BoardElement, multi: boolean) => {
-    const ids = e.group ? elements.filter(x => x.group === e.group).map(x => x.id) : [e.id];
-    const next = multi ? [...new Set([...selected, ...ids])] : ids; select(next); return next;
+    const ids = linkSection && e.group ? elements.filter(x => x.group === e.group).map(x => x.id) : [e.id];
+    const ordered=[e.id,...ids.filter(id=>id!==e.id)]; const next = multi ? [...new Set([...selected, ...ordered])] : ordered; select(next); return next;
   };
   const duplicate = () => {
     const copies = elements.filter(e => selected.includes(e.id));
@@ -81,7 +83,11 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       }} /></label>
     </div>
     <label className="flex gap-2 text-sm"><input type="checkbox" checked={snap} onChange={e => setSnap(e.target.checked)} />הצמדה לרשת</label>
-    <div data-testid="elements-canvas" dir="ltr" className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-slate-900" style={{ containerType: 'size', backgroundImage: snap ? 'linear-gradient(#ffffff0d 1px, transparent 1px), linear-gradient(90deg, #ffffff0d 1px, transparent 1px)' : undefined, backgroundSize: '5% 5%' }}>
+    <label className="flex gap-2 text-sm"><input type="checkbox" checked={linkSection} onChange={e=>{setLinkSection(e.target.checked);if(!e.target.checked&&first)select([first.id]);}}/>מסגרת, תיבה וטקסט יחד</label>
+    <label className="flex gap-2 text-sm"><input type="checkbox" checked={showGrid} onChange={e=>setShowGrid(e.target.checked)}/>הצגת גריד ומידות</label>
+    <label className="text-sm">מרווח גריד<select aria-label="מרווח גריד" value={gridStep} onChange={e=>setGridStep(Number(e.target.value))}>{[1,2,5,10].map(v=><option key={v} value={v}>{v}% — {19.2*v}×{10.8*v} פיקסלים ב־1920×1080</option>)}</select></label>
+    {first&&<p className="text-xs" data-testid="element-measurements">מידות החלק: {first.width.toFixed(1)}% × {first.height.toFixed(1)}% · שוליים: שמאל {first.x.toFixed(1)}%, ימין {(100-first.x-first.width).toFixed(1)}%, למעלה {first.y.toFixed(1)}%, למטה {(100-first.y-first.height).toFixed(1)}%. המידות יחסיות ללוח; פיקסלים מוצגים לפי 1920×1080.</p>}
+    <div data-testid="elements-canvas" dir="ltr" className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-slate-900" style={{ containerType: 'size', backgroundImage: undefined }}>
       <BoardElements elements={elements} surface />
     </div>
     <p className="text-xs text-muted-foreground">בעריכה ישירה בלוח אפשר לגרור גם על התצוגה האמיתית. כשהלוח ממוקד: חצים להזזה עדינה, Shift לתזוזה גדולה, Delete למחיקה, Ctrl+D לשכפול ו־Esc לביטול בחירה. Alt + לחיצה משאיר את פעולת הלוח הרגילה.</p>
@@ -107,6 +113,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       <Button size="sm" variant="outline" disabled={!first} onClick={() => commit([...elements.filter(e => selected.includes(e.id)), ...elements.filter(e => !selected.includes(e.id))])}>אחורה</Button>
     </div>
     {first && <fieldset disabled={first.locked} className="grid grid-cols-2 gap-2 rounded border p-3 sm:grid-cols-3">
+      {sectionOf(elements,first.id).some(id=>{const e=elements.find(e=>e.id===id)!;return e.kind==='frame'||e.kind==='box'||e.name.startsWith('מסגרת');})&&<div className="col-span-full"><label>צורת התיבה והמסגרת<select aria-label="צורת התיבה והמסגרת" value={elements.find(e=>sectionOf(elements,first.id).includes(e.id)&&e.shape)?.shape??''} onChange={ev=>{if(ev.target.value)commit(setSectionShape(elements,first.id,ev.target.value as NonNullable<BoardElement['shape']>));}}><option value="" disabled>בחירת צורה</option>{Object.entries(SECTION_SHAPES).map(([key,name])=><option key={key} value={key}>{name}</option>)}</select></label><p className="text-xs">הצורה תחול על המסגרת, המילוי ומיקום התוכן יחד. מסגרת מצולמת תוחלף במסגרת גאומטרית; ניתן לבטל באמצעות ביטול הפעולה. עיגול מחושב ללוח 16:9.</p></div>}
       <p className="col-span-2 text-xs" data-testid="selected-layer-type">סוג החלק: {first.sourceMask ? 'חלק מהציור עם מסכה שקופה' : first.crop ? 'אזור מתוך תמונה' : first.binding ? 'תוכן חי נפרד' : ELEMENT_NAMES[first.kind]}</p>
       {['prayers','lessons','zmanim'].includes(first.binding ?? '') && <label className="text-xs">שורות בכל עמוד<input type="number" className="block w-full rounded border p-2" aria-label="שורות בכל עמוד באלמנט" min={1} max={30} value={first.rowsPerPage ?? 3} onChange={ev => { if(ev.target.value !== '') patch({rowsPerPage:Math.max(1,Math.min(30,Number(ev.target.value)))}); }} /></label>}
       {SCROLLABLE.includes(first.binding as ElementBinding) && <label className="text-xs">כשהתוכן לא נכנס<select className="block w-full rounded border p-2" aria-label="כשהתוכן לא נכנס באלמנט" value={first.scroll ?? ''} onChange={ev => patch({ scroll: (ev.target.value || undefined) as BoardElement['scroll'] })}><option value="">{first.binding === 'announcements' || first.binding === 'footer' ? 'הקטנה כדי שייכנס' : 'דפדוף בין עמודים'}</option><option value="pause">גלילה עם עצירות</option><option value="loop">וילון רציף</option></select></label>}
@@ -130,7 +137,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         ? <p className="rounded border border-dashed p-2 text-xs text-muted-foreground" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות) נמצא מתחת לתצוגה המקדימה של הלוח.</p>
         : <ElementTextTools elements={elements} ids={selected} withColor={false} onPatch={textPatch} />}</div>}
       {(first.kind==='box'||(first.kind==='frame'&&!first.image)) && <div className="flex items-center gap-1 text-xs">מילוי<ColorPick label="מילוי האלמנט" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={v => patch({ fill: v })} /><button type="button" onClick={() => patch({ fill: 'transparent' })}>ללא מילוי</button></div>}
-      {first.kind==='box'&&<label className="text-xs"><input type="checkbox" aria-label="מילוי בצורת קשת" checked={first.archFill??false} onChange={ev=>patch({archFill:ev.target.checked})}/> מילוי בצורת קשת</label>}
+      {first.kind==='box'&&!first.shape&&<label className="text-xs"><input type="checkbox" aria-label="מילוי בצורת קשת" checked={first.archFill??false} onChange={ev=>patch({archFill:ev.target.checked})}/> מילוי בצורת קשת</label>}
     </fieldset>}
     {/* Adding content: a new frame, instead of a frame's content, or into a frame. On a board of parts - in the layout tab. */}
     {parts ? <p className="rounded-md border border-dashed p-3 text-sm" data-testid="add-content-elsewhere">הוספת תוכן (פרשת השבוע, הדף היומי, זמני היום ועוד), והצד של כל תוכן - בלשונית <b>פריסה</b>, תחת "מה יופיע על הלוח, ובאיזה צד".</p> : <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
