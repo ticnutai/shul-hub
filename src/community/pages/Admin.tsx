@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminButtonsSettings } from "@community/components/admin/AdminButtonsSettings";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
-import { Building2, LayoutDashboard, LogOut, ShieldAlert, Tv } from "lucide-react";
+import { Building2, LayoutDashboard, LayoutGrid, LogOut, Rows3, ShieldAlert, Tv } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,6 +31,9 @@ import { CommunitySwitcher, ShulNow } from "@/community/components/admin/Communi
 import { listMyCommunities } from "@/community/lib/community";
 import { CommunitiesAdmin } from "@/community/components/admin/CommunitiesAdmin";
 import { SilentScreensAlert } from "@community/components/admin/tv/SilentScreensAlert";
+import { AdminTiles } from "@community/components/admin/AdminTiles";
+import { ADMIN_SECTIONS } from "@community/lib/adminSections";
+import { useAdminLayout } from "@community/lib/adminLayout";
 
 // Loaded only when the tab is opened: it brings the whole TV board with it.
 const TvAdmin = lazy(() => import("@community/components/admin/tv/TvAdmin"));
@@ -55,22 +58,13 @@ export function AdminPage() {
   ].includes(requestedTab ?? "") ? (requestedTab ?? "minyanim") : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
-  const mobileSections = [
-    { value: "minyanim", label: "מניינים" },
-    { value: "announcements", label: "מודעות" },
-    { value: "shiurim", label: "שיעורים" },
-    { value: "chavrutot", label: "חברותות" },
-    { value: "chavruta-requests", label: "בקשות חברותא" },
-    { value: "messages", label: `הודעות${unread > 0 ? ` (${unread})` : ""}` },
-    { value: "widgets", label: "תצוגת דף הבית" },
-    { value: "users", label: "משתמשים" },
-    { value: "data", label: "ייצוא/ייבוא" },
-    { value: "qr", label: "קודי QR" },
-    { value: "ai", label: "עוזר חכם" },
-    { value: "api", label: "מפתח API" },
-    { value: "communities", label: "בתי כנסת ופרטים" },
-    ...(!storeApp ? [{ value: "apps", label: "הורדת אפליקציות" }, { value: "tv", label: "תצוגות" }] : []),
-  ];
+  // One list of the sections (AdminTiles.tsx): the phone's list and the tiles read it.
+  const sections = ADMIN_SECTIONS.filter((section) => !storeApp || (section.value !== "apps" && section.value !== "tv"));
+  const mobileSections = sections.map((section) => ({
+    value: section.value,
+    label: section.value === "messages" && unread > 0 ? `${section.label} (${unread})` : section.label,
+  }));
+  const { layout, setLayout } = useAdminLayout();
 
   // Every admin has at least the synagogue they run, and its details (the
   // address, the location, its logos) live in its window under this button.
@@ -90,6 +84,66 @@ export function AdminPage() {
     next.set("tab", tab);
     next.delete("settingsTab");
     setSearchParams(next, { replace: true });
+  }
+
+  /** A section's own screen - the same whether its tab or its tile opened it. */
+  function sectionScreen(value: string) {
+    switch (value) {
+      case "communities":
+        return <CommunitiesAdmin />;
+      case "minyanim":
+        return (
+          <>
+            <MinyanimAdmin />
+            {/* Under the timetable, because it is about the timetable and
+                not instead of it: the regular week first, then whatever is
+                different about one day. */}
+            <MinyanOverridesAdmin />
+          </>
+        );
+      case "announcements":
+        return <AnnouncementsAdmin />;
+      case "shiurim":
+        return <ShiurimAdmin />;
+      case "chavrutot":
+        return <ChavrutotAdmin />;
+      case "chavruta-requests":
+        return <ChavrutaRequestsAdmin />;
+      case "messages":
+        return <MessagesAdmin />;
+      case "widgets":
+        return (
+          <>
+            {/* The site as a whole first - its header and its themes - then
+                what stands on the home page. */}
+            <SiteHeaderSettings />
+            <AdminButtonsSettings />
+            <HomeHeroSettings />
+            <SiteDesignShortcuts />
+            <WidgetsAdmin />
+          </>
+        );
+      case "users":
+        return <UsersAdmin />;
+      case "data":
+        return <DataExportImportAdmin />;
+      case "qr":
+        return <QrCodesAdmin />;
+      case "ai":
+        return <AiIntakeAdmin />;
+      case "api":
+        return <ApiKeysAdmin />;
+      case "apps":
+        return <AppDownloadsAdmin />;
+      case "tv":
+        return (
+          <Suspense fallback={<p className="p-6 text-center text-muted-foreground">טוען את מרכז הבקרה…</p>}>
+            <TvAdmin />
+          </Suspense>
+        );
+      default:
+        return null;
+    }
   }
 
   async function signOut() {
@@ -129,6 +183,21 @@ export function AdminPage() {
               </Button>
             )}
             <CommunitySwitcher />
+            {/* Two ways into the same screens (adminLayout.ts): the tabs, or tiles step by step. */}
+            <div role="radiogroup" aria-label="פריסת מסך הניהול" className="flex rounded-lg border p-0.5" data-testid="admin-layout-switch">
+              {([["tabs", "לשוניות", Rows3], ["tiles", "אריחים", LayoutGrid]] as const).map(([value, label, Icon]) => (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={layout === value}
+                  onClick={() => setLayout(value)}
+                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm ${layout === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                >
+                  <Icon className="size-4" aria-hidden /> {label}
+                </button>
+              ))}
+            </div>
             <Button variant="outline" onClick={signOut}>
               <LogOut className="size-4" /> יציאה
             </Button>
@@ -137,7 +206,8 @@ export function AdminPage() {
 
         {/* A screen nobody has heard from, on every tab - the device panel
             already knew, but only said so to somebody who opened it. */}
-        {!loading && isAdmin && <SilentScreensAlert />}
+        {/* Not on "תצוגות": its own line says the same, with the details. */}
+        {!loading && isAdmin && activeTab !== "tv" && <SilentScreensAlert />}
 
         {!loading && !isAdmin ? (
           <div className="card-elev mt-8 flex items-start gap-3 p-6">
@@ -149,6 +219,8 @@ export function AdminPage() {
               </p>
             </div>
           </div>
+        ) : layout === "tiles" ? (
+          <AdminTiles sections={sections} badges={{ messages: unread }} renderSection={sectionScreen} />
         ) : (
           <Tabs
             dir="rtl"
@@ -201,67 +273,11 @@ export function AdminPage() {
               )}
             </TabsList>
 
-            <TabsContent value="communities" className="mt-6">
-              <CommunitiesAdmin />
-            </TabsContent>
-            <TabsContent value="minyanim" className="mt-6 space-y-6">
-              <MinyanimAdmin />
-              {/* Under the timetable, because it is about the timetable and
-                  not instead of it: the regular week first, then whatever is
-                  different about one day. */}
-              <MinyanOverridesAdmin />
-            </TabsContent>
-            <TabsContent value="announcements" className="mt-6">
-              <AnnouncementsAdmin />
-            </TabsContent>
-            <TabsContent value="shiurim" className="mt-6">
-              <ShiurimAdmin />
-            </TabsContent>
-            <TabsContent value="chavrutot" className="mt-6">
-              <ChavrutotAdmin />
-            </TabsContent>
-            <TabsContent value="chavruta-requests" className="mt-6">
-              <ChavrutaRequestsAdmin />
-            </TabsContent>
-            <TabsContent value="messages" className="mt-6">
-              <MessagesAdmin />
-            </TabsContent>
-            <TabsContent value="widgets" className="mt-6 space-y-6">
-              {/* The site as a whole first - its header and its themes - then
-                  what stands on the home page. */}
-              <SiteHeaderSettings />
-              <AdminButtonsSettings />
-              <HomeHeroSettings />
-              <SiteDesignShortcuts />
-              <WidgetsAdmin />
-            </TabsContent>
-            <TabsContent value="users" className="mt-6">
-              <UsersAdmin />
-            </TabsContent>
-            <TabsContent value="data" className="mt-6">
-              <DataExportImportAdmin />
-            </TabsContent>
-            <TabsContent value="qr" className="mt-6">
-              <QrCodesAdmin />
-            </TabsContent>
-            <TabsContent value="ai" className="mt-6">
-              <AiIntakeAdmin />
-            </TabsContent>
-            <TabsContent value="api" className="mt-6">
-              <ApiKeysAdmin />
-            </TabsContent>
-            {!storeApp && (
-              <>
-                <TabsContent value="apps" className="mt-6">
-                  <AppDownloadsAdmin />
-                </TabsContent>
-                <TabsContent value="tv" className="mt-6">
-                  <Suspense fallback={<p className="p-6 text-center text-muted-foreground">טוען את מרכז הבקרה…</p>}>
-                    <TvAdmin />
-                  </Suspense>
-                </TabsContent>
-              </>
-            )}
+            {sections.map((section) => (
+              <TabsContent key={section.value} value={section.value} className="mt-6 space-y-6">
+                {sectionScreen(section.value)}
+              </TabsContent>
+            ))}
           </Tabs>
         )}
         <QuickAddButton />

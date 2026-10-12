@@ -1032,9 +1032,10 @@ function RecordElement({
           type="button"
           variant="outline"
           size="sm"
+          aria-pressed={hidden}
           onClick={() => onEdit(`hide:${elementKey}`, (c) => setHidden(c, elementKey, !hidden))}
         >
-          <EyeOff className="size-4" /> הסתרה מהלוח בלבד
+          <EyeOff className="size-4" /> {hidden ? "החזרה ללוח" : "הסתרה מהלוח בלבד"}
         </Button>
         {kind === "ann" && (
           <>

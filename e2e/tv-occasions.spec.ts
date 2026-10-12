@@ -79,7 +79,7 @@ test.describe("TV editor, occasions", () => {
 
     // The eye was far below the preview and showed the board's first screen:
     // it seemed to do nothing (אהל אברהם, 3.10.2026).
-    await yk.getByRole("button", { name: "תצוגה בתאריך הקרוב" }).click();
+    await yk.getByRole("button", { name: "תצוגה של יום כיפור בתאריך הקרוב" }).click();
     await expect(page.locator(".tv-frame .tv-event-title").first()).toContainText("יום כיפור", { timeout: 10_000 });
     await expect(page.locator("[data-board-preview]")).toBeInViewport();
 
