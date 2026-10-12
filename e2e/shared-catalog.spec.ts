@@ -19,7 +19,7 @@ test('every catalogue design can be applied, edited and captured without mutatin
  }
 });
 
-for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library','d_rc_moon_crown_balanced','d_rc_moon_crown_right','d_rc_moon_crown_left']){
+for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library','d_rc_moon_crown_balanced','d_rc_moon_crown_right','d_rc_moon_crown_left','d_rc_silver_leaves','d_rc_walnut_vines']){
  test('layer editing and persistence: '+id,async({page})=>{
   test.setTimeout(90000);await page.setViewportSize({width:1600,height:1000});
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -59,7 +59,7 @@ for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library','d_
 }
 test('catalog preserves images, masks and bindings through central normalizer',()=>{
  const parsed=parseSharedCatalog(raw);
- expect(parsed.designs).toHaveLength(83);expect(parsed.parts).toHaveLength(1007);
+ expect(parsed.designs).toHaveLength(85);expect(parsed.parts).toHaveLength(1063);
  for(const d of parsed.designs){
   const source=raw.designs.find(x=>x.id===d.id);
   expect(d.values.elements?.length??0).toBe(source.values.elements?.length??0);
@@ -79,7 +79,7 @@ test('central editor shares categorized themes and parts without changing a boar
  await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
  const library=page.getByTestId('design-library');
  await library.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
- await expect(library.locator('[data-design-id^="d_rc_"]')).toHaveCount(13);
+ await expect(library.locator('[data-design-id^="d_rc_"]')).toHaveCount(15);
  expect(server.writes()).toBe(0);expect(server.saved()).toEqual(original);
  await library.getByLabel('נושא הערכות',{exact:true}).selectOption('הכול');
  const ids=await library.locator('[data-design-id]').evaluateAll(els=>els.map(e=>e.getAttribute('data-design-id')));

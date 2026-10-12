@@ -35,7 +35,7 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
     <path fill="none" stroke={e.color} strokeWidth="6" d="M30 48C0 70 0 18 24 31C40 38 24 53 19 40M70 48C100 70 100 18 76 31C60 38 76 53 81 40" />
   </svg>;
   if (e.kind === 'ornament') return <svg viewBox="0 0 300 70" width="100%" height="100%" aria-hidden><g fill="none" stroke={e.color} strokeWidth="3"><path d="M10 40H115Q135 40 150 12Q165 40 185 40H290M25 40C55 0 110 0 105 30S65 35 83 18M275 40C245 0 190 0 195 30S235 35 217 18M115 40Q150 80 185 40"/><path d="M150 12L162 30L150 47L138 30Z"/></g></svg>;
-  return <div style={{ width: '100%', height: '100%', border: `${e.kind === 'frame' ? '.6' : '.15'}cqh ${e.kind === 'frame' ? 'double' : 'solid'} ${e.color}`, background: e.fill, borderRadius: '1.5cqh', boxShadow: '0 .3cqh 1cqh #0002', boxSizing: 'border-box' }} />;
+  return <div style={{ width: '100%', height: '100%', border: `${e.kind === 'frame' ? '.6' : '.15'}cqh ${e.kind === 'frame' ? 'double' : 'solid'} ${e.color}`, background: e.fill, borderRadius: e.kind==='box'&&e.archFill?'50% 50% 0 0 / 22% 22% 0 0':'1.5cqh', boxShadow: '0 .3cqh 1cqh #0002', boxSizing: 'border-box' }} />;
 }
 export function BoardElements({ elements = [], surface = false, data }: { elements?: BoardElement[]; surface?: boolean; data?: ElementData }) {
   const editor = useElementEditing();

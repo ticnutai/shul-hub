@@ -10,6 +10,17 @@ import { workspaceDocument, parseWorkspace, type StoreImage } from './workspaceT
 const STORED = 'https://bfiayuuhjtyccqobsjvl.supabase.co/storage/v1/object/public/community-media/tv/stored.png';
 const store: StoreImage = async () => STORED;
 import { PREMIUM_DESIGNS } from './premiumDesigns';
+import {elementStyle} from './elements';
+
+it('preserves bounded image colour adjustments through part export/import and reset',()=>{
+ const e={...newElement('image'),image:'/new-shul-assets/catalog-rc-real-moon.png',imageTune:{hue:80,saturation:.5,brightness:1.2}};
+ const restored=importElementSet(exportElementSet([e]))[0];
+ expect(restored.imageTune).toEqual(e.imageTune);
+ expect(elementStyle(restored).filter).toBe('hue-rotate(80deg) saturate(0.5) brightness(1.2)');
+ expect(normalizeElements([{...e,imageTune:{hue:999,saturation:-4,brightness:99}}])[0].imageTune).toEqual({hue:180,saturation:0,brightness:2});
+ expect(elementStyle({...restored,imageTune:undefined}).filter).toBeUndefined();
+ expect(normalizeElements([{...e,kind:'text'}])[0].imageTune).toBeUndefined();
+});
 import { EMERALD_COMPOSITION } from './emeraldComposition';
 
 describe('New Shul element persistence and transfer', () => {
