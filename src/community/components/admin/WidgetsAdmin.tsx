@@ -14,6 +14,7 @@ import {
 import { supabase } from "@community/integrations/supabase/client";
 import { useHomeWidgets, type HomeWidget } from "@community/lib/data";
 import { communityId } from "@/community/lib/community";
+import { hebrewError } from "@community/lib/hebrewError";
 
 function reorder(list: HomeWidget[], from: number, to: number) {
   const next = [...list];
@@ -175,7 +176,7 @@ export function WidgetsAdmin() {
       );
     setSaving(false);
     if (error) {
-      toast.error(error.message || "השמירה נכשלה");
+      toast.error(hebrewError(error, "השמירה נכשלה"));
       return;
     }
     qc.invalidateQueries({ queryKey: ["home_widgets"] });

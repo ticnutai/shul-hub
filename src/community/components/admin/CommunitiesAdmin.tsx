@@ -41,6 +41,7 @@ import {
   writeCommunityToUrl,
 } from "@/community/lib/community";
 import { SynagogueDetailsDialog } from "./SynagogueDetails";
+import { hebrewError } from "@community/lib/hebrewError";
 
 interface Overview {
   id: string;
@@ -89,7 +90,7 @@ export function CommunitiesAdmin() {
       setNewName("");
       void refresh();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(hebrewError(e, "הפעולה נכשלה")),
   });
 
   const setActive = useMutation({
@@ -101,7 +102,7 @@ export function CommunitiesAdmin() {
       toast.success(active ? "בית הכנסת נפתח לציבור" : "בית הכנסת נסגר לציבור");
       void refresh();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(hebrewError(e, "הפעולה נכשלה")),
   });
 
   const live = all.filter((c) => c.active).length;

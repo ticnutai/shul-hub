@@ -1,7 +1,7 @@
-import {CatalogPreview} from './CatalogPreview';
+import { CatalogPreview } from './CatalogPreview';
 import {loadSharedCatalog,type SharedCatalog} from '@/tv/sharedCatalog';
 import {CATALOG_CATEGORIES,catalogCategory,type CatalogCategory} from '@/tv/catalogCategories';
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { SubPart } from "./Parts";
 import { Plus, Save } from "lucide-react";
 import { toast } from "sonner";
@@ -45,16 +45,16 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
   useEffect(()=>{let active=true;setCatalogError(false);loadSharedCatalog(attempt>0).then(c=>{if(active)setCatalog(c);}).catch(()=>{if(active)setCatalogError(true);});return()=>{active=false;};},[attempt]);
   const extra=(catalog?.designs??[]).filter(d=>!BUILTIN_DESIGNS.some(b=>b.id===d.id));
   const available=[...BUILTIN_DESIGNS,...extra];
-  const groups=[...DESIGN_GROUPS,{id:'shared',title:'אוסף New Shul — לכל הלוחות',hint:'כל ערכה זמינה בכל יום. בוחרים עותק ומשנים אותו בלוח בלבד.',ids:extra.map(d=>d.id)}];
+  const groups=[...DESIGN_GROUPS,{id:'shared',title:'האוסף המשותף - לכל הלוחות',hint:'כל ערכה זמינה בכל יום. בוחרים עותק ומשנים אותו בלוח בלבד.',ids:extra.map(d=>d.id)}];
 
   const commit = () => {
     if (!form) return;
     const name = form.name.trim().slice(0, 40);
-    if (!name) return toast.error("צריך לתת שם לעיצוב");
+    if (!name) return toast.error("צריך לתת שם לערכה");
     if (form.mode === "new") {
       if (!form.parts.length) return toast.error("צריך לבחור לפחות חלק אחד");
       onEdit("design-new", (c) => ({ ...c, designs: [...c.designs, captureDesign(c, name, form.parts)].slice(0, MAX_DESIGNS) }));
-      toast.success(`העיצוב "${name}" נשמר. הוא יגיע למסכים ב"שמור ושדר".`);
+      toast.success(`הערכה "${name}" נשמרה. היא תגיע למסכים ב"שמור ושדר".`);
     } else {
       onEdit("design-rename", (c) => ({ ...c, designs: c.designs.map((d) => (d.id === form.id ? { ...d, name } : d)) }));
     }
@@ -66,7 +66,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       ...c,
       designs: c.designs.map((x) => (x.id === d.id ? captureDesign(c, x.name, x.parts, x.id) : x)),
     }));
-    toast.success(`העיצוב "${d.name}" עודכן למה שעל הלוח עכשיו.`);
+    toast.success(`הערכה "${d.name}" עודכנה למה שעל הלוח עכשיו.`);
   };
 
   return (
@@ -75,9 +75,19 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         title="ערכות מוכנות"
         hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
       >
-      <label>נושא הערכות<select aria-label="נושא הערכות" className="m-2 rounded border bg-background p-2" value={category} onChange={e=>setCategory(e.target.value as CatalogCategory)}>{CATALOG_CATEGORIES.map(c=><option key={c}>{c}</option>)}</select></label>
-      <p className="text-xs text-muted-foreground">הנושא מסנן את הספרייה בלבד ואינו מגביל את יום השימוש. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
-      {catalogError&&<p role="alert">לא ניתן לטעון את האוסף המשותף. הלוח והערכות הקיימות לא השתנו. <button type="button" className="underline" onClick={()=>setAttempt(n=>n+1)}>ניסיון נוסף</button></p>}
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">נושא הערכות:</span>
+        <select aria-label="נושא הערכות" className="h-8 rounded-md border bg-background px-2 text-sm" value={category} onChange={(e) => setCategory(e.target.value as CatalogCategory)}>
+          {CATALOG_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+        </select>
+      </label>
+      <p className="text-[11px] text-muted-foreground">הנושא מסנן את הספרייה בלבד ואינו מגביל את יום השימוש. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
+      {catalogError && (
+        <p role="alert" className="text-sm">
+          לא ניתן לטעון את האוסף המשותף. הלוח והערכות הקיימות לא השתנו.{" "}
+          <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => setAttempt((n) => n + 1)}>ניסיון נוסף</Button>
+        </p>
+      )}
       <div className="space-y-4" data-testid="builtin-designs">
       {groups.map((group) => {
         const shown = available.filter((d) => group.ids.includes(d.id) && !isHiddenReady(config, "design", d.id) && (category==='הכול'||catalogCategory(d)===category));
@@ -86,58 +96,20 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       <section key={group.id} data-design-group={group.id} className="space-y-1.5">
         <h4 className="text-sm font-semibold">{group.title}</h4>
         <p className="text-[11px] leading-snug text-muted-foreground">{group.hint}</p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {shown.map((d) => {
-          const wall = findBackdrop(d.values.backgroundImage ?? null);
-          const frame = framePictureUrl(d.values.frameStyle?.image ?? null);
-          // The new designs are seen as they really are: a picture of the board wearing them.
-          const artwork = group.id === "classic" ? undefined : group.id === "shared" ? d.values.elements?.find(e=>e.image)?.image : `/new-shul-assets/thumbs/${d.id}.webp`;
-          return (
-            <div key={d.id} data-design-id={d.id} className="group relative overflow-hidden rounded-lg border text-right">
-            <TileRemove name={d.name} ready onClick={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))} />
-            <button
-              type="button"
-              aria-label={`החלת ערכה ${d.name}`}
-              onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
-              className="block w-full text-right hover:bg-muted/40"
-              title="ממלא את החלקים שכתובים מתחתיו - וכל חלק ניתן אחר כך לשינוי בנפרד"
-            >
-              {group.id === 'shared' && d.values.elements?.length ? <CatalogPreview elements={d.values.elements}/> : artwork ? <img src={artwork} alt="" className="aspect-video w-full object-cover" loading="lazy" /> : <span
-                className="flex aspect-video items-center justify-center gap-1 p-2"
-                style={{ background: wall ? `url("${wall.thumb}") center / cover` : undefined }}
-              >
-                {[0, 1].map((i) => (
-                  <span
-                    key={i}
-                    className="h-3/4 w-2/5"
-                    style={
-                      frame
-                        ? { border: "6px solid transparent", borderImage: `url("${frame}") ${d.values.frameStyle?.imageSlice}% fill / 6px stretch` }
-                        : {
-                            background: d.values.frameStyle?.fill ?? undefined,
-                            opacity: d.values.frameStyle?.fillOpacity ? Math.max(0.35, d.values.frameStyle.fillOpacity) : 1,
-                            border: `1px solid ${d.values.frameStyle?.line ?? "transparent"}`,
-                            borderRadius: d.values.frame?.shape === "arch" ? "50% 50% 3px 3px / 30% 30% 3px 3px" : 4,
-                          }
-                    }
-                  />
-                ))}
-              </span>}
-              <span className="block px-2 pt-2 text-sm font-medium">{d.name}</span>
-              <span className="block px-2 pb-1 text-[11px] leading-tight text-muted-foreground">
-                {group.id === "parts"
-                  ? d.values.elements?.some((e) => e.sourceMask)
-                    ? "ציור מופרד לשכבות: עמודים, מסגרות, מילויים וקישוטים"
-                    : "חלקים עצמאיים · תוכן חי"
-                  : group.id === "paintings"
-                    ? "ציור באזורים · טקסט ושעון חיים"
-                    : `ממלא: ${d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}`}
-              </span>
-            </button>
-            <button
-              type="button"
-              className="mx-2 mb-2 text-[11px] text-primary underline disabled:opacity-40"
-              disabled={designs.length>=MAX_DESIGNS}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {shown.map((d) => (
+          <KitTile
+            key={d.id}
+            design={d}
+            config={config}
+            thumb={group.id === "classic" || group.id === "shared" ? undefined : `/new-shul-assets/thumbs/${d.id}.webp`}
+            onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
+            onRemove={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))}
+            removeReady
+          >
+            <TileAction
+              disabled={designs.length >= MAX_DESIGNS}
+              title={designs.length >= MAX_DESIGNS ? `הגעתם למספר הערכות המרבי (${MAX_DESIGNS})` : "עותק שלכם, לשנות ממנו"}
               onClick={() => {
                 // A copy of one's own: renamed, changed, updated and deleted like any.
                 onEdit("design-copy", (cfg) => ({
@@ -148,10 +120,9 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
               }}
             >
               שכפול לעריכה
-            </button>
-            </div>
-          );
-        })}
+            </TileAction>
+          </KitTile>
+        ))}
       </div>
       </section>
         );
@@ -167,93 +138,35 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       {designs.length > 0 && (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {designs.map((d) => {
-              const c = { ...coloursOnScreen(config), ...d.colours };
-              return (
-                <div key={d.id} className="overflow-hidden rounded-lg border text-right">
-                  <button
-                    type="button"
-                    aria-label={`החלת ערכה ${d.name}`}
-                    onClick={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
-                    className="block w-full text-right hover:bg-muted/50"
-                    title="לחיצה שמה את העיצוב על הלוח (אפשר לבטל ב-Ctrl+Z)"
-                  >
-                    {d.values.elements?.length ? (
-                      // A kit of parts: the board itself, small - not three dots of its colours.
-                      <div
-                        className="relative aspect-video w-full overflow-hidden"
-                        data-testid="kit-thumb"
-                        style={{ containerType: "size", background: d.values.backgroundGradient ?? c["--tv-bg-a"] }}
-                      >
-                        <BoardElements elements={d.values.elements} />
-                      </div>
-                    ) : (
-                      <div
-                        className="flex h-12 items-end gap-1 p-2"
-                        style={{
-                          background:
-                            d.values.backgroundGradient ??
-                            `radial-gradient(ellipse at 20% 0%, ${c["--tv-bg-b"]}, transparent 70%), ${c["--tv-bg-a"]}`,
-                        }}
-                      >
-                        <span className="size-4 rounded-full" style={{ background: c["--tv-accent"] }} />
-                        <span className="size-4 rounded-full" style={{ background: c["--tv-text"] }} />
-                        <span className="size-4 rounded-full" style={{ background: d.values.frameStyle?.fill ?? c["--tv-panel"] }} />
-                      </div>
-                    )}
-                    <div className="p-2 pb-1">
-                      <div className="text-sm font-medium">{d.name}</div>
-                      <div className="text-[11px] leading-tight text-muted-foreground">
-                        {d.parts.map((p) => DESIGN_PART_LABELS[p]).join(" · ")}
-                      </div>
-                    </div>
-                  </button>
-                  <div className="flex flex-wrap gap-1 px-1 pb-1">
-                    <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => update(d)}>
-                      עדכון
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-1.5 text-[11px]"
-                      onClick={() => setForm({ mode: "rename", id: d.id, name: d.name, parts: d.parts })}
+            {designs.map((d) => (
+              <KitTile
+                key={d.id}
+                design={d}
+                config={config}
+                onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
+                onRemove={() => setConfirmDelete(d.id)}
+              >
+                {confirmDelete === d.id ? (
+                  <>
+                    <TileAction
+                      destructive
+                      onClick={() => {
+                        setConfirmDelete(null);
+                        onEdit("design-delete", (cfg) => ({ ...cfg, designs: cfg.designs.filter((x) => x.id !== d.id) }));
+                      }}
                     >
-                      שינוי שם
-                    </Button>
-                    {confirmDelete === d.id ? (
-                      <>
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="h-6 px-1.5 text-[11px]"
-                          onClick={() => {
-                            setConfirmDelete(null);
-                            onEdit("design-delete", (cfg) => ({ ...cfg, designs: cfg.designs.filter((x) => x.id !== d.id) }));
-                          }}
-                        >
-                          למחוק?
-                        </Button>
-                        <Button type="button" variant="ghost" size="sm" className="h-6 px-1.5 text-[11px]" onClick={() => setConfirmDelete(null)}>
-                          ביטול
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-1.5 text-[11px] text-destructive"
-                        onClick={() => setConfirmDelete(d.id)}
-                      >
-                        מחיקה
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                      למחוק?
+                    </TileAction>
+                    <TileAction onClick={() => setConfirmDelete(null)}>ביטול</TileAction>
+                  </>
+                ) : (
+                  <>
+                    <TileAction onClick={() => update(d)} title="הערכה מקבלת את מה שעל הלוח עכשיו">עדכון</TileAction>
+                    <TileAction onClick={() => setForm({ mode: "rename", id: d.id, name: d.name, parts: d.parts })}>שינוי שם</TileAction>
+                  </>
+                )}
+              </KitTile>
+            ))}
           </div>
         </>
       )}
@@ -271,13 +184,13 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             aria-label="שם הערכה"
             value={form.name}
             maxLength={40}
-            placeholder="שם לעיצוב, למשל: חגים"
+            placeholder="שם לערכה, למשל: חגים"
             className="h-9"
             onChange={(e) => setForm({ ...form, name: e.target.value })}
           />
           {form.mode === "new" && (
             <fieldset className="space-y-1">
-              <legend className="text-xs font-medium">מה העיצוב כולל</legend>
+              <legend className="text-xs font-medium">מה הערכה כוללת</legend>
               <div className="flex flex-wrap gap-3">
                 {DESIGN_PARTS.map((p) => (
                   <label key={p} className="flex items-center gap-1.5 text-sm">
@@ -296,7 +209,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
                 ))}
               </div>
               <p className="text-[11px] text-muted-foreground">
-                כשמפעילים את העיצוב, רק החלקים המסומנים משתנים בלוח. השאר נשאר כמו שהוא.
+                כשמפעילים את הערכה, רק החלקים המסומנים משתנים בלוח. השאר נשאר כמו שהוא.
               </p>
             </fieldset>
           )}
@@ -328,6 +241,98 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         </div>
       )}
       </SubPart>
+    </div>
+  );
+}
+
+/** An action under a kit's tile: the same size, look and place for every kit. */
+function TileAction({ children, onClick, disabled, destructive, title }: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  destructive?: boolean;
+  title?: string;
+}) {
+  return (
+    <Button
+      type="button"
+      variant={destructive ? "destructive" : "ghost"}
+      size="sm"
+      className="h-7 px-2 text-xs"
+      disabled={disabled}
+      title={title}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+}
+
+/**
+ * One kit, drawn one way wherever kits are: a picture of the board wearing
+ * it, its name, what it fills, its actions in one row, and ✕ in the corner
+ * (hiding a ready kit, deleting one's own). There were six ways to draw a
+ * kit, side by side in the same frame - a picture, three coloured dots in a
+ * strip half the height, two sketched boxes, layers on a light background.
+ */
+function KitTile({ design: d, config, thumb, onApply, onRemove, removeReady = false, children }: {
+  design: SavedDesign;
+  config: TvConfig;
+  /** A ready picture of the board wearing it, when there is one. */
+  thumb?: string;
+  onApply: () => void;
+  onRemove: () => void;
+  removeReady?: boolean;
+  children?: ReactNode;
+}) {
+  const c = { ...coloursOnScreen(config), ...d.colours };
+  const background = d.values.backgroundGradient ?? c["--tv-bg-a"];
+  const wall = findBackdrop(d.values.backgroundImage ?? null);
+  const frame = framePictureUrl(d.values.frameStyle?.image ?? null);
+  return (
+    <div data-design-id={d.id} className="group relative rounded-lg border bg-card text-right">
+      <TileRemove name={d.name} ready={removeReady} onClick={onRemove} />
+      <button
+        type="button"
+        aria-label={`החלת ערכה ${d.name}`}
+        onClick={onApply}
+        className="block w-full overflow-hidden rounded-t-lg text-right transition hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-primary"
+        title="ממלא את החלקים שכתובים מתחת לערכה - וכל חלק אפשר לשנות אחר כך בנפרד"
+      >
+        {thumb ? (
+          <img src={thumb} alt="" className="aspect-video w-full object-cover" loading="lazy" />
+        ) : d.values.elements?.length ? (
+          <CatalogPreview elements={d.values.elements} background={background} />
+        ) : (
+          // A classic kit: its two boxes on its background, in its frames and colours.
+          <span
+            className="flex aspect-video items-center justify-center gap-1 p-2"
+            style={{ background: wall ? `url("${wall.thumb}") center / cover` : background }}
+          >
+            {[0, 1].map((i) => (
+              <span
+                key={i}
+                className="h-3/4 w-2/5"
+                style={
+                  frame
+                    ? { border: "6px solid transparent", borderImage: `url("${frame}") ${d.values.frameStyle?.imageSlice}% fill / 6px stretch` }
+                    : {
+                        background: d.values.frameStyle?.fill ?? c["--tv-panel"],
+                        opacity: d.values.frameStyle?.fillOpacity ? Math.max(0.35, d.values.frameStyle.fillOpacity) : 1,
+                        border: `1px solid ${d.values.frameStyle?.line ?? c["--tv-accent"] ?? "transparent"}`,
+                        borderRadius: d.values.frame?.shape === "arch" ? "50% 50% 3px 3px / 30% 30% 3px 3px" : 4,
+                      }
+                }
+              />
+            ))}
+          </span>
+        )}
+        <span className="block px-2 pt-2 text-sm font-medium leading-snug">{d.name}</span>
+        <span className="block px-2 pb-1 text-[11px] leading-tight text-muted-foreground">
+          ממלא: {d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}
+        </span>
+      </button>
+      {children && <div className="flex flex-wrap gap-1 px-1 pb-1">{children}</div>}
     </div>
   );
 }

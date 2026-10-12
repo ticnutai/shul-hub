@@ -19,6 +19,7 @@ import {
 import { zmanimFor } from "@community/lib/minyan-time";
 import { formatTime } from "@community/lib/zmanim";
 import { formatHebrewDate } from "@community/lib/hebrewDate";
+import { hebrewError } from "@community/lib/hebrewError";
 
 const same = (a: Hero, b: Hero) => JSON.stringify(a) === JSON.stringify(b);
 /** A picture for the strip: big enough for a wide screen, small enough for a phone on the way. */
@@ -60,7 +61,7 @@ export function HomeHeroSettings() {
       set({ image: url });
       toast.success('התמונה הועלתה. לשמירה לחצו "שמירה".');
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
+      toast.error(hebrewError(e, "ההעלאה נכשלה"));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";

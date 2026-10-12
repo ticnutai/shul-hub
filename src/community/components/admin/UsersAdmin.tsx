@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createUser, listUsers, updateUserRole } from "@community/lib/user-admin.functions";
+import { hebrewError } from "@community/lib/hebrewError";
 
 type UserRole = "admin" | "user";
 
@@ -34,7 +35,7 @@ export function UsersAdmin() {
       await qc.invalidateQueries({ queryKey: ["admin-users"] });
       toast.success("המשתמש נוסף בהצלחה");
     },
-    onError: (error: Error) => toast.error(error.message || "יצירת המשתמש נכשלה"),
+    onError: (error: Error) => toast.error(hebrewError(error, "יצירת המשתמש נכשלה")),
   });
 
   const changeRole = useMutation({
@@ -44,7 +45,7 @@ export function UsersAdmin() {
       await qc.invalidateQueries({ queryKey: ["admin-users"] });
       toast.success("ההרשאה עודכנה");
     },
-    onError: (error: Error) => toast.error(error.message || "עדכון ההרשאה נכשל"),
+    onError: (error: Error) => toast.error(hebrewError(error, "עדכון ההרשאה נכשל")),
   });
 
   return (

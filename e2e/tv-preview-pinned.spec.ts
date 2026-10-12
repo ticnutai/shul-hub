@@ -33,3 +33,29 @@ test("the board's preview stays pinned while the panels under it scroll", async 
   expect(Math.abs(after.y - before.y)).toBeLessThan(24);
   await expect(board).toBeInViewport({ ratio: 0.9 });
 });
+
+/**
+ * One save button, in sight all the way down: there were two (over the
+ * controls and at the foot of the preview), both on the screen at once,
+ * and the one over the controls scrolled up under the site's header.
+ */
+test("one save button, and it stays in sight while the controls scroll", async ({ page, isMobile }) => {
+  test.skip(isMobile, "the editor is side by side on a desktop screen");
+  await page.setViewportSize({ width: 1500, height: 800 });
+  await serveEditor(page, structuredClone(PREMIUM_DESIGNS[0].values) as Record<string, unknown>);
+  const res = await page.goto("/e2e/harness/editor.html").catch(() => null);
+  test.skip(!res, "the dev server is not running (npm run dev)");
+  await expect(page.locator("[data-board-preview] .tv-frame").first()).toBeVisible({ timeout: 30_000 });
+  // Something changed, so there is something to save.
+  await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
+  const save = page.getByRole("button", { name: "שמור ושדר למסכים" });
+  await expect(save).toHaveCount(1);
+  await expect(save).toBeEnabled();
+  // Far down the controls: still there, and still one.
+  await page.mouse.wheel(0, 4000);
+  await page.waitForTimeout(300);
+  await page.mouse.wheel(0, 4000);
+  await page.waitForTimeout(300);
+  await expect(save).toHaveCount(1);
+  await expect(save).toBeInViewport();
+});

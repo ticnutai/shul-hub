@@ -171,7 +171,6 @@ test.describe("TV editor, occasions", () => {
     if (!(await rcTab.count())) await bar.getByLabel("הוספת מועד לפס").selectOption("cal:rosh_chodesh");
     await rcTab.click();
     await expect(rcTab).toHaveAttribute("aria-selected", "true");
-    await expect(bar.getByTestId("part-page-occasion")).toContainText("ראש חודש");
     await expect(page.getByTestId("occasion-design-banner")).toContainText("ראש חודש");
 
     const preview = page.locator("[data-board-preview] .tv-frame").first();

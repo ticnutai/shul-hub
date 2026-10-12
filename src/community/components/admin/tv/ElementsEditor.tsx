@@ -81,7 +81,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       }} /></label>
     </div>
     <label className="flex gap-2 text-sm"><input type="checkbox" checked={snap} onChange={e => setSnap(e.target.checked)} />הצמדה לרשת</label>
-    <div data-testid="elements-canvas" dir="ltr" className="relative aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-slate-900" style={{ containerType: 'size', backgroundImage: snap ? 'linear-gradient(#ffffff0d 1px, transparent 1px), linear-gradient(90deg, #ffffff0d 1px, transparent 1px)' : undefined, backgroundSize: '5% 5%' }}>
+    <div data-testid="elements-canvas" dir="ltr" className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-slate-900" style={{ containerType: 'size', backgroundImage: snap ? 'linear-gradient(#ffffff0d 1px, transparent 1px), linear-gradient(90deg, #ffffff0d 1px, transparent 1px)' : undefined, backgroundSize: '5% 5%' }}>
       <BoardElements elements={elements} surface />
     </div>
     <p className="text-xs text-muted-foreground">בעריכה ישירה בלוח אפשר לגרור גם על התצוגה האמיתית. כשהלוח ממוקד: חצים להזזה עדינה, Shift לתזוזה גדולה, Delete למחיקה, Ctrl+D לשכפול ו־Esc לביטול בחירה. Alt + לחיצה משאיר את פעולת הלוח הרגילה.</p>
