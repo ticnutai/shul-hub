@@ -13,7 +13,10 @@ const BLOCKS = ["header", "clock", "footer", "prayers", "zmanim"].map((block) =>
 
 async function open(page: Page, config: Record<string, unknown>) {
   await page.setViewportSize({ width: 1600, height: 1000 });
-  const served = await serveEditor(page, config);
+  // Reminders off: near a zman (sunset, say) their countdown redraws the board
+  // every second, in the middle of a drag - and these tests are about moving parts,
+  // whatever the hour they run at.
+  const served = await serveEditor(page, { alerts: { enabled: false }, ...config });
   const res = await page.goto(HARNESS).catch(() => null);
   test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
   await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
