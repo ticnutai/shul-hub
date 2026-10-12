@@ -136,6 +136,9 @@ test("a dragged part lines up: back on its own place when close, with a guide wh
   const after = await boxOf(page, ".tv-med-plaque.is-date");
   expect(Math.abs(after.y - date.y)).toBeLessThan(1.5);
   expect(Math.abs(after.x - date.x)).toBeLessThan(1.5);
+  // A drag selects no text: a press on selected text starts the browser's own
+  // text drag, which cancels the next move (it depended on the day's date text).
+  expect(await page.evaluate(() => String(getSelection()))).toBe("");
 
   // With Ctrl it moves freely by the same hair.
   await page.keyboard.down("Control");
