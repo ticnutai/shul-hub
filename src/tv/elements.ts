@@ -18,6 +18,7 @@ export interface BoardElement {
   imageTune?: { hue: number; saturation: number; brightness: number };
   /** A colour-editable arched fill beneath an independent arched picture frame. */
   archFill?: boolean;
+  shape?: 'rectangle'|'rounded'|'ellipse'|'circle'|'arch'|'hexagon'|'diamond';
   binding?: ElementBinding;
   rowsPerPage?: number;
   zmanKeys?: (typeof ZMAN_DISPLAY_KEYS)[number][];
@@ -125,6 +126,7 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...(v.crop && typeof v.crop === 'object' ? { crop: { x: n(v.crop.x, 0, 0, 100 - cropWidth), y: n(v.crop.y, 0, 0, 100 - cropHeight), width: cropWidth, height: cropHeight } } : {}),
       ...(normalizeMask(v.sourceMask) ? {sourceMask:normalizeMask(v.sourceMask)} : {}),
       ...(v.kind==='box' && v.archFill===true ? {archFill:true} : {}),
+      ...(['box','frame'].includes(v.kind)&&['rectangle','rounded','ellipse','circle','arch','hexagon','diamond'].includes(v.shape)?{shape:v.shape}:{}),
       ...((v.kind === 'image' || v.kind === 'frame') && v.imageTune && typeof v.imageTune === 'object' ? {imageTune:{hue:n(v.imageTune.hue,0,-180,180),saturation:n(v.imageTune.saturation,1,0,2),brightness:n(v.imageTune.brightness,1,.2,2)}} : {}),
       ...(ELEMENT_BINDINGS.includes(v.binding) ? { binding: v.binding } : {}),
       ...(typeof v.rowsPerPage === 'number' ? { rowsPerPage: Math.round(n(v.rowsPerPage, 3, 1, 30)) } : {}),
@@ -556,6 +558,15 @@ export function resizeElements(all: BoardElement[], ids: string[], handle: Resiz
   if (handle.includes('e')) right = Math.min(100, Math.max(left + 1, right + dx));
   if (handle.includes('n')) top = Math.max(0, Math.min(bottom - 1, top + dy));
   if (handle.includes('s')) bottom = Math.min(100, Math.max(top + 1, bottom + dy));
+  if(chosen.some(e=>e.shape==='circle')){
+    const ratio=b.width/b.height;
+    let w=handle.includes('e')||handle.includes('w')?right-left:(bottom-top)*ratio;
+    let h=w/ratio;
+    const maxW=handle.includes('w')?right:100-left,maxH=handle.includes('n')?bottom:100-top;
+    const scale=Math.min(1,maxW/w,maxH/h);w*=scale;h*=scale;
+    if(handle.includes('w'))left=right-w;else right=left+w;
+    if(handle.includes('n'))top=bottom-h;else bottom=top+h;
+  }
   const sx = (right - left) / b.width, sy = (bottom - top) / b.height;
   return all.map(e => !ids.includes(e.id) ? e : {
     ...e,

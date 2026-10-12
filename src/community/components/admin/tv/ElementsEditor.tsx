@@ -113,16 +113,16 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     </SubPart>
 
     <SubPart title="משטח העבודה" hint="בעריכה ישירה בלוח אפשר לגרור גם על התצוגה האמיתית. כשהלוח ממוקד: חצים להזזה עדינה, Shift לתזוזה גדולה, Delete למחיקה, Ctrl+D לשכפול ו־Esc לביטול בחירה. Alt + לחיצה משאיר את פעולת הלוח הרגילה.">
-      <SwitchRow label="הצמדה לרשת" checked={snap} onChange={setSnap} />
-      <SwitchRow label="מסגרת, תיבה וטקסט יחד" hint="גרירה, גודל וסיבוב חלים על כל החלקים של אותה מסגרת" checked={linkSection} onChange={(on) => { setLinkSection(on); if (!on && first) select([first.id]); }} />
-      <SwitchRow label="הצגת רשת ומידות" checked={showGrid} onChange={setShowGrid} />
+      <SwitchRow label="הצמדה לרשת" ariaLabel="הצמדה לרשת" checked={snap} onChange={setSnap} />
+      <SwitchRow label="מסגרת, תיבה וטקסט יחד" ariaLabel="מסגרת, תיבה וטקסט יחד" hint="גרירה, גודל וסיבוב חלים על כל החלקים של אותה מסגרת" checked={linkSection} onChange={(on) => { setLinkSection(on); if (!on && first) select([first.id]); }} />
+      <SwitchRow label="הצגת רשת ומידות" ariaLabel="הצגת רשת ומידות" checked={showGrid} onChange={setShowGrid} />
       <label className="flex flex-wrap items-center gap-2 text-sm">
         מרווח הרשת:
         <select aria-label="מרווח הרשת" className={SELECT_CLASS} value={gridStep} onChange={e => setGridStep(Number(e.target.value))}>
           {[1, 2, 5, 10].map(v => <option key={v} value={v}>{v}% - {Math.round(19.2 * v)} על {Math.round(10.8 * v)} נקודות במסך מלא</option>)}
         </select>
       </label>
-      {first && <p className="text-[11px] text-muted-foreground" data-testid="element-measurements"><span dir="ltr">{first.width.toFixed(1)}% × {first.height.toFixed(1)}%</span> - מידות החלק. שוליים: שמאל <span dir="ltr">{first.x.toFixed(1)}%</span>, ימין <span dir="ltr">{(100 - first.x - first.width).toFixed(1)}%</span>, למעלה <span dir="ltr">{first.y.toFixed(1)}%</span>, למטה <span dir="ltr">{(100 - first.y - first.height).toFixed(1)}%</span>. המידות יחסיות ללוח.</p>}
+      {first && <p className="text-[11px] text-muted-foreground" data-testid="element-measurements"><span dir="ltr">{first.width.toFixed(1)}% × {first.height.toFixed(1)}%</span> - מידות החלק. שוליים: שמאל <span dir="ltr">{first.x.toFixed(1)}%</span>, ימין <span dir="ltr">{(100 - first.x - first.width).toFixed(1)}%</span>, למעלה <span dir="ltr">{first.y.toFixed(1)}%</span>, למטה <span dir="ltr">{(100 - first.y - first.height).toFixed(1)}%</span>. המידות יחסיות ללוח; במסך מלא (<span dir="ltr">1920×1080</span>) זה <span dir="ltr">{Math.round(first.width * 19.2)}×{Math.round(first.height * 10.8)}</span> נקודות.</p>}
       <div data-testid="elements-canvas" dir="ltr" className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-[#0b1628]" style={{ containerType: 'size', backgroundImage: undefined }}>
         <BoardElements elements={elements} surface />
       </div>

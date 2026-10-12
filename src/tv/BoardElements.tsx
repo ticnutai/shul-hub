@@ -1,5 +1,6 @@
 import { useEffect, useRef, useId, useState } from 'react';
 import { useElementEditing } from './elementEditing';
+import {gridDelta,linkedSection} from './sectionGeometry';
 import { ElementDataProvider, BoundElement, PlainText, type ElementData } from './elementData';
 import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, resizeElements, type BoardElement, type ResizeHandle } from './elements';
 
@@ -13,7 +14,14 @@ const HANDLE_AT: Record<ResizeHandle, { left: string; top: string; cursor: strin
 const HANDLE_NAMES: Record<ResizeHandle, string> = { n: 'למעלה', s: 'למטה', e: 'ימינה', w: 'שמאלה', ne: 'פינה ימנית עליונה', nw: 'פינה שמאלית עליונה', se: 'פינה ימנית תחתונה', sw: 'פינה שמאלית תחתונה' };
 
 export function ElementArt({ element: e }: { element: BoardElement }) {
+  // Before any early return: a hook is called on every render, in the same order.
   const maskId=useId().replace(/:/g,'');
+  if((e.kind==='box'||e.kind==='frame')&&e.shape){
+    const paths={diamond:'M50 2L98 50L50 98L2 50Z',hexagon:'M25 2H75L98 50L75 98H25L2 50Z',arch:'M2 98V38C2 -10 98 -10 98 38V98Z'};
+    return <svg data-geometric-shape={e.shape} viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden><g fill={e.kind==='frame'?'none':e.fill} stroke={e.color} strokeWidth={e.kind==='frame'?1.2:.15}>
+      {e.shape==='circle'||e.shape==='ellipse'?<ellipse cx="50" cy="50" rx="48" ry="48"/>:e.shape in paths?<path d={paths[e.shape as keyof typeof paths]}/>:<rect x="2" y="2" width="96" height="96" rx={e.shape==='rounded'?10:0}/>}
+    </g></svg>;
+  }
   if(e.kind==='image' && e.image && e.sourceMask){
     const m=e.sourceMask,c=e.crop??{x:0,y:0,width:100,height:100};
     return <svg data-source-mask viewBox={`${c.x*m.width/100} ${c.y*m.height/100} ${c.width*m.width/100} ${c.height*m.height/100}`} preserveAspectRatio="none" width="100%" height="100%" role="img" aria-label={e.name}>
@@ -95,8 +103,9 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       const d = drag.current; if (!d) return;
       ev.stopPropagation();
       if (d.all !== editor.api.current?.elements || !editor.enabled && !surface) { stop(); return; }
-      const q = (v: number) => editor.snap ? Math.round(v) : v;
-      const dx = q((ev.clientX - d.x) / d.width * 100), dy = q((ev.clientY - d.y) / d.height * 100);
+      const b=boundsOf(d.all,d.ids),rawX=(ev.clientX-d.x)/d.width*100,rawY=(ev.clientY-d.y)/d.height*100;
+      const sx=d.resize?.includes('e')?b.x+b.width:b.x,sy=d.resize?.includes('s')?b.y+b.height:b.y;
+      const dx=editor.snap?gridDelta(sx,rawX,editor.gridStep):rawX,dy=editor.snap?gridDelta(sy,rawY,editor.gridStep):rawY;
       d.last = d.resize ? normalizeElements(resizeElements(d.all, d.ids, d.resize, dx, dy)) : moveElements(d.all, d.ids, dx, dy);
       editor.setDraft(d.last);
     } : undefined}
@@ -127,7 +136,8 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
         return;
       }
       ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.focus({ preventScroll: true });
-      const family = e.group ? elements.filter(x => x.group === e.group).map(x => x.id) : [e.id];
+      const linked=editor.linkSection?linkedSection(elements,e.id):[e.id];
+      const family = [e.id,...linked.filter(id=>id!==e.id)];
       const ids = ev.shiftKey ? [...new Set([...editor.selected, ...family])] : editor.selected.includes(e.id) ? editor.selected : family;
       editor.select(ids);
       if (elements.some(x => ids.includes(x.id) && x.locked)) return;
@@ -135,6 +145,9 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       ev.currentTarget.setPointerCapture(ev.pointerId);
       drag.current = { x: ev.clientX, y: ev.clientY, all: elements, ids, width: box.width, height: box.height, pointer: ev.pointerId, last: null, resize: null };
     } : undefined}>
+    {enabled&&editor.showGrid&&<svg data-testid="measurement-grid" viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none',zIndex:25}} aria-hidden>
+      {Array.from({length:Math.ceil(100/editor.gridStep)},(_,i)=>i*editor.gridStep).map(v=><g key={v}><path d={`M${v} 0V100M0 ${v}H100`} stroke="#639bb9" strokeOpacity=".5" strokeWidth=".12"/>{v%10===0&&<><text x={v+.3} y="2" fill="#2788bb" fontSize="1.5">{v}%</text><text x=".3" y={v+2} fill="#2788bb" fontSize="1.5">{v}%</text></>}</g>)}
+    </svg>}
     {shown.map(e => <div key={e.id} data-element-id={e.id} data-testid={surface ? `element-${e.id}` : undefined}
       style={{ ...elementStyle(e), pointerEvents: enabled ? 'auto' : 'none', touchAction: enabled ? 'none' : undefined, userSelect: enabled ? 'none' : undefined, cursor: enabled ? e.locked ? 'not-allowed' : 'move' : undefined }}>
       {writing === e.id ? <WriteInPlace element={e} onDone={(text) => {

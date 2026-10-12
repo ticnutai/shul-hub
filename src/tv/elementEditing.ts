@@ -13,6 +13,12 @@ export interface ElementEditingState {
   select: Dispatch<SetStateAction<string[]>>;
   snap: boolean;
   setSnap: Dispatch<SetStateAction<boolean>>;
+  gridStep: number;
+  setGridStep: Dispatch<SetStateAction<number>>;
+  showGrid: boolean;
+  setShowGrid: Dispatch<SetStateAction<boolean>>;
+  linkSection: boolean;
+  setLinkSection: Dispatch<SetStateAction<boolean>>;
   draft: BoardElement[] | null;
   setDraft: Dispatch<SetStateAction<BoardElement[] | null>>;
 }
