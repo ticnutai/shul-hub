@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ZMAN_DISPLAY_KEYS, type Zmanim } from "@community/lib/zmanim";
+import { zmanimFor } from "@community/lib/minyan-time";
 import { DEFAULT_ALERT_LOOK, DEFAULT_TV_CONFIG, normalizeTvConfig } from "./config";
 import { ALERT_PRESETS, alertLookVars, currentZmanAlert, stagedZmanAlerts, describeMinutes, formatCountdown } from "./zmanAlerts";
 
@@ -159,5 +160,43 @@ describe("the gabbai's steps, and how the reminder looks", () => {
     expect(alertLookVars({ ...DEFAULT_ALERT_LOOK, style: "custom", colors: { bg: "#111111", text: "#eeeeee", accent: "#abcdef" } })["--al-accent"]).toBe("#abcdef");
     expect(alertLookVars({ ...DEFAULT_ALERT_LOOK, size: "small" })["--al-scale"]).toBe("0.72");
     expect(alertLookVars({ ...DEFAULT_ALERT_LOOK, shape: "pill" })["--al-radius"]).toBe("999px");
+  });
+});
+
+describe("קריאת שמע ותפילה: 10 דקות בתיבה, 5 על כל הלוח (אושר של יהודי, 12.10.2026)", () => {
+  // As scripts/set-alerts.mjs writes it to the stored board.
+  const stored = normalizeTvConfig({
+    alerts: {
+      enabled: true,
+      mode: "staged",
+      // Written twice by mistake: read once.
+      events: ["sof_zman_shma_mga72", "sof_zman_shma", "sof_zman_tefila_mga72", "sof_zman_tefila", "sof_zman_shma"],
+      stages: { highlight: 10, panel: 10, board: 5 },
+    },
+  }).alerts;
+  const day = new Date("2026-10-12T06:00:00+03:00");
+  const z = zmanimFor(day, null);
+  const at = (event: keyof typeof z, minutesBefore: number) => new Date(z[event]!.getTime() - minutesBefore * 60_000);
+
+  it("each time once", () => {
+    expect(stored.events).toEqual(["sof_zman_shma_mga72", "sof_zman_shma", "sof_zman_tefila_mga72", "sof_zman_tefila"]);
+  });
+
+  for (const event of ["sof_zman_shma", "sof_zman_tefila", "sof_zman_shma_mga72", "sof_zman_tefila_mga72"] as const) {
+    it(`${event}: nothing at 11 minutes, the box at 10, the whole board at 5, gone at the time`, () => {
+      expect(currentZmanAlert(at(event, 11), z, stored, false)?.event).not.toBe(event);
+      expect(currentZmanAlert(at(event, 10), z, stored, false)).toMatchObject({ event, stage: "panel", popup: false });
+      expect(currentZmanAlert(at(event, 6), z, stored, false)).toMatchObject({ event, stage: "panel" });
+      expect(currentZmanAlert(at(event, 5), z, stored, false)).toMatchObject({ event, stage: "board", popup: true });
+      expect(currentZmanAlert(at(event, 0), z, stored, false)?.event).not.toBe(event);
+    });
+  }
+
+  it("no other time counts down, and never two at once", () => {
+    for (let t = z.alot!.getTime(); t < z.tzeit!.getTime(); t += 60_000) {
+      const on = stagedZmanAlerts(new Date(t), z, stored, false);
+      expect(on.length).toBeLessThanOrEqual(1);
+      on.forEach((a) => expect(stored.events).toContain(a.event));
+    }
   });
 });
