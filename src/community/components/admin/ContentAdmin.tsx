@@ -36,6 +36,7 @@ import {
   type AnnouncementPreset,
   type AnnouncementStyle,
 } from "@community/lib/announcement-style";
+import { hebrewError } from "@community/lib/hebrewError";
 
 function RowShell({
   title,
@@ -311,7 +312,7 @@ export function AnnouncementsAdmin() {
       .upload(path, file, { cacheControl: "3600", upsert: false });
     if (error) {
       setUploadingImage(false);
-      toast.error(error.message || "העלאת התמונה נכשלה");
+      toast.error(hebrewError(error, "העלאת התמונה נכשלה"));
       return;
     }
     if (draft.image_path && draft.image_path !== originalImagePath) {

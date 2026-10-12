@@ -990,11 +990,23 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     </>
   );
 
+  /**
+   * Where the one save bar stops while the controls scroll: under the site's
+   * header, and under the board too when the board stands above the controls.
+   * There were two bars - this one, which scrolled up under the header, and a
+   * second at the foot of the preview - and both were on the screen at once.
+   */
+  const saveBarTop = fullscreen ? 0 : layout === "top" && isLarge ? headerOffset + topHeight + 16 : headerOffset;
+
   // Every design control, shared by the admin page and the live window's panel.
   // "ביטול שינויים" asks first, inline (see below).
-  const controls = (
-    <>
-      <div className="sticky top-0 z-10 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur">
+  /** The one save bar: first in every layout, and in the live window too, pinned while all else scrolls. */
+  const saveBar = (
+      <div
+        className="sticky z-30 -mx-1 flex flex-wrap items-center gap-2 rounded-xl border bg-background/95 p-2 shadow-sm backdrop-blur"
+        style={{ top: saveBarTop }}
+        data-testid="save-bar"
+      >
         <Button type="button" variant="outline" size="sm" onClick={() => {
           setTab('tools');
           requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -1060,7 +1072,12 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           {saving ? "שומר…" : "שמור ושדר למסכים"}
         </Button>
       </div>
+  );
 
+  const controls = (
+    <>
+      {/* The live window puts the bar first in its panel, above the preview's buttons. */}
+      {!studio && saveBar}
       {occasionScope ? (
         <div
           role="status"
@@ -1210,6 +1227,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         />
         <StudioPanel title="עורך חי" status={dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}>
           <div className="space-y-3">
+            {saveBar}
             {/* One line only: the click-to-edit guidance lives in the inspector below. */}
             <p className="text-[11px] leading-tight text-muted-foreground">
               <b>Alt + לחיצה</b> = לחיצה רגילה על הלוח · <b>Esc</b> = ביטול הבחירה · הכל טיוטה עד
@@ -1466,24 +1484,6 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         />
       </div>}
 
-      {/* The same save as the bar at the top, kept under the preview.
-
-          The options run to several screens, so by the time somebody has
-          finished changing something the only button that matters has
-          scrolled out of sight, and they have to go back up to press it.
-          It shows only while there is something to save, so a board that
-          is up to date carries no extra furniture. */}
-      {dirty && (
-        <div
-          data-sticky-chrome
-          className="sticky bottom-0 z-20 -mx-1 mt-3 flex items-center gap-2 border-t bg-background/95 px-1 py-2 backdrop-blur"
-        >
-          <span className="text-xs text-muted-foreground">יש שינויים שלא נשמרו</span>
-          <Button type="button" size="sm" className="ms-auto" onClick={save} disabled={saving}>
-            <Save className="size-4" /> {saving ? "שומר…" : "שמור ושדר למסכים"}
-          </Button>
-        </div>
-      )}
     </>
   );
 

@@ -25,6 +25,7 @@ import {
   type ExportableTable,
   type ImportTableResult,
 } from "@community/lib/data-export";
+import { hebrewError } from "@community/lib/hebrewError";
 
 export function DataExportImportAdmin() {
   const qc = useQueryClient();
@@ -45,7 +46,7 @@ export function DataExportImportAdmin() {
       else await downloadAsExcel(data);
       toast.success("הייצוא הושלם בהצלחה");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "הייצוא נכשל");
+      toast.error(hebrewError(e, "הייצוא נכשל"));
     } finally {
       setExporting(null);
     }
@@ -58,7 +59,7 @@ export function DataExportImportAdmin() {
       setSelectedTables(new Set(EXPORTABLE_TABLES.filter((t) => (data[t]?.length ?? 0) > 0)));
       setResults(null);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "קריאת הקובץ נכשלה");
+      toast.error(hebrewError(e, "קריאת הקובץ נכשלה"));
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
@@ -81,7 +82,7 @@ export function DataExportImportAdmin() {
       }
       await qc.invalidateQueries();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "הייבוא נכשל");
+      toast.error(hebrewError(e, "הייבוא נכשל"));
     } finally {
       setImporting(false);
     }

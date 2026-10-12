@@ -2,7 +2,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminButtonsSettings } from "@community/components/admin/AdminButtonsSettings";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
-import { Building2, LayoutDashboard, LayoutGrid, LogOut, Rows3, ShieldAlert, Tv } from "lucide-react";
+import { Building2, LayoutGrid, LogOut, Rows3, ShieldAlert } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -249,28 +249,14 @@ export function AdminPage() {
               data-focus-hide
               className="hidden h-auto w-full flex-wrap justify-start gap-1 px-1 py-1.5 text-right [&>button]:whitespace-nowrap sm:flex"
             >
-              <TabsTrigger value="ai">✨ עוזר חכם</TabsTrigger>
-              <TabsTrigger value="api">🔑 מפתח API</TabsTrigger>
-              <TabsTrigger value="minyanim">מניינים</TabsTrigger>
-              <TabsTrigger value="announcements">מודעות</TabsTrigger>
-              <TabsTrigger value="shiurim">שיעורים</TabsTrigger>
-              <TabsTrigger value="chavrutot">חברותות</TabsTrigger>
-              <TabsTrigger value="chavruta-requests">בקשות חברותא</TabsTrigger>
-              <TabsTrigger value="messages">הודעות{unread > 0 ? ` (${unread})` : ""}</TabsTrigger>
-              <TabsTrigger value="widgets">
-                <LayoutDashboard className="size-4" /> תצוגת דף הבית
-              </TabsTrigger>
-              <TabsTrigger value="users">משתמשים</TabsTrigger>
-              <TabsTrigger value="data">ייצוא/ייבוא</TabsTrigger>
-              <TabsTrigger value="qr">קודי QR</TabsTrigger>
-              {!storeApp && (
-                <>
-                  <TabsTrigger value="apps">הורדת אפליקציות</TabsTrigger>
-                  <TabsTrigger value="tv">
-                    <Tv className="size-4" /> תצוגות
-                  </TabsTrigger>
-                </>
-              )}
+              {/* The same list and order as the phone's and the tiles' (adminSections.ts); the
+                  synagogues are the button beside the switcher, above. */}
+              {sections.filter((section) => section.value !== "communities").map((section) => (
+                <TabsTrigger key={section.value} value={section.value} className="gap-1.5">
+                  <section.icon className="size-4" aria-hidden />
+                  {section.value === "messages" && unread > 0 ? `${section.label} (${unread})` : section.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
 
             {sections.map((section) => (

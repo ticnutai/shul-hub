@@ -26,7 +26,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
     <p className="text-xs text-muted-foreground">עמודים, קשתות, מסגרות שעון ופמוטים מתוך הערכות - כל אחד לבד, בלי הקיר שמסביבו. מוסיפים לכל לוח, גם לוח רגיל, ומזיזים ומגדילים כרצונכם.</p>
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {READY_PARTS.map(item => <article key={item.id} className="overflow-hidden rounded border bg-background">
-        <div className="relative aspect-video bg-slate-900" style={{ containerType: 'size' }}><BoardElements elements={item.elements} /></div>
+        <div className="relative isolate aspect-video overflow-hidden bg-slate-900" style={{ containerType: 'size' }}><BoardElements elements={item.elements} /></div>
         <div className="flex items-center justify-between gap-2 p-2">
           <p className="min-w-0 line-clamp-2 break-words text-xs font-medium" title={item.name}>{item.name}</p>
           <Button size="sm" variant="outline" className="h-7 px-2 text-xs" aria-label={`הוספת ${item.name}`} disabled={config.elements.length + item.elements.length > MAX_ELEMENTS} onClick={() => insert('ready-part:insert', item.elements)}>הוספה</Button>
@@ -48,7 +48,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
     </div>
     <div className="grid grid-cols-2 gap-2">
       {config.elementLibrary.map(item => <article key={item.id} className="overflow-hidden rounded border bg-background">
-        <div className="relative aspect-video bg-slate-900" style={{ containerType: 'size' }}><BoardElements elements={item.elements} /></div>
+        <div className="relative isolate aspect-video overflow-hidden bg-slate-900" style={{ containerType: 'size' }}><BoardElements elements={item.elements} /></div>
         <div className="space-y-2 p-2">
           <p className="line-clamp-2 break-words text-sm font-medium">{item.name}</p>
           <div className="flex flex-wrap gap-2">

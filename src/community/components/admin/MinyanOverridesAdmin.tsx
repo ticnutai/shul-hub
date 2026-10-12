@@ -31,8 +31,9 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId, useCommunityId } from "@/community/lib/community";
-import { useMinyanim, type MinyanOverrideRow } from "@community/lib/data";
+import { useMinyanCategories, useMinyanim, type MinyanOverrideRow } from "@community/lib/data";
 import { DAY_TYPE_LABEL, jerusalemDateKey } from "@community/lib/minyan-time";
+import { hebrewError } from "@community/lib/hebrewError";
 
 /** Today and the next fortnight: far enough to plan, near enough to mean it. */
 const HORIZON_DAYS = 14;
@@ -56,6 +57,13 @@ export function MinyanOverridesAdmin() {
   const community = useCommunityId();
   const queryClient = useQueryClient();
   const { data: minyanim = [] } = useMinyanim();
+  const { data: categories = [] } = useMinyanCategories();
+  /** The day a minyan belongs to, by its tab's name - "custom" and "shabbat" were shown as they are stored. */
+  const dayName = (m: { category_id?: string | null; day_type: string }) =>
+    categories.find((c) => c.id === m.category_id)?.name ??
+    categories.find((c) => c.system_key === m.day_type)?.name ??
+    DAY_TYPE_LABEL[m.day_type as "weekday" | "friday"] ??
+    "";
   const today = jerusalemDateKey(new Date());
 
   const [minyanId, setMinyanId] = useState("");
@@ -132,7 +140,7 @@ export function MinyanOverridesAdmin() {
       setNote("");
       refresh();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(hebrewError(e, "הפעולה נכשלה")),
   });
 
   const remove = useMutation({
@@ -144,7 +152,7 @@ export function MinyanOverridesAdmin() {
       toast.success("השינוי בוטל - המניין חוזר ללוח הרגיל");
       refresh();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(hebrewError(e, "הפעולה נכשלה")),
   });
 
   // A row that changes nothing is a row somebody will later read as meaning
@@ -197,7 +205,7 @@ export function MinyanOverridesAdmin() {
                         {m.label}
                         <span className="text-muted-foreground">
                           {" · "}
-                          {DAY_TYPE_LABEL[m.day_type as "weekday" | "friday"] ?? m.day_type}
+                          {dayName(m)}
                           {m.fixed_time ? ` · ${m.fixed_time.slice(0, 5)}` : ""}
                         </span>
                       </SelectItem>

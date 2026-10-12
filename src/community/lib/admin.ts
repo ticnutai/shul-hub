@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
+import { hebrewError } from "@community/lib/hebrewError";
 
 type TableName =
   | "minyanim"
@@ -31,7 +32,7 @@ export function useSaveRow(table: TableName, queryKey: string) {
       await qc.invalidateQueries({ queryKey: [queryKey] });
       toast.success("נשמר בהצלחה");
     },
-    onError: (e: Error) => toast.error(e.message || "השמירה נכשלה"),
+    onError: (e: Error) => toast.error(hebrewError(e, "השמירה נכשלה")),
   });
 }
 
@@ -46,6 +47,6 @@ export function useDeleteRow(table: TableName, queryKey: string) {
       await qc.invalidateQueries({ queryKey: [queryKey] });
       toast.success("נמחק");
     },
-    onError: (e: Error) => toast.error(e.message || "המחיקה נכשלה"),
+    onError: (e: Error) => toast.error(hebrewError(e, "המחיקה נכשלה")),
   });
 }

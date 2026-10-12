@@ -16,6 +16,7 @@ import { eventSystemKey, specialDayByKey } from "@community/lib/specialDays";
 import { analyzeDirect, getPersonalKey, maskKey } from "@community/lib/aiIntakeDirect";
 import { useAccountApiKey } from "@community/lib/apiKeys";
 import { useSearchParams } from "react-router-dom";
+import { hebrewError } from "@community/lib/hebrewError";
 
 /**
  * "עוזר חכם": a photo, a dictated sentence or a pasted message becomes
@@ -288,7 +289,7 @@ export function AiIntakeAdmin() {
       setAnns(on(p.announcements));
       setShiurim(on(p.shiurim));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "הניתוח נכשל");
+      toast.error(hebrewError(e, "הניתוח נכשל"));
     } finally {
       setBusy(false);
     }

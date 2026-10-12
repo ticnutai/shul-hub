@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { checkApiKey, useAccountApiKey, useApiKeyActions } from "@community/lib/apiKeys";
 import { getPersonalKey, maskKey, setPersonalKey } from "@community/lib/aiIntakeDirect";
+import { hebrewError } from "@community/lib/hebrewError";
 
 /**
  * "מפתח API": the gabbai's Claude key, kept with his account - entered once,
@@ -35,7 +36,7 @@ export function ApiKeysAdmin() {
       setReplacing(false);
       toast.success(fromBrowser ? "המפתח עבר לחשבון - מעכשיו הוא זמין בכל מכשיר" : "המפתח נשמר בחשבון");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "השמירה נכשלה");
+      toast.error(hebrewError(e, "השמירה נכשלה"));
     } finally {
       setBusy(false);
     }
@@ -98,7 +99,7 @@ export function ApiKeysAdmin() {
                           await actions.remove();
                           toast.success("המפתח נמחק מהחשבון");
                         } catch (e) {
-                          toast.error(e instanceof Error ? e.message : "המחיקה נכשלה");
+                          toast.error(hebrewError(e, "המחיקה נכשלה"));
                         }
                         setConfirmDelete(false);
                         setCheck(null);

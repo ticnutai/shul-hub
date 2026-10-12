@@ -46,6 +46,7 @@ import { PrayerDisplaySettings } from "@community/components/admin/PrayerDisplay
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { isEventCategory } from "@community/lib/specialDays";
+import { hebrewError } from "@community/lib/hebrewError";
 
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
@@ -154,7 +155,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
       .select("id")
       .single();
     if (error || !data) {
-      toast.error(error?.message ?? "יצירת הטאב נכשלה");
+      toast.error(hebrewError(error, "יצירת הטאב נכשלה"));
       return;
     }
     await queryClient.invalidateQueries({ queryKey: ["minyan_categories"] });
@@ -208,7 +209,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
         .eq("category_id", categoryDraft.id)
         .in("prayer", removedIds);
       if (error) {
-        toast.error(error.message || "עדכון המניינים בתת־הקטגוריה שנמחקה נכשל");
+        toast.error(hebrewError(error, "עדכון המניינים בתת־הקטגוריה שנמחקה נכשל"));
         return;
       }
     }

@@ -46,7 +46,7 @@ export function SharedCatalogLibrary({mode,config,onEdit,onSelect,includeStandal
      {d.id.startsWith('d_premium_')&&<p className="text-xs">אזורי ציור עם רקע מחובר; הטקסט והשעון נפרדים</p>}
      <button type="button" className="underline" onClick={()=>onEdit(`shared-design:${d.id}`,c=>applyDesign(c,d))} aria-label={`החלת ערכה משותפת ${d.name}`}>בחירת הערכה</button>
     </article>):parts.slice(0,limit).map(p=><article key={p.id} className="rounded border p-2">
-     <div className="relative h-24 bg-slate-100" style={{containerType:'size'}}><BoardElements elements={p.elements.map(e=>({...e,x:5,y:5,width:90,height:90}))}/></div>
+     <div className="relative isolate aspect-video overflow-hidden bg-slate-900" style={{containerType:'size'}}><BoardElements elements={p.elements}/></div>
      <p>{p.name}</p><p className="text-xs">{p.note}</p>
      <button type="button" className="underline disabled:opacity-40" disabled={config.elements.length+p.elements.length>MAX_ELEMENTS} aria-label={`הוספת חלק משותף ${p.name}`} onClick={()=>{
       const added=importElementSet(exportElementSet(p.elements)).map(e=>({...e,hidden:false,locked:false}));

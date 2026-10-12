@@ -27,6 +27,7 @@ import { supabase } from "@community/integrations/supabase/client";
 import type { Settings } from "@community/lib/data";
 import { readLogos, type SynagogueLogo } from "@community/lib/logos";
 import { PlacePicker } from "./PlacePicker";
+import { hebrewError } from "@community/lib/hebrewError";
 
 
 /** The settings row with the columns newer than the generated types. */
@@ -132,7 +133,7 @@ export function SynagogueDetailsDialog({
         toast.success(added.length === 1 ? "הלוגו הועלה. לשמירה לחצו \"שמירה\"." : `${added.length} לוגואים הועלו. לשמירה לחצו "שמירה".`);
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
+      toast.error(hebrewError(e, "ההעלאה נכשלה"));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -190,7 +191,7 @@ export function SynagogueDetailsDialog({
       toast.success("פרטי בית הכנסת נשמרו");
       onClose();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "השמירה נכשלה");
+      toast.error(hebrewError(e, "השמירה נכשלה"));
     } finally {
       setSaving(false);
     }

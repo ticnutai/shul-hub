@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { supabase } from "@community/integrations/supabase/client";
 import { useEditMode } from "@community/lib/edit-mode";
 import { cn } from "@/lib/utils";
+import { hebrewError } from "@community/lib/hebrewError";
 
 /** Tables whose rows may be edited inline directly on the public pages. */
 export type EditableTable =
@@ -83,7 +84,7 @@ export function InlineEdit({
       .eq("id", id);
     setSaving(false);
     if (error) {
-      toast.error(error.message || "השמירה נכשלה");
+      toast.error(hebrewError(error, "השמירה נכשלה"));
       return;
     }
     qc.invalidateQueries({ queryKey: Array.isArray(queryKey) ? queryKey : [queryKey] });

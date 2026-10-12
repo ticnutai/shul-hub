@@ -208,12 +208,6 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
           ▶ התצוגה מתחלפת בין העמודים. מוצג עכשיו: <b>{pages[playing]?.name}</b>. בחירת עמוד עוצרת את ההחלפה.
         </p>
       )}
-      {occasion && (
-        <p className="text-xs" role="status" data-testid="part-page-occasion">
-          ✏️ עורכים עכשיו את המסך של <b>{occasions.find(o => o.id === occasion)?.name ?? 'המועד'}</b> - כמו עמוד: ערכה, חלקים, רקע, מסגרות וטקסט, בעיצוב שלו בלבד.
-          הוא מופיע לבד ביום שלו; מתי ואיך הוא מוצג - בלשונית "מועדים".
-        </p>
-      )}
       {current > 0 && !occasion && (
         <p className="text-xs" role="status" data-testid="part-page-editing">
           ✏️ עורכים עכשיו את <b>{page.name}</b> - הערכה, המסגרות והתוכן שלו בלבד. העמודים האחרים לא משתנים.
