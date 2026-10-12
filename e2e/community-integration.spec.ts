@@ -389,15 +389,16 @@ test("authenticated administrator can open every management section", async ({ p
     expect(adminTabsMetrics.bodyOverflow).toBeLessThanOrEqual(1);
   }
 
-  for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "הגדרות", "משתמשים", "ייצוא/ייבוא", "קודי QR"]) {
+  // "הגדרות" is gone (its parts are under "בתי כנסת ופרטים" and "תצוגת דף הבית"), and
+  // "קודי QR" and "הורדת אפליקציות" are one section, "שיתוף והורדות".
+  for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "משתמשים", "ייצוא וייבוא", "שיתוף והורדות"]) {
     const tab = page.getByRole("tab", { name: new RegExp(name) });
     await tab.click();
     await expect(tab).toHaveAttribute("data-state", "active");
   }
-  await page.getByRole("tab", { name: "הגדרות", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "ערכות נושא" })).toBeVisible();
-  await page.getByRole("tab", { name: "ערכות נושא" }).click();
-  const themeManagerButton = page.getByRole("button", { name: "פתיחת מנהל ערכות הנושא" });
+  // The site's themes are in "תצוגת דף הבית".
+  await page.getByRole("tab", { name: /תצוגת דף הבית/ }).click();
+  const themeManagerButton = page.getByRole("button", { name: "פתיחת ניהול ערכות הנושא" });
   const liveDesignButton = page.getByRole("button", { name: "פתיחת עורך עיצוב חי" });
   await expect(themeManagerButton).toBeVisible();
   await expect(liveDesignButton).toBeVisible();

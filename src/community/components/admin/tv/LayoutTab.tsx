@@ -1,6 +1,8 @@
 /**
  * The layout tab: what is on which screen, the prayers on the board, the layout and clock, long content, logos, the top of the screen and how each kind of content is drawn. On a board of parts - what is on it and on which side.
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
+ * Every value here is read from `scoped` - the board as the screen or page being worked on has it,
+ * where the edits go too - not from the main board: what is shown is what is changed.
  */
 import { Button } from "@/components/ui/button";
 import { PRAYER_DAYS, PRAYER_DAYS_LABELS, SLIDE_KIND_LABELS, SLIDE_LAYOUTS, type TvConfig } from "@/tv/config";
@@ -11,10 +13,9 @@ import { LogoLibrary } from "./LogoLibrary";
 import { MedallionRows } from "./MedallionRows";
 import { PartsContent } from "./PartsContent";
 import { ScreenComposer } from "./ScreenComposer";
-import { CLOCK_CHOICES, LAYOUT_CHOICES, SELECT_CLASS, Section, Segments, Stepper, SwitchRow } from "./editorParts";
+import { CLOCK_CHOICES, LAYOUT_CHOICES, OVERFLOW_CHOICES, SELECT_CLASS, SPEED_CHOICES, Section, Segments, Stepper, SwitchRow } from "./editorParts";
 
-export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerScreen, setComposerScreen, setPreviewScreen, previewAt }: {
-  draft: TvConfig;
+export function LayoutTab({ scoped, view, edit, openPartsList, composerScreen, setComposerScreen, setPreviewScreen, previewAt }: {
   scoped: TvConfig;
   view: TvConfig;
   edit: (key: string, update: (c: TvConfig) => TvConfig) => void;
@@ -81,11 +82,11 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
             <button
               key={value}
               type="button"
-              aria-pressed={draft.prayerDays === value}
+              aria-pressed={scoped.prayerDays === value}
               onClick={() => edit("prayerDays", (c) => ({ ...c, prayerDays: value }))}
               className={
                 "rounded-lg border p-3 text-right transition-colors " +
-                (draft.prayerDays === value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted")
+                (scoped.prayerDays === value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-muted")
               }
             >
               <span className="block text-sm font-medium">{PRAYER_DAYS_LABELS[value].label}</span>
@@ -95,14 +96,14 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
         </div>
         <p className="mb-2 text-xs text-muted-foreground">
           כל השבוע: כל יום מוצג בתורו - במסגרת התפילות של המדליון, או כמסך תפילות משלו. "הבא" ו"עבר" מסומנים רק
-          בתפילות של היום. איך התפילות של יום מסודרות - בפריסת שקופית התפילות, ברשימת המסכים.
+          בתפילות של היום. איך התפילות של יום מסודרות - בפריסת מסך התפילות, תחת "איך מוצג כל סוג תוכן".
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <div className="space-y-1 text-xs">
             <span className="block font-medium text-muted-foreground">מניינים במסך</span>
             <Stepper
               label="מניינים במסך"
-              value={draft.prayerRowsPerScreen}
+              value={scoped.prayerRowsPerScreen}
               min={4}
               max={60}
               step={1}
@@ -160,32 +161,26 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
       >
         <Segments
           label="כשהתוכן לא נכנס"
-          value={draft.overflow.mode}
+          value={scoped.overflow.mode}
           onChange={(id) => edit("overflow", (c) => ({ ...c, overflow: { ...c.overflow, mode: id } }))}
-          options={[
-            { id: "off", name: "בלי גלילה", hint: "כמו היום: חלון סביב המניין הבא, והשאר נחתך" },
-            { id: "pause", name: "גלילה עם עצירות", hint: "עומד למעלה, גולל לאט, עומד למטה וחוזר" },
-            { id: "loop", name: "וילון רציף", hint: "רץ בלי הפסקה; ההתחלה באה אחרי הסוף" },
-          ]}
+          options={OVERFLOW_CHOICES}
         />
-        {draft.overflow.mode !== "off" && (
+        {scoped.overflow.mode !== "off" && (
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span className="text-muted-foreground">מהירות הגלילה</span>
             <Segments
               label="מהירות הגלילה"
-              value={draft.overflow.speed}
+              value={scoped.overflow.speed}
               onChange={(id) => edit("overflow-speed", (c) => ({ ...c, overflow: { ...c.overflow, speed: id } }))}
-              options={[
-                { id: "slow", name: "איטית" },
-                { id: "normal", name: "רגילה" },
-              ]}
+              options={SPEED_CHOICES}
             />
           </div>
         )}
+        <p className="text-[11px] text-muted-foreground">זו ברירת המחדל לכל התיבות. חלק אחד יכול לבחור אחרת - ברשימת החלקים (לשונית עיצוב).</p>
       </Section>
 
       <Section id="layout-logos" title="5. לוגואים" hint="הלוגו של בית הכנסת, של תורמים - מספרייה משותפת לכל בתי הכנסת.">
-        <LogoLibrary chosen={draft.logos} onChange={(logos) => edit("logos", (c) => ({ ...c, logos }))} />
+        <LogoLibrary chosen={scoped.logos} onChange={(logos) => edit("logos", (c) => ({ ...c, logos }))} />
       </Section>
 
       <Section id="layout-header" title="6. ראש המסך" hint="מה מופיע ליד שם בית הכנסת, בראש כל מסך.">
@@ -217,7 +212,7 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
         hint='הפריסה של זמני התפילות, הלימוד, ההודעות והשיעורים בתוך התיבה שלהם. מה מופיע ובאיזה מסך - ב"מסכים ומה עליהם".'
       >
         <ul className="space-y-2" data-testid="content-layouts">
-          {draft.slides
+          {scoped.slides
             .filter((s) => SLIDE_LAYOUTS[s.kind].length > 1)
             .map((s) => (
               <li key={s.kind} className="flex flex-wrap items-center gap-3 rounded-lg border p-3">

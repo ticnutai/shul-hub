@@ -24,20 +24,27 @@ import { MinyanimAdmin } from "./MinyanimAdmin";
 import { MinyanOverridesAdmin } from "./MinyanOverridesAdmin";
 import { silentScreens, useTvDevices } from "./tv/tvAdminData";
 import type { AdminSection } from "@community/lib/adminSections";
+import { confirmLeave } from "@community/lib/unsavedChanges";
 
 /** The steps under a section, deepest last: what "back" takes off. */
 const STEP_PARAMS = ["cat", "prayer", "tvTab", "panel"] as const;
 
 function useSteps() {
   const [params, setParams] = useSearchParams();
-  /** A step forward (or back): its own entry in the history, so the phone's back button undoes it. */
-  const go = (set: Record<string, string | null>) => {
+  /**
+   * A step forward (or back): its own entry in the history, so the phone's
+   * back button undoes it. A form with unsaved changes on the screen being
+   * left asks first (unsavedChanges.ts).
+   */
+  const go = async (set: Record<string, string | null>) => {
+    if (!(await confirmLeave())) return;
     const next = new URLSearchParams(params);
     for (const [k, v] of Object.entries(set)) {
       if (v === null) next.delete(k);
       else next.set(k, v);
     }
     next.delete("settingsTab");
+    next.delete("focus");
     setParams(next);
   };
   return { params, go };
@@ -48,7 +55,7 @@ function Tile({ icon: Icon, label, hint, badge, onClick, testId }: {
   label: string;
   hint?: string;
   badge?: string | number | null;
-  onClick: () => void;
+  onClick: () => void | Promise<void>;
   testId?: string;
 }) {
   return (
@@ -80,7 +87,7 @@ function TileGrid({ children, label }: { children: ReactNode; label: string }) {
 }
 
 /** "ראשי › מניינים › יום חול": where one is, each step a way back to it. */
-function Path({ steps }: { steps: { label: string; onClick?: () => void }[] }) {
+function Path({ steps }: { steps: { label: string; onClick?: () => void | Promise<void> }[] }) {
   const back = [...steps].reverse().find((s, i) => i > 0 && s.onClick);
   return (
     <nav aria-label="המיקום בניהול" className="flex flex-wrap items-center gap-1.5 text-sm" data-testid="admin-path">
@@ -150,7 +157,7 @@ export function AdminTiles({ sections, badges, renderSection }: {
   );
 }
 
-type Step = { label: string; onClick?: () => void };
+type Step = { label: string; onClick?: () => void | Promise<void> };
 
 /** מניינים → the day (חול, שבת…) → the prayer (שחרית, מנחה…) → the list. */
 function MinyanimSteps({ root, sectionStep }: { root: Step; sectionStep: Step }) {
@@ -168,7 +175,8 @@ function MinyanimSteps({ root, sectionStep }: { root: Step; sectionStep: Step })
     return (
       <div className="mt-5 space-y-5">
         <Path steps={[root, sectionStep, { label: cat === "overrides" ? "שינוי ליום אחד" : "ימים, תפילות ותצוגה" }]} />
-        {cat === "overrides" ? <MinyanOverridesAdmin /> : <MinyanimAdmin />}
+        {/* "ימים, תפילות ותצוגה": the days and how the times are shown, not the list again - each day's tile opens that. */}
+        {cat === "overrides" ? <MinyanOverridesAdmin /> : <MinyanimAdmin manageOnly />}
       </div>
     );
   }

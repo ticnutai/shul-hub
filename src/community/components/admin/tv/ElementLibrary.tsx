@@ -12,6 +12,44 @@ import { NameForm } from './editorParts';
 import { PartGrid, PartTile } from './GalleryTile';
 import { SharedCatalogLibrary } from './SharedCatalogLibrary';
 
+/**
+ * Parts kept in "החלקים שלי" under a name - the parts chosen in the list, or
+ * a frame of a board of parts with its picture, heading and content: the one
+ * way, from both places. The same name is asked about, then replaced.
+ * True when kept.
+ */
+export async function saveToLibrary(
+  config: TvConfig,
+  onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void,
+  name: string,
+  elements: TvConfig['elements'],
+): Promise<boolean> {
+  const clean = name.trim().slice(0, 80);
+  if (!clean || !elements.length) return false;
+  const same = config.elementLibrary.find((x) => x.name === clean);
+  if (same) {
+    const ok = await confirmAction({
+      title: `כבר יש חלק בשם „${clean}”`,
+      description: 'להחליף אותו במה שנבחר עכשיו?',
+      confirmLabel: 'החלפה',
+      destructive: false,
+    });
+    if (!ok) return false;
+  } else if (config.elementLibrary.length >= MAX_ELEMENT_SETS) {
+    toast.error(`הגעתם למספר החלקים השמורים המרבי (${MAX_ELEMENT_SETS}).`);
+    return false;
+  }
+  const kept = structuredClone(elements);
+  onEdit(`element-library:add:${same?.id ?? clean}`, (c) => ({
+    ...c,
+    elementLibrary: same
+      ? c.elementLibrary.map((x) => (x.id === same.id ? { ...x, elements: kept } : x))
+      : [...c.elementLibrary, { id: elementId(), name: clean, elements: kept }].slice(0, MAX_ELEMENT_SETS),
+  }));
+  toast.success(`"${clean}" נשמר בחלקים שלי - גם ברשימת "הוספת תוכן". הוא יישמר עם הלוח ב"שמור ושדר".`);
+  return true;
+}
+
 export function ElementLibrary({ config, selected, onEdit, onSelect }: {
   config: TvConfig;
   selected: string[];
@@ -27,32 +65,9 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
   };
   const full = (n: number) => config.elements.length + n > MAX_ELEMENTS;
 
-  /** The chosen parts kept under a name; the same name is asked about, then replaced. */
+  /** The chosen parts kept under a name (saveToLibrary). */
   const save = async () => {
-    const clean = (name ?? '').trim().slice(0, 80);
-    if (!clean || !chosen.length) return;
-    const same = config.elementLibrary.find((x) => x.name === clean);
-    if (same) {
-      const ok = await confirmAction({
-        title: `כבר יש חלק בשם „${clean}”`,
-        description: 'להחליף אותו בחלקים שבחרתם עכשיו?',
-        confirmLabel: 'החלפה',
-        destructive: false,
-      });
-      if (!ok) return;
-    } else if (config.elementLibrary.length >= MAX_ELEMENT_SETS) {
-      toast.error(`הגעתם למספר החלקים השמורים המרבי (${MAX_ELEMENT_SETS}).`);
-      return;
-    }
-    const kept = structuredClone(chosen);
-    onEdit(`element-library:add:${same?.id ?? clean}`, (c) => ({
-      ...c,
-      elementLibrary: same
-        ? c.elementLibrary.map((x) => (x.id === same.id ? { ...x, elements: kept } : x))
-        : [...c.elementLibrary, { id: elementId(), name: clean, elements: kept }].slice(0, MAX_ELEMENT_SETS),
-    }));
-    setName(null);
-    toast.success(`"${clean}" נשמר בחלקים שלי. הוא יישמר עם הלוח ב"שמור ושדר".`);
+    if (await saveToLibrary(config, onEdit, name ?? '', chosen)) setName(null);
   };
 
   const remove = async (item: TvConfig['elementLibrary'][number]) => {
@@ -103,7 +118,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
               disabled={!chosen.length || config.elementLibrary.length >= MAX_ELEMENT_SETS}
               onClick={() => setName('')}
             >
-              שמירת הבחירה בחלקים שלי
+              שמירה בחלקים שלי
             </Button>
             <span className="text-[11px] text-muted-foreground">
               {chosen.length ? `נבחרו ${chosen.length} חלקים` : 'בחרו חלק או קבוצה ברשימה למעלה כדי לשמור אותם.'}

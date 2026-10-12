@@ -1,6 +1,7 @@
 import { Download, Smartphone, Tv } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
+import { useFocusTarget } from "./adminUi";
 
 /**
  * "אפליקציות": the installers, one tap away.
@@ -39,14 +40,17 @@ const APPS = [
       "בטלוויזיה: מתקינים מחנות האפליקציות של הטלוויזיה את האפליקציה שנקראת Downloader (\"מוריד\").",
       "באפליקציה הזו מקלידים את הכתובת הקצרה שלמטה, ומתקינים.",
       "אם מותקנת גרסה ישנה של הלוח - מסירים אותה קודם.",
-      "פותחים את הלוח ומצמדים אותו בלשונית \"תצוגות\" עם הקוד שעל המסך.",
+      "פותחים את הלוח ומצמדים אותו במדור \"תצוגות\" עם הקוד שעל המסך.",
     ],
   },
 ] as const;
 
 export function AppDownloadsAdmin() {
+  // An old link to "הורדת אפליקציות" (?tab=apps) lands here, under the codes.
+  const focusRef = useFocusTarget<HTMLDivElement>("apps");
   return (
-    <div className="space-y-4">
+    <div ref={focusRef} className="scroll-mt-24 space-y-4" data-testid="app-downloads">
+      <h3 className="text-lg font-semibold">התקנת האפליקציות</h3>
       <p className="text-sm text-muted-foreground">
         קבצי ההתקנה העדכניים. ההורדה היא מאתר שמירת הקבצים של הפרויקט, כדי שהטלפון יוריד את הקובץ ולא יפתח את האתר.
       </p>

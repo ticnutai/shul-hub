@@ -40,10 +40,10 @@ describe("the reminders' settings", () => {
 
   it("shows the pulsing card's minutes only in that mode", () => {
     render(<Harness start={staged()} />);
-    expect(screen.queryByLabelText("דקות לתזכורת נוספת")).toBeNull();
+    expect(screen.queryByRole("spinbutton", { name: "דקות לתזכורת נוספת" })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /כרטיס שקופץ לרגע/ }));
     expect(latest.alerts.mode).toBe("pulse");
-    expect(screen.getByLabelText("דקות לתזכורת נוספת")).toBeTruthy();
+    expect(screen.getByRole("spinbutton", { name: "דקות לתזכורת נוספת" })).toBeTruthy();
     expect(screen.queryByTestId("alert-stages")).toBeNull();
   });
 

@@ -5,6 +5,8 @@ import { ChevronLeft, Clock, Copy, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { SELECT_CLASS } from "./editorParts";
+import { SavedNowTag } from "./Notice";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { useMinyanCategories, useMinyanim, type MinyanCategory } from "@community/lib/data";
@@ -154,10 +156,12 @@ export function TimetableSection({ def }: { def: SpecialDayDef }) {
   const t = useTimetable(def);
   return (
     <section className="space-y-2" data-testid={`timetable-${def.key}`}>
-      <h3 className="font-medium">זמני תפילה</h3>
+      <h3 className="flex items-center gap-2 font-medium">
+        זמני תפילה <SavedNowTag title='זמני התפילה של המועד נשמרים מיד, בלי "שמור ושדר" - הם של האתר כולו' />
+      </h3>
       <p className="text-xs text-muted-foreground">
         זמני תפילות משלו: ביום עצמו הם מחליפים באתר ובלוח את זמני ימות החול או השבת. התאריכים מחושבים מהלוח העברי, כך שמה
-        שמגדירים השנה חוזר בשנה הבאה. נשמר מיד, בלי "שמור ושדר".
+        שמגדירים השנה חוזר בשנה הבאה.
         {def.national && " ימים לאומיים לא מוצגים באתר ובלוח; אפשר להכין זמנים מראש."}
       </p>
       {t.cat ? (
@@ -182,7 +186,7 @@ export function TimetableSection({ def }: { def: SpecialDayDef }) {
                 value=""
                 disabled={t.busy}
                 onChange={(e) => e.target.value && void t.copyFrom(t.cat!, e.target.value)}
-                className="h-8 rounded-md border bg-background px-1 text-xs"
+                className={SELECT_CLASS}
               >
                 <option value="">העתקה מ…</option>
                 {t.ordinary.map((c) => (

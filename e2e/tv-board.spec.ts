@@ -91,7 +91,7 @@ test.describe("administrator", () => {
     await expect(page.getByRole("tab", { name: "מניינים" })).toBeVisible({ timeout: 20_000 });
     // "הגדרות" is gone: the synagogue's details are in its window under "בתי
     // כנסת", the site header and themes in "תצוגת דף הבית".
-    for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "הודעות", "תצוגת דף הבית", "משתמשים", "ייצוא/ייבוא", "קודי QR", "תצוגות", "מניינים"]) {
+    for (const name of ["מודעות", "שיעורים", "חברותות", "בקשות חברותא", "הודעות", "תצוגת דף הבית", "משתמשים", "ייצוא וייבוא", "שיתוף והורדות", "תצוגות", "מניינים"]) {
       const tab = page.getByRole("tab", { name: new RegExp(name) }).first();
       await tab.click();
       await expect(tab).toHaveAttribute("data-state", "active");
@@ -200,14 +200,14 @@ test.describe("administrator", () => {
     }
 
     // Hide and bring back from the hidden list.
-    await page.getByRole("button", { name: "הסתרה מהלוח" }).click();
+    await page.getByRole("button", { name: "הסתרה", exact: true }).click();
     await expect(page.locator(BOARD_NAME).filter({ hasText: "בדיקת E2E" })).toHaveCount(0);
-    await page.locator("button.border-dashed", { hasText: "שם בית הכנסת" }).click();
+    await page.getByTestId("board-hidden").getByRole("button", { name: /^הצגת שם בית הכנסת/ }).click();
     await expect(page.locator(BOARD_NAME).filter({ hasText: "בדיקת E2E" })).toHaveCount(5);
 
     // A single zman.
     await page.locator('[data-edit="zman.alot"]').first().click();
-    await page.getByRole("button", { name: "הסתרה מהלוח" }).click();
+    await page.getByRole("button", { name: "הסתרה", exact: true }).click();
     await expect(page.locator('[data-edit="zman.alot"]')).toHaveCount(0);
 
     // Undo everything: back to exactly what is saved.

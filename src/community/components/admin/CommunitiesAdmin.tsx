@@ -14,33 +14,23 @@
  * Opening one is deliberate on purpose. While a single synagogue is live the
  * public site is that synagogue; the moment a second one is, every visitor is
  * asked which they came for. That is a change to what everybody sees, made by
- * flicking one switch, so the switch says so before it is flicked.
+ * flicking one switch, so the switch says so before it is flicked - in the
+ * same window as every other "בטוח?" on the site (confirmAction).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Building2, Eye, EyeOff, Loader2, MonitorSmartphone, Pencil, Plus, ScrollText } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
-import {
-  setCommunity,
-  useCommunityId,
-  writeCommunityToUrl,
-} from "@/community/lib/community";
+import { switchCommunity, useCommunityId } from "@/community/lib/community";
+import { useIsPlatformAdmin } from "@/community/lib/useMyCommunities";
 import { SynagogueDetailsDialog } from "./SynagogueDetails";
+import { AdminError } from "./adminUi";
 import { hebrewError } from "@community/lib/hebrewError";
 import { confirmAction } from "@/components/ConfirmDialog";
 
@@ -58,11 +48,11 @@ export function CommunitiesAdmin() {
   const queryClient = useQueryClient();
   const currentId = useCommunityId();
   const [newName, setNewName] = useState("");
-  const [about, setAbout] = useState<Overview | null>(null);
   /** The synagogue whose details window is open. */
   const [details, setDetails] = useState<Overview | null>(null);
+  const [params, setParams] = useSearchParams();
 
-  const { data: all = [], isLoading } = useQuery({
+  const { data: all = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["communities-overview"],
     queryFn: async (): Promise<Overview[]> => {
       const { data, error } = await supabase.rpc("communities_overview");
@@ -71,13 +61,19 @@ export function CommunitiesAdmin() {
     },
   });
 
-  const { data: isPlatformAdmin = false } = useQuery({
-    queryKey: ["is-platform-admin"],
-    queryFn: async () => {
-      const { data } = await supabase.rpc("is_platform_admin");
-      return Boolean(data);
-    },
-  });
+  const isPlatformAdmin = useIsPlatformAdmin();
+
+  // Opened from "העלאת לוגואים" in the site's header settings (?details=current):
+  // the details window of the synagogue being edited, where its logos are.
+  const wantDetails = params.get("details");
+  useEffect(() => {
+    if (wantDetails !== "current" || all.length === 0) return;
+    const here = all.find((c) => c.id === currentId);
+    if (here) setDetails(here);
+    const next = new URLSearchParams(params);
+    next.delete("details");
+    setParams(next, { replace: true });
+  }, [wantDetails, all, currentId, params, setParams]);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["communities-overview"] });
 
@@ -108,26 +104,45 @@ export function CommunitiesAdmin() {
 
   const live = all.filter((c) => c.active).length;
 
-  const manage = (c: Overview) => {
-    if (c.id === currentId) return;
-    setCommunity({ id: c.id, slug: c.slug, name: c.name, active: c.active });
-    writeCommunityToUrl(c.slug);
-    queryClient.clear();
-    toast.success(`עכשיו עורכים את ${c.name}`);
-  };
+  const manage = (c: Overview) =>
+    switchCommunity({ id: c.id, slug: c.slug, name: c.name, active: c.active }, queryClient, toast.success);
+
+  /** Opening to the public: what it changes for every visitor, said before it is done. */
+  async function openToPublic(c: Overview) {
+    const ok = await confirmAction({
+      title: `לפתוח את ${c.name} לציבור?`,
+      description: (
+        <span className="space-y-2">
+          <span className="block">
+            {live === 1
+              ? "מהרגע שיהיו שני בתי כנסת פתוחים, האתר הציבורי יפסיק להיות בית כנסת אחד ויתחיל לשאול כל מבקר לאן הוא הגיע."
+              : "בית הכנסת יתווסף לרשימה שכל מבקר רואה."}
+          </span>
+          {c.minyanim === 0 && (
+            <span className="block font-medium text-amber-700 dark:text-amber-400">אין בו מניינים, אז הלוח שלו יהיה ריק.</span>
+          )}
+        </span>
+      ),
+      confirmLabel: "לפתוח לציבור",
+      destructive: false,
+    });
+    if (ok) setActive.mutate({ id: c.id, active: true });
+  }
 
   return (
     <div className="space-y-5">
-      <header>
-        <h2 className="text-lg font-semibold">בתי הכנסת</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {live === 1
-            ? "בית כנסת אחד פתוח לציבור, ולכן האתר הוא בית הכנסת הזה. ברגע שייפתח שני, כל מבקר יישאל לאיזה בית כנסת הוא הגיע."
-            : `${live} בתי כנסת פתוחים לציבור, ולכן האתר מציג בחירה לכל מבקר.`}
-        </p>
-      </header>
+      {/* No heading of its own: the section's name is on its tab or tile, as for every section. */}
+      <p className="text-sm text-muted-foreground">
+        {live === 1
+          ? "בית כנסת אחד פתוח לציבור, ולכן האתר הוא בית הכנסת הזה. ברגע שייפתח שני, כל מבקר יישאל לאיזה בית כנסת הוא הגיע."
+          : `${live} בתי כנסת פתוחים לציבור, ולכן האתר מציג בחירה לכל מבקר.`}
+      </p>
 
-      {isLoading ? (
+      {isError ? (
+        <div className="card-elev">
+          <AdminError what="רשימת בתי הכנסת" onRetry={() => void refetch()} />
+        </div>
+      ) : isLoading ? (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="size-4 animate-spin" /> טוען…
         </p>
@@ -200,12 +215,13 @@ export function CommunitiesAdmin() {
                       size="sm"
                       variant="ghost"
                       onClick={async () => {
-                        if (!c.active) return setAbout(c);
+                        if (!c.active) return void openToPublic(c);
                         // Closing is asked as opening is: visitors stop seeing it at once.
                         const ok = await confirmAction({
                           title: `לסגור את ${c.name} לציבור?`,
                           description: "מבקרים לא יראו אותו באתר ובאפליקציה עד שיפתח שוב. שום דבר לא נמחק, ואפשר לפתוח אותו שוב בכל רגע.",
                           confirmLabel: "סגירה לציבור",
+                          destructive: false,
                         });
                         if (ok) setActive.mutate({ id: c.id, active: false });
                       }}
@@ -255,36 +271,6 @@ export function CommunitiesAdmin() {
         onClose={() => setDetails(null)}
       />
 
-      <AlertDialog open={Boolean(about)} onOpenChange={(o) => !o && setAbout(null)}>
-        <AlertDialogContent dir="rtl" className="text-right">
-          <AlertDialogHeader>
-            <AlertDialogTitle>לפתוח את {about?.name} לציבור?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <span className="block">
-                {live === 1
-                  ? "מהרגע שיהיו שני בתי כנסת פתוחים, האתר הציבורי יפסיק להיות בית כנסת אחד ויתחיל לשאול כל מבקר לאן הוא הגיע."
-                  : "בית הכנסת יתווסף לרשימה שכל מבקר רואה."}
-              </span>
-              {about?.minyanim === 0 && (
-                <span className="block font-medium text-amber-700 dark:text-amber-400">
-                  אין בו מניינים, אז הלוח שלו יהיה ריק.
-                </span>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (about) setActive.mutate({ id: about.id, active: true });
-                setAbout(null);
-              }}
-            >
-              לפתוח לציבור
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

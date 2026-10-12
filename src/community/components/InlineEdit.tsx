@@ -6,6 +6,7 @@ import { supabase } from "@community/integrations/supabase/client";
 import { useEditMode } from "@community/lib/edit-mode";
 import { cn } from "@/lib/utils";
 import { hebrewError } from "@community/lib/hebrewError";
+import { communityId } from "@/community/lib/community";
 
 /** Tables whose rows may be edited inline directly on the public pages. */
 export type EditableTable =
@@ -78,9 +79,11 @@ export function InlineEdit({
     const next: string | number | null = as === "number" ? (raw === "" ? null : Number(raw)) : raw;
     if (String(next ?? "") === String(value ?? "")) return; // unchanged
     setSaving(true);
+    // Only a row of the synagogue being edited: an id from another one changes nothing.
     const { error } = await supabase
       .from(table)
       .update({ [field]: next } as never)
+      .eq("community_id", communityId())
       .eq("id", id);
     setSaving(false);
     if (error) {

@@ -14,8 +14,8 @@ type UserRole = z.infer<typeof roleSchema>;
 
 function readableError(message: string) {
   if (message.includes("already exists")) return "כבר קיים משתמש עם כתובת האימייל הזאת";
-  if (message.includes("last administrator")) return "לא ניתן להסיר את המנהל האחרון";
-  if (message.includes("Admin access required")) return "הפעולה מותרת למנהל בלבד";
+  if (message.includes("last administrator")) return "לא ניתן להסיר את הגבאי האחרון";
+  if (message.includes("Admin access required")) return "הפעולה מותרת לגבאי בלבד";
   return message;
 }
 

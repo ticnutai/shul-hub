@@ -1,6 +1,5 @@
 import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import type { Settings } from "@community/lib/data";
-import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, ZMAN_LABELS, type Zmanim } from "@community/lib/zmanim";
 import { useBoardEdit } from "./boardEdit";
 import { frameZmanim, useBoardDay } from "./boardDay";

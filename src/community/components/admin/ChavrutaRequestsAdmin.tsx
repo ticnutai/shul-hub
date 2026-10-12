@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAdminChavrutaRequests } from "@community/lib/data";
 import { communityId } from "@/community/lib/community";
-import { confirmAction } from "@/components/ConfirmDialog";
+import { confirmDelete, useDeleteRow } from "@community/lib/admin";
+import { hebrewError } from "@community/lib/hebrewError";
+import { AdminError } from "./adminUi";
 
 const labels = {
   level: { beginner: "מתחיל", intermediate: "בינוני", advanced: "מתקדם" },
@@ -16,7 +18,7 @@ const labels = {
 } as const;
 
 export function ChavrutaRequestsAdmin() {
-  const { data = [], isLoading } = useAdminChavrutaRequests();
+  const { data = [], isLoading, isError, refetch } = useAdminChavrutaRequests();
   const qc = useQueryClient();
 
   const updateStatus = useMutation({
@@ -31,31 +33,21 @@ export function ChavrutaRequestsAdmin() {
       toast.success(status === "approved" ? "הבקשה אושרה" : "הבקשה נדחתה");
       invalidate(qc);
     },
-    onError: () => toast.error("עדכון הבקשה נכשל"),
+    onError: (e: Error) => toast.error(hebrewError(e, "עדכון הבקשה נכשל")),
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("chavruta_requests").delete().eq("community_id", communityId()).eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("הבקשה נמחקה");
-      invalidate(qc);
-    },
-    onError: () => toast.error("מחיקת הבקשה נכשלה"),
-  });
+  // Shown to the gabbai here and, once approved, on the site: both lists refreshed.
+  const remove = useDeleteRow("chavruta_requests", ["admin_chavruta_requests", "approved_chavruta_requests"]);
 
+  if (isError) return <div className="card-elev"><AdminError what="בקשות החברותא" onRetry={() => void refetch()} /></div>;
   if (isLoading) return <p className="text-muted-foreground">טוען בקשות…</p>;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold">בקשות חברותא</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {data.filter((item) => item.status === "pending").length} בקשות ממתינות לטיפול
-        </p>
-      </div>
+      {/* No heading of its own: the section's name is on its tab or tile, as for every section. */}
+      <p className="text-sm text-muted-foreground">
+        {data.filter((item) => item.status === "pending").length} בקשות ממתינות לטיפול
+      </p>
       {data.length === 0 && (
         <div className="card-elev p-6 text-center text-muted-foreground">אין בקשות חברותא.</div>
       )}
@@ -102,12 +94,7 @@ export function ChavrutaRequestsAdmin() {
                 variant="ghost"
                 aria-label={`מחיקת הבקשה של ${request.name}`}
                 onClick={async () => {
-                  const ok = await confirmAction({
-                    title: `למחוק את בקשת החברותא של „${request.name}”?`,
-                    description: "אי אפשר לבטל את זה.",
-                    confirmLabel: "מחיקה",
-                  });
-                  if (ok) remove.mutate(request.id);
+                  if (await confirmDelete("בקשת החברותא של", request.name)) remove.mutate(request.id);
                 }}
               >
                 <Trash2 className="size-4 text-destructive" />

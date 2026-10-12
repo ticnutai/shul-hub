@@ -1,12 +1,15 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowUp, ImagePlus, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Trash2, Upload } from "lucide-react";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { supabase } from "@community/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { BoardLogo } from "@/tv/config";
+import { MoveButtons } from "./editorParts";
+import { SavedNowTag } from "./Notice";
+import { useFileTask } from "./Upload";
 
 /**
  * The shared logo library (the logo_library table) and the logos this board
@@ -16,6 +19,10 @@ import type { BoardLogo } from "@/tv/config";
  * the synagogue's own, a sponsor's - can be put on any board. The board keeps
  * a copy of what it chose (config.logos), so a TV that is offline still draws
  * it; whether a screen shows them is its "לוגואים" switch in the composer.
+ *
+ * The library itself is written at once (an upload, a delete) - marked "נשמר
+ * מיד" as the occasions' prayer times are; which logos this board shows waits
+ * for "שמור ושדר" like everything else.
  */
 interface LibraryLogo {
   id: string;
@@ -58,7 +65,7 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
     },
   });
   const [name, setName] = useState("");
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useFileTask("ההעלאה נכשלה");
   const lightFile = useRef<HTMLInputElement>(null);
   const darkFile = useRef<HTMLInputElement>(null);
   // The names of the files chosen, shown on their buttons.
@@ -68,11 +75,13 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
   const isOn = (id: string) => chosen.some((l) => l.id === id);
   const toggle = (l: LibraryLogo) =>
     onChange(isOn(l.id) ? chosen.filter((c) => c.id !== l.id) : [...chosen, asBoardLogo(l)]);
-  const raise = (id: string) => {
+  /** Earlier or later among the logos the board shows. */
+  const move = (id: string, by: -1 | 1) => {
     const i = chosen.findIndex((c) => c.id === id);
-    if (i <= 0) return;
+    const j = i + by;
+    if (i < 0 || j < 0 || j >= chosen.length) return;
     const next = [...chosen];
-    [next[i - 1], next[i]] = [next[i], next[i - 1]];
+    [next[i], next[j]] = [next[j], next[i]];
     onChange(next);
   };
 
@@ -80,9 +89,9 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
     const light = lightFile.current?.files?.[0];
     if (!name.trim()) return toast.error("תנו שם ללוגו");
     if (!light) return toast.error("בחרו קובץ ללוגו");
-    setBusy(true);
     const uploaded: string[] = [];
-    try {
+    await run(async () => {
+     try {
       const main = await upload(light);
       uploaded.push(main.path);
       const darkPick = darkFile.current?.files?.[0];
@@ -102,12 +111,12 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
       setLightName("");
       setDarkName("");
       toast.success("הלוגו נוסף לספרייה ולוח הזה. לשמירה - \"שמור ושדר\".");
-    } catch (e) {
+     } catch (e) {
+      // Nothing half-made is left in the storage; the failure is said by useFileTask.
       if (uploaded.length) void supabase.storage.from("community-media").remove(uploaded);
-      toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
-    } finally {
-      setBusy(false);
-    }
+      throw e;
+     }
+    });
   }
 
   async function remove(l: LibraryLogo) {
@@ -131,7 +140,8 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
   const logos = library.data ?? [];
   return (
     <div className="space-y-3" data-testid="logo-library">
-      <p className="text-[11px] text-muted-foreground">
+      <p className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <SavedNowTag title="העלאה ומחיקה בספרייה נשמרות מיד, בלי &quot;שמור ושדר&quot;. מה שהלוח הזה מציג - נשמר ב&quot;שמור ושדר&quot;." />
         ספרייה אחת לכל בתי הכנסת. סמנו אילו לוגואים יופיעו בלוח הזה; בכל מסך מדליקים או מכבים אותם במתג "לוגואים" (בפריסה).
       </p>
       {library.isLoading && <p className="text-sm text-muted-foreground">טוען…</p>}
@@ -161,10 +171,8 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
                 )}
               </div>
               <span className="flex-1 text-sm">{l.name}</span>
-              {on && place > 0 && (
-                <Button type="button" size="icon" variant="ghost" aria-label={`${l.name} קודם`} onClick={() => raise(l.id)}>
-                  <ArrowUp className="size-4" />
-                </Button>
+              {on && chosen.length > 1 && (
+                <MoveButtons name={l.name} first={place === 0} last={place === chosen.length - 1} onMove={(by) => move(l.id, by)} />
               )}
               <Button type="button" size="icon" variant="ghost" aria-label={`מחיקת ${l.name} מהספרייה`} onClick={() => void remove(l)}>
                 <Trash2 className="size-4" />

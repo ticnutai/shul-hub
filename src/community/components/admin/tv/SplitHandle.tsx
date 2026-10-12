@@ -7,7 +7,8 @@
  * along the container - a fraction across it, or pixels down it - and the
  * caller keeps it within its limits and remembers it.
  */
-import { useRef, type KeyboardEvent, type PointerEvent } from "react";
+import type { KeyboardEvent } from "react";
+import { usePointerDrag } from "@/tv/usePointerDrag";
 
 export function SplitHandle({
   orientation,
@@ -25,25 +26,12 @@ export function SplitHandle({
   onStep: (direction: -1 | 1) => void;
   onReset: () => void;
 }) {
-  const dragging = useRef(false);
   const vertical = orientation === "vertical";
-
-  const down = (e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    dragging.current = true;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    document.body.style.cursor = vertical ? "col-resize" : "row-resize";
-    document.body.style.userSelect = "none";
-  };
-  const move = (e: PointerEvent<HTMLDivElement>) => {
-    if (dragging.current) onDrag(vertical ? e.clientX : e.clientY);
-  };
-  const up = () => {
-    dragging.current = false;
-    document.body.style.cursor = "";
-    document.body.style.userSelect = "";
-  };
+  const drag = usePointerDrag<null, true>({
+    start: () => true,
+    move: (_, at) => onDrag(vertical ? at.x : at.y),
+    cursor: vertical ? "col-resize" : "row-resize",
+  });
   const key = (e: KeyboardEvent<HTMLDivElement>) => {
     const back = vertical ? "ArrowLeft" : "ArrowUp";
     const forward = vertical ? "ArrowRight" : "ArrowDown";
@@ -63,10 +51,7 @@ export function SplitHandle({
       aria-label={label}
       title={`${label} - גוררים כדי לשנות, לחיצה כפולה מחזירה לברירת המחדל`}
       tabIndex={0}
-      onPointerDown={down}
-      onPointerMove={move}
-      onPointerUp={up}
-      onPointerCancel={up}
+      {...drag(null)}
       onDoubleClick={onReset}
       onKeyDown={key}
       data-testid={`split-handle-${orientation}`}

@@ -12,7 +12,7 @@ import { ElementsEditor } from "./ElementsEditor";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
 import { SubPart } from "./Parts";
 import type { DraftAction } from "./draftState";
-import { CopyBoxLook, DesignTopics, Section } from "./editorParts";
+import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section } from "./editorParts";
 
 export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere }: {
   draft: TvConfig;
@@ -46,7 +46,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
             aria-label="התיבות, המסגרות והטקסט של"
             value={partTarget}
             onChange={(e) => setPartTarget(e.target.value)}
-            className="h-11 w-full min-w-0 flex-1 rounded-md border bg-background px-2 text-base sm:h-9 sm:min-w-48 sm:text-sm"
+            className={`${SELECT_CLASS} h-11 w-full min-w-0 flex-1 text-base sm:h-8 sm:min-w-48 sm:text-sm`}
           >
             <option value="frames">הכול - כל התיבות וכל הלוח</option>
             <optgroup label="תיבה אחת">
@@ -86,7 +86,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
       >
         <div className="space-y-5">
-          <SubPart title="התחלה מחדש" hint="לוח ריק שבונים צעד אחרי צעד, הלוח הרגיל של המערכת, או מחיקת הכול.">
+          <SubPart title="התחלה מחדש" hint='לוח ריק שבונים צעד אחרי צעד, לוח רגיל של המערכת, או מחיקת הכול. (בערכה מחלקים יש גם "איפוס הערכה הנוכחית" - בלשונית פריסה.)'>
             <BlankBoardStarter
               unavailable={
                 wholeBoardOnly
@@ -110,7 +110,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
       <Section
         id="design-background"
         title="2. רקע"
-        hint="מה שמאחורי הלוח: צבע, מעבר צבעים או תמונה (מוכנה או שלכם, עם צבע או מעבר מעליה), סליידרים לכל אחד, ושמירה בגלריה."
+        hint="מה שמאחורי הלוח: צבע, מעבר צבעים או תמונה (מוכנה או שלכם, עם צבע או מעבר מעליה), מחוונים לכל אחד, ושמירה בגלריה."
       >
         <BackgroundLayer {...layerProps} />
       </Section>

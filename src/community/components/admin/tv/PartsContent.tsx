@@ -15,7 +15,7 @@
  */
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Move, RotateCcw, Save, X } from 'lucide-react';
+import { Eye, EyeOff, Move, RotateCcw, Save } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ConfirmDialog';
@@ -30,10 +30,14 @@ import {
 } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
 import { AddContent } from './AddContent';
-import { MAX_ELEMENT_SETS, elementId, swapContent } from '@/tv/elements';
-import { DESIGN_PARTS, MAX_DESIGNS, captureDesign } from '@/tv/designs';
+import { swapContent } from '@/tv/elements';
+import { DESIGN_PARTS } from '@/tv/designs';
 import { Folded, SubPart } from './Parts';
-import { FIT_CHOICES, NameForm, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
+import { itemChipClass } from './Notice';
+import { ChipRemove, HiddenShelf } from './ReadyShelf';
+import { FIT_CHOICES, HideToggle, NameForm, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, SPEED_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
+import { saveToLibrary } from './ElementLibrary';
+import { saveKitAs } from './DesignLibrary';
 
 const SELECT = `${SELECT_CLASS} text-foreground`;
 
@@ -98,20 +102,8 @@ export function PartsContent({ config, onEdit, onManual }: {
   /** A frame kept as "my box": its picture, heading and content, to be added again from the list. */
   const [boxName, setBoxName] = useState<Record<string, string | undefined>>({});
   const saveBox = async (f: Frame) => {
-    const name = (boxName[f.e.id] ?? f.title).trim().slice(0, 80);
-    if (!name) return;
-    const kept = elements.filter(e => f.ids.includes(e.id)).map(e => structuredClone(e));
-    const existing = config.elementLibrary.find(l => l.name === name);
-    if (existing && !(await confirmAction({ title: `כבר יש חלק בשם „${name}”`, description: 'להחליף אותו בתיבה הזו?', confirmLabel: 'החלפה', destructive: false }))) return;
-    if (!existing && config.elementLibrary.length >= MAX_ELEMENT_SETS) { toast.error(`הגעתם למספר התיבות המרבי (${MAX_ELEMENT_SETS}).`); return; }
-    onEdit(`element-library:save:${name}`, c => ({
-      ...c,
-      elementLibrary: existing
-        ? c.elementLibrary.map(l => (l.id === existing.id ? { ...l, elements: kept } : l))
-        : [...c.elementLibrary, { id: `box_${elementId().slice(3, 15)}`, name, elements: kept }],
-    }));
-    setBoxName(b => ({ ...b, [f.e.id]: undefined }));
-    toast.success(`"${name}" נשמרה ב"החלקים והתיבות שלי" - היא ברשימת "הוספת תוכן".`);
+    const kept = elements.filter(e => f.ids.includes(e.id));
+    if (await saveToLibrary(config, onEdit, boxName[f.e.id] ?? f.title, kept)) setBoxName(b => ({ ...b, [f.e.id]: undefined }));
   };
 
   const change = (f: Frame, binding: ElementBinding) => {
@@ -138,17 +130,7 @@ export function PartsContent({ config, onEdit, onManual }: {
    */
   const [kitName, setKitName] = useState<string | null>(null);
   const saveKit = async () => {
-    const name = (kitName ?? '').trim().slice(0, 40);
-    if (!name) { toast.error('צריך לתת שם לערכה'); return; }
-    const existing = config.designs.find(d => d.name === name);
-    if (existing && !(await confirmAction({ title: `כבר יש ערכה בשם „${name}”`, description: 'להחליף אותה במה שעל הלוח עכשיו?', confirmLabel: 'החלפה', destructive: false }))) return;
-    if (!existing && config.designs.length >= MAX_DESIGNS) { toast.error(`הגעתם למספר הערכות המרבי (${MAX_DESIGNS}). מחקו ערכה ב"הערכות שלי".`); return; }
-    onEdit(`parts-content:save-kit:${name}`, c => {
-      const kit = captureDesign(c, name, [...DESIGN_PARTS], existing?.id);
-      return { ...c, designs: existing ? c.designs.map(d => (d.id === existing.id ? kit : d)) : [...c.designs, kit] };
-    });
-    setKitName(null);
-    toast.success(`הערכה „${name}” נשמרה. היא ב"הערכות שלי" בלשונית "עיצוב", ותגיע למסכים ב"שמור ושדר".`);
+    if (await saveKitAs(config, onEdit, kitName ?? '', [...DESIGN_PARTS])) setKitName(null);
   };
 
   return (
@@ -159,9 +141,10 @@ export function PartsContent({ config, onEdit, onManual }: {
             title="שומר את הלוח כמו שהוא עכשיו כערכה משלכם - תופיע ב'הערכות שלי'">
             <Save className="size-4" aria-hidden /> שמירה כערכה
           </Button>
+          {/* Not the start over of the design tab ("התחלה מחדש" - a blank board, the system's own): this kit's parts only. */}
           {kit && (
-            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => void reset()} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של „${kit.name}”`} data-testid="parts-reset">
-              <RotateCcw className="size-4" aria-hidden /> חזרה לברירת המחדל של הערכה
+            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => void reset()} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של „${kit.name}”. ללוח ריק או ללוח הרגיל של המערכת - "התחלה מחדש" בלשונית עיצוב.`} data-testid="parts-reset">
+              <RotateCcw className="size-4" aria-hidden /> איפוס הערכה הנוכחית
             </Button>
           )}
         </div>
@@ -209,7 +192,7 @@ export function PartsContent({ config, onEdit, onManual }: {
               label="מהירות הגלילה"
               value={config.overflow.speed}
               onChange={(id) => onEdit('overflow-speed', c => ({ ...c, overflow: { ...c.overflow, speed: id } }))}
-              options={[{ id: 'slow', name: 'איטית' }, { id: 'normal', name: 'רגילה' }]}
+              options={SPEED_CHOICES}
             />
           </div>
         )}
@@ -219,23 +202,19 @@ export function PartsContent({ config, onEdit, onManual }: {
         <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); editing?.select(ids); }}
           library={config.elementLibrary}
           defaults={config.elementDefaults}
-          onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))}
-          onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />
+          onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))} />
       </SubPart>
 
-      {hidden.length > 0 && (
-        <SubPart title="מסגרות מוסתרות" testId="parts-hidden" hint="לא נמחקו: הצגה מחזירה אותן למקום שבו היו.">
-          <div className="space-y-1">
-            {hidden.map(f => (
-              <div key={f.e.id} className="flex items-center gap-2 rounded-md border px-2 py-1 text-sm">
-                {pickBox(f)}
-                <span className="min-w-0 flex-1 truncate text-muted-foreground">{f.title}</span>
-                <Button size="sm" variant="outline" className="h-7" aria-label={`הצגת ${f.title}`} onClick={() => setHidden(f, false)}>הצגה</Button>
-              </div>
-            ))}
-          </div>
-        </SubPart>
-      )}
+      {/* Hidden, not deleted: the one shelf every list of the editor keeps its hidden ones on. */}
+      <HiddenShelf
+        testId="parts-hidden"
+        title="מסגרות מוסתרות"
+        restoreLabel="הצגה"
+        restoreAria={(name) => `הצגת ${name}`}
+        defaultOpen
+        items={hidden.map(f => ({ key: f.e.id, name: f.title }))}
+        onRestore={(id) => { const f = hidden.find(x => x.e.id === id); if (f) setHidden(f, false); }}
+      />
     </div>
   );
 
@@ -266,11 +245,7 @@ export function PartsContent({ config, onEdit, onManual }: {
               className={SIDE_BUTTON}>
               <Move className="size-4" aria-hidden />
             </button>
-            <button type="button" aria-label={`הסתרת ${f.title}`} title="הסתרה - לא נמחק, אפשר להחזיר"
-              onClick={() => setHidden(f, true)}
-              className={`${SIDE_BUTTON} hover:!border-destructive hover:!text-destructive`}>
-              <EyeOff className="size-4" aria-hidden />
-            </button>
+            <HideToggle hidden={false} name={f.title} onToggle={() => setHidden(f, true)} />
           </div>
         </div>
         {/* What it shows, and what when that is long. */}
@@ -291,13 +266,11 @@ export function PartsContent({ config, onEdit, onManual }: {
             </label>
           )}
           {SCROLLABLE.includes(f.binding) && (
-            <label className="flex items-center gap-1 text-xs text-muted-foreground" title="מה קורה כשהתוכן ארוך מהמסגרת. תוכן שנכנס לא זז.">
+            <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground" title="מה קורה כשהתוכן ארוך מהמסגרת. תוכן שנכנס לא זז.">
               כשהתוכן לא נכנס
-              <select aria-label={`כשלא נכנס - ${f.title}`} value={f.e.scroll ?? ''}
-                onChange={ev => patch(f, { scroll: (ev.target.value || undefined) as ElementScroll | undefined }, 'scroll')} className={SELECT}>
-                {FIT_CHOICES(f.binding).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            </label>
+              <Segments label={`כשלא נכנס - ${f.title}`} value={f.e.scroll ?? ''}
+                onChange={v => patch(f, { scroll: (v || undefined) as ElementScroll | undefined }, 'scroll')} options={FIT_CHOICES(f.binding)} />
+            </div>
           )}
         </div>
         <Folded label={`עוד אפשרויות${more ? ` (${more})` : ''}`} testId="frame-more">
@@ -306,13 +279,11 @@ export function PartsContent({ config, onEdit, onManual }: {
             <div className="space-y-1">
               <p className="font-medium">מתחלפת עם תוכן נוסף</p>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="rounded bg-background px-1.5 py-0.5">{BINDING_LABELS[f.binding]}</span>
+                <span className={itemChipClass()}>{BINDING_LABELS[f.binding]}</span>
                 {turns.map(b => (
-                  <span key={b} className="flex items-center gap-1 rounded bg-background px-1.5 py-0.5">
+                  <span key={b} className={itemChipClass()}>
                     {BINDING_LABELS[b]}
-                    <button type="button" aria-label={`בלי ${BINDING_LABELS[b]} ב${f.title}`} onClick={() => commit(setAlternates(elements, f.e.id, turns.filter(x => x !== b), f.e.alternateSeconds ?? 20), `parts-content:${f.e.id}:turns`)}>
-                      <X className="size-3" aria-hidden />
-                    </button>
+                    <ChipRemove label={`בלי ${BINDING_LABELS[b]} ב${f.title}`} onClick={() => commit(setAlternates(elements, f.e.id, turns.filter(x => x !== b), f.e.alternateSeconds ?? 20), `parts-content:${f.e.id}:turns`)} />
                   </span>
                 ))}
                 {turns.length < 5 && (
@@ -357,10 +328,9 @@ export function PartsContent({ config, onEdit, onManual }: {
               </label>
             )}
             <div className="space-y-1">
-              <p className="font-medium">שמירה בחלקים והתיבות שלי</p>
               {boxName[f.e.id] === undefined ? (
-                <Button type="button" size="sm" variant="outline" className="h-8" aria-label={`שמירת ${f.title} בחלקים והתיבות שלי`} onClick={() => setBoxName(b => ({ ...b, [f.e.id]: f.title }))}>
-                  <Save className="size-4" aria-hidden /> שמירה בשם…
+                <Button type="button" size="sm" variant="outline" className="h-8" aria-label={`שמירת ${f.title} בחלקים שלי`} onClick={() => setBoxName(b => ({ ...b, [f.e.id]: f.title }))}>
+                  <Save className="size-4" aria-hidden /> שמירה בחלקים שלי
                 </Button>
               ) : (
                 <NameForm

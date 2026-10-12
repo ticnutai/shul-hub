@@ -24,7 +24,7 @@
  *   shown for half a second under another's name, is exactly the confusion
  *   this whole design exists to prevent.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Building2, Check, ChevronDown, EyeOff, Search } from "lucide-react";
 import { toast } from "sonner";
@@ -34,13 +34,13 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   type Community,
-  listMyCommunities,
   setCommunity,
+  switchCommunity,
   updateCurrentCommunity,
   useCommunity,
   useCommunityId,
-  writeCommunityToUrl,
 } from "@/community/lib/community";
+import { useMyCommunities } from "@/community/lib/useMyCommunities";
 
 /** Above this many, reading the list is slower than typing into it. */
 const SEARCH_FROM = 7;
@@ -48,44 +48,41 @@ const SEARCH_FROM = 7;
 export function CommunitySwitcher() {
   const queryClient = useQueryClient();
   const currentId = useCommunityId();
+  // The same list as the rest of the gabbai's area (useMyCommunities). No
+  // list: the name still shows, there is just nothing to switch to.
+  const { data } = useMyCommunities();
+  // Kept once it has come: emptying the cache on a switch must not take the list with it.
   const [mine, setMine] = useState<Community[]>([]);
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState("");
+  const restored = useRef(false);
 
   useEffect(() => {
-    let alive = true;
-    void listMyCommunities()
-      .then((list) => {
-        if (!alive) return;
-        setMine(list);
+    if (!data) return;
+    setMine(data);
+    // Once, when the list first comes: this restores a choice, it does not follow one.
+    if (restored.current) return;
+    restored.current = true;
 
-        // An admin who was last editing a synagogue that is not open to the
-        // public would otherwise be moved off it without being told: the
-        // visitor-side resolve only knows about live ones. If the one being
-        // remembered is one of theirs, keep them on it.
-        const wanted =
-          new URLSearchParams(window.location.search).get("shul") ??
-          readRemembered();
-        const keep = list.find((c) => c.slug === wanted);
-        if (keep && keep.id !== currentId) {
-          setCommunity(keep);
-          queryClient.clear();
-          return;
-        }
-        // Not a switch - the same synagogue, now with the one fact the
-        // visitor-side list never carries.
-        const here = list.find((c) => c.id === currentId);
-        if (here) updateCurrentCommunity({ active: here.active, name: here.name });
-      })
-      .catch(() => {
-        /* no list: the name still shows, there is just nothing to switch to */
-      });
-    return () => {
-      alive = false;
-    };
-    // Once, on mount: this restores a choice, it does not follow one.
+    // An admin who was last editing a synagogue that is not open to the
+    // public would otherwise be moved off it without being told: the
+    // visitor-side resolve only knows about live ones. If the one being
+    // remembered is one of theirs, keep them on it.
+    const wanted =
+      new URLSearchParams(window.location.search).get("shul") ??
+      readRemembered();
+    const keep = data.find((c) => c.slug === wanted);
+    if (keep && keep.id !== currentId) {
+      setCommunity(keep);
+      queryClient.clear();
+      return;
+    }
+    // Not a switch - the same synagogue, now with the one fact the
+    // visitor-side list never carries.
+    const here = data.find((c) => c.id === currentId);
+    if (here) updateCurrentCommunity({ active: here.active, name: here.name });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [data]);
 
   const current = mine.find((c) => c.id === currentId) ?? null;
 
@@ -100,13 +97,7 @@ export function CommunitySwitcher() {
   const choose = (c: Community) => {
     setOpen(false);
     setFilter("");
-    if (c.id === currentId) return;
-    setCommunity(c);
-    writeCommunityToUrl(c.slug);
-    queryClient.clear();
-    toast.success(`עכשיו עורכים את ${c.name}`, {
-      description: c.active === false ? "בית הכנסת כבוי - השינויים לא יופיעו באתר הציבורי" : undefined,
-    });
+    switchCommunity(c, queryClient, toast.success);
   };
 
   return (

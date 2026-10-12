@@ -5,11 +5,10 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ImagePlus, Monitor, Smartphone, Trash2 } from "lucide-react";
-
-import { supabase } from "@/integrations/supabase/client";
+import { ImagePlus, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { HomeHero } from "@community/components/HomeHero";
 import { useSaveRow } from "@community/lib/admin";
@@ -20,26 +19,17 @@ import {
 import { zmanimFor } from "@community/lib/minyan-time";
 import { formatTime } from "@community/lib/zmanim";
 import { formatHebrewDate } from "@community/lib/hebrewDate";
-import { hebrewError } from "@community/lib/hebrewError";
+import { IMAGE_ACCEPT, IMAGE_LIMIT_TEXT, UPLOADED_TEXT, uploadImage } from "@community/lib/uploadImage";
+import { useUnsavedChangesGuard } from "@community/lib/unsavedChanges";
+import { ChoiceCard, ChoiceGroup, PreviewDeviceToggle, SaveButton, type PreviewDevice } from "./adminUi";
 
 /**
- * While a settings form has changes that were not saved, leaving the page
- * (closing the tab, reloading) asks first. The three forms on the home-page
- * tab - this strip, the header and the sections - all keep their changes
- * until "שמירה", so all three guard them the same way.
+ * While a settings form has changes that were not saved, leaving the page -
+ * or moving to another section inside the gabbai's area - asks first. Kept
+ * here under its old name for the forms that import it from here; the guard
+ * itself is in unsavedChanges.ts.
  */
-export function useUnsavedChangesGuard(dirty: boolean) {
-  useEffect(() => {
-    if (!dirty) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      // Older browsers show the box only when this is set.
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty]);
-}
+export { useUnsavedChangesGuard };
 
 /**
  * The save row of a settings form, the same in every one: "שמירה" first,
@@ -62,9 +52,7 @@ export function SettingsSaveBar({
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <Button type={onSubmit ? "button" : "submit"} disabled={!changed || pending} onClick={onSubmit}>
-        {pending ? "שומר…" : "שמירה"}
-      </Button>
+      <SaveButton pending={pending} disabled={!changed} onClick={onSubmit} />
       <Button type="button" variant="outline" disabled={!changed || pending} onClick={onReset}>
         ביטול השינויים
       </Button>
@@ -75,8 +63,8 @@ export function SettingsSaveBar({
 }
 
 const same = (a: Hero, b: Hero) => JSON.stringify(a) === JSON.stringify(b);
-/** A picture for the strip: big enough for a wide screen, small enough for a phone on the way. */
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024;
+/** The phone's own layout, when it is "the same as on a computer" (a list cannot hold an empty value). */
+const SAME_AS_COMPUTER = "same";
 
 export function HomeHeroSettings() {
   const { data: settings } = useSettings();
@@ -87,7 +75,7 @@ export function HomeHeroSettings() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setHero(stored), [storedKey]);
   /** The preview as a phone or as a computer, whatever this screen is. */
-  const [device, setDevice] = useState<"computer" | "phone">("computer");
+  const [device, setDevice] = useState<PreviewDevice>("computer");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const changed = Boolean(settings) && !same(hero, stored);
@@ -102,26 +90,21 @@ export function HomeHeroSettings() {
   /** Into the synagogue's own picture storage; the strip keeps only its address. */
   const upload = async (file: File | undefined) => {
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return toast.error("בחרו קובץ תמונה רגיל מהטלפון או מהמחשב");
-    if (file.size > MAX_IMAGE_BYTES) return toast.error("התמונה גדולה מדי (עד 4 מגה־בייט)");
     setUploading(true);
     try {
-      const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
-      const path = `hero/${settings.community_id}/${crypto.randomUUID()}.${ext}`;
-      const { error } = await supabase.storage.from("community-media").upload(path, file, { cacheControl: "3600", upsert: false });
-      if (error) throw error;
-      const url = supabase.storage.from("community-media").getPublicUrl(path).data.publicUrl;
-      if (!HERO_IMAGE.test(url)) throw new Error("כתובת התמונה לא תקינה");
-      set({ image: url });
-      toast.success('התמונה הועלתה. לשמירה לחצו "שמירה".');
-    } catch (e) {
-      toast.error(hebrewError(e, "ההעלאה נכשלה"));
+      const uploaded = await uploadImage(file, `hero/${settings.community_id}`);
+      if (!uploaded) return;
+      if (!HERO_IMAGE.test(uploaded.url)) {
+        toast.error("כתובת התמונה לא תקינה");
+        return;
+      }
+      set({ image: uploaded.url });
+      toast.success(UPLOADED_TEXT);
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
-  const choice = (on: boolean) => `rounded-xl border p-3 text-right transition ${on ? "border-amber-500 ring-2 ring-amber-200" : "border-border hover:border-amber-300"}`;
 
   return (
     <form
@@ -141,48 +124,52 @@ export function HomeHeroSettings() {
 
       <section className="space-y-2" aria-label="פריסה">
         <div className="text-sm font-semibold">פריסה</div>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="פריסת הרצועה">
+        <ChoiceGroup className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" label="פריסת הרצועה">
           {HERO_LAYOUTS.map((l) => (
-            <button key={l.id} type="button" role="radio" aria-checked={hero.layout === l.id} className={choice(hero.layout === l.id)} onClick={() => set({ layout: l.id })}>
-              <span className="block font-semibold">{l.name}</span>
-              <span className="mt-1 block text-xs text-muted-foreground">{l.hint}</span>
-            </button>
+            <ChoiceCard key={l.id} selected={hero.layout === l.id} onSelect={() => set({ layout: l.id })} title={l.name} description={l.hint} />
           ))}
-        </div>
+        </ChoiceGroup>
       </section>
 
       {hero.layout !== "none" && (
         <>
           <section className="space-y-2" aria-label="ערכת צבעים">
             <div className="text-sm font-semibold">ערכת צבעים</div>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="ערכת הצבעים של הרצועה">
+            <ChoiceGroup className="flex flex-wrap gap-2" label="ערכת הצבעים של הרצועה">
               {HERO_LOOKS.map((l) => (
-                <button key={l.id} type="button" role="radio" aria-checked={hero.look === l.id} className={`${choice(hero.look === l.id)} flex items-center gap-2 py-2`} onClick={() => set({ look: l.id })}>
+                <ChoiceCard key={l.id} selected={hero.look === l.id} onSelect={() => set({ look: l.id })} className="flex items-center gap-2 py-2">
                   <span aria-hidden className="size-6 shrink-0 rounded-full border border-black/10" style={{ background: l.swatch }} />
                   <span className="text-sm">{l.name}</span>
-                </button>
+                </ChoiceCard>
               ))}
-            </div>
+            </ChoiceGroup>
           </section>
 
           <section className="space-y-2" aria-label="תמונת רקע">
             <div className="text-sm font-semibold">תמונה של בית הכנסת ברקע</div>
-            <p className="text-xs text-muted-foreground">במקום צבע: תמונה, ומעליה גוון כהה או בהיר כדי שהכתב יהיה קריא. בפריסת "כרטיסים" התמונה לא מופיעה.</p>
+            <p className="text-xs text-muted-foreground">
+              במקום צבע: תמונה, ומעליה גוון כהה או בהיר כדי שהכתב יהיה קריא. בפריסת "כרטיסים" התמונה לא מופיעה. {IMAGE_LIMIT_TEXT}.
+            </p>
             <div className="flex flex-wrap items-center gap-2">
               {hero.image && <img src={hero.image} alt="תמונת הרקע" className="h-14 w-24 rounded-md border object-cover" />}
               <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
                 <ImagePlus className="size-4" aria-hidden /> {uploading ? "מעלה…" : hero.image ? "החלפת התמונה" : "העלאת תמונה"}
               </Button>
-              <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="בחירת תמונה לרקע הרצועה" onChange={(e) => void upload(e.target.files?.[0])} />
+              <input ref={fileRef} type="file" accept={IMAGE_ACCEPT} className="sr-only" aria-label="בחירת תמונה לרקע הרצועה" onChange={(e) => void upload(e.target.files?.[0])} />
               {hero.image && (
                 <>
-                  <label className="flex items-center gap-1 text-sm">
-                    גוון מעל התמונה
-                    <select aria-label="גוון מעל התמונה" value={hero.shade} onChange={(e) => set({ shade: e.target.value as Hero["shade"] })} className="h-9 rounded-md border bg-background px-2 text-sm">
-                      <option value="dark">כהה, כתב בהיר</option>
-                      <option value="light">בהיר, כתב כהה</option>
-                    </select>
-                  </label>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>גוון מעל התמונה</span>
+                    <Select name="hero-shade" value={hero.shade} onValueChange={(v) => set({ shade: v as Hero["shade"] })}>
+                      <SelectTrigger aria-label="גוון מעל התמונה" className="h-9 w-auto min-w-40">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="dark">כהה, כתב בהיר</SelectItem>
+                        <SelectItem value="light">בהיר, כתב כהה</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Button type="button" variant="ghost" size="sm" onClick={() => set({ image: null })}>
                     <Trash2 className="size-4" aria-hidden /> בלי תמונה
                   </Button>
@@ -193,14 +180,19 @@ export function HomeHeroSettings() {
 
           <section className="space-y-2" aria-label="מה מופיע ברצועה">
             <div className="text-sm font-semibold">מה מופיע ברצועה</div>
-            <label className="flex flex-wrap items-center gap-2 text-sm">
-              שם בית הכנסת
-              <select aria-label="שם בית הכנסת ברצועה" value={hero.name} onChange={(e) => set({ name: e.target.value as HeroName })} className="h-9 rounded-md border bg-background px-2 text-sm">
-                <option value="auto">רק כשהכותרת העליונה לא מראה אותו (בלי כפילות)</option>
-                <option value="show">תמיד</option>
-                <option value="hide">אף פעם</option>
-              </select>
-            </label>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span>שם בית הכנסת</span>
+              <Select name="hero-name" value={hero.name} onValueChange={(v) => set({ name: v as HeroName })}>
+                <SelectTrigger aria-label="שם בית הכנסת ברצועה" className="h-9 w-auto min-w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">רק כשהכותרת העליונה לא מראה אותו (בלי כפילות)</SelectItem>
+                  <SelectItem value="show">תמיד</SelectItem>
+                  <SelectItem value="hide">אף פעם</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {hero.name === "auto" && (
               <p className="text-xs text-muted-foreground">
                 {headerShowsName ? "הכותרת העליונה מראה את השם והכתובת, ולכן הרצועה לא חוזרת עליו." : "הכותרת העליונה מראה לוגו, ולכן השם מופיע ברצועה."}
@@ -220,26 +212,33 @@ export function HomeHeroSettings() {
 
       <section className="space-y-2" aria-label="בטלפון ובאפליקציה">
         <div className="text-sm font-semibold">בטלפון ובאפליקציה</div>
-        <label className="flex flex-wrap items-center gap-2 text-sm">
-          פריסה במסך צר
-          <select aria-label="פריסה בטלפון" value={hero.phoneLayout ?? ""} onChange={(e) => set({ phoneLayout: (e.target.value || null) as HeroLayout | null })} className="h-9 rounded-md border bg-background px-2 text-sm">
-            <option value="">כמו במחשב</option>
-            {HERO_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
-        </label>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span>פריסה במסך צר</span>
+          <Select
+            name="hero-phone-layout"
+            value={hero.phoneLayout ?? SAME_AS_COMPUTER}
+            onValueChange={(v) => set({ phoneLayout: v === SAME_AS_COMPUTER ? null : (v as HeroLayout) })}
+          >
+            <SelectTrigger aria-label="פריסה בטלפון" className="h-9 w-auto min-w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={SAME_AS_COMPUTER}>כמו במחשב</SelectItem>
+              {HERO_LAYOUTS.map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <p className="text-xs text-muted-foreground">למשל רצועה דקה בטלפון, כדי שזמני התפילות יופיעו מיד בפתיחת האפליקציה.</p>
       </section>
 
       <section className="space-y-2" aria-label="תצוגה מקדימה">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="text-sm font-semibold">כך זה ייראה</div>
-          <div className="flex gap-1" role="radiogroup" aria-label="תצוגה מקדימה במחשב או בטלפון">
-            {([["computer", "מחשב", Monitor], ["phone", "טלפון", Smartphone]] as const).map(([id, label, Icon]) => (
-              <Button key={id} type="button" size="sm" variant={device === id ? "default" : "outline"} role="radio" aria-checked={device === id} onClick={() => setDevice(id)}>
-                <Icon className="size-4" aria-hidden /> {label}
-              </Button>
-            ))}
-          </div>
+          <PreviewDeviceToggle value={device} onChange={setDevice} />
         </div>
         <div className={`overflow-hidden rounded-xl border bg-background ${device === "phone" ? "mx-auto max-w-[380px]" : ""}`} data-testid="home-hero-preview" data-device={device} dir="rtl">
           <HomeHero

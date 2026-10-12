@@ -1,3 +1,4 @@
+import {useEffect,useState} from 'react';
 import {normalizeTvConfig} from './config';
 import {normalizeDesigns,type SavedDesign} from './designs';
 import {normalizeElements,type BoardElement} from './elements';
@@ -18,7 +19,7 @@ export function parseSharedCatalog(raw:unknown):SharedCatalog {
  const parts:CatalogPart[]=r.parts.map(p=>{
   if(!p||typeof p.id!=='string'||typeof p.name!=='string'||typeof p.designId!=='string'||(p.designId!=='standalone'&&!designs.some(d=>d.id===p.designId)))throw new Error('חלק לא תקין בקטלוג');
   const elements=normalizeElements(p.elements);
-  if(!elements.length||elements.length!==p.elements.length)throw new Error('אלמנטים לא תקינים בקטלוג');
+  if(!elements.length||elements.length!==p.elements.length)throw new Error('חלקים לא תקינים בקטלוג');
   return {id:p.id,name:p.name.slice(0,80),designId:p.designId,note:typeof p.note==='string'?p.note.slice(0,160):'',elements};
  });
  if(new Set(parts.map(p=>p.id)).size!==parts.length)throw new Error('חלקים כפולים בקטלוג');
@@ -30,4 +31,22 @@ export function loadSharedCatalog(retry=false){
  return pending??=fetch(SHARED_CATALOG_URL,{credentials:'omit',signal:AbortSignal.timeout(15000)})
   .then(async r=>{if(!r.ok)throw new Error('הקטלוג אינו זמין כרגע');const text=await r.text();if(text.length>4_000_000)throw new Error('קטלוג גדול מדי');return parseSharedCatalog(JSON.parse(text));})
   .catch(e=>{pending=undefined;throw e;});
+}
+
+/**
+ * The shared catalogue, read once for the editor: the library of kits and
+ * the library of parts each loaded it, with an error and a retry of their
+ * own. `retry` reads it again (the one "ניסיון נוסף" under the one notice).
+ */
+export function useSharedCatalog(){
+ const [catalog,setCatalog]=useState<SharedCatalog>();
+ const [error,setError]=useState(false);
+ const [attempt,setAttempt]=useState(0);
+ useEffect(()=>{
+  let active=true;
+  setError(false);
+  loadSharedCatalog(attempt>0).then(c=>{if(active)setCatalog(c);}).catch(()=>{if(active)setError(true);});
+  return()=>{active=false;};
+ },[attempt]);
+ return {catalog,error,retry:()=>setAttempt(a=>a+1)};
 }

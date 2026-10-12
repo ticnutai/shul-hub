@@ -18,7 +18,7 @@ import { NameForm, Range } from "./editorParts";
 import { DEFAULT_BOARD_FRAME_TUNE, READY_PICTURE_BOARD_FRAMES, type BoardFrameTune } from "@/tv/boardFrame";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { HiddenShelf } from "./ReadyShelf";
-import { uploadImages } from "./uploadImages";
+import { useUpload } from "./Upload";
 import { setFrameLook, type FrameId, type TitleStyle } from "@/tv/frameLooks";
 import { BOARD_FRAME_CHOICES, FRAME_CHOICES, TITLE_STYLE_CHOICES } from "./tvChoices";
 
@@ -41,7 +41,7 @@ type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
  * What each edge is when the board has not been told (tv.css): the slider
  * starts from there, and so does a drag in the composer's sketch.
  */
-export const SPACING_FALLBACK: Record<SpacingEdge, number> = { top: 2.6, bottom: 1.6, sides: 3, gap: 2 };
+const SPACING_FALLBACK: Record<SpacingEdge, number> = { top: 2.6, bottom: 1.6, sides: 3, gap: 2 };
 
 /** The same, for a layout: the medallion leaves its own air above and below (tv.css). */
 export function spacingFallback(layout: TvConfig["screenLayout"]): Record<SpacingEdge, number> {
@@ -65,7 +65,7 @@ const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
  */
 export function BoardFramePicker({ config, onEdit, compact = false }: { config: TvConfig; onEdit: Edit; compact?: boolean }) {
   const [naming, setNaming] = useState<{ id: string | null; value: string } | null>(null);
-  const [uploading, setUploading] = useState(false);
+  const { uploading, upload: uploadFiles } = useUpload();
   // The worn one stays in sight even when hidden: what is on the board is always marked.
   const ready = BOARD_FRAME_CHOICES.filter((f) => f.id === null || f.id === config.boardFrame || !isHiddenReady(config, "boardframe", f.id));
   const wears = (m: MyBoardFrame) =>
@@ -89,12 +89,8 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
       BOARD_FRAME_CHOICES.find((f) => f.id === m.frame)?.preview
     );
 
-  const upload = async (files: File[]) => {
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      const [url] = await uploadImages(files);
-      if (!url) return;
+  const upload = (files: File[]) =>
+    uploadFiles(files, ([url]) => {
       const mine: MyBoardFrame = { id: newMyBoardFrameId(), name: "מסגרת שהעליתי", frame: "picture", tune: DEFAULT_BOARD_FRAME_TUNE, image: url };
       onEdit("board-frame:upload", (c) => ({
         ...c,
@@ -104,12 +100,7 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
         boardFrameTune: structuredClone(DEFAULT_BOARD_FRAME_TUNE),
       }));
       toast.success("המסגרת נשמרה בגלריה");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
-    } finally {
-      setUploading(false);
-    }
-  };
+    });
 
   const save = async () => {
     const name = (naming?.value ?? "").trim().slice(0, 40);
@@ -289,7 +280,6 @@ function AutoSlider({
   max: number;
   fallback: number;
   onChange: (next: number | null) => void;
-  compact?: boolean;
 }) {
   return (
     <Range
@@ -362,7 +352,6 @@ export function FrameCorners({
           value={config.frame[edge]}
           max={FRAME_RADIUS_MAX}
           fallback={1.6}
-          compact={compact}
           onChange={(next) =>
             onEdit(`frame.${edge}`, (c) => ({ ...c, frame: { ...c.frame, [edge]: next } }))
           }
@@ -399,17 +388,18 @@ export function FrameSpacing({
           value={config.spacing[edge]}
           max={SPACING_MAX}
           fallback={spacingFallback(config.screenLayout)[edge]}
-          compact={compact}
           onChange={(next) =>
             onEdit(`spacing.${edge}`, (c) => ({ ...c, spacing: { ...c.spacing, [edge]: next } }))
           }
         />
       ))}
 
-      {!compact && (
+      {compact ? (
+        <p className="text-[11px] text-muted-foreground">אותם מרווחים כמו בלשונית "פריסה", תחת "פריסת מסך".</p>
+      ) : (
         <p className="text-[11px] text-muted-foreground">
           חל על כל התיבות בכל הפריסות - בטלוויזיה, בלפטופ ובנייד. מרווח קטן יותר מגביה את
-          התיבות, ולפעמים מכניס שורה נוספת.
+          התיבות, ולפעמים מכניס שורה נוספת. אפשר לשנות אותם גם בגרירה בשרטוט שב"מסכים ומה עליהם".
         </p>
       )}
     </div>

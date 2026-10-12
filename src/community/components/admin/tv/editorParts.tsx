@@ -5,13 +5,12 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, RotateCcw } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, RotateCcw, Unlock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TvConfig } from "@/tv/config";
 import type { ElementBinding } from "@/tv/elements";
-import { isSafeCssValue } from "@/tv/themes";
 import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
 import { ColorPick } from "./ColorPick";
 
@@ -24,8 +23,8 @@ export const LAYOUT_CHOICES: Array<{
 }> = [
   {
     id: "rotate",
-    name: "סבב שקפים",
-    hint: "שקף אחד בכל פעם על כל המסך, מתחלף לפי הזמנים שקבעתם",
+    name: "סבב מסכים",
+    hint: "מסך אחד בכל פעם על כל הלוח, מתחלף לפי הזמנים שקבעתם",
     sketch: (
       <>
         <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
@@ -36,7 +35,7 @@ export const LAYOUT_CHOICES: Array<{
   {
     id: "split",
     name: "מפוצל",
-    hint: "טור קבוע עם המניין הבא וזמני היום, ולידו השקפים מתחלפים",
+    hint: "טור קבוע עם המניין הבא וזמני היום, ולידו המסכים מתחלפים",
     sketch: (
       <>
         <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
@@ -253,9 +252,12 @@ export function Stepper({
       >
         <Minus className="size-3.5" />
       </Button>
-      {/* Typed into as well as stepped: a page of an hour was 360 clicks of +10. While
-          typing, the number alone; otherwise as it is read ("30 שניות"). An empty or
-          wrong entry leaves the value as it was; one out of range is brought into it. */}
+      {/* Typed into as well as stepped: a page of an hour was 360 clicks of +10. It reads
+          as it is read ("30 שניות"); focused, all of it is selected, and what is typed over
+          it is read for its number alone (the words and "%" around it are let go). Focusing
+          changes nothing in the field: a re-render then dropped the selection, and what was
+          typed landed after the old number. An empty or wrong entry leaves the value as it
+          was; one out of range is brought into it. */}
       <input
         type="text"
         inputMode="decimal"
@@ -268,12 +270,13 @@ export function Stepper({
         aria-valuemax={max}
         value={draft ?? format(value)}
         onFocus={(e) => {
-          setDraft(String(value));
-          requestAnimationFrame(() => e.target.select());
+          const field = e.target;
+          field.select();
+          requestAnimationFrame(() => field.select());
         }}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
-          const n = Number((draft ?? "").replace(",", "."));
+          const n = Number((draft ?? "").replace(",", ".").replace(/[^\d.-]/g, ""));
           if (draft !== null && draft.trim() !== "" && Number.isFinite(n) && n !== value) onChange(clamp(n));
           setDraft(null);
         }}
@@ -324,38 +327,21 @@ export function ColorField({
   onChange: (v: string) => void;
   onReset: () => void;
 }) {
-  const [text, setText] = useState(value);
-  useEffect(() => setText(value), [value]);
-  const isHex = /^#[0-9a-f]{6}$/i.test(value);
-  const valid = isSafeCssValue(text);
-  // The one colour row: its name, its swatch (and here its code, for a colour with transparency), and the way back.
+  // The one colour row, a base colour's: its code - a colour with transparency too - is typed in its panel.
   return (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="min-w-0 flex-1">{label}</span>
-      {isHex ? (
-        <ColorPick label={label} value={value} onChange={onChange} />
-      ) : (
-        <span title="ערך עם שקיפות - עריכה בקוד" className="h-8 w-11 shrink-0 rounded border-2 opacity-60" style={{ background: value }} aria-hidden />
-      )}
-      <Input
-        dir="ltr"
-        value={text}
-        aria-label={`${label} (ערך)`}
-        aria-invalid={!valid}
-        className={`h-8 w-28 font-mono text-xs ${valid ? "" : "border-destructive"}`}
-        onChange={(e) => {
-          setText(e.target.value);
-          if (isSafeCssValue(e.target.value)) onChange(e.target.value.trim());
-        }}
-      />
-      <ResetLink
-        label="כמו הבסיס"
-        ariaLabel={`החזרת ${label} לצבע הבסיס`}
-        title={`צבע הבסיס: ${themeValue}`}
-        disabled={!overridden}
-        onClick={onReset}
-      />
-    </div>
+    <ColourRow
+      label={label}
+      value={value}
+      anyCode
+      onChange={onChange}
+      reset={{
+        label: "כמו הבסיס",
+        ariaLabel: `החזרת ${label} לצבע הבסיס`,
+        title: `צבע הבסיס: ${themeValue}`,
+        disabled: !overridden,
+        onClick: onReset,
+      }}
+    />
   );
 }
 
@@ -363,6 +349,8 @@ export function ColorField({
 
 /** Every select in the editor: one height, one border, one size of letters. */
 export const SELECT_CLASS = "h-8 rounded-md border bg-background px-2 text-sm";
+/** Every plain field beside them (a name, a date, a time): the same height, border and letters. */
+export const INPUT_CLASS = SELECT_CLASS;
 
 /** The small "כמו …" link beside a colour or a value: back to what it follows. */
 function ResetLink({
@@ -401,18 +389,23 @@ export function ColourRow({
   value,
   onChange,
   reset,
+  anyCode = false,
 }: {
   label: string;
   value: string;
   onChange: (hex: string) => void;
-  reset?: { label: string; onClick: () => void; disabled?: boolean };
+  reset?: { label: string; onClick: () => void; disabled?: boolean; title?: string; ariaLabel?: string };
+  /** A colour with transparency may be typed in the panel (ColorPick's `anyCode`). */
+  anyCode?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-2 text-xs">
       <span className="min-w-0">{label}</span>
       <span className="flex items-center gap-2">
-        <ColorPick label={label} value={value} onChange={onChange} />
-        {reset && <ResetLink label={reset.label} onClick={reset.onClick} disabled={reset.disabled} />}
+        <ColorPick label={label} value={value} onChange={onChange} anyCode={anyCode} />
+        {reset && (
+          <ResetLink label={reset.label} onClick={reset.onClick} disabled={reset.disabled} title={reset.title} ariaLabel={reset.ariaLabel} />
+        )}
       </span>
     </div>
   );
@@ -430,6 +423,7 @@ export function ColourChoice({
   fallback,
   unsetLabel,
   onChange,
+  anyCode = false,
 }: {
   label: string;
   value: string | null | undefined;
@@ -437,10 +431,20 @@ export function ColourChoice({
   /** The way back, as a "כמו …" ("כמו כל הלוח", "בלי קו"). */
   unsetLabel: string;
   onChange: (v: string | null) => void;
+  /** A colour with transparency may be typed in the panel (ColorPick's `anyCode`). */
+  anyCode?: boolean;
 }) {
   const hex = value && /^#[0-9a-f]{6}$/i.test(value) ? value : null;
   if (value)
-    return <ColourRow label={label} value={hex ?? fallback} onChange={(v) => onChange(v)} reset={{ label: unsetLabel, onClick: () => onChange(null) }} />;
+    return (
+      <ColourRow
+        label={label}
+        value={hex ?? (anyCode ? value : fallback)}
+        anyCode={anyCode}
+        onChange={(v) => onChange(v)}
+        reset={{ label: unsetLabel, onClick: () => onChange(null) }}
+      />
+    );
   return (
     <div className="flex items-center justify-between gap-2 text-xs">
       <span className="min-w-0">{label}</span>
@@ -561,18 +565,104 @@ export function SwitchRow({
   onChange,
   hint,
   ariaLabel,
+  note,
+  disabled = false,
+  id,
 }: {
   label: ReactNode;
   checked: boolean;
   onChange: (on: boolean) => void;
   hint?: string;
   ariaLabel?: string;
+  /** A second, quiet line under the label. */
+  note?: ReactNode;
+  disabled?: boolean;
+  /** The switch's own id, where something finds it by it. */
+  id?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-2 text-sm" title={hint}>
-      <Switch checked={checked} onCheckedChange={onChange} aria-label={ariaLabel} />
-      <span>{label}</span>
+    <label className={`flex items-center gap-2 text-sm ${disabled ? "" : "cursor-pointer"}`} title={hint}>
+      <Switch id={id} checked={checked} onCheckedChange={onChange} aria-label={ariaLabel} disabled={disabled} />
+      <span className="min-w-0">
+        {label}
+        {note && <span className="block text-[11px] leading-tight text-muted-foreground">{note}</span>}
+      </span>
     </label>
+  );
+}
+
+/**
+ * Earlier or later in an order - the occasions, the pages, the notices, the
+ * logos - the one pair, with the same words and arrows everywhere. (The
+ * layers of the free parts are another thing, up and down over each other,
+ * and say so: "שכבה למעלה", "שכבה למטה".)
+ */
+export function MoveButtons({
+  name,
+  first,
+  last,
+  onMove,
+  words = false,
+  stacked = false,
+}: {
+  /** What moves, for the reader of the page: "הקדמת {name}". */
+  name: string;
+  first: boolean;
+  last: boolean;
+  onMove: (by: -1 | 1) => void;
+  /** The words beside the arrows, where there is room. */
+  words?: boolean;
+  /** One over the other, in a narrow row of a list. */
+  stacked?: boolean;
+}) {
+  const cls = words
+    ? "flex h-8 items-center gap-1 rounded-md border bg-background px-2 text-xs hover:border-primary disabled:opacity-40"
+    : "grid size-6 place-items-center rounded text-muted-foreground hover:text-foreground disabled:opacity-30";
+  return (
+    <span className={`flex shrink-0 ${stacked ? "flex-col" : "items-center gap-1"}`} role="group" aria-label={`הסדר של ${name}`}>
+      <button type="button" className={cls} disabled={first} onClick={() => onMove(-1)} aria-label={`הקדמת ${name}`} title="הקדמה - לפני מה שלפניו">
+        <ArrowUp className="size-3.5" aria-hidden />
+        {words && "הקדמה"}
+      </button>
+      <button type="button" className={cls} disabled={last} onClick={() => onMove(1)} aria-label={`העברת ${name} אחורה`} title="העברה אחורה - אחרי מה שאחריו">
+        <ArrowDown className="size-3.5" aria-hidden />
+        {words && "העברה אחורה"}
+      </button>
+    </span>
+  );
+}
+
+/**
+ * Shown or hidden, locked or free: the one pair of small icon switches in a
+ * row of a list (the free parts, the frames of a board of parts). Pressed is
+ * hidden, or locked; the name says what a press will do.
+ */
+export function HideToggle({ hidden, name, onToggle }: { hidden: boolean; name: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={hidden}
+      aria-label={`${hidden ? "הצגת" : "הסתרת"} ${name}`}
+      title={hidden ? "מוסתר - לחיצה מציגה" : "הסתרה - לא נמחק, אפשר להחזיר"}
+      onClick={onToggle}
+      className={sideButtonClass(hidden)}
+    >
+      {hidden ? <EyeOff className="size-4" aria-hidden /> : <Eye className="size-4" aria-hidden />}
+    </button>
+  );
+}
+export function LockToggle({ locked, name, onToggle }: { locked: boolean; name: string; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={locked}
+      aria-label={`${locked ? "שחרור" : "נעילת"} ${name}`}
+      title={locked ? "נעול - לחיצה משחררת" : "נעילה - לא זז ולא משתנה בטעות"}
+      onClick={onToggle}
+      className={sideButtonClass(locked)}
+    >
+      {locked ? <Lock className="size-4" aria-hidden /> : <Unlock className="size-4" aria-hidden />}
+    </button>
   );
 }
 
@@ -599,6 +689,8 @@ export function NameForm({
   maxLength = 40,
   hint,
   testId,
+  saveLabel = "שמירה",
+  extra,
 }: {
   label: string;
   value: string;
@@ -609,6 +701,10 @@ export function NameForm({
   maxLength?: number;
   hint?: ReactNode;
   testId?: string;
+  /** What the save says, where it says more than "שמירה" ("שמירת הערכה"). */
+  saveLabel?: string;
+  /** More of the same form under the name (what a kit holds), before its buttons. */
+  extra?: ReactNode;
 }) {
   return (
     <form
@@ -628,8 +724,9 @@ export function NameForm({
         onChange={(e) => onChange(e.target.value)}
         className="h-8 min-w-0 flex-1 basis-40 text-sm"
       />
+      {extra && <div className="w-full">{extra}</div>}
       <Button type="submit" size="sm" className="h-8" disabled={!value.trim()}>
-        שמירה
+        {saveLabel}
       </Button>
       <Button type="button" size="sm" variant="ghost" className="h-8" onClick={onCancel}>
         ביטול
@@ -653,13 +750,35 @@ export const sideButtonClass = (on: boolean) =>
   `grid size-8 place-items-center rounded-md border ${on ? "border-primary bg-primary/10 text-primary" : "border-transparent text-muted-foreground"} hover:border-primary hover:text-foreground disabled:opacity-40`;
 
 /**
- * "כשהתוכן לא נכנס", in the same words wherever it is asked: a notice
- * shrinks, a list turns its pages - or either moves, as the board's own
- * boxes do (the layout tab's "גלילה עם עצירות", "וילון רציף").
+ * "כשהתוכן לא נכנס", in the same three words wherever it is asked - for the
+ * board's boxes (the layout tab) and for one part (the list of parts, the
+ * frames of a board of parts). The first did not move and had three names
+ * ("בלי גלילה", "הקטנה כדי שייכנס", "דפדוף בין עמודים"): it is one name now,
+ * and what not moving does there is said in its hint.
  */
+const MOVES = {
+  pause: { name: "גלילה עם עצירות", hint: "עומד למעלה, גולל לאט, עומד למטה וחוזר" },
+  loop: { name: "וילון רציף", hint: "רץ בלי הפסקה; ההתחלה באה אחרי הסוף" },
+} as const;
+/** The board's boxes. */
+export const OVERFLOW_CHOICES = [
+  { id: "off", name: "בלי גלילה", hint: "חלון סביב המניין הבא, והשאר נחתך" },
+  { id: "pause", ...MOVES.pause },
+  { id: "loop", ...MOVES.loop },
+] as const;
+/** One part: a notice not moving is made smaller to fit; a list turns its pages. */
 export const FIT_CHOICES = (binding: ElementBinding) =>
   [
-    ["", binding === "announcements" || binding === "footer" ? "הקטנה כדי שייכנס" : "דפדוף בין עמודים"],
-    ["pause", "גלילה עם עצירות"],
-    ["loop", "וילון רציף"],
+    {
+      id: "",
+      name: "בלי גלילה",
+      hint: binding === "announcements" || binding === "footer" ? "התוכן מוקטן כדי שייכנס" : "הרשימה מתחלקת לעמודים שמתחלפים",
+    },
+    { id: "pause", ...MOVES.pause },
+    { id: "loop", ...MOVES.loop },
   ] as const;
+/** How fast it moves, the same two wherever it is asked. */
+export const SPEED_CHOICES = [
+  { id: "slow", name: "איטית" },
+  { id: "normal", name: "רגילה" },
+] as const;

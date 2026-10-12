@@ -14,13 +14,13 @@ test('shape, linked sizing, measured grid, snapping and persistence',async({page
  await page.getByLabel('צורת התיבה והמסגרת',{exact:true}).selectOption('circle');
  const board=page.getByTestId('elements-canvas');
  await expect(board.locator('[data-geometric-shape="circle"]')).toHaveCount(2);
- await page.getByLabel('רוחב החלק',{exact:true}).fill('20');
- await page.getByLabel('סיבוב',{exact:true}).fill('10');
+ const width=page.getByRole('spinbutton',{name:'רוחב החלק',exact:true});await width.fill('20');await width.press('Enter');
+ const turn=page.getByRole('spinbutton',{name:'סיבוב',exact:true});await turn.fill('10');await turn.press('Enter');
  await page.getByRole('switch',{name:'הצגת רשת ומידות',exact:true}).click();
  await page.getByLabel('מרווח הרשת',{exact:true}).selectOption('5');
  await expect(board.getByTestId('measurement-grid')).toBeVisible();
  await expect(page.getByTestId('element-measurements')).toContainText('1920');
- await page.getByLabel('סיבוב',{exact:true}).fill('0');
+ await turn.fill('0');await turn.press('Enter');
  const fill=d.values.elements.find(e=>e.name==='מילוי זמני תפילות');
  const node=board.locator('[data-element-id="'+fill.id+'"]');
  await node.scrollIntoViewIfNeeded();const rect=await node.boundingBox();

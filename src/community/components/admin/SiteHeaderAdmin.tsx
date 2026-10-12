@@ -3,22 +3,21 @@
  *
  * Part of "תצוגת דף הבית". These were in a "הגדרות" tab beside the
  * synagogue's address and coordinates, which are facts about the synagogue
- * rather than about the site - those are in its details, under "בתי כנסת".
+ * rather than about the site - those are in its details, under "בתי כנסת ופרטים".
  * The header shows the name and address or one of the synagogue's logos
  * (uploaded in those details), and is chosen here.
  */
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, BookOpen, Building2, LogIn, Megaphone, MessageSquareText, Monitor, Palette, ScrollText, Smartphone, Users, WandSparkles } from "lucide-react";
+import { Bell, BookOpen, Building2, LogIn, Megaphone, MessageSquareText, Palette, ScrollText, Users, WandSparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useLiveDesign } from "@/lib/live-design";
 import { useSaveRow } from "@community/lib/admin";
 import { SettingsSaveBar, useUnsavedChangesGuard } from "@community/components/admin/HomeHeroSettings";
 import { useSettings, type Settings } from "@community/lib/data";
 import { readLogos } from "@community/lib/logos";
 import type { SettingsWithLogos } from "./SynagogueDetails";
+import { ChoiceCard, ChoiceGroup, PreviewDeviceToggle, SectionLink, SliderField, useFocusTarget } from "./adminUi";
 
 type PreviewMode = "mobile" | "desktop";
 
@@ -86,24 +85,7 @@ function KarovimHeaderPreview({
     <div className="space-y-3" data-testid="karovim-header-preview-shell">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm font-semibold">תצוגה מקדימה חיה של כל אזור הכותרת</p>
-        <div className="flex rounded-lg border border-border bg-background p-1" role="group" aria-label="סוג תצוגה מקדימה">
-          <button
-            type="button"
-            aria-pressed={isMobile}
-            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs ${isMobile ? "bg-sidebar text-white" : "text-muted-foreground"}`}
-            onClick={() => setMode("mobile")}
-          >
-            <Smartphone className="size-3.5" /> מובייל
-          </button>
-          <button
-            type="button"
-            aria-pressed={!isMobile}
-            className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs ${!isMobile ? "bg-sidebar text-white" : "text-muted-foreground"}`}
-            onClick={() => setMode("desktop")}
-          >
-            <Monitor className="size-3.5" /> מחשב
-          </button>
-        </div>
+        <PreviewDeviceToggle value={isMobile ? "phone" : "computer"} onChange={(device) => setMode(device === "phone" ? "mobile" : "desktop")} />
       </div>
       <div
         data-testid="karovim-header-preview"
@@ -150,7 +132,7 @@ function KarovimHeaderPreview({
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>אפשר לגרור את הלוגו בתוך התצוגה או להשתמש בבקרי המיקום.</span>
         <Button type="button" variant="outline" size="sm" onClick={() => updatePosition(0, 0)}>
-          איפוס מיקום {isMobile ? "במובייל" : "במחשב"}
+          איפוס מיקום {isMobile ? "בטלפון" : "במחשב"}
         </Button>
       </div>
     </div>
@@ -164,6 +146,8 @@ export function SiteHeaderSettings() {
   const { data } = useSettings();
   const save = useSaveRow("settings", "settings");
   const [form, setForm] = useState<Partial<SettingsWithLogos>>({});
+  // Opened from the synagogue's details ("בחירת הלוגו שבכותרת"): brought into view.
+  const focusRef = useFocusTarget<HTMLFormElement>("header", Boolean(data));
 
   useEffect(() => {
     if (data) setForm(data as unknown as SettingsWithLogos);
@@ -186,39 +170,21 @@ export function SiteHeaderSettings() {
   const logoMode = form.home_header_variant === "karovim_logo";
 
   const numericControl = (key: keyof Settings, label: string, min: number, max: number, fallback: number) => (
-    <div className="space-y-2">
-      <Label htmlFor={`setting-${key}`}>{label}</Label>
-      <div className="grid grid-cols-[minmax(0,1fr)_5rem] items-center gap-2" dir="ltr">
-        <Input
-          type="range"
-          aria-label={`שינוי ${label}`}
-          min={min}
-          max={max}
-          step={1}
-          value={String(form[key] ?? fallback)}
-          onChange={(event) => setForm({ ...form, [key]: Number(event.target.value) })}
-          className="h-8 cursor-pointer px-0"
-        />
-        <Input
-          id={`setting-${key}`}
-          data-testid={`setting-${key}`}
-          type="number"
-          min={min}
-          max={max}
-          step={1}
-          value={String(form[key] ?? fallback)}
-          onChange={(event) => {
-            const parsed = Number(event.target.value);
-            setForm({ ...form, [key]: Number.isFinite(parsed) ? parsed : fallback });
-          }}
-        />
-      </div>
-    </div>
+    <SliderField
+      id={`setting-${key}`}
+      testId={`setting-${key}`}
+      label={label}
+      min={min}
+      max={max}
+      value={Number(form[key] ?? fallback)}
+      onChange={(value) => setForm((current) => ({ ...current, [key]: value }))}
+    />
   );
 
   return (
     <form
-      className="card-elev space-y-4 p-5"
+      ref={focusRef}
+      className="card-elev scroll-mt-24 space-y-4 p-5"
       data-testid="site-header-settings"
       onSubmit={(e) => {
         e.preventDefault();
@@ -227,59 +193,53 @@ export function SiteHeaderSettings() {
     >
       <div>
         <h3 className="text-base font-semibold">הכותרת העליונה של האתר</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          שם בית הכנסת והכתובת, או לוגו בלי שורת הכתובת. את הלוגואים עצמם מעלים בפרטי בית הכנסת, בכפתור "בתי כנסת" למעלה.
-        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">שם בית הכנסת והכתובת, או לוגו בלי שורת הכתובת.</p>
+        <SectionLink
+          hint="את הלוגואים עצמם מעלים בפרטי בית הכנסת."
+          label="העלאת לוגואים"
+          tab="communities"
+          extra={{ details: "current" }}
+          testId="go-upload-logos"
+        />
       </div>
-      <div className="grid gap-3 sm:grid-cols-2" role="group" aria-label="בחירת תצוגת כותרת">
-        <button
-          type="button"
-          aria-pressed={!logoMode}
-          className={`rounded-xl border p-3 text-right transition ${!logoMode ? "border-amber-500 ring-2 ring-amber-200" : "border-border"}`}
-          onClick={() => setForm({ ...form, home_header_variant: "standard" })}
-        >
-          <span className="block font-semibold">שם וכתובת</span>
-          <span className="mt-1 block text-xs text-muted-foreground">{data.name}</span>
-        </button>
-        <button
-          type="button"
-          aria-pressed={logoMode}
-          className={`rounded-xl border p-3 text-right transition ${logoMode ? "border-amber-500 ring-2 ring-amber-200" : "border-border"}`}
-          onClick={() => setForm({ ...form, home_header_variant: "karovim_logo" })}
+      <ChoiceGroup className="grid gap-3 sm:grid-cols-2" label="בחירת תצוגת כותרת">
+        <ChoiceCard
+          selected={!logoMode}
+          onSelect={() => setForm({ ...form, home_header_variant: "standard" })}
+          title="שם וכתובת"
+          description={data.name}
+        />
+        <ChoiceCard
+          selected={logoMode}
+          label="לוגו, ללא כתובת"
+          onSelect={() => setForm({ ...form, home_header_variant: "karovim_logo" })}
         >
           <img src={logoSrc} alt="" className="mx-auto h-16 w-auto object-contain" />
           <span className="mt-2 block text-center text-xs text-muted-foreground">לוגו, ללא כתובת</span>
-        </button>
-      </div>
+        </ChoiceCard>
+      </ChoiceGroup>
 
       {logoMode && (
         <section className="space-y-2" aria-label="איזה לוגו">
           <div className="text-sm font-semibold">איזה לוגו</div>
-          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="בחירת לוגו לכותרת" data-testid="header-logo-choice">
-            {[{ id: null as string | null, url: BUILT_IN_LOGO, name: "קרובים (מובנה)" }, ...logos].map((logo) => {
-              const selected = (form.header_logo ?? null) === logo.id;
-              return (
-                <button
-                  key={logo.id ?? "built-in"}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  aria-label={logo.name}
-                  onClick={() => setForm({ ...form, header_logo: logo.id })}
-                  className={`w-32 rounded-xl border p-2 text-center text-[11px] transition ${selected ? "border-amber-500 ring-2 ring-amber-200" : "border-border hover:border-amber-400"}`}
-                >
-                  <span className="mb-1 grid h-14 place-items-center rounded-lg bg-[#16264a] p-1">
-                    <img src={logo.url} alt="" className="max-h-full max-w-full object-contain" />
-                  </span>
-                  <span className="block truncate">{logo.name}</span>
-                </button>
-              );
-            })}
-          </div>
+          <ChoiceGroup className="flex flex-wrap gap-2" label="בחירת לוגו לכותרת" testId="header-logo-choice">
+            {[{ id: null as string | null, url: BUILT_IN_LOGO, name: "קרובים (מובנה)" }, ...logos].map((logo) => (
+              <ChoiceCard
+                key={logo.id ?? "built-in"}
+                selected={(form.header_logo ?? null) === logo.id}
+                label={logo.name}
+                onSelect={() => setForm({ ...form, header_logo: logo.id })}
+                className="w-32 p-2 text-center text-[11px]"
+              >
+                <span className="mb-1 grid h-14 place-items-center rounded-lg bg-[#16264a] p-1">
+                  <img src={logo.url} alt="" className="max-h-full max-w-full object-contain" />
+                </span>
+                <span className="block truncate">{logo.name}</span>
+              </ChoiceCard>
+            ))}
+          </ChoiceGroup>
           {logos.length === 0 && (
-            <p className="text-xs text-muted-foreground">
-              לבית הכנסת הזה עוד אין לוגואים משלו. מוסיפים אותם בפרטי בית הכנסת ("בתי כנסת" ← פרטים).
-            </p>
+            <p className="text-xs text-muted-foreground">לבית הכנסת הזה עוד אין לוגואים משלו.</p>
           )}
         </section>
       )}
@@ -298,11 +258,11 @@ export function SiteHeaderSettings() {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <fieldset className="grid gap-3 rounded-xl border border-border bg-background/80 p-3">
-              <legend className="px-2 text-sm font-semibold">מובייל</legend>
-              {numericControl("karovim_logo_mobile_width", "רוחב במובייל (פיקסלים)", 140, 360, 230)}
-              {numericControl("karovim_logo_mobile_height", "גובה במובייל (פיקסלים)", 70, 240, 130)}
-              {numericControl("karovim_logo_mobile_offset_x", "מיקום אופקי במובייל", -120, 120, 0)}
-              {numericControl("karovim_logo_mobile_offset_y", "מיקום אנכי במובייל", -80, 80, 0)}
+              <legend className="px-2 text-sm font-semibold">טלפון</legend>
+              {numericControl("karovim_logo_mobile_width", "רוחב בטלפון (פיקסלים)", 140, 360, 230)}
+              {numericControl("karovim_logo_mobile_height", "גובה בטלפון (פיקסלים)", 70, 240, 130)}
+              {numericControl("karovim_logo_mobile_offset_x", "מיקום אופקי בטלפון", -120, 120, 0)}
+              {numericControl("karovim_logo_mobile_offset_y", "מיקום אנכי בטלפון", -80, 80, 0)}
             </fieldset>
             <fieldset className="grid gap-3 rounded-xl border border-border bg-background/80 p-3">
               <legend className="px-2 text-sm font-semibold">מחשב</legend>
@@ -340,7 +300,7 @@ export function SiteDesignShortcuts() {
       <div>
         <h3 id="community-themes-title" className="text-base font-semibold">ערכות נושא ועיצוב חי של האתר</h3>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          הצבעים והעיצוב של האתר. ללוחות הטלוויזיה יש ערכות משלהן, בלשונית "תצוגות".
+          הצבעים והעיצוב של האתר. ללוחות הטלוויזיה יש ערכות משלהן, במדור "תצוגות".
         </p>
       </div>
       <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
@@ -355,7 +315,7 @@ export function SiteDesignShortcuts() {
             window.dispatchEvent(new CustomEvent("open-app-themes"));
           }}
         >
-          <Palette className="size-5" /> פתיחת מנהל ערכות הנושא
+          <Palette className="size-5" /> פתיחת ניהול ערכות הנושא
         </Button>
         <Button
           type="button"

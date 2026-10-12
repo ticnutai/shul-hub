@@ -38,6 +38,16 @@ beforeEach(() => {
 });
 
 const preview = () => screen.getByTestId("home-hero-preview");
+/**
+ * The lists are the site's own (not the browser's box). Inside a form each
+ * keeps a hidden plain list beside it for the browser, named here - choosing
+ * in that one is choosing in the list, without opening it on a test page.
+ */
+const choose = (name: string, value: string) => {
+  const select = document.querySelector<HTMLSelectElement>(`select[name="${name}"]`);
+  if (!select) throw new Error(`no list named ${name}`);
+  fireEvent.change(select, { target: { value } });
+};
 const strip = () => preview().querySelector('[data-testid="home-hero"]');
 
 describe("the admin's screen for the strip", () => {
@@ -54,8 +64,8 @@ describe("the admin's screen for the strip", () => {
     fireEvent.click(screen.getByRole("radio", { name: /שני טורים/ }));
     fireEvent.click(screen.getByRole("radio", { name: /ירוק אמרלד/ }));
     fireEvent.click(screen.getByRole("switch", { name: /התפילה הבאה/ }));
-    fireEvent.change(screen.getByRole("combobox", { name: "שם בית הכנסת ברצועה" }), { target: { value: "show" } });
-    fireEvent.change(screen.getByRole("combobox", { name: "פריסה בטלפון" }), { target: { value: "compact" } });
+    choose("hero-name", "show");
+    choose("hero-phone-layout", "compact");
     expect(strip()?.getAttribute("data-hero-layout")).toBe("split");
     expect(within(preview()).queryByTestId("hero-next-prayer")).toBeNull();
     // As a phone: the phone's own layout.
@@ -84,7 +94,7 @@ describe("the admin's screen for the strip", () => {
     fireEvent.change(screen.getByLabelText("בחירת תמונה לרקע הרצועה"), { target: { files: [file] } });
     await waitFor(() => expect(strip()?.getAttribute("data-hero-look")).toBe("picture"));
     expect(upload).toHaveBeenCalledWith(expect.stringMatching(/^hero\/c1\/[\w-]+\.jpg$/), file, expect.anything());
-    fireEvent.change(screen.getByRole("combobox", { name: "גוון מעל התמונה" }), { target: { value: "light" } });
+    choose("hero-shade", "light");
     fireEvent.click(screen.getByRole("button", { name: "שמירה" }));
     expect(mutate).toHaveBeenCalledWith({ id: "s1", home_hero: { ...DEFAULT_HOME_HERO, image: STORED, shade: "light" } });
   });
@@ -92,7 +102,8 @@ describe("the admin's screen for the strip", () => {
   it("refuses a file that is not a picture, or too big", async () => {
     render(<HomeHeroSettings />);
     fireEvent.change(screen.getByLabelText("בחירת תמונה לרקע הרצועה"), { target: { files: [new File(["x"], "a.pdf", { type: "application/pdf" })] } });
-    const big = new File([new Uint8Array(5 * 1024 * 1024)], "big.jpg", { type: "image/jpeg" });
+    // One limit for every picture in the gabbai's area (uploadImage.ts): 5 מגה.
+    const big = new File([new Uint8Array(5 * 1024 * 1024 + 1)], "big.jpg", { type: "image/jpeg" });
     fireEvent.change(screen.getByLabelText("בחירת תמונה לרקע הרצועה"), { target: { files: [big] } });
     await new Promise((r) => setTimeout(r, 20));
     expect(upload).not.toHaveBeenCalled();

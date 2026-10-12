@@ -3,8 +3,8 @@
  * phone and the tiles (AdminTiles.tsx) read it, so a section is added once.
  */
 import {
-  BookOpen, Bot, Building2, CalendarClock, Download, FileUp, Handshake, KeyRound, LayoutDashboard,
-  Megaphone, MessageSquareText, QrCode, Tv, UserPlus, Users, type LucideIcon,
+  BookOpen, Bot, Building2, CalendarClock, FileUp, Handshake, LayoutDashboard,
+  Megaphone, MessageSquareText, Share2, Tv, UserPlus, Users, type LucideIcon,
 } from "lucide-react";
 
 export interface AdminSection {
@@ -27,10 +27,21 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   { value: "widgets", label: "תצוגת דף הבית", icon: LayoutDashboard, hint: "הכותרת, ערכות הנושא ודף הבית" },
   { value: "users", label: "משתמשים", icon: Users, hint: "גבאים והרשאות" },
   { value: "communities", label: "בתי כנסת ופרטים", icon: Building2, hint: "כתובת, מיקום ולוגו" },
-  { value: "ai", label: "עוזר חכם", icon: Bot, hint: "הוספת תוכן בעזרת העוזר" },
-  { value: "api", label: "מפתח API", icon: KeyRound, hint: "חיבור מערכות חיצוניות" },
-  { value: "qr", label: "קודי QR", icon: QrCode, hint: "קודים להדפסה ולתלייה" },
-  { value: "data", label: "ייצוא/ייבוא", icon: FileUp, hint: "גיבוי והעברת נתונים" },
-  { value: "apps", label: "הורדת אפליקציות", icon: Download, hint: "האפליקציה לטלפון ולמסכים" },
+  // The assistant and its key are one section: the key is only ever for the assistant.
+  { value: "ai", label: "עוזר חכם", icon: Bot, hint: "הוספת תוכן בעזרת העוזר, והמפתח שלו" },
+  // The printed codes and the installers are one section: both are how people get to the site and the app.
+  { value: "share", label: "שיתוף והורדות", icon: Share2, hint: "קודים להדפסה, והתקנת האפליקציה לטלפון ולמסכים" },
+  { value: "data", label: "ייצוא וייבוא", icon: FileUp, hint: "גיבוי והעברת נתונים" },
 ];
 
+/**
+ * Sections that were merged into another, and old links to them: each opens
+ * the section it is part of now, and `focus` the panel it became there.
+ * ("הגדרות" moved to the synagogue's details, under "בתי כנסת ופרטים".)
+ */
+export const SECTION_ALIASES: Record<string, { tab: string; focus?: string }> = {
+  settings: { tab: "communities" },
+  api: { tab: "ai", focus: "key" },
+  qr: { tab: "share" },
+  apps: { tab: "share", focus: "apps" },
+};

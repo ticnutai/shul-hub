@@ -9,14 +9,14 @@
  *
  * and "התיבות שלי": frames the gabbai kept, put back as they were kept. New
  * content is written as the gabbai set once ("ברירת מחדל לתוכן חדש"), or in
- * the kit's own letters; never with a panel behind it unless asked.
+ * the kit's own letters; never with a panel behind it unless asked. A kept
+ * frame is deleted in one place, its tile's ✕ in "החלקים והתיבות שלי"
+ * (ElementLibrary), not here as well.
  */
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { confirmAction } from '@/components/ConfirmDialog';
 import { DEFAULT_ELEMENT_DEFAULTS, type ElementDefaults } from '@/tv/config';
 import {
   BINDING_LABELS, ELEMENT_BINDINGS, ELEMENT_FONTS, MAX_ELEMENTS, addContent, withDefaults, addIntoFrame, boundsOf, elementId, importElementSet,
@@ -29,7 +29,7 @@ type Where = 'new' | 'replace' | 'into';
 const SIDE_NAME = { right: 'ימין', center: 'אמצע', left: 'שמאל' } as const;
 const SIZES = [[0.85, 'קטן'], [1, 'כמו בערכה'], [1.15, 'גדול'], [1.3, 'גדול מאוד']] as const;
 
-export function AddContent({ elements, library, defaults, onCommit, onDefaults, onLibrary }: {
+export function AddContent({ elements, library, defaults, onCommit, onDefaults }: {
   elements: BoardElement[];
   /** "התיבות שלי": frames kept to be added again (the board's library of parts). */
   library: SavedElementSet[];
@@ -37,7 +37,6 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
   /** The board's parts after the addition, and the parts to select. */
   onCommit: (next: BoardElement[], key: string, select: string[]) => void;
   onDefaults: (next: ElementDefaults) => void;
-  onLibrary: (next: SavedElementSet[]) => void;
 }) {
   const [what, setWhat] = useState<string>('dafYomi');
   const [where, setWhere] = useState<Where>('new');
@@ -101,20 +100,9 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
         )}
       </select>
       {box ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="flex-1">שמרתם אותה: נוספת כמו שנשמרה, באמצע הלוח.</span>
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive" aria-label={`מחיקת התיבה ${box.name}`}
-            onClick={async () => {
-              const ok = await confirmAction({
-                title: `למחוק את „${box.name}” מהחלקים והתיבות שלי?`,
-                description: 'מה שכבר על הלוח לא ישתנה.',
-                confirmLabel: 'מחיקה',
-              });
-              if (ok) { onLibrary(library.filter(l => l.id !== box.id)); setWhat('dafYomi'); }
-            }}>
-            <Trash2 className="size-3.5" aria-hidden /> מחיקה מהחלקים והתיבות שלי
-          </Button>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          שמרתם אותה: נוספת כמו שנשמרה, באמצע הלוח. מחיקה - ב-✕ שלה ב"החלקים והתיבות שלי" (לשונית עיצוב, חלקים חופשיים).
+        </p>
       ) : (
         <>
           <div className="space-y-1.5 text-sm" role="radiogroup" aria-label="איפה להוסיף">
@@ -173,7 +161,7 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
                 <option value="normal">רגיל</option>
               </select>
             </label>
-            <label className="flex items-center gap-1.5 text-xs">
+            <label className="flex items-center gap-1.5 text-xs" title="גודל הטקסט, ביחס לגודל שבערכה">
               גודל
               <select aria-label="גודל לתוכן חדש" value={String(defaults.scale)} onChange={e => setDefault({ scale: Number(e.target.value) })} className={SELECT_CLASS}>
                 {SIZES.map(([v, n]) => <option key={v} value={String(v)}>{n}</option>)}

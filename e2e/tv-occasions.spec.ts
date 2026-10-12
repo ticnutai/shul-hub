@@ -20,7 +20,7 @@ test.describe("TV editor, the screen builder and the preview", () => {
     test.skip(!res || res.status() >= 400, "the editor harness is served by the dev server");
     await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
     await page.getByRole("tab", { name: "פריסה" }).click();
-    const chips = page.getByRole("tablist", { name: "שקופיות" });
+    const chips = page.getByRole("tablist", { name: "מסכים" });
     await expect(chips.getByRole("tab", { selected: true })).toContainText("הלוח");
 
     await page.getByTestId("screen-composer").getByRole("button", { name: /מסך ב/ }).first().click();
@@ -63,8 +63,8 @@ test.describe("TV editor, occasions", () => {
     await dialog.getByLabel("הכותרת על המסך").fill("שבת קודש לכולם");
     await dialog.getByRole("checkbox", { name: "כל זמני היום" }).check();
     await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
-    // An ordinary Shabbat (the next one, 3.10, is also Shmini Atzeret, which leads it).
-    await list(page).getByLabel("תצוגה לתאריך").fill("2026-10-10");
+    // An ordinary Shabbat (the next one, 3.10, is also Shmini Atzeret, which leads it) - from the one date control under the preview.
+    await page.getByLabel("תצוגה בתאריך", { exact: true }).first().fill("2026-10-10");
     const card = page.locator('.tv-frame .tv-occasion[data-occasion="shabbat"]');
     await expect(card).toBeVisible({ timeout: 10_000 });
     await expect(card.locator(".tv-event-title")).toHaveText("שבת קודש לכולם");
@@ -92,17 +92,24 @@ test.describe("TV editor, occasions", () => {
     await expectNotFrozen(page, "occasion design");
   });
 
-  test("a ready ראש חודש kit picked in its settings is its screen; each of its screens can be hidden", async ({ page }) => {
+  test("a ready ראש חודש kit picked from its settings is its screen; each of its screens can be hidden", async ({ page }) => {
     // Picked, and nothing changed: the kit's id was dropped on saving, and the
     // card covered the board anyway (אושר של יהודי, 11.10.2026).
+    // The dialog names the kit and leads to the occasion's page, where kits are chosen.
     await row(page, "cal:rosh_chodesh").getByRole("button", { name: "הגדרות" }).click();
     const dialog = page.getByTestId("occasion-dialog");
-    await dialog.getByLabel("עיצוב המועד").selectOption({ label: "לבנה בשמי לילה · ראש חודש" });
-    await expect(dialog.getByLabel("עיצוב המועד")).toHaveValue("d_premium_rc_night-moon");
-    await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
+    await expect(dialog.getByTestId("occasion-kit")).toContainText("בלי ערכה");
+    await dialog.getByTestId("occasion-kit").getByRole("button", { name: "בחירת ערכה" }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId("occasion-design-banner")).toContainText("ראש חודש");
+    await page.getByTestId("builtin-designs").locator('[data-design-id="d_premium_rc_night-moon"] button[title^="ממלא"]').click();
+    await page.getByTestId("occasion-design-banner").getByRole("button", { name: "חזרה לעיצוב הלוח" }).click();
+    await page.getByRole("tab", { name: "מועדים" }).click();
     await expect(row(page, "cal:rosh_chodesh")).toContainText("עם ערכה");
-    await list(page).getByLabel("תצוגה לתאריך").fill("2026-10-11");
-    const chips = page.getByRole("tablist", { name: "שקופיות" });
+    // Its own kit, kept out of "הערכות שלי".
+    await expect(page.getByTestId("design-library").getByRole("button", { name: /^החלת ערכה עיצוב ראש חודש/ })).toHaveCount(0);
+    await page.getByLabel("תצוגה בתאריך", { exact: true }).first().fill("2026-10-11");
+    const chips = page.getByRole("tablist", { name: "מסכים" });
     await chips.getByRole("tab", { name: /ראש חודש/ }).first().click();
     const frame = page.locator(".tv-frame").first();
     await expect(frame.locator('img[src*="rosh-chodesh-night-moon"]').first()).toBeVisible({ timeout: 10_000 });
@@ -189,11 +196,9 @@ test.describe("TV editor, occasions", () => {
 
   test("beside the pages: the occasion on today by itself; any other only when added by hand, and ✕ takes it off", async ({ page }) => {
     // הושענא רבה had a design of its own and stood in the bar all year (אושר של יהודי, 11.10.2026).
-    await row(page, "cal:hoshana_raba").getByRole("button", { name: "הגדרות" }).click();
-    const dialog = page.getByTestId("occasion-dialog");
-    await dialog.getByLabel("עיצוב המועד").selectOption("d_wood");
-    await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
-    await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+    await row(page, "cal:hoshana_raba").getByTestId("occasion-design").click();
+    await page.getByTestId("builtin-designs").locator('[data-design-id="d_wood"] button[title^="ממלא"]').click();
+    await page.getByTestId("occasion-design-banner").getByRole("button", { name: "חזרה לעיצוב הלוח" }).click();
     const bar = page.getByTestId("part-pages");
     const hr = bar.locator('[data-occasion-tab="cal:hoshana_raba"]');
     await expect(hr).toHaveCount(0);
@@ -237,8 +242,8 @@ test.describe("TV editor, occasions", () => {
 
     // The part just added (selected) dragged on the board itself.
     const box = await preview.locator('[data-free-edit="true"]').boundingBox();
-    const sel = page.getByLabel("מיקום אופקי");
-    const x0 = Number(await sel.inputValue());
+    const sel = page.getByRole("spinbutton", { name: "מיקום אופקי" });
+    const x0 = parseFloat(await sel.inputValue());
     const ids = await page.evaluate(() => [...document.querySelectorAll('[data-board-preview] [data-free-edit="true"] [data-element-id]')].map((e) => (e as HTMLElement).dataset.elementId));
     const last = preview.locator(`[data-free-edit="true"] [data-element-id="${ids.at(-1)}"]`);
     const b = (await last.boundingBox())!;
@@ -246,7 +251,7 @@ test.describe("TV editor, occasions", () => {
     await page.mouse.down();
     await page.mouse.move(b.x + b.width / 2 + box!.width * 0.1, b.y + b.height / 2, { steps: 8 });
     await page.mouse.up();
-    await expect.poll(async () => Number(await sel.inputValue())).toBeGreaterThan(x0 + 5);
+    await expect.poll(async () => parseFloat(await sel.inputValue())).toBeGreaterThan(x0 + 5);
     await expectNotFrozen(page, "occasion part dragged");
   });
 
@@ -258,9 +263,10 @@ test.describe("TV editor, occasions", () => {
     await dialog.getByLabel("חודש", { exact: true }).selectOption("11");
     await dialog.getByRole("button", { name: "טקסט" }).click();
     await dialog.getByLabel("הטקסט").fill("סעודת הילולא אחרי ערבית");
-    // The preview is behind the dialog: asking for it closes the dialog, to show it.
-    await dialog.getByRole("button", { name: "תצוגה בתאריך הקרוב" }).click();
+    // Its day in the preview: the eye in its row, once the dialog is closed.
+    await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
     await expect(dialog).toBeHidden();
+    await list(page).getByRole("button", { name: "תצוגה של הילולת הרב בתאריך הקרוב" }).click();
     await expect(list(page)).toContainText("הילולת הרב");
     await expect(list(page)).toContainText("כל שנה, 15 בשבט");
     // Tu BiShvat is a day of its own in the list too; with both on, one screen
@@ -305,7 +311,7 @@ test.describe("TV editor, an occasion's pictures", () => {
     await page.getByTestId("occasions").locator('li[data-occasion="o_hillula1"]').getByRole("button", { name: "הגדרות" }).click();
 
     const gallery = page.getByTestId("occasion-dialog").getByTestId("occasion-pictures");
-    const picture = gallery.locator("div", { has: page.locator(`img[src="${photo}"]`) }).getByRole("button").first();
+    const picture = gallery.getByRole("button", { name: "תמונה שהעליתם", exact: true });
     await expect(picture).toHaveAttribute("aria-pressed", "true");
     await picture.click();
     await expect(picture).toHaveAttribute("aria-pressed", "false");
@@ -313,7 +319,7 @@ test.describe("TV editor, an occasion's pictures", () => {
     await picture.click();
     await expect(picture).toHaveAttribute("aria-pressed", "true");
 
-    await gallery.getByRole("button", { name: /^מחיקת .* מהגלריה$/ }).click();
+    await gallery.getByRole("button", { name: /^מחיקת תמונה שהעליתם/ }).click();
     // Asked first: it is gone from the gallery too.
     await page.getByTestId("confirm-dialog").getByRole("button", { name: "מחיקה" }).click();
     await expect(page.getByTestId("confirm-dialog")).toBeHidden();

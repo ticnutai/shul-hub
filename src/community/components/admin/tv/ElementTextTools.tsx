@@ -8,23 +8,22 @@
  * the same component in both, so the two never offer different things.
  */
 import { useEffect, useState } from 'react';
-import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, TriangleAlert, WrapText } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, WrapText } from 'lucide-react';
 
 import { ELEMENT_FONTS, wraps, type BoardElement, type ElementFont } from '@/tv/elements';
 import { ColourRow, SELECT_CLASS, Stepper } from './editorParts';
+import { Notice } from './Notice';
 
 const BTN = 'grid size-8 place-items-center rounded border text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40';
 const ON = 'border-primary bg-primary/10 text-primary';
 const WIDE = 'flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded border px-2 text-xs text-muted-foreground hover:border-primary hover:text-foreground';
 
-export function ElementTextTools({ elements, ids, onPatch, withColor = true, withText = true }: {
+export function ElementTextTools({ elements, ids, onPatch, withColor = true }: {
   elements: BoardElement[];
   ids: string[];
   /** The change, for the parts given (the locked among them are left alone). */
   onPatch: (ids: string[], patch: Partial<BoardElement>, what: string) => void;
   withColor?: boolean;
-  /** The words of a single text written by hand, to be changed here. */
-  withText?: boolean;
 }) {
   const texts = elements.filter(e => ids.includes(e.id) && e.kind === 'text' && !e.locked);
   const cut = useCutText(texts.map(e => e.id).join(','));
@@ -42,9 +41,9 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
     <div className="space-y-2 rounded-lg border p-2" role="group" aria-label={`עיצוב הטקסט - ${label}`} data-testid="element-text-tools">
       <p className="text-xs font-semibold">הטקסט של: {label}</p>
       <div className="flex flex-wrap items-center gap-1.5">
-        {/* Size: the letters themselves, in the board's height. */}
+        {/* Size: the letters themselves, as a share of the board's height - a % as every size in the editor. */}
         <Stepper label="גודל הטקסט" value={first.fontSize} min={0.5} max={20} step={0.25}
-          format={(v) => String(Number(v.toFixed(2)))}
+          format={(v) => `${Number(v.toFixed(2))}%`}
           onChange={(v) => set({ fontSize: Math.round(v * 100) / 100 }, 'fontSize')} />
         <select aria-label="גופן" value={texts.every(e => e.font === first.font) ? first.font ?? '' : ''}
           onChange={ev => set({ font: (ev.target.value || undefined) as ElementFont | undefined }, 'font')}
@@ -83,16 +82,17 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
         {wrapping ? 'טקסט ארוך נשבר לשורות ושומר על הגודל שלו.' : 'טקסט ארוך נשאר בשורה אחת ומוקטן כדי שייכנס.'}
       </p>
       {texts.some(e => cut[e.id]) && (
-        <div className="flex flex-wrap items-center gap-2 rounded border border-amber-400 bg-amber-50 px-2 py-1.5 text-xs text-amber-950" role="status" data-testid="text-cut">
-          <TriangleAlert className="size-4 shrink-0" aria-hidden />
-          <span className="flex-1">חלק מהטקסט לא נכנס בתיבה ונחתך בתחתית שלה.</span>
-          <button type="button" className="rounded border border-amber-500 bg-white px-2 py-1 font-medium hover:bg-amber-100"
-            onClick={() => texts.forEach(e => cut[e.id] && onPatch([e.id], { height: Math.min(100 - e.y, Math.round((e.height * cut[e.id] + 0.5) * 10) / 10) }, 'grow'))}>
-            להגדיל את התיבה כדי שהכול ייכנס
-          </button>
-        </div>
+        <Notice variant="warning" className="p-2 text-xs" role="status" data-testid="text-cut"
+          actions={
+            <button type="button" className="rounded border border-amber-500 bg-background px-2 py-1 font-medium hover:bg-amber-100 dark:hover:bg-amber-900"
+              onClick={() => texts.forEach(e => cut[e.id] && onPatch([e.id], { height: Math.min(100 - e.y, Math.round((e.height * cut[e.id] + 0.5) * 10) / 10) }, 'grow'))}>
+              להגדיל את התיבה כדי שהכול ייכנס
+            </button>
+          }>
+          חלק מהטקסט לא נכנס בתיבה ונחתך בתחתית שלה.
+        </Notice>
       )}
-      {withText && plain && (
+      {plain && (
         <label className="block text-xs">
           מה כתוב
           <textarea aria-label="מה כתוב בטקסט" value={first.text} rows={2} maxLength={2000}

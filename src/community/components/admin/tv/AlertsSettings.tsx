@@ -6,17 +6,15 @@
  * board's preview, at the step chosen.
  */
 import { useState, type CSSProperties } from "react";
-import { toast } from "sonner";
 import { BellRing } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { ALERT_EVENT_LABELS, DEFAULT_ALERT_LOOK, type AlertEvent, type AlertLook, type TvConfig } from "@/tv/config";
 import { themeStyle } from "@/tv/themes";
 import { ALERT_ICONS, ALERT_PRESETS, alertLookVars, formatCountdown } from "@/tv/zmanAlerts";
-import { ColorPick } from "./ColorPick";
-import { Stepper } from "./editorParts";
+import { ColourRow, Segments, Stepper, SwitchRow } from "./editorParts";
+import { itemChipClass } from "./Notice";
+import { ChipRemove } from "./ReadyShelf";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 export type AlertExample = "board" | "panel" | "chip";
@@ -30,18 +28,12 @@ const POSITIONS: [AlertLook["position"], string][] = [["top", "למעלה"], ["c
 const DIMS: [AlertLook["dim"], string][] = [["strong", "מוחשך"], ["soft", "מוחשך מעט"], ["none", "בלי החשכה"]];
 const ICONS: [AlertLook["icon"], string][] = [["hourglass", "שעון חול"], ["clock", "שעון"], ["candle", "נר"], ["none", "בלי סמל"]];
 
+/** A choice of a few, under its name: the editor's one Segments. */
 function Choice<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: [T, string][]; onChange: (v: T) => void }) {
   return (
     <div className="space-y-1">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
-      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={label}>
-        {options.map(([v, name]) => (
-          <button key={v} type="button" role="radio" aria-checked={value === v} onClick={() => onChange(v)}
-            className={`rounded-md border px-2.5 py-1 text-sm transition ${value === v ? "border-primary bg-primary/10 font-medium text-primary" : "hover:border-primary/50"}`}>
-            {name}
-          </button>
-        ))}
-      </div>
+      <Segments label={label} value={value} onChange={onChange} options={options.map(([id, name]) => ({ id, name }))} />
     </div>
   );
 }
@@ -57,25 +49,20 @@ function Minutes({ label, value, onChange, hint }: { label: string; value: numbe
 }
 
 function LeadMinutes({ value, onChange }: { value: number[]; onChange: (v: number[]) => void }) {
-  const [adding, setAdding] = useState("");
-  const add = () => {
-    const n = Number(adding);
-    if (!Number.isInteger(n) || n < 1 || n > 180) return toast.error("הזינו מספר דקות בין 1 ל-180");
-    onChange([...new Set([...value, n])].sort((a, b) => b - a).slice(0, 5));
-    setAdding("");
-  };
+  const [adding, setAdding] = useState(10);
+  const add = () => onChange([...new Set([...value, adding])].sort((a, b) => b - a).slice(0, 5));
   return (
     <div className="flex flex-wrap items-center gap-2 text-sm">
       הכרטיס קופץ לפני:
       {value.map((m) => (
-        <span key={m} className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-0.5">
+        <span key={m} className={itemChipClass("text-sm")}>
           {m} דקות
-          <button type="button" aria-label={`הסרת התזכורת של ${m} דקות`} onClick={() => onChange(value.filter((x) => x !== m))} className="text-muted-foreground hover:text-foreground">×</button>
+          <ChipRemove label={`הסרת התזכורת של ${m} דקות`} onClick={() => onChange(value.filter((x) => x !== m))} />
         </span>
       ))}
       {value.length < 5 && (
         <span className="inline-flex items-center gap-1">
-          <Input type="number" min={1} max={180} value={adding} onChange={(e) => setAdding(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} className="h-8 w-20" aria-label="דקות לתזכורת נוספת" />
+          <Stepper label="דקות לתזכורת נוספת" value={adding} min={1} max={180} step={1} format={(v) => `${v} דקות`} onChange={setAdding} />
           <Button type="button" variant="outline" size="sm" onClick={add}>הוספה</Button>
         </span>
       )}
@@ -110,11 +97,7 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
       {/* ------------------------------------------------------------ when */}
       <section className="space-y-3" aria-label="מתי">
         <h4 className="text-sm font-semibold">מתי</h4>
-        <label className="flex items-center gap-3">
-          <Switch checked={a.enabled} onCheckedChange={(on) => setAlerts("on", { enabled: on })} aria-label="תזכורות פעילות" />
-          תזכורות פעילות
-          <span className="text-xs text-muted-foreground">(בשבת ובחג הן כבויות)</span>
-        </label>
+        <SwitchRow label="תזכורות פעילות" note="בשבת ובחג הן כבויות" ariaLabel="תזכורות פעילות" checked={a.enabled} onChange={(on) => setAlerts("on", { enabled: on })} />
         <div className="space-y-1">
           <div className="text-xs font-medium text-muted-foreground">לפני אילו זמנים</div>
           <div className="flex flex-wrap gap-x-5 gap-y-2">
@@ -156,10 +139,10 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
           <div className="space-y-3">
             <Choice label="צבעים" value={look.style} options={STYLES} onChange={(v) => setLook({ style: v })} />
             {look.style === "custom" && (
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                <span className="flex items-center gap-1.5">רקע <ColorPick label="רקע התזכורת" value={look.colors.bg} onChange={(c) => setLook({ colors: { ...look.colors, bg: c } })} /></span>
-                <span className="flex items-center gap-1.5">כתב <ColorPick label="כתב התזכורת" value={look.colors.text} onChange={(c) => setLook({ colors: { ...look.colors, text: c } })} /></span>
-                <span className="flex items-center gap-1.5">ספרות ומסגרת <ColorPick label="ספרות ומסגרת התזכורת" value={look.colors.accent} onChange={(c) => setLook({ colors: { ...look.colors, accent: c } })} /></span>
+              <div className="grid max-w-xs gap-2">
+                <ColourRow label="רקע התזכורת" value={look.colors.bg} onChange={(c) => setLook({ colors: { ...look.colors, bg: c } })} />
+                <ColourRow label="כתב התזכורת" value={look.colors.text} onChange={(c) => setLook({ colors: { ...look.colors, text: c } })} />
+                <ColourRow label="ספרות ומסגרת התזכורת" value={look.colors.accent} onChange={(c) => setLook({ colors: { ...look.colors, accent: c } })} />
               </div>
             )}
             <Choice label="צורה" value={look.shape} options={SHAPES} onChange={(v) => setLook({ shape: v })} />
@@ -205,10 +188,12 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
       {/* ------------------------------------------------- next minyan count */}
       <section className="space-y-2 border-t pt-4" aria-label="ספירה לתפילה הבאה">
         <h4 className="text-sm font-semibold">ספירה לתפילה הבאה</h4>
-        <label className="flex items-center gap-3">
-          <Switch checked={countdown} onCheckedChange={(on) => edit("cd-on", (c) => ({ ...c, countdown: { ...c.countdown, enabled: on } }))} aria-label="ספירה לתפילה הבאה" />
-          שורה מתחת לזמני התפילות שסופרת כמה נשאר למניין הבא
-        </label>
+        <SwitchRow
+          label="שורה מתחת לזמני התפילות שסופרת כמה נשאר למניין הבא"
+          ariaLabel="ספירה לתפילה הבאה"
+          checked={countdown}
+          onChange={(on) => edit("cd-on", (c) => ({ ...c, countdown: { ...c.countdown, enabled: on } }))}
+        />
         <p className="text-xs text-muted-foreground">פועלת בפריסת "לוח מלא". זו לא תזכורת לסוף זמן - רק ספירה למניין הבא, בשורה קטנה.</p>
       </section>
     </div>

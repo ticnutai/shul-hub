@@ -36,8 +36,45 @@ const TABLE_LABELS: Record<ExportableTable, string> = {
   shiurim: "שיעורים",
   chavrutot: "חברותות",
   chavruta_requests: "בקשות חברותא",
-  admin_messages: "הודעות למנהל",
+  admin_messages: "הודעות לגבאי",
 };
+
+/**
+ * The columns' names in Hebrew, for the spreadsheet: a gabbai opening the
+ * file reads "שעה קבועה", not fixed_time. The file keeps the real names too,
+ * in a hidden second row, so it can be imported back exactly.
+ */
+const COLUMN_LABELS: Record<string, string> = {
+  id: "מזהה", community_id: "בית כנסת", created_at: "נוצר", updated_at: "עודכן",
+  active: "מוצג", active_from: "מתקיים מתאריך", active_until: "מתקיים עד תאריך",
+  address: "כתובת", availability: "זמנים פנויים", body: "תוכן", candle_offset_minutes: "הדלקת נרות - דקות לפני השקיעה",
+  category_id: "קטגוריה", city: "עיר", contact: "איש קשר", day_of_week: "יום בשבוע", day_type: "סוג יום",
+  description: "תיאור", elevation: "גובה", email: "אימייל", expires_at: "בתוקף עד", fixed_time: "שעה קבועה",
+  header_logo: "הלוגו בכותרת", home_header_variant: "תצוגת הכותרת", home_hero: "הרצועה בראש דף הבית",
+  home_width: "רוחב בדף הבית", image_path: "קובץ התמונה", image_url: "כתובת התמונה", intent: "מטרה",
+  is_read: "נקרא", karovim_logo_desktop_height: "גובה הלוגו במחשב", karovim_logo_desktop_offset_x: "מיקום אופקי של הלוגו במחשב",
+  karovim_logo_desktop_offset_y: "מיקום אנכי של הלוגו במחשב", karovim_logo_desktop_width: "רוחב הלוגו במחשב",
+  karovim_logo_mobile_height: "גובה הלוגו בטלפון", karovim_logo_mobile_offset_x: "מיקום אופקי של הלוגו בטלפון",
+  karovim_logo_mobile_offset_y: "מיקום אנכי של הלוגו בטלפון", karovim_logo_mobile_width: "רוחב הלוגו בטלפון",
+  kind: "סוג", label: "שם", latitude: "קו רוחב", level: "רמה", location: "מיקום", logos: "לוגואים",
+  longitude: "קו אורך", looking_for_partner: "מחפשים חברותא", minyan_days: "אילו ימים רואים",
+  minyan_layout: "פריסת התפילות", name: "שם", note: "הערה", notes: "הערות", notification_enabled: "תזכורת",
+  offset_minutes: "הפרש בדקות", partners: "שמות הלומדים", phone: "טלפון", pinned: "מוצמדת", prayer: "תפילה",
+  relative_to: "ביחס לזמן", reminder_minutes: "דקות לפני התזכורת", room: "אולם", schedule_type: "תדירות",
+  sender_id: "השולח", sender_name: "שם השולח", shabbat_end_minutes: "צאת שבת - דקות אחרי השקיעה",
+  share_contact: "פרסום פרטי קשר", show_on_home: "מוצג בדף הבית", sort_order: "מקום ברשימה", status: "מצב",
+  study_format: "מסגרת", style: "עיצוב", subject: "נושא", subtitle: "כותרת משנה", teacher: "מגיד השיעור",
+  theme: "ערכת נושא", time_mode: "אופן קביעת השעה", time_text: "שעה", title: "כותרת", topic: "נושא הלימוד",
+  tzeit_offset_minutes: "צאת הכוכבים - דקות אחרי השקיעה", category: "קטגוריה", subcategories: "תפילות",
+};
+
+/** A column's Hebrew name; a column newer than this list keeps its own name. */
+export function columnLabel(key: string): string {
+  return COLUMN_LABELS[key] ?? key;
+}
+
+/** A sheet's name: the table's Hebrew name (a sheet name is at most 31 letters). */
+const sheetName = (table: ExportableTable) => tableLabel(table).slice(0, 31);
 
 export function tableLabel(table: ExportableTable): string {
   return TABLE_LABELS[table];
@@ -110,10 +147,13 @@ export async function downloadAsExcel(data: ExportData) {
 
   for (const table of EXPORTABLE_TABLES) {
     const rows = data[table] ?? [];
-    const sheet = workbook.addWorksheet(table.slice(0, 31));
+    const sheet = workbook.addWorksheet(sheetName(table), { views: [{ rightToLeft: true }] });
     const columns = rows.length > 0 ? Object.keys(rows[0] ?? {}) : [];
-    sheet.columns = columns.map((key) => ({ header: key, key, width: 22 }));
+    sheet.columns = columns.map((key) => ({ header: columnLabel(key), key, width: 22 }));
     sheet.getRow(1).font = { bold: true };
+    // The real names, hidden: what the import reads to put each value back in its column.
+    const keys = sheet.addRow(columns);
+    keys.hidden = true;
     for (const row of rows) {
       sheet.addRow(columns.map((key) => cellValue(row[key])));
     }
@@ -133,13 +173,13 @@ export async function parseJsonFile(file: File): Promise<ExportData> {
   try {
     parsed = JSON.parse(text);
   } catch {
-    throw new Error("קובץ ה-JSON אינו תקין");
+    throw new Error("קובץ הגיבוי אינו תקין");
   }
   const tables =
     parsed && typeof parsed === "object" && "tables" in (parsed as Record<string, unknown>)
       ? (parsed as ExportBundle).tables
       : (parsed as ExportData);
-  if (!tables || typeof tables !== "object") throw new Error("מבנה קובץ ה-JSON אינו נתמך");
+  if (!tables || typeof tables !== "object") throw new Error("מבנה קובץ הגיבוי אינו נתמך");
 
   const result: ExportData = {};
   for (const table of EXPORTABLE_TABLES) {
@@ -157,9 +197,14 @@ export async function parseExcelFile(file: File): Promise<ExportData> {
 
   const result: ExportData = {};
   for (const table of EXPORTABLE_TABLES) {
-    const sheet = workbook.getWorksheet(table.slice(0, 31));
+    // A file from now (Hebrew sheet names) or from before (the tables' own names).
+    const sheet = workbook.getWorksheet(sheetName(table)) ?? workbook.getWorksheet(table.slice(0, 31));
     if (!sheet) continue;
-    const headerRow = sheet.getRow(1);
+    // From now: Hebrew names in the first row, the real ones in a hidden second.
+    // From before: the real names in the first row.
+    const keyed = sheet.getRow(2).hidden;
+    const headerRow = sheet.getRow(keyed ? 2 : 1);
+    const firstData = keyed ? 3 : 2;
     const columns: string[] = [];
     headerRow.eachCell((cell, colNumber) => {
       columns[colNumber] = String(cell.value ?? "");
@@ -167,7 +212,7 @@ export async function parseExcelFile(file: File): Promise<ExportData> {
 
     const rows: ExportRow[] = [];
     sheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
+      if (rowNumber < firstData) return;
       const record: ExportRow = {};
       let hasValue = false;
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
@@ -187,7 +232,7 @@ export async function parseExcelFile(file: File): Promise<ExportData> {
 export function parseImportFile(file: File): Promise<ExportData> {
   if (file.name.toLowerCase().endsWith(".json")) return parseJsonFile(file);
   if (/\.(xlsx|xlsm)$/i.test(file.name)) return parseExcelFile(file);
-  return Promise.reject(new Error("סוג הקובץ אינו נתמך. יש להעלות קובץ JSON או Excel (xlsx)."));
+  return Promise.reject(new Error("סוג הקובץ אינו נתמך. יש להעלות קובץ גיבוי (שמסתיים ב-json) או גיליון אקסל (שמסתיים ב-xlsx)."));
 }
 
 export interface ImportTableResult {

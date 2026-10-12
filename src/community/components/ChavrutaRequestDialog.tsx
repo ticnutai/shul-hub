@@ -52,7 +52,7 @@ export function ChavrutaRequestDialog() {
       if (insertError) throw insertError;
     },
     onSuccess: () => {
-      toast.success("הבקשה נשלחה ותפורסם לאחר אישור המנהל");
+      toast.success("הבקשה נשלחה ותפורסם לאחר אישור הגבאי");
       setForm(initialForm);
       setError("");
       setOpen(false);
@@ -99,7 +99,7 @@ export function ChavrutaRequestDialog() {
       >
         <DialogHeader className="text-right">
           <DialogTitle>בקשה למציאת חברותא</DialogTitle>
-          <DialogDescription>מלאו את הפרטים. הבקשה תפורסם לאחר אישור מנהל.</DialogDescription>
+          <DialogDescription>מלאו את הפרטים. הבקשה תפורסם לאחר אישור הגבאי.</DialogDescription>
         </DialogHeader>
         <form className="grid gap-4 sm:grid-cols-2" onSubmit={handleSubmit} noValidate>
           <Field label="שם *">
@@ -181,7 +181,7 @@ export function ChavrutaRequestDialog() {
             <div>
               <Label htmlFor="share-contact">אישור לפרסום פרטי קשר</Label>
               <p className="mt-1 text-xs text-muted-foreground">
-                אם האפשרות כבויה, הטלפון והאימייל יוצגו למנהל בלבד.
+                אם האפשרות כבויה, הטלפון והאימייל יוצגו לגבאי בלבד.
               </p>
             </div>
             <Switch

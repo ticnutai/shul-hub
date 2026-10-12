@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   ArrowRight,
   ArrowUp,
+  Bold,
   Crosshair,
   Eye,
   EyeOff,
@@ -14,21 +15,12 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { confirmAction } from "@/components/ConfirmDialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   EDITABLE,
   FAMILY_PREFIX,
@@ -43,13 +35,18 @@ import {
   toggleFlip,
 } from "@/tv/boardEdit";
 import type { ElementStyle, FlipArea, RecordTable, TvConfig } from "@/tv/config";
-import { applyBackground, galleryOf, writeBoardBackground, tileOf, wears } from "@/tv/backgrounds";
+import { applyBackground, galleryOf, writeBoardBackground, wears } from "@/tv/backgrounds";
+import { usePointerDrag } from "@/tv/usePointerDrag";
 import { BoardFramePicker, FrameAndSpacing } from "./BoardLook";
-import { isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
 import { ColorPick } from "./ColorPick";
-import { Stepper } from "./editorParts";
+import { ColourChoice, MoveButtons, Range, SELECT_CLASS, Segments, Stepper } from "./editorParts";
+import { GalleryGrid, GalleryTile, UploadTile } from "./GalleryTile";
+import { BackgroundTile, withUploadedBackgrounds } from "./LayerEditors";
+import { HiddenShelf } from "./ReadyShelf";
+import { useUpload } from "./Upload";
+import { Notice } from "./Notice";
 
 /**
  * The form for whatever the admin clicked on the board. Every change goes
@@ -117,31 +114,22 @@ export function TvEditInspector({
         </p>
       )}
 
-      {hiddenList.length > 0 && (
-        <div className="mt-3 border-t pt-2">
-          <div className="mb-1.5 text-xs font-medium text-muted-foreground">
-            מוסתרים מהלוח ({hiddenList.length}) · לחיצה מחזירה
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {hiddenList.map((k) => (
-              <button
-                key={k}
-                type="button"
-                className="inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-0.5 text-xs hover:bg-secondary"
-                onClick={() =>
-                  onEdit(`hide:${k}`, (c) =>
-                    k === "ticker"
-                      ? { ...c, ticker: { ...c.ticker, enabled: true } }
-                      : setHidden(c, k, false),
-                  )
-                }
-              >
-                <Eye className="size-3" /> {describeKey(k, data)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* What was taken off the board: on the one shelf every list keeps its hidden ones on. */}
+      <div className="mt-3">
+        <HiddenShelf
+          testId="board-hidden"
+          title="מוסתרים מהלוח"
+          restoreLabel="הצגה"
+          restoreAria={(name) => `הצגת ${name}`}
+          defaultOpen
+          items={hiddenList.map((k) => ({ key: k, name: describeKey(k, data) }))}
+          onRestore={(k) =>
+            onEdit(`hide:${k}`, (c) =>
+              k === "ticker" ? { ...c, ticker: { ...c.ticker, enabled: true } } : setHidden(c, k, false),
+            )
+          }
+        />
+      </div>
     </div>
   );
 }
@@ -296,6 +284,16 @@ function flatColour(gradient: string | null): string | null {
 function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
   const gallery = galleryOf(config);
   const own = !config.backgroundGradient && !config.backgroundImage;
+  // An upload lands in the same gallery as one from the design tab, and goes on the board.
+  const { uploading, upload } = useUpload();
+  const uploadPictures = (files: File[]) =>
+    upload(files, (urls) => {
+      onEdit("bg.gallery", (c) => {
+        const next = withUploadedBackgrounds(c, urls);
+        return applyBackground(next, next.backgrounds[0]!);
+      });
+      toast.success(urls.length > 1 ? `${urls.length} תמונות נשמרו בגלריה` : "התמונה נשמרה בגלריה");
+    });
   return (
     <div className="space-y-3" data-testid="board-background">
       <div className="space-y-1.5">
@@ -330,29 +328,24 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
             />
           </label>
         </div>
-        <div className="grid max-h-40 grid-cols-6 gap-1 overflow-y-auto p-0.5" data-testid="board-background-gallery">
-          {gallery.map((b) => {
-            const t = tileOf(b);
-            const on = wears(config, b);
-            return (
-              <button
+        {/* The design tab's gallery, in the small tiles of this panel: the upload first, as in every gallery. */}
+        <div className="max-h-56 overflow-y-auto p-0.5">
+          <GalleryGrid testId="board-background-gallery" compact>
+            <UploadTile label="העלאה" multiple uploading={uploading} onFiles={(files) => void uploadPictures(files)} hint="העלאת תמונה משלכם - נשמרת בגלריה ונלבשת על הלוח" />
+            {gallery.map((b) => (
+              <GalleryTile
                 key={b.id}
-                type="button"
-                aria-pressed={on}
-                aria-label={b.name}
-                title={b.name}
-                onClick={() => onEdit("bg.gallery", (c) => applyBackground(c, b))}
-                className={`relative aspect-video overflow-hidden rounded border transition ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
-                style={{ backgroundImage: t.fill ?? undefined, backgroundColor: "#0b1628" }}
-              >
-                {t.thumb && <img src={t.thumb} alt="" loading="lazy" className="absolute inset-0 size-full object-cover" />}
-                {t.picture && t.overlay && <span className="absolute inset-0" style={{ background: t.overlay, opacity: t.strength }} />}
-              </button>
-            );
-          })}
+                compact
+                name={b.name}
+                on={wears(config, b)}
+                onPick={() => onEdit("bg.gallery", (c) => applyBackground(c, b))}
+                preview={<BackgroundTile b={b} />}
+              />
+            ))}
+          </GalleryGrid>
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
-          כמו בחלק "רקע" בלשונית העיצוב: לחיצה מלבישה את הרקע על הלוח כולו. העלאה, שכבה מעל תמונה וסליידרים - בלשונית "עיצוב".
+          כמו בחלק "רקע" בלשונית העיצוב: לחיצה מלבישה את הרקע על הלוח כולו. שכבה מעל תמונה, מחוונים ושמירה בגלריה - בלשונית "עיצוב".
         </p>
       </div>
     </div>
@@ -362,7 +355,7 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
 /* ------------------------------------------ size, colour and position -- */
 
 /** The text weights, one list wherever a weight is chosen (700 and 800 both, for what was stored before). */
-export const TEXT_WEIGHTS: Array<{ value: number; label: string }> = [
+const TEXT_WEIGHTS: Array<{ value: number; label: string }> = [
   { value: 300, label: "דק" },
   { value: 400, label: "רגיל" },
   { value: 600, label: "בינוני" },
@@ -393,7 +386,7 @@ export function ElementLook({
   k: string;
   config: TvConfig;
   onEdit: Edit;
-  /** Where it stands (the joystick, the arrow keys): on the board only. */
+  /** Where it stands (the arrows for moving, the arrow keys): on the board only. */
   position?: boolean;
 }) {
   // Which entry the controls write to: this element, or its family.
@@ -420,15 +413,12 @@ export function ElementLook({
       return { ...c, styles };
     });
   const scale = effective?.scale ?? 1;
-  const [colorText, setColorText] = useState(effective?.color ?? "");
-  useEffect(() => setColorText(effective?.color ?? ""), [effective?.color]);
   const set = (patch: Partial<ElementStyle>, group = "look") =>
     onEdit(`style:${group}:${k}`, (c) => setElementStyle(c, styleTargetKey(c, k), patch));
   const changed = Boolean(style && Object.keys(style).filter((f) => f !== "theme").length);
-  const isHex = /^#[0-9a-f]{6}$/i.test(effective?.color ?? "");
-  const bgHex = /^#[0-9a-f]{6}$/i.test(effective?.bg ?? "");
-  const [step, setStep] = useState(1);
-  // Moves read the latest draft, so a held joystick or key accumulates.
+  const bold = (effective?.weight ?? 400) >= 700;
+  const [step, setStep] = useState("1");
+  // Moves read the latest draft, so a held knob or key accumulates.
   const nudge = (dx: number, dy: number) =>
     onEdit(`style:pos:${k}`, (c) => {
       const t = styleTargetKey(c, k);
@@ -440,8 +430,8 @@ export function ElementLook({
   // Keyboard: arrows move the selected element (Shift: 4x), unless typing.
   const nudgeRef = useRef(nudge);
   nudgeRef.current = nudge;
-  const stepRef = useRef(step);
-  stepRef.current = step;
+  const stepRef = useRef(Number(step));
+  stepRef.current = Number(step);
   useEffect(() => {
     if (!position) return;
     const onKey = (e: KeyboardEvent) => {
@@ -466,7 +456,7 @@ export function ElementLook({
   return (
     <div className="space-y-2 border-t pt-3">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Move className="size-3.5" /> עיצוב הרכיב הזה בלבד
+        <Move className="size-3.5" /> עיצוב החלק הזה בלבד
         {changed && (
           <Button
             type="button"
@@ -494,7 +484,7 @@ export function ElementLook({
               checked={!onFamily}
               onChange={() => setScope(false)}
             />
-            הרכיב הזה בלבד
+            החלק הזה בלבד
           </label>
           {familyLabel && (
             <label className="flex items-center gap-1">
@@ -508,32 +498,37 @@ export function ElementLook({
             </label>
           )}
           {!familyLabel && (
-            <span className="text-muted-foreground">(רכיב יחיד בלוח - אין רכיבים דומים)</span>
+            <span className="text-muted-foreground">(חלק יחיד בלוח - אין חלקים דומים)</span>
           )}
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
           השינוי מוחל על המסכים שנבחרו בפס למעלה ("כל המסכים", או סוג מסך אחד) - ובכל הפריסות.
         </p>
         {inherited && (
-          <p className="text-[11px] leading-tight text-amber-700 dark:text-amber-400">
-            לרכיב הזה יש גם עיצוב מ״{inherited}״. מה שנקבע כאן גובר עליו.
-          </p>
+          <Notice variant="warning" className="p-2 text-[11px]">
+            לחלק הזה יש גם עיצוב מ״{inherited}״. מה שנקבע כאן גובר עליו.
+          </Notice>
         )}
         {/* Set once for one theme only; there is no choosing themes any more, so it can be made to show. */}
         {style?.theme && style.theme !== config.theme && (
-          <p className="flex flex-wrap items-center gap-2 text-[11px] leading-tight text-amber-700 dark:text-amber-400">
+          <Notice
+            variant="warning"
+            className="p-2 text-[11px]"
+            actions={
+              <button type="button" className="underline" onClick={() => set({ theme: undefined }, "theme-scope")}>
+                להציג אותו
+              </button>
+            }
+          >
             העיצוב הזה נקבע פעם לצבעי בסיס אחרים, ולכן אינו מוצג.
-            <button type="button" className="underline" onClick={() => set({ theme: undefined }, "theme-scope")}>
-              להציג אותו
-            </button>
-          </p>
+          </Notice>
         )}
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <label className="flex items-center gap-2">
           גודל טקסט
           <Stepper
-            label="גודל טקסט של הרכיב"
+            label="גודל טקסט של החלק"
             value={Math.round(scale * 100)}
             min={50}
             max={200}
@@ -542,35 +537,26 @@ export function ElementLook({
             onChange={(v) => set({ scale: v / 100 }, "scale")}
           />
         </label>
+        {/* Bold, as in the bar of a part's text; the finer weights in the list beside it. */}
+        <button
+          type="button"
+          aria-pressed={bold}
+          aria-label="מודגש"
+          title="מודגש"
+          onClick={() => set({ weight: bold ? undefined : 700 }, "weight")}
+          className={`grid size-8 place-items-center rounded border ${bold ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground hover:border-primary"}`}
+        >
+          <Bold className="size-4" aria-hidden />
+        </button>
         <label className="flex items-center gap-2">
-          צבע
-          <ColorPick label="צבע הרכיב" value={isHex ? effective!.color! : "#ffffff"} onChange={(v) => set({ color: v }, "color")} />
-          <Input
-            dir="ltr"
-            aria-label="צבע הרכיב (ערך)"
-            value={colorText}
-            placeholder="רגיל"
-            className={`h-8 w-28 font-mono text-xs ${
-              colorText && !isSafeCssValue(colorText) ? "border-destructive" : ""
-            }`}
-            onChange={(e) => {
-              setColorText(e.target.value);
-              if (e.target.value === "" || isSafeCssValue(e.target.value))
-                set({ color: e.target.value.trim() || undefined }, "color");
-            }}
-          />
-        </label>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <label className="flex items-center gap-2">
-          משקל
+          עובי
           <select
-            aria-label="עובי הגופן של הרכיב"
+            aria-label="עובי הגופן של החלק"
             value={effective?.weight ?? ""}
             onChange={(e) =>
               set({ weight: e.target.value ? Number(e.target.value) : undefined }, "weight")
             }
-            className="h-8 rounded-md border bg-background px-2 text-sm"
+            className={SELECT_CLASS}
           >
             <option value="">רגיל</option>
             {TEXT_WEIGHTS.map((w) => (
@@ -580,37 +566,39 @@ export function ElementLook({
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2">
-          רקע
-          <ColorPick label="צבע רקע לרכיב" value={bgHex ? effective!.bg! : "#000000"} onChange={(v) => set({ bg: v }, "bg")} />
-          {effective?.bg && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-7 px-1.5 text-xs"
-              onClick={() => set({ bg: undefined }, "bg")}
-            >
-              בלי רקע
-            </Button>
-          )}
-        </label>
-        <label className="flex items-center gap-2">
-          שקיפות
-          <Stepper
-            label="אטימות הרכיב"
-            value={Math.round((effective?.opacity ?? 1) * 100)}
-            min={15}
-            max={100}
-            step={5}
-            format={(v) => `${v}%`}
-            onChange={(v) => set({ opacity: v / 100 }, "opacity")}
-          />
-        </label>
       </div>
+      {/* The colour and the background, unset until chosen: the code of either is typed in its panel. */}
+      <div className="grid gap-2 sm:grid-cols-2">
+        <ColourChoice
+          label="צבע החלק"
+          value={effective?.color}
+          fallback="#ffffff"
+          unsetLabel="רגיל"
+          anyCode
+          onChange={(v) => set({ color: v ?? undefined }, "color")}
+        />
+        <ColourChoice
+          label="רקע החלק"
+          value={effective?.bg}
+          fallback="#000000"
+          unsetLabel="בלי רקע"
+          anyCode
+          onChange={(v) => set({ bg: v ?? undefined }, "bg")}
+        />
+      </div>
+      <Range
+        label="אטימות"
+        value={Math.round((effective?.opacity ?? 1) * 100)}
+        min={15}
+        max={100}
+        step={5}
+        show={(v) => `${v}%`}
+        hint="100% - מלא; פחות - רואים דרכו"
+        onChange={(v) => set({ opacity: v / 100 }, "opacity")}
+      />
       {position && (
       <div className="flex flex-wrap items-center gap-4 text-sm">
-        <Joystick onNudge={nudge} step={step} onReset={() => set({ x: 0, y: 0 }, "pos")} />
+        <Joystick onNudge={nudge} step={Number(step)} onReset={() => set({ x: 0, y: 0 }, "pos")} />
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             מיקום:
@@ -620,22 +608,20 @@ export function ElementLook({
           </div>
           <div className="flex items-center gap-1 text-xs">
             צעד:
-            {[0.5, 1, 5].map((s) => (
-              <Button
-                key={s}
-                type="button"
-                size="sm"
-                variant={step === s ? "default" : "outline"}
-                className="h-7 px-2 text-xs"
-                onClick={() => setStep(s)}
-              >
-                <span dir="ltr">{s}%</span>
-              </Button>
-            ))}
+            <Segments
+              label="גודל הצעד"
+              value={step}
+              onChange={setStep}
+              options={[
+                { id: "0.5", name: "0.5%" },
+                { id: "1", name: "1%" },
+                { id: "5", name: "5%" },
+              ]}
+            />
           </div>
           <p className="max-w-56 text-xs text-muted-foreground">
-            גררו את הכפתור שבמרכז הג׳ויסטיק (רחוק יותר = מהר יותר), לחצו על החצים, השתמשו בחצי
-            המקלדת (Shift = צעד גדול) או גררו את הרכיב עצמו בלוח. ההזזה באחוזי מסך, כך שהיא נכונה
+            גררו את הכפתור שבמרכז חצי ההזזה (רחוק יותר = מהר יותר), לחצו על החצים, השתמשו בחצי
+            המקלדת (Shift = צעד גדול) או גררו את החלק עצמו בלוח. ההזזה באחוזי מסך, כך שהיא נכונה
             בכל גודל מסך.
           </p>
         </div>
@@ -646,10 +632,10 @@ export function ElementLook({
 }
 
 /**
- * A joystick for moving the selected element: drag the knob and the element
- * glides in that direction - the further from the centre, the faster - and
- * the knob springs back on release. The arrows step once per click (and keep
- * stepping while held); the centre resets the position.
+ * The arrows for moving the selected part ("חצי הזזה"): drag the knob and the
+ * part glides in that direction - the further from the centre, the faster -
+ * and the knob springs back on release. The arrows step once per click (and
+ * keep stepping while held); the centre resets the position.
  */
 function Joystick({
   onNudge,
@@ -667,7 +653,7 @@ function Joystick({
   const nudgeRef = useRef(onNudge);
   nudgeRef.current = onNudge;
   const frame = useRef<number | null>(null);
-  const origin = useRef<{ x: number; y: number } | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   const stopLoop = () => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -682,35 +668,27 @@ function Joystick({
     frame.current = requestAnimationFrame(loop(t));
   };
 
-  const onDown = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      /* the pointer is already gone; the drag still works without capture */
-    }
-    origin.current = { x: e.clientX, y: e.clientY };
-    stopLoop();
-    frame.current = requestAnimationFrame(loop(performance.now()));
-  };
-  const onMove = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (!origin.current) return;
-    let x = e.clientX - origin.current.x;
-    let y = e.clientY - origin.current.y;
-    const len = Math.hypot(x, y);
-    if (len > RADIUS) {
-      x = (x / len) * RADIUS;
-      y = (y / len) * RADIUS;
-    }
-    knobRef.current = { x, y };
-    setKnob({ x, y });
-  };
-  const onUp = () => {
-    origin.current = null;
-    knobRef.current = { x: 0, y: 0 };
-    setKnob({ x: 0, y: 0 });
-    stopLoop();
-  };
+  // The knob, dragged away from the centre (usePointerDrag): how far it went is how fast the part glides.
+  const knobDrag = usePointerDrag<null, true>({
+    start: () => {
+      stopLoop();
+      frame.current = requestAnimationFrame(loop(performance.now()));
+      setDragging(true);
+      return true;
+    },
+    move: (_, { dx, dy }) => {
+      const len = Math.hypot(dx, dy);
+      const k = len > RADIUS ? RADIUS / len : 1;
+      knobRef.current = { x: dx * k, y: dy * k };
+      setKnob(knobRef.current);
+    },
+    end: () => {
+      setDragging(false);
+      knobRef.current = { x: 0, y: 0 };
+      setKnob({ x: 0, y: 0 });
+      stopLoop();
+    },
+  });
 
   // Arrow buttons: one step per click, repeating while held.
   const repeat = useRef<number | null>(null);
@@ -729,7 +707,7 @@ function Joystick({
     <div
       className="relative size-36 shrink-0 select-none rounded-full bg-gradient-to-b from-muted to-muted/40 ring-1 ring-border"
       role="group"
-      aria-label="ג׳ויסטיק להזזת הרכיב"
+      aria-label="חצי הזזה של החלק"
     >
       <button
         type="button"
@@ -765,17 +743,14 @@ function Joystick({
       </button>
       <button
         type="button"
-        aria-label="ידית הג׳ויסטיק - גררו כדי להזיז; לחיצה כפולה מאפסת את המיקום"
+        aria-label="ידית ההזזה - גררו כדי להזיז; לחיצה כפולה מאפסת את המיקום"
         title="גררו כדי להזיז · לחיצה כפולה: חזרה למקום המקורי"
         className="absolute left-1/2 top-1/2 grid size-12 cursor-grab touch-none place-items-center rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-primary/25 active:cursor-grabbing"
         style={{
           transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`,
-          transition: origin.current ? "none" : "transform 160ms ease-out",
+          transition: dragging ? "none" : "transform 160ms ease-out",
         }}
-        onPointerDown={onDown}
-        onPointerMove={onMove}
-        onPointerUp={onUp}
-        onPointerCancel={onUp}
+        {...knobDrag(null)}
         onDoubleClick={onReset}
       >
         <Crosshair className="size-5" />
@@ -851,7 +826,7 @@ function BoardElement({
             }
           >
             {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}{" "}
-            {hidden ? "הצגה בלוח" : "הסתרה מהלוח"}
+            {hidden ? "הצגה" : "הסתרה"}
           </Button>
         )}
         {spec.flip && (
@@ -919,7 +894,7 @@ function RecordElement({
   onClose: () => void;
 }) {
   const m = k.match(RECORD_RE);
-  if (!m) return <p className="text-sm text-muted-foreground">אי אפשר לערוך את הרכיב הזה.</p>;
+  if (!m) return <p className="text-sm text-muted-foreground">אי אפשר לערוך את החלק הזה.</p>;
   const kind = m[1] as keyof typeof TABLE_OF;
   const id = m[2];
   const field = m[3];
@@ -967,66 +942,35 @@ function RecordElement({
           aria-pressed={hidden}
           onClick={() => onEdit(`hide:${elementKey}`, (c) => setHidden(c, elementKey, !hidden))}
         >
-          {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />} {hidden ? "הצגה בלוח" : "הסתרה מהלוח"}
+          {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />} {hidden ? "הצגה" : "הסתרה"}
         </Button>
         {kind === "ann" && (
           <>
+            <MoveButtons
+              name="המודעה"
+              words
+              first={pos <= 0}
+              last={pos < 0 || pos >= ordered.length - 1}
+              onMove={(by) => onEdit(`move:${id}`, (c) => moveAnnouncement(c, data.announcements ?? [], ordered, id, by))}
+            />
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
-              disabled={pos <= 0}
-              onClick={() =>
-                onEdit(`move:${id}`, (c) =>
-                  moveAnnouncement(c, data.announcements ?? [], ordered, id, -1),
-                )
-              }
+              className="text-destructive"
+              onClick={async () => {
+                const ok = await confirmAction({
+                  title: "למחוק את המודעה לגמרי?",
+                  description: `המודעה "${String(row.title ?? "")}" תימחק מהאתר ומכל המסכים בלחיצה על "שמור ושדר". עד אז אפשר לבטל (Ctrl+Z). אם רוצים רק להוריד אותה מהלוח - "הסתרה".`,
+                  confirmLabel: "מחיקה",
+                });
+                if (!ok) return;
+                onEdit(`del:${id}`, (c) => withRecordEdit(c, { table: "announcements", id, delete: true }));
+                onClose();
+              }}
             >
-              <ArrowUp className="size-4" /> הקדמה
+              <Trash2 className="size-4" /> מחיקת המודעה
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={pos < 0 || pos >= ordered.length - 1}
-              onClick={() =>
-                onEdit(`move:${id}`, (c) =>
-                  moveAnnouncement(c, data.announcements ?? [], ordered, id, 1),
-                )
-              }
-            >
-              <ArrowDown className="size-4" /> העברה אחורה
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button type="button" variant="ghost" size="sm" className="text-destructive">
-                  <Trash2 className="size-4" /> מחיקת המודעה
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent dir="rtl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>למחוק את המודעה לגמרי?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    המודעה "{String(row.title ?? "")}" תימחק מהאתר ומכל המסכים בלחיצה על "שמור
-                    ושדר". עד אז אפשר לבטל (Ctrl+Z). אם רוצים רק להוריד אותה מהלוח - "הסתרה מהלוח".
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>ביטול</AlertDialogCancel>
-                  <AlertDialogAction
-                    className={buttonVariants({ variant: "destructive" })}
-                    onClick={() => {
-                      onEdit(`del:${id}`, (c) =>
-                        withRecordEdit(c, { table: "announcements", id, delete: true }),
-                      );
-                      onClose();
-                    }}
-                  >
-                    מחיקה
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
           </>
         )}
       </div>

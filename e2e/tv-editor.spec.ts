@@ -272,9 +272,12 @@ test.describe("TV editor", () => {
 
   test("a look can be saved as a design, and the board can be broadcast", async ({ page }) => {
     await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
-    await page.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
-    await page.getByLabel("שם הערכה").fill("זהב שלי");
-    await page.getByRole("button", { name: "שמירת הערכה" }).click();
+    // From the toolbar over the preview: the same form as in "הערכות שלי", in a small window.
+    await page.getByTestId("toolbar-save-kit").first().click();
+    const form = page.getByTestId("toolbar-kit-form");
+    await form.getByLabel("שם הערכה").fill("זהב שלי");
+    await form.getByRole("button", { name: "שמירת הערכה" }).click();
+    await expect(page.getByTestId("design-library").getByRole("button", { name: /^החלת ערכה זהב שלי/ })).toBeVisible();
     await expectNotFrozen(page, "save as a design");
 
     // The bar at the top; the same button also stands under the preview while
@@ -290,7 +293,7 @@ test.describe("TV editor", () => {
     await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
 
     await page.getByRole("button", { name: "ביטול שינויים" }).click();
-    await page.getByRole("button", { name: "לבטל הכול?" }).click();
+    await page.getByTestId("confirm-dialog").getByRole("button", { name: "ביטול השינויים" }).click();
     // Back to what the database holds, and the page still answers.
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
     await expectNotFrozen(page, "discard");
@@ -347,9 +350,9 @@ test.describe("TV editor", () => {
     await expect(library.getByRole("button", { name: /^החלת ערכה רקע אחר/ })).toBeVisible();
     await expectNotFrozen(page, "design renamed");
 
-    // Deleting one's own kit: ✕ in its corner, then "למחוק?" under it.
+    // Deleting one's own kit: ✕ in its corner, asked as every delete is.
     await library.getByRole("button", { name: "מחיקת רקע אחר" }).click();
-    await library.getByRole("button", { name: "למחוק?" }).click();
+    await page.getByTestId("confirm-dialog").getByRole("button", { name: "מחיקה" }).click();
     await expect(library.getByRole("button", { name: /^החלת ערכה רקע אחר/ })).toHaveCount(0);
     await expectNotFrozen(page, "design deleted");
   });
@@ -364,11 +367,11 @@ test.describe("TV editor", () => {
     await expect(root(page)).toHaveClass(/has-bg-gradient/);
 
     // The ordinary board: asked, cancelled, then done - the look goes back.
-    await starter.getByRole("button", { name: "הלוח הרגיל של המערכת" }).click();
+    await starter.getByRole("button", { name: "לוח רגיל של המערכת" }).click();
     await page.getByRole("button", { name: "ביטול", exact: true }).click();
     await expect(root(page)).toHaveClass(/has-bg-gradient/);
     await expectNotFrozen(page, "start over cancelled");
-    await starter.getByRole("button", { name: "הלוח הרגיל של המערכת" }).click();
+    await starter.getByRole("button", { name: "לוח רגיל של המערכת" }).click();
     await page.getByRole("button", { name: "חזרה ללוח הרגיל" }).click();
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
 

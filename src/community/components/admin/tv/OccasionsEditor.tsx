@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Eye, ImagePlus, Palette, Plus, Settings2, Trash2, X } from "lucide-react";
+import { Eye, Palette, Plus, Settings2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { jerusalemDateKey } from "@community/lib/minyan-time";
 import { specialDayByKey } from "@community/lib/specialDays";
 import { BLOCK_BY_ID } from "@/tv/blocks";
 import type { TvConfig } from "@/tv/config";
-import { BUILTIN_DESIGNS } from "@/tv/designs";
+import { findDesign } from "@/tv/designs";
 import { STYLE_NAMES, PHOTO_STYLES, stylesFor } from "@/tv/eventSlides";
 import {
   CARD_ELEMENTS,
@@ -28,8 +28,11 @@ import {
   type OccasionItem,
 } from "@/tv/occasions";
 import { SHABBAT_ART } from "@/tv/shabbat";
-import { uploadImages } from "./uploadImages";
-import { Stepper } from "./editorParts";
+import { useUpload } from "./Upload";
+import { INPUT_CLASS, MoveButtons, SELECT_CLASS, Stepper, SwitchRow } from "./editorParts";
+import { GalleryGrid, GalleryTile, UploadTile } from "./GalleryTile";
+import { Notice } from "./Notice";
+import { ChipRemove } from "./ReadyShelf";
 import { TimetableButton, TimetableSection } from "./OccasionTimetable";
 
 /** One sentence for an occasion that is off, wherever it is opened (here, and its tab beside the pages). */
@@ -68,6 +71,11 @@ const DAY_MS = 86_400_000;
  * order is their importance. Each opens a dialog with everything about it
  * (occasions.ts). The first change saves the whole list, read until then
  * from the board's older settings, so nothing on the wall moves by itself.
+ *
+ * Its look is edited on its own page (🎨 here, or its tab beside the pages):
+ * the dialog names the kit it wears and leads there, rather than offering a
+ * second list of kits of its own. Its day is shown in the preview by the eye
+ * in its row; any other day, by the one date control under the preview.
  */
 export function OccasionsEditor({
   config,
@@ -97,7 +105,7 @@ export function OccasionsEditor({
     onEdit(`occasions:${key}`, (c) => ({ ...c, occasions: update(readOccasions(c)) }));
   const patch = (id: string, p: Partial<Occasion>) =>
     change(`${id}:${Object.keys(p).join(",")}`, (l) => l.map((o) => (o.id === id ? { ...o, ...p } : o)));
-  const move = (id: string, by: number) =>
+  const move = (id: string, by: -1 | 1) =>
     change(`move:${id}`, (l) => {
       const i = l.findIndex((o) => o.id === id);
       const j = i + by;
@@ -163,20 +171,7 @@ export function OccasionsEditor({
           aria-label="חיפוש מועד"
           className="h-8 w-40"
         />
-        <label className="flex items-center gap-1.5 text-xs">
-          <Switch checked={onlyOn} onCheckedChange={setOnlyOn} aria-label="רק פעילים" /> רק פעילים
-        </label>
-        <label className="flex items-center gap-1.5 text-xs">
-          תצוגה לתאריך:
-          <input
-            type="date"
-            aria-label="תצוגה לתאריך"
-            className="h-8 rounded-md border bg-background px-1 text-xs"
-            onChange={(e) =>
-              onPreview(e.target.value ? new Date(Date.parse(`${e.target.value}T11:00:00+03:00`)) : null)
-            }
-          />
-        </label>
+        <SwitchRow label="רק פעילים" ariaLabel="רק פעילים" checked={onlyOn} onChange={setOnlyOn} />
       </div>
 
       <ol className="divide-y rounded-lg border">
@@ -186,28 +181,8 @@ export function OccasionsEditor({
           const inDays = d ? Math.round((d.getTime() - today.getTime()) / DAY_MS) : null;
           return (
             <li key={o.id} className="flex items-center gap-2 px-2 py-1.5" data-occasion={o.id}>
-              <div className="flex flex-col">
-                <button
-                  type="button"
-                  aria-label={`הקדמת ${o.name}`}
-                  title="הקדמה - חשוב יותר"
-                  disabled={i === 0}
-                  onClick={() => move(o.id, -1)}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ArrowUp className="size-3.5" />
-                </button>
-                <button
-                  type="button"
-                  aria-label={`העברת ${o.name} אחורה`}
-                  title="העברה אחורה - פחות חשוב"
-                  disabled={i === list.length - 1}
-                  onClick={() => move(o.id, 1)}
-                  className="text-muted-foreground hover:text-foreground disabled:opacity-30"
-                >
-                  <ArrowDown className="size-3.5" />
-                </button>
-              </div>
+              {/* Earlier in the list is more important. */}
+              <MoveButtons name={o.name} stacked first={i === 0} last={i === list.length - 1} onMove={(by) => move(o.id, by)} />
               <span className="w-6 text-center text-[11px] text-muted-foreground">{i + 1}</span>
               <Switch checked={o.enabled} onCheckedChange={(on) => patch(o.id, { enabled: on })} aria-label={`${o.name} פעיל`} />
               <button type="button" className="min-w-0 flex-1 text-right" onClick={() => setOpenId(o.id)}>
@@ -265,11 +240,15 @@ export function OccasionsEditor({
             change(`delete:${open.id}`, (l) => l.filter((o) => o.id !== open.id));
             setOpenId(null);
           }}
-          onPreview={() => {
-            // The dialog covers the preview: close it, to show what was asked for.
-            setOpenId(null);
-            preview(open);
-          }}
+          onDesign={
+            onDesign &&
+            (() => {
+              // The dialog covers the page it leads to: closed, its day and its screen in the preview.
+              setOpenId(null);
+              preview(open);
+              onDesign(open.id);
+            })
+          }
         />
       )}
     </div>
@@ -282,18 +261,19 @@ function OccasionDialog({
   onClose,
   onPatch,
   onDelete,
-  onPreview,
+  onDesign,
 }: {
   occasion: Occasion;
   config: TvConfig;
   onClose: () => void;
   onPatch: (p: Partial<Occasion>) => void;
   onDelete: () => void;
-  onPreview: () => void;
+  /** Its page in the design tab, where its look is edited. */
+  onDesign?: () => void;
 }) {
   const own = !o.id.startsWith("cal:") && o.id !== SHABBAT_ID;
   const def = o.when.type === "calendar" ? specialDayByKey(o.when.key) : null;
-  const [busy, setBusy] = useState(false);
+  const kit = findDesign(config, o.design);
   const toggle = <T,>(list: T[], v: T, on: boolean) => (on ? [...list, v] : list.filter((x) => x !== v));
 
   // The built-in pictures this occasion can have: its day's designs, and Shabbat's drawings.
@@ -304,20 +284,22 @@ function OccasionDialog({
   const setItem = (id: string, p: Partial<OccasionItem>) =>
     onPatch({ items: o.items.map((i) => (i.id === id ? { ...i, ...p } : i)) });
 
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setBusy(true);
-    try {
-      const urls = await uploadImages(files);
+  const { uploading, upload: uploadFiles } = useUpload();
+  const upload = (files: File[]) =>
+    uploadFiles(files, (urls) =>
       onPatch({
         pictures: [...o.pictures, ...urls].slice(0, MAX_OCCASION_PICTURES),
         uploads: [...new Set([...urls, ...(o.uploads ?? [])])].slice(0, MAX_OCCASION_UPLOADS),
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "העלאת התמונה נכשלה");
-    } finally {
-      setBusy(false);
-    }
+      }),
+    );
+  /** An uploaded picture taken out of the gallery (and off the screen), asked first. */
+  const removePicture = async (p: string) => {
+    const ok = await confirmAction({
+      title: "למחוק את התמונה מהגלריה?",
+      description: "היא תרד מהמסך של המועד ומהגלריה שלו.",
+      confirmLabel: "מחיקה",
+    });
+    if (ok) onPatch({ pictures: o.pictures.filter((x) => x !== p), uploads: (o.uploads ?? []).filter((x) => x !== p) });
   };
 
   return (
@@ -329,12 +311,13 @@ function OccasionDialog({
         </DialogHeader>
 
         <div className="space-y-5 text-sm">
-          <label className="flex items-center gap-3">
-            <Switch checked={o.enabled} onCheckedChange={(on) => onPatch({ enabled: on })} aria-label="המועד פעיל" />
-            <span>
-              <b>פעיל</b> - מופיע לבד כשהיום שלו מגיע
-            </span>
-          </label>
+          <SwitchRow
+            label={<b>פעיל</b>}
+            note="מופיע לבד כשהיום שלו מגיע"
+            ariaLabel="המועד פעיל"
+            checked={o.enabled}
+            onChange={(on) => onPatch({ enabled: on })}
+          />
 
           {def && <TimetableSection def={def} />}
 
@@ -343,19 +326,13 @@ function OccasionDialog({
           <section className="space-y-2" data-testid="occasion-screens">
             <h3 className="font-medium">המסך הנוסף מהלוח</h3>
             <p className="text-[11px] text-muted-foreground">אפשר להסתיר אותו ולהחזיר מתי שרוצים, בלי למחוק את מה שהוגדר בו.</p>
-              <label className="flex items-center gap-3">
-                <Switch
-                  checked={!o.blocksOff}
-                  onCheckedChange={(on) => onPatch({ blocksOff: !on })}
-                  aria-label="המסך הנוסף מהלוח מוצג"
-                />
-                <span>
-                  <b>{o.name} · מהלוח</b>
-                  <span className="block text-[11px] text-muted-foreground">
-                    {o.blocksOff ? "מוסתר - מה שסימנתם בו נשמר להחזרה" : "המסך הנוסף עם מה שסימנתם מהלוח הרגיל"}
-                  </span>
-                </span>
-              </label>
+              <SwitchRow
+                label={<b>{o.name} · מהלוח</b>}
+                note={o.blocksOff ? "מוסתר - מה שסימנתם בו נשמר להחזרה" : "המסך הנוסף עם מה שסימנתם מהלוח הרגיל"}
+                ariaLabel="המסך הנוסף מהלוח מוצג"
+                checked={!o.blocksOff}
+                onChange={(on) => onPatch({ blocksOff: !on })}
+              />
           </section>
           )}
 
@@ -395,7 +372,7 @@ function OccasionDialog({
                           : { type: "hebrew", month: 7, day: 1 },
                   });
                 }}
-                className="h-9 rounded-md border bg-background px-2"
+                className={SELECT_CLASS}
               >
                 <option value="hebrew">כל שנה בתאריך עברי</option>
                 <option value="date">פעם אחת בתאריך מסוים</option>
@@ -407,7 +384,7 @@ function OccasionDialog({
                     aria-label="יום בחודש"
                     value={o.when.day}
                     onChange={(e) => onPatch({ when: { ...(o.when as { type: "hebrew"; month: number; day: number }), day: Number(e.target.value) } })}
-                    className="h-9 rounded-md border bg-background px-2"
+                    className={SELECT_CLASS}
                   >
                     {Array.from({ length: 30 }, (_, i) => i + 1).map((d) => (
                       <option key={d} value={d}>
@@ -419,7 +396,7 @@ function OccasionDialog({
                     aria-label="חודש"
                     value={o.when.month}
                     onChange={(e) => onPatch({ when: { ...(o.when as { type: "hebrew"; month: number; day: number }), month: Number(e.target.value) } })}
-                    className="h-9 rounded-md border bg-background px-2"
+                    className={SELECT_CLASS}
                   >
                     {HEBREW_MONTHS.map((m) => (
                       <option key={m.month} value={m.month}>
@@ -435,7 +412,7 @@ function OccasionDialog({
                   aria-label="התאריך"
                   value={o.when.date}
                   onChange={(e) => e.target.value && onPatch({ when: { type: "date", date: e.target.value } })}
-                  className="h-9 rounded-md border bg-background px-2"
+                  className={INPUT_CLASS}
                 />
               )}
               {o.when.type === "weekly" && (
@@ -443,7 +420,7 @@ function OccasionDialog({
                   aria-label="היום בשבוע"
                   value={o.when.weekday}
                   onChange={(e) => onPatch({ when: { type: "weekly", weekday: Number(e.target.value) } })}
-                  className="h-9 rounded-md border bg-background px-2"
+                  className={SELECT_CLASS}
                 >
                   {WEEKDAYS.map((w, i) => (
                     <option key={w} value={i}>
@@ -482,10 +459,14 @@ function OccasionDialog({
               </label>
             ))}
             </div>
-            <label className="flex items-center gap-3 pt-1">
-              <Switch checked={o.banner} onCheckedChange={(on) => onPatch({ banner: on })} aria-label="פס בתחתית המסכים הרגילים" />
-              גם פס בתחתית המסכים הרגילים (השם והזמנים)
-            </label>
+            <div className="pt-1">
+              <SwitchRow
+                label="גם פס בתחתית המסכים הרגילים (השם והזמנים)"
+                ariaLabel="פס בתחתית המסכים הרגילים"
+                checked={o.banner}
+                onChange={(on) => onPatch({ banner: on })}
+              />
+            </div>
             <div className="flex items-center gap-2 text-xs">
               משך מסך המועד בתור:
               <Stepper
@@ -528,16 +509,16 @@ function OccasionDialog({
             </div>
             {config.screenLayout === "composition" && !o.screen ? (
               // A board of parts shows all of it in one picture: a screen of its blocks would be the board again.
-              <p className="rounded-md bg-muted/60 p-2 text-[11px] text-muted-foreground" data-testid="occasion-parts-board">
+              <Notice variant="neutral" className="text-[11px]" data-testid="occasion-parts-board">
                 הלוח שלכם בנוי מחלקים, וכל התוכן שלו מוצג בתמונה אחת - לכן למועד אין מסך נוסף "מהלוח". כאן נקבע מה בתוך
                 הכרטיס; את המסך של המועד מעצבים כמו עמוד (כפתור הפלטה בשורה שלו, או הלשונית שלו ליד "עמוד 1").
-              </p>
+              </Notice>
             ) : o.screen ? (
               // One place decides what stands beside the card, and where.
-              <p className="rounded-md bg-muted/60 p-2 text-[11px] text-muted-foreground" data-testid="occasion-arranged">
+              <Notice variant="neutral" className="text-[11px]" data-testid="occasion-arranged">
                 למועד הזה יש מסך משלו, מסודר בלשונית <b>פריסה</b> ("מסכים ומה עליהם"): שם בוחרים מה עומד ליד הכרטיס - תפילות,
                 זמנים, הודעות - ואיפה. כאן נקבע מה בתוך הכרטיס.
-              </p>
+              </Notice>
             ) : (
             <>
             <div className="text-xs font-medium">ומהלוח הרגיל - במסך נוסף שמתחלף עם מסך המועד:</div>
@@ -581,7 +562,7 @@ function OccasionDialog({
                     aria-label="השעה"
                     value={it.value}
                     onChange={(e) => e.target.value && setItem(it.id, { value: e.target.value })}
-                    className="h-8 rounded-md border bg-background px-1"
+                    className={INPUT_CLASS}
                   />
                 ) : (
                   <Input
@@ -592,15 +573,7 @@ function OccasionDialog({
                     className="h-8 flex-1"
                   />
                 )}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  aria-label="הסרת השורה"
-                  onClick={() => onPatch({ items: o.items.filter((x) => x.id !== it.id) })}
-                >
-                  <X className="size-4" />
-                </Button>
+                <ChipRemove label="הסרת השורה" onClick={() => onPatch({ items: o.items.filter((x) => x.id !== it.id) })} />
               </div>
             ))}
             <div className="flex gap-2">
@@ -631,76 +604,43 @@ function OccasionDialog({
             <p className="text-[11px] text-muted-foreground">
               מתחלפות לפי הסדר. לחיצה מוסיפה או מסירה מהמסך; תמונה שהעליתם נשארת כאן גם כשהיא לא מוצגת, ו-✕ מוחק אותה מהגלריה.
             </p>
-            <div className="flex flex-wrap gap-2" data-testid="occasion-pictures">
+            {/* The one gallery of the editor: the upload first, the size of the tiles beside it. */}
+            <GalleryGrid testId="occasion-pictures">
+              <UploadTile label="העלאת תמונה" multiple uploading={uploading} onFiles={(files) => void upload(files)} hint="תמונה משלכם - נשמרת בגלריה של המועד" />
               {[...new Set([...o.pictures, ...(o.uploads ?? []), ...builtins])].map((p) => {
                 const on = o.pictures.includes(p);
                 const info = pictureInfo(p);
                 const uploaded = p.startsWith("https://");
                 return (
-                  <div key={p} className="relative">
-                    <button
-                      type="button"
-                      aria-pressed={on}
-                      aria-label={info.label}
-                      onClick={() => {
-                        if (!on) return onPatch({ pictures: [...o.pictures, p].slice(0, MAX_OCCASION_PICTURES) });
-                        // Off the screen, still in the gallery: an uploaded picture
-                        // (one from before there was a gallery too) is kept.
-                        onPatch({
-                          pictures: o.pictures.filter((x) => x !== p),
-                          ...(uploaded ? { uploads: [...new Set([p, ...(o.uploads ?? [])])].slice(0, MAX_OCCASION_UPLOADS) } : {}),
-                        });
-                      }}
-                      className={`block w-24 overflow-hidden rounded-md border text-center text-[11px] ${
-                        on ? "ring-2 ring-primary ring-offset-1" : "opacity-60 hover:opacity-100"
-                      }`}
-                    >
-                      {info.thumb ? (
-                        <img src={info.thumb} alt="" className="aspect-video w-full object-cover" loading="lazy" />
+                  <GalleryTile
+                    key={p}
+                    name={on ? info.label : `${info.label} · לא מוצגת`}
+                    ariaLabel={info.label}
+                    on={on}
+                    onPick={() => {
+                      if (!on) return onPatch({ pictures: [...o.pictures, p].slice(0, MAX_OCCASION_PICTURES) });
+                      // Off the screen, still in the gallery: an uploaded picture
+                      // (one from before there was a gallery too) is kept.
+                      onPatch({
+                        pictures: o.pictures.filter((x) => x !== p),
+                        ...(uploaded ? { uploads: [...new Set([p, ...(o.uploads ?? [])])].slice(0, MAX_OCCASION_UPLOADS) } : {}),
+                      });
+                    }}
+                    preview={
+                      info.thumb ? (
+                        <img src={info.thumb} alt="" className="size-full object-cover" loading="lazy" />
                       ) : (
-                        <span className="flex aspect-video w-full items-center justify-center bg-muted">
-                          <Palette className="size-5 text-muted-foreground" aria-hidden />
+                        <span className="flex size-full items-center justify-center">
+                          <Palette className="size-5 text-white/60" aria-hidden />
                         </span>
-                      )}
-                      <span className="block truncate px-1 py-0.5">{on ? info.label : `${info.label} · לא מוצגת`}</span>
-                    </button>
-                    {uploaded && (
-                      <button
-                        type="button"
-                        aria-label={`מחיקת ${info.label} מהגלריה`}
-                        title="מחיקה מהגלריה"
-                        onClick={async () => {
-                          const ok = await confirmAction({
-                            title: "למחוק את התמונה מהגלריה?",
-                            description: "היא תרד מהמסך של המועד ומהגלריה שלו.",
-                            confirmLabel: "מחיקה",
-                          });
-                          if (ok) onPatch({ pictures: o.pictures.filter((x) => x !== p), uploads: (o.uploads ?? []).filter((x) => x !== p) });
-                        }}
-                        className="absolute -left-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background shadow hover:bg-destructive hover:text-destructive-foreground"
-                      >
-                        <X className="size-3" aria-hidden />
-                      </button>
-                    )}
-                  </div>
+                      )
+                    }
+                    remove={uploaded ? { ready: false, onClick: () => void removePicture(p) } : undefined}
+                  />
                 );
               })}
-            </div>
+            </GalleryGrid>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="inline-flex cursor-pointer items-center gap-1 rounded-md border px-2 py-1 text-xs">
-                <ImagePlus className="size-4" /> {busy ? "מעלה…" : "העלאת תמונה"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  hidden
-                  disabled={busy}
-                  onChange={(e) => {
-                    void upload(e.target.files);
-                    e.target.value = "";
-                  }}
-                />
-              </label>
               <div className="flex items-center gap-2 text-xs">
                 כל תמונה
                 <Stepper
@@ -718,39 +658,24 @@ function OccasionDialog({
 
           <section className="space-y-2">
             <h3 className="font-medium">עיצוב המועד</h3>
-            <select
-              aria-label="עיצוב המועד"
-              value={o.design ?? ""}
-              onChange={(e) => onPatch({ design: e.target.value || null })}
-              className="h-9 rounded-md border bg-background px-2"
-            >
-              <option value="">כרגיל</option>
-              <optgroup label="ערכות לראש חודש">
-                {BUILTIN_DESIGNS.filter((d) => d.id.startsWith("d_premium_rc_")).map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="ערכות מוכנות">
-                {BUILTIN_DESIGNS.filter((d) => !d.id.startsWith("d_premium_rc_")).map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </optgroup>
-              {config.designs.length > 0 && (
-                <optgroup label="הערכות שלי">
-                  {config.designs.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </optgroup>
+            {/* One place to choose and change it: the occasion's page. Here, what it wears, and the way there. */}
+            <div className="flex flex-wrap items-center gap-2 text-sm" data-testid="occasion-kit">
+              <span>
+                ערכה: <b>{kit ? kit.name : o.design ? "ערכה שנמחקה" : "בלי ערכה - כמו הלוח"}</b>
+              </span>
+              {onDesign && (
+                <Button type="button" size="sm" variant="outline" className="h-8" onClick={onDesign} title="פותח את העמוד של המועד: בוחרים שם ערכה ומשנים רקע, מסגרות וטקסט">
+                  <Palette className="size-4" aria-hidden /> {o.design ? "עריכה" : "בחירת ערכה"}
+                </Button>
               )}
-            </select>
+              {o.design && (
+                <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => onPatch({ design: null })} title="המועד חוזר להיראות כמו הלוח">
+                  בלי ערכה
+                </Button>
+              )}
+            </div>
             <p className="text-[11px] text-muted-foreground">
-              ערכות מהאוסף המשותף: פותחים את המסך של המועד (כפתור הפלטה בשורה שלו, או הלשונית שלו ליד "עמוד 1") ובוחרים שם - עותק נשמר למועד.
+              הערכה נבחרת ומשתנה בעמוד של המועד (כפתור הפלטה בשורה שלו, או הלשונית שלו ליד "עמוד 1") - שם גם ערכות מהאוסף המשותף. כל שינוי נשמר לערכה של המועד בלבד.
             </p>
             {o.design && (
               <div className="space-y-1 text-sm" role="radiogroup" aria-label="איפה העיצוב חל" data-testid="occasion-design-on">
@@ -786,9 +711,6 @@ function OccasionDialog({
 
           {/* Logical order: what it does first, closing at the end (the left, in Hebrew). */}
           <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-            <Button type="button" variant="outline" onClick={onPreview}>
-              <Eye className="size-4" /> תצוגה בתאריך הקרוב
-            </Button>
             {own && (
               <Button type="button" variant="destructive" onClick={onDelete}>
                 <Trash2 className="size-4" /> מחיקת המועד

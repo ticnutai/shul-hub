@@ -16,7 +16,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Loader2, Trash2 } from "lucide-react";
+import { ImagePlus, Loader2, LocateFixed, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -28,13 +28,14 @@ import type { Settings } from "@community/lib/data";
 import { readLogos, type SynagogueLogo } from "@community/lib/logos";
 import { PlacePicker } from "./PlacePicker";
 import { hebrewError } from "@community/lib/hebrewError";
-
+import { IMAGE_ACCEPT, IMAGE_LIMIT_TEXT, uploadImage } from "@community/lib/uploadImage";
+import { confirmLeave, useUnsavedChangesGuard } from "@community/lib/unsavedChanges";
+import { Collapsible } from "./Collapsible";
+import { SaveButton, SectionLink } from "./adminUi";
 
 /** The settings row with the columns newer than the generated types. */
 export type SettingsWithLogos = Omit<Settings, "logos" | "header_logo"> & { logos?: SynagogueLogo[] | null; header_logo?: string | null };
 
-
-const MAX_LOGO_BYTES = 3 * 1024 * 1024;
 
 export function SynagogueDetailsDialog({
   community,
@@ -61,6 +62,8 @@ export function SynagogueDetailsDialog({
   const fileRef = useRef<HTMLInputElement>(null);
   /** Files uploaded in this window and not saved yet: removed if it is closed without saving. */
   const pending = useRef<string[]>([]);
+  /** What the window opened with, to tell whether anything was changed in it. */
+  const opened = useRef<string | null>(null);
   const close = () => {
     if (pending.current.length) void supabase.storage.from("community-media").remove(pending.current);
     pending.current = [];
@@ -85,11 +88,23 @@ export function SynagogueDetailsDialog({
 
   useEffect(() => {
     setRenamed(false);
-    if (row.data) setForm({ ...row.data, logos: readLogos(row.data.logos) });
-    else if (open && row.isFetched) setForm({ name: community?.name });
+    const initial = row.data ? { ...row.data, logos: readLogos(row.data.logos) } : open && row.isFetched ? { name: community?.name } : null;
+    if (initial) {
+      setForm(initial);
+      opened.current = JSON.stringify(initial);
+    }
   }, [row.data, row.isFetched, open, community?.name]);
 
   const logos = readLogos(form.logos);
+  // Changed and not saved: closing the window, or leaving it for another section, asks first.
+  const dirty = open && opened.current !== null && (JSON.stringify(form) !== opened.current || pending.current.length > 0);
+  useUnsavedChangesGuard(dirty);
+  /** Closing, after asking when something is not saved. */
+  const requestClose = async () => {
+    if (dirty && !(await confirmLeave())) return false;
+    close();
+    return true;
+  };
   const set = (patch: Partial<SettingsWithLogos>) => setForm((f) => ({ ...f, ...patch }));
 
   const field = (key: keyof Settings, label: string, type: "text" | "number" = "text", testId?: string) => (
@@ -112,28 +127,16 @@ export function SynagogueDetailsDialog({
     const added: SynagogueLogo[] = [];
     try {
       for (const file of Array.from(files)) {
-        if (!file.type.startsWith("image/")) {
-          toast.error(`"${file.name}" אינו קובץ תמונה`);
-          continue;
-        }
-        if (file.size > MAX_LOGO_BYTES) {
-          toast.error(`"${file.name}" גדול מדי (עד 3MB)`);
-          continue;
-        }
-        const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
-        const path = `logos/${id}/${crypto.randomUUID()}.${ext}`;
-        const { error } = await supabase.storage.from("community-media").upload(path, file, { cacheControl: "3600", upsert: false });
-        if (error) throw error;
-        const { data } = supabase.storage.from("community-media").getPublicUrl(path);
-        added.push({ id: crypto.randomUUID(), url: data.publicUrl, path, name: file.name.replace(/\.[^.]+$/, "") });
-        pending.current.push(path);
+        // Refused or failed: it says why itself, and the others still go up.
+        const uploaded = await uploadImage(file, `logos/${id}`);
+        if (!uploaded) continue;
+        added.push({ id: crypto.randomUUID(), url: uploaded.url, path: uploaded.path, name: file.name.replace(/\.[^.]+$/, "") });
+        pending.current.push(uploaded.path);
       }
       if (added.length) {
         set({ logos: [...logos, ...added] });
-        toast.success(added.length === 1 ? "הלוגו הועלה. לשמירה לחצו \"שמירה\"." : `${added.length} לוגואים הועלו. לשמירה לחצו "שמירה".`);
+        toast.success(added.length === 1 ? 'התמונה הועלתה. לשמירה לחצו "שמירה".' : `${added.length} תמונות הועלו. לשמירה לחצו "שמירה".`);
       }
-    } catch (e) {
-      toast.error(hebrewError(e, "ההעלאה נכשלה"));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -188,7 +191,8 @@ export function SynagogueDetailsDialog({
       const unsaved = pending.current.filter((p) => !logos.some((l) => l.path === p));
       if (unsaved.length) await supabase.storage.from("community-media").remove(unsaved);
       pending.current = [];
-      toast.success("פרטי בית הכנסת נשמרו");
+      opened.current = null;
+      toast.success("נשמר");
       onClose();
     } catch (e) {
       toast.error(hebrewError(e, "השמירה נכשלה"));
@@ -198,7 +202,7 @@ export function SynagogueDetailsDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+    <Dialog open={open} onOpenChange={(o) => !o && void requestClose()}>
       <DialogContent dir="rtl" className="max-h-[90vh] max-w-3xl overflow-y-auto text-right" data-testid="synagogue-details">
         <DialogHeader className="text-right">
           <DialogTitle>{community?.name}</DialogTitle>
@@ -253,19 +257,18 @@ export function SynagogueDetailsDialog({
                   })
                 }
               />
-              <details className="rounded-2xl border border-border p-4">
-                <summary className="cursor-pointer text-sm font-semibold">כוונון ידני של הקואורדינטות והדקות</summary>
-                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <Collapsible title="כוונון ידני של הקואורדינטות והדקות" icon={LocateFixed} testId="synagogue-coordinates">
+                <div className="grid gap-4 sm:grid-cols-2">
                   {field("latitude", "קו רוחב", "number")}
                   {field("longitude", "קו אורך", "number")}
                   {field("candle_offset_minutes", "הדלקת נרות - דקות לפני השקיעה", "number")}
                   {field("tzeit_offset_minutes", "צאת הכוכבים - דקות אחרי השקיעה", "number")}
                   {field("shabbat_end_minutes", "צאת שבת וחג - דקות אחרי השקיעה (40 מקובל, 72 ר״ת)", "number")}
                 </div>
-                <p className="mt-3 text-xs text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   קווי האורך והרוחב קובעים את חישוב זמני היום באתר ובלוח. ברירת המחדל היא בני ברק.
                 </p>
-              </details>
+              </Collapsible>
             </section>
 
             <section className="space-y-3" data-testid="synagogue-logos">
@@ -274,7 +277,7 @@ export function SynagogueDetailsDialog({
                 <input
                   ref={fileRef}
                   type="file"
-                  accept="image/*"
+                  accept={IMAGE_ACCEPT}
                   multiple
                   className="hidden"
                   aria-label="העלאת לוגו"
@@ -284,9 +287,15 @@ export function SynagogueDetailsDialog({
                   {uploading ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />} הוספת לוגו
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                אפשר להעלות כמה לוגואים. איזה מהם מופיע בכותרת האתר - בוחרים ב"תצוגת דף הבית".
-              </p>
+              <p className="text-xs text-muted-foreground">אפשר להעלות כמה לוגואים: {IMAGE_LIMIT_TEXT}.</p>
+              <SectionLink
+                hint='איזה מהם מופיע בכותרת האתר - בוחרים במדור "תצוגת דף הבית".'
+                label="בחירת הלוגו שבכותרת"
+                tab="widgets"
+                extra={{ focus: "header" }}
+                before={requestClose}
+                testId="go-header-logo"
+              />
               {logos.length === 0 ? (
                 <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
                   עדיין אין לוגואים. בכותרת אפשר להציג את לוגו קרובים המובנה.
@@ -328,10 +337,8 @@ export function SynagogueDetailsDialog({
             </section>
 
             <div className="flex flex-wrap gap-2 border-t pt-4">
-              <Button type="button" onClick={() => void save()} disabled={saving || uploading} data-testid="syn-save">
-                {saving && <Loader2 className="size-4 animate-spin" />} שמירה
-              </Button>
-              <Button type="button" variant="ghost" onClick={close}>
+              <SaveButton pending={saving} disabled={uploading} onClick={() => void save()} testId="syn-save" />
+              <Button type="button" variant="ghost" onClick={() => void requestClose()}>
                 ביטול
               </Button>
               {!canRename && (

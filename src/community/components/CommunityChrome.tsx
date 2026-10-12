@@ -9,6 +9,7 @@ import { AdminAiShortcut } from "./AdminAiShortcut";
 import { QuickAddButton } from "./QuickAddButton";
 import { readLogos } from "@community/lib/logos";
 import { useAccount } from "@community/lib/use-account";
+import { HEADER_ICON_BUTTON } from "./headerIconButton";
 
 function boundedDimension(value: number | null | undefined, fallback: number, min: number, max: number) {
   return Math.min(max, Math.max(min, Number.isFinite(value) ? Number(value) : fallback));
@@ -138,12 +139,11 @@ function AccountChip() {
       title={account.signedIn ? `${account.name} · ${account.roleLabel}` : "כניסה או הרשמה"}
       aria-label={!account.signedIn ? "כניסה או הרשמה למערכת" : gabbai ? `${account.name}, גבאי - ניהול בית הכנסת` : `${account.name} - האזור האישי`}
       className={cn(
-        // On a phone, a round badge with the first letter: the name and the
+        // On a phone, a round badge with the first letter, the same circle as
+        // the bar's other buttons (headerIconButton.ts): the name and the
         // address of the shul take the line, and the full name is a tap away.
-        "relative flex size-8 shrink-0 items-center justify-center gap-1.5 rounded-full border text-xs leading-none transition sm:size-auto sm:max-w-[13rem] sm:px-2 sm:py-1 sm:text-sm",
-        account.signedIn
-          ? "border-sidebar-primary/50 bg-sidebar-accent/40 text-sidebar-foreground hover:bg-sidebar-accent"
-          : "border-white/15 text-white/70 hover:bg-white/10 hover:text-amber-300",
+        HEADER_ICON_BUTTON,
+        "relative gap-1.5 text-xs leading-none sm:size-auto sm:max-w-[13rem] sm:px-2 sm:py-1 sm:text-sm",
       )}
     >
       {!account.signedIn ? (
@@ -238,7 +238,6 @@ export function CommunityFooter() {
         </div>
         <Link to="/community" className="mt-4 inline-flex items-center gap-1 text-amber-400"><House className="size-4" />חזרה לדף הקהילה</Link>
       </div>
-      <AdminAiShortcut />
     </footer>
   );
 }

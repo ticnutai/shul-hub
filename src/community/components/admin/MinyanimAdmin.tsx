@@ -1,22 +1,6 @@
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type PointerEvent as ReactPointerEvent,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import {
-  CalendarRange,
-  ChevronLeft,
-  GripVertical,
-  Pencil,
-  Plus,
-  Settings2,
-  Trash2,
-} from "lucide-react";
+import { CalendarRange, MonitorSmartphone, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,8 +22,7 @@ import {
   type MinyanCategory,
   type MinyanSubcategory,
 } from "@community/lib/data";
-import { useDeleteRow, useSaveRow } from "@community/lib/admin";
-import { confirmAction } from "@/components/ConfirmDialog";
+import { confirmDelete, useDeleteRow, useSaveRow } from "@community/lib/admin";
 import { RELATIVE_LABELS, heldOn, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { RELATIVE_OPTIONS } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
@@ -48,51 +31,57 @@ import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { isEventCategory } from "@community/lib/specialDays";
 import { hebrewError } from "@community/lib/hebrewError";
+import { DragGrip, nextSortOrder, useReorder } from "@community/lib/useReorder";
+import { newMinyan } from "@community/lib/createContent";
+import { useDraftGuard } from "@community/lib/unsavedChanges";
+import { Collapsible } from "./Collapsible";
+import { AdminError, ChoiceCard, ChoiceGroup, SaveButton } from "./adminUi";
 
 type Draft = Partial<Minyan> & { day_type: string; category_id: string | null };
 type CategoryDraft = Pick<
   MinyanCategory,
   "name" | "active" | "sort_order" | "visible_from" | "visible_until" | "display_mode"
-> & { id?: string; subcategories: MinyanSubcategory[] };
+> & { id?: string; system_key?: string | null; subcategories: MinyanSubcategory[] };
 
-/** "עד 11.10" / "מ-12.10" / "12.10–11.4": a minyan's season, short. */
+/** "עד 11.10" / "מ-12.10" / "12.10 עד 11.4": a minyan's season, short. */
 const dm = (d: string) => `${Number(d.slice(8, 10))}.${Number(d.slice(5, 7))}`;
 function seasonLabel(from: string | null, until: string | null): string {
-  if (from && until) return `${dm(from)}–${dm(until)}`;
+  if (from && until) return `${dm(from)} עד ${dm(until)}`;
   return from ? `מ-${dm(from)}` : `עד ${dm(until!)}`;
 }
 
-const emptyDraft = (category: MinyanCategory): Draft => ({
-  day_type: category.system_key ?? "custom",
-  category_id: category.id,
-  prayer: minyanSubcategories(category)[0]?.id ?? "other",
-  label: "",
-  time_mode: "fixed",
-  fixed_time: "07:00",
-  relative_to: "sunset",
-  offset_minutes: 0,
-  room: "",
-  note: "",
-  sort_order: 100,
-  active: true,
-  notification_enabled: false,
-  reminder_minutes: 15,
-});
+/**
+ * The tab of Shabbat, as a template of the new-tab form: its name, its own
+ * key (the site and the board know it by it) and its three prayers - what
+ * the one-click "לשונית שבת" button used to make, now one of the choices of
+ * "לשונית חדשה", so there is one way to add a tab.
+ */
+const SHABBAT_PRAYERS: MinyanSubcategory[] = [
+  { id: "shacharit", label: "שחרית" },
+  { id: "mincha", label: "מנחה" },
+  { id: "arvit", label: "ערבית" },
+];
 
 /**
  * `chosen`: opened from the tiles (AdminTiles.tsx), which already chose the
  * category and the prayer - its own rows of tabs are not drawn then, the
  * tiles stand in their place. Without it, the tabs as always.
+ *
+ * `manageOnly`: the tiles' "ימים, תפילות ותצוגה" - the tabs themselves (adding,
+ * ordering, editing them) and how the times are shown, without the list of
+ * minyanim again: the days' own tiles open that.
  */
-export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; prayer?: string } } = {}) {
-  const { data: minyanim = [], isLoading: minyanimLoading } = useMinyanim();
+export function MinyanimAdmin({
+  chosen,
+  manageOnly = false,
+}: { chosen?: { categoryId: string; prayer?: string }; manageOnly?: boolean } = {}) {
+  const { data: minyanim = [], isLoading: minyanimLoading, isError: minyanimError, refetch } = useMinyanim();
   const { data: categories = [] } = useMinyanCategories();
   const { data: settings } = useSettings();
-  const queryClient = useQueryClient();
   const save = useSaveRow("minyanim", "minyanim");
   const remove = useDeleteRow("minyanim", "minyanim");
   const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
-  const removeCategory = useDeleteRow("minyan_categories", "minyan_categories");
+  const removeCategory = useDeleteRow("minyan_categories", ["minyan_categories", "minyanim"]);
   const [ownCategoryId, setCategoryId] = useState<string | null>(() => new URLSearchParams(window.location.search).get("cat"));
   const categoryId = chosen?.categoryId ?? ownCategoryId;
   // A special day's own timetable is opened from the board editor's "מועדים"
@@ -111,27 +100,10 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
   const [draft, setDraft] = useState<Draft | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(null);
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
-  const [draggedMinyanId, setDraggedMinyanId] = useState<string | null>(null);
-  const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
-  const [draggedSubcategoryId, setDraggedSubcategoryId] = useState<string | null>(null);
-
-  /** Sub-categories are ordered by dragging, in the draft, until "שמירת הלשונית". */
-  function moveSubcategory(draggedId: string, targetId: string) {
-    setCategoryDraft((current) => {
-      if (!current) return current;
-      const list = [...current.subcategories];
-      const from = list.findIndex((item) => item.id === draggedId);
-      const to = list.findIndex((item) => item.id === targetId);
-      if (from < 0 || to < 0 || from === to) return current;
-      const [moved] = list.splice(from, 1);
-      list.splice(to, 0, moved!);
-      return { ...current, subcategories: list };
-    });
-  }
-  const draggedMinyanRef = useRef<string | null>(null);
-  const draggedCategoryRef = useRef<string | null>(null);
-  const dragCleanupRef = useRef<(() => void) | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  // Half-filled forms ask before the gabbai moves elsewhere (unsavedChanges.ts).
+  useDraftGuard(draft as { id?: string } | null);
+  useDraftGuard(categoryDraft);
 
   // The ordinary tabs. A special day's tab (system_key "event:…") is reached
   // from the board editor's "מועדים", not from this row.
@@ -141,27 +113,6 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
   const selectedIsEvent = Boolean(selectedCategory && isEventCategory(selectedCategory));
   const hasShabbatTab = categories.some((c) => c.system_key === "shabbat");
 
-  async function createShabbatTab() {
-    const friday = categories.find((c) => c.system_key === "friday");
-    const { data, error } = await supabase
-      .from("minyan_categories")
-      .insert({
-        community_id: communityId(),
-        name: "שבת",
-        system_key: "shabbat",
-        active: true,
-        display_mode: "tabs",
-        sort_order: (friday?.sort_order ?? 20) + 1,
-      } as never)
-      .select("id")
-      .single();
-    if (error || !data) {
-      toast.error(hebrewError(error, "יצירת הלשונית נכשלה"));
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["minyan_categories"] });
-    setCategoryId((data as { id: string }).id);
-  }
   const selectedCategoryId = selectedCategory?.id ?? null;
   const zmanim = zmanimFor(new Date(), settings);
   const prayerTabs = useMemo(() => minyanSubcategories(selectedCategory), [selectedCategory]);
@@ -172,6 +123,14 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
         (!m.category_id && m.day_type === selectedCategory?.system_key)) &&
       (!hasSubcategories || m.prayer === prayer),
   );
+
+  // Every list here is dragged the one way (useReorder.ts): the tabs and the
+  // minyanim are saved when let go, the prayers of a tab with the tab's form.
+  const tabOrder = useReorder(regularCategories, { save: { table: "minyan_categories", queryKey: "minyan_categories" } });
+  const minyanOrder = useReorder(rows, { save: { table: "minyanim", queryKey: "minyanim" } });
+  const prayerOrder = useReorder(categoryDraft?.subcategories ?? [], {
+    onReorder: (subcategories) => setCategoryDraft((current) => (current ? { ...current, subcategories } : current)),
+  });
 
   useEffect(() => {
     if (prayerTabs.length > 0 && !prayerTabs.some((item) => item.id === prayer)) {
@@ -210,7 +169,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
         .eq("category_id", categoryDraft.id)
         .in("prayer", removedIds);
       if (error) {
-        toast.error(hebrewError(error, "עדכון המניינים בתת־הקטגוריה שנמחקה נכשל"));
+        toast.error(hebrewError(error, "עדכון המניינים בתפילה שנמחקה נכשל"));
         return;
       }
     }
@@ -230,33 +189,22 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
   }
 
   async function deleteMinyan(minyan: { id: string; label: string }) {
-    if (
-      !(await confirmAction({
-        title: `למחוק את המניין „${minyan.label}”?`,
-        description: "אי אפשר לבטל את זה.",
-        confirmLabel: "מחיקה",
-      }))
-    )
-      return;
+    if (!(await confirmDelete("המניין", minyan.label))) return;
     remove.mutate(minyan.id);
   }
 
   async function deleteCategory(category: MinyanCategory) {
     const count = minyanim.filter((item) => item.category_id === category.id).length;
-    const detail = count > 0 ? ` וכל ${count} המניינים שבתוכה` : "";
-    if (
-      !(await confirmAction({
-        title: `למחוק את הלשונית „${category.name}”${detail}?`,
-        description: "אי אפשר לבטל את זה.",
-        confirmLabel: "מחיקה",
-      }))
-    )
-      return;
+    const ok = await confirmDelete(
+      "הלשונית",
+      category.name,
+      count > 0 ? `וכל ${count} המניינים שבתוכה. אי אפשר לבטל את זה.` : undefined,
+    );
+    if (!ok) return;
     removeCategory.mutate(category.id, {
       onSuccess: () => {
         setCategoryId(null);
         setCategoryDraft(null);
-        void queryClient.invalidateQueries({ queryKey: ["minyanim"] });
       },
     });
   }
@@ -280,258 +228,64 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
     });
   }
 
-  async function persistOrder(
-    table: "minyanim" | "minyan_categories",
-    queryKey: "minyanim" | "minyan_categories",
-    items: { id: string }[],
-    draggedId: string | null,
-    targetId: string,
-    successMessage: string,
-  ) {
-    if (!draggedId || draggedId === targetId) return;
-    const ordered = [...items];
-    const from = ordered.findIndex((item) => item.id === draggedId);
-    const to = ordered.findIndex((item) => item.id === targetId);
-    if (from < 0 || to < 0) return;
-    const [moved] = ordered.splice(from, 1);
-    ordered.splice(to, 0, moved!);
-    const results = await Promise.all(
-      ordered.map((item, index) =>
-        supabase
-          .from(table)
-          .update({ sort_order: (index + 1) * 10 })
-          .eq("id", item.id),
-      ),
-    );
-    const failure = results.find((result) => result.error)?.error;
-    if (failure) toast.error("שמירת סדר התצוגה נכשלה");
-    else {
-      await queryClient.invalidateQueries({ queryKey: [queryKey] });
-      toast.success(successMessage);
-    }
-  }
+  /** A new tab: empty, at the end of the row. */
+  const emptyTab = (): CategoryDraft => ({
+    name: "",
+    active: true,
+    display_mode: "tabs",
+    sort_order: nextSortOrder(categories),
+    visible_from: null,
+    visible_until: null,
+    system_key: null,
+    subcategories: [],
+  });
+  /** The Shabbat template: after Friday's tab, with its three prayers. */
+  const shabbatTab = (): CategoryDraft => ({
+    ...emptyTab(),
+    name: "שבת",
+    system_key: "shabbat",
+    sort_order: (categories.find((c) => c.system_key === "friday")?.sort_order ?? 20) + 1,
+    subcategories: SHABBAT_PRAYERS,
+  });
+  const usingShabbat = !categoryDraft?.id && categoryDraft?.system_key === "shabbat";
 
-  const moveMinyan = (targetId: string) =>
-    persistOrder(
-      "minyanim",
-      "minyanim",
-      rows,
-      draggedMinyanRef.current,
-      targetId,
-      "סדר המניינים נשמר",
-    );
-
-  const moveCategory = (targetId: string) =>
-    persistOrder(
-      "minyan_categories",
-      "minyan_categories",
-      categories,
-      draggedCategoryRef.current,
-      targetId,
-      "סדר הלשוניות נשמר",
-    );
-
-  useEffect(() => () => dragCleanupRef.current?.(), []);
-
-  /**
-   * Dragging a tab, a minyan or a sub-category into place.
-   *
-   * It used to show nothing while the pointer moved: the row went pale, and
-   * only on letting go did the list jump - so it was impossible to tell
-   * whether a drag was happening at all, or where it would land. Now the row
-   * itself travels under the pointer, the place it will land is marked with
-   * a bar on the side it will go, and the list scrolls when the pointer
-   * reaches the edge of the screen.
-   */
-  function beginPointerDrag(
-    event: ReactPointerEvent<HTMLButtonElement>,
-    draggedId: string,
-    selector: string,
-    move: (targetId: string) => Promise<void>,
-    start: () => void,
-    clear: () => void,
-  ) {
-    if (!event.isPrimary || event.button !== 0) return;
-    event.preventDefault();
-    dragCleanupRef.current?.();
-    start();
-
-    const ownerDocument = event.currentTarget.ownerDocument;
-    const pointerId = event.pointerId;
-    const source = event.currentTarget.closest<HTMLElement>(selector);
-
-    // The row, following the pointer.
-    let ghost: HTMLElement | null = null;
-    let grabX = 0;
-    let grabY = 0;
-    if (source) {
-      const rect = source.getBoundingClientRect();
-      grabX = event.clientX - rect.left;
-      grabY = event.clientY - rect.top;
-      ghost = source.cloneNode(true) as HTMLElement;
-      ghost.removeAttribute("data-reorder-id");
-      ghost.removeAttribute("data-testid");
-      ghost.setAttribute("aria-hidden", "true");
-      Object.assign(ghost.style, {
-        position: "fixed",
-        left: `${rect.left}px`,
-        top: `${rect.top}px`,
-        width: `${rect.width}px`,
-        height: `${rect.height}px`,
-        margin: "0",
-        zIndex: "9999",
-        pointerEvents: "none",
-        opacity: "0.95",
-        transform: "rotate(-1.5deg) scale(1.03)",
-        boxShadow: "0 12px 28px rgba(0,0,0,.25)",
-        borderRadius: "10px",
-        background: "hsl(var(--card))",
-        outline: "2px solid hsl(var(--primary))",
-        transition: "transform 120ms ease",
-      });
-      ownerDocument.body.appendChild(ghost);
-    }
-    const previousCursor = ownerDocument.body.style.cursor;
-    ownerDocument.body.style.cursor = "grabbing";
-
-    // Where it will land: a bar on the side it will go.
-    let marked: HTMLElement | null = null;
-    const unmark = () => {
-      if (!marked) return;
-      marked.style.boxShadow = marked.dataset["dragShadow"] ?? "";
-      marked.style.background = marked.dataset["dragBackground"] ?? "";
-      delete marked.dataset["dragShadow"];
-      delete marked.dataset["dragBackground"];
-      marked = null;
-    };
-    const targetAt = (x: number, y: number) => {
-      const target = ownerDocument.elementFromPoint(x, y)?.closest<HTMLElement>(selector);
-      return target?.dataset["reorderId"] && target.dataset["reorderId"] !== draggedId ? target : null;
-    };
-    const mark = (target: HTMLElement | null) => {
-      if (target === marked) return;
-      unmark();
-      if (!target || !source) return;
-      const a = source.getBoundingClientRect();
-      const b = target.getBoundingClientRect();
-      const vertical = Math.abs(b.top - a.top) > Math.abs(b.left - a.left);
-      // Dropped on a row further on, it goes after it; further back, before it.
-      const after = Boolean(source.compareDocumentPosition(target) & Node.DOCUMENT_POSITION_FOLLOWING);
-      const rtl = getComputedStyle(target).direction === "rtl";
-      const bar = "hsl(var(--primary))";
-      const shadow = vertical
-        ? `inset 0 ${after ? -4 : 4}px 0 0 ${bar}`
-        : `inset ${(after ? !rtl : rtl) ? -4 : 4}px 0 0 0 ${bar}`;
-      target.dataset["dragShadow"] = target.style.boxShadow;
-      target.dataset["dragBackground"] = target.style.background;
-      target.style.boxShadow = shadow;
-      target.style.background = "hsl(var(--primary) / 0.08)";
-      marked = target;
-    };
-
-    const follow = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== pointerId) return;
-      if (ghost) {
-        ghost.style.left = `${pointerEvent.clientX - grabX}px`;
-        ghost.style.top = `${pointerEvent.clientY - grabY}px`;
-      }
-      mark(targetAt(pointerEvent.clientX, pointerEvent.clientY));
-      // Near the top or bottom of the window, the page moves with the drag.
-      const view = ownerDocument.defaultView;
-      if (view) {
-        const edge = 70;
-        if (pointerEvent.clientY < edge) view.scrollBy(0, -14);
-        else if (pointerEvent.clientY > view.innerHeight - edge) view.scrollBy(0, 14);
-      }
-    };
-    const finish = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId !== pointerId) return;
-      const target = targetAt(pointerEvent.clientX, pointerEvent.clientY);
-      if (target?.dataset["reorderId"]) void move(target.dataset["reorderId"]);
-      cleanup();
-    };
-    const cancel = (pointerEvent: PointerEvent) => {
-      if (pointerEvent.pointerId === pointerId) cleanup();
-    };
-    const onKey = (keyEvent: KeyboardEvent) => {
-      if (keyEvent.key === "Escape") cleanup();
-    };
-    const cleanup = () => {
-      ownerDocument.removeEventListener("pointermove", follow, true);
-      ownerDocument.removeEventListener("pointerup", finish, true);
-      ownerDocument.removeEventListener("pointercancel", cancel, true);
-      ownerDocument.removeEventListener("keydown", onKey, true);
-      ghost?.remove();
-      ghost = null;
-      unmark();
-      ownerDocument.body.style.cursor = previousCursor;
-      dragCleanupRef.current = null;
-      clear();
-    };
-
-    ownerDocument.addEventListener("pointermove", follow, true);
-    ownerDocument.addEventListener("pointerup", finish, true);
-    ownerDocument.addEventListener("pointercancel", cancel, true);
-    ownerDocument.addEventListener("keydown", onKey, true);
-    dragCleanupRef.current = cleanup;
-  }
+  // From the tiles' days, the list comes alone: how the times are shown is
+  // under "ימים, תפילות ותצוגה". On the tabs, it is folded under the list.
+  const showList = !manageOnly;
+  const showTabBar = !chosen;
+  const prayerDisplay = <PrayerDisplaySettings settings={settings} categories={categories} showTitle={manageOnly} />;
 
   return (
     <div dir="rtl" className="space-y-4 text-right">
-      {/* From the tiles, the list comes first: these are under "ימים, תפילות ותצוגה" there. */}
-      {!chosen && <PrayerDisplaySettings settings={settings} categories={categories} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {!chosen && (
+        {showTabBar && (
         <div
           role="group"
           dir="rtl"
           className="flex max-w-full flex-wrap gap-1 rounded-lg bg-muted p-1"
-          aria-label="קטגוריות מניינים"
+          aria-label="לשוניות מניינים"
         >
-          {regularCategories.map((category) => (
+          {tabOrder.ordered.map((category) => (
             <div
               key={category.id}
-              data-reorder-id={category.id}
-              data-reorder-kind="category"
+              {...tabOrder.rowProps(category.id)}
               data-testid={`minyan-category-${category.id}`}
               className={
                 "flex items-center rounded-md text-sm " +
                 (selectedCategoryId === category.id
                   ? "bg-card font-medium shadow-soft"
                   : "text-muted-foreground") +
-                (draggedCategoryId === category.id ? " opacity-50" : "")
+                (tabOrder.draggedId === category.id ? " opacity-50" : "")
               }
             >
-              <button
-                type="button"
-                aria-label={`גרירת הלשונית ${category.name}`}
-                title="גררו לשינוי סדר הלשוניות"
-                className="cursor-grab touch-none p-1.5 active:cursor-grabbing"
-                onPointerDown={(event) => {
-                  beginPointerDrag(
-                    event,
-                    category.id,
-                    '[data-reorder-kind="category"]',
-                    moveCategory,
-                    () => {
-                      draggedCategoryRef.current = category.id;
-                      setDraggedCategoryId(category.id);
-                    },
-                    () => {
-                      draggedCategoryRef.current = null;
-                      setDraggedCategoryId(null);
-                    },
-                  );
-                }}
-              >
-                <GripVertical className="size-4" />
-              </button>
+              <DragGrip small label={`גרירת הלשונית ${category.name}`} {...tabOrder.gripProps(category.id)} />
               <button
                 type="button"
                 className="px-2 py-1.5"
+                aria-pressed={selectedCategoryId === category.id}
                 onClick={() => {
                   setCategoryId(category.id);
-                                const first = minyanSubcategories(category)[0];
+                  const first = minyanSubcategories(category)[0];
                   if (first) setPrayer(first.id);
                 }}
               >
@@ -542,30 +296,11 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
           ))}
           <button
             type="button"
-            onClick={() =>
-              setCategoryDraft({
-                name: "",
-                active: true,
-                display_mode: "tabs",
-                sort_order: (categories.at(-1)?.sort_order ?? 0) + 10,
-                visible_from: null,
-                visible_until: null,
-                subcategories: [],
-              })
-            }
+            onClick={() => setCategoryDraft(emptyTab())}
             className="rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-card"
           >
             <Plus className="ml-1 inline size-3.5" /> לשונית חדשה
           </button>
-          {!hasShabbatTab && (
-            <button
-              type="button"
-              onClick={() => void createShabbatTab()}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-card"
-            >
-              <Plus className="ml-1 inline size-3.5" /> לשונית שבת
-            </button>
-          )}
         </div>
         )}
         <div className="flex gap-2">
@@ -592,19 +327,36 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             זמני התפילות של <b>{selectedCategory.name}</b> - ביום עצמו הם מחליפים באתר ובלוח את הזמנים הרגילים.
           </span>
           <Button size="sm" variant="ghost" onClick={() => openSpecialDays()}>
-            ← חזרה למועדים
+            → חזרה למועדים
           </Button>
         </div>
       )}
 
       {categoryDraft && (
-        <form onSubmit={submitCategory} className="card-elev space-y-4 p-5">
+        <form onSubmit={submitCategory} className="card-elev space-y-4 p-5" data-testid="minyan-category-form">
           <div className="flex items-center gap-2">
             <CalendarRange className="size-5 text-primary" />
             <h3 className="text-lg font-semibold">
               {categoryDraft.id ? "עריכת לשונית" : "לשונית חדשה"}
             </h3>
           </div>
+          {/* A new tab starts empty, or as the Shabbat tab with its three prayers. */}
+          {!categoryDraft.id && !hasShabbatTab && (
+            <ChoiceGroup className="grid gap-2 sm:grid-cols-2" label="תבנית ללשונית החדשה" testId="minyan-tab-template">
+              <ChoiceCard
+                selected={!usingShabbat}
+                onSelect={() => setCategoryDraft(emptyTab())}
+                title="לשונית ריקה"
+                description="שם משלכם, ותפילות אם רוצים"
+              />
+              <ChoiceCard
+                selected={usingShabbat}
+                onSelect={() => setCategoryDraft(shabbatTab())}
+                title="שבת"
+                description="מוכנה, עם שחרית, מנחה וערבית"
+              />
+            </ChoiceGroup>
+          )}
           {/* The place of a tab is set by dragging it in the bar above, not
               by typing a number; the order field is gone from here. */}
           <div className="space-y-2 sm:max-w-md">
@@ -621,54 +373,39 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
           </div>
           <div className="space-y-3 rounded-lg border border-border p-4">
             <div>
-              <h4 className="font-medium">תתי־קטגוריות (רשות)</h4>
+              <h4 className="font-medium">תפילות בלשונית (רשות)</h4>
               <p className="text-xs text-muted-foreground">
                 אפשר להשאיר ריק ולהוסיף מניינים ישירות ללשונית, או ליצור שמות חופשיים כגון שחרית,
                 מנחה, ערבית או סליחות א׳.
               </p>
             </div>
             <div className="space-y-2" data-testid="minyan-subcategory-editor">
-              {categoryDraft.subcategories.map((subcategory, index) => (
+              {prayerOrder.ordered.map((subcategory, index) => (
                 <div
                   key={subcategory.id}
-                  data-reorder-id={subcategory.id}
-                  data-reorder-kind="subcategory"
+                  {...prayerOrder.rowProps(subcategory.id)}
                   className={
-                    "flex items-center gap-2" + (draggedSubcategoryId === subcategory.id ? " opacity-50" : "")
+                    "flex items-center gap-2" + (prayerOrder.draggedId === subcategory.id ? " opacity-50" : "")
                   }
                 >
-                  <button
-                    type="button"
-                    aria-label={`גרירת ${subcategory.label || `תת־קטגוריה ${index + 1}`}`}
-                    title="גררו לשינוי הסדר"
-                    className="cursor-grab touch-none p-1.5 text-muted-foreground active:cursor-grabbing"
-                    onPointerDown={(event) =>
-                      beginPointerDrag(
-                        event,
-                        subcategory.id,
-                        '[data-reorder-kind="subcategory"]',
-                        async (targetId) => moveSubcategory(subcategory.id, targetId),
-                        () => setDraggedSubcategoryId(subcategory.id),
-                        () => setDraggedSubcategoryId(null),
-                      )
-                    }
-                  >
-                    <GripVertical className="size-4" />
-                  </button>
+                  <DragGrip small label={`גרירת ${subcategory.label || `תפילה ${index + 1}`}`} {...prayerOrder.gripProps(subcategory.id)} />
                   <Input
-                    aria-label={`שם תת־קטגוריה ${index + 1}`}
+                    aria-label={`שם תפילה ${index + 1}`}
                     value={subcategory.label}
-                    onChange={(event) => {
-                      const next = [...categoryDraft.subcategories];
-                      next[index] = { ...subcategory, label: event.target.value };
-                      setCategoryDraft({ ...categoryDraft, subcategories: next });
-                    }}
+                    onChange={(event) =>
+                      setCategoryDraft({
+                        ...categoryDraft,
+                        subcategories: categoryDraft.subcategories.map((item) =>
+                          item.id === subcategory.id ? { ...item, label: event.target.value } : item,
+                        ),
+                      })
+                    }
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    aria-label={`מחיקת תת־קטגוריה ${subcategory.label}`}
+                    aria-label={`מחיקת תפילה ${subcategory.label}`}
                     onClick={() =>
                       setCategoryDraft({
                         ...categoryDraft,
@@ -685,10 +422,10 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input
-                aria-label="שם תת־קטגוריה חדשה"
+                aria-label="שם תפילה חדשה"
                 value={newSubcategoryName}
                 onChange={(event) => setNewSubcategoryName(event.target.value)}
-                placeholder="שם תת־קטגוריה חדשה"
+                placeholder="שם תפילה חדשה"
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
                     event.preventDefault();
@@ -702,11 +439,13 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                 onClick={addSubcategory}
                 disabled={!newSubcategoryName.trim()}
               >
-                <Plus className="size-4" /> הוספת תת־קטגוריה
+                <Plus className="size-4" /> הוספת תפילה
               </Button>
             </div>
           </div>
-          <Advanced
+          <Collapsible
+            title="מתקדם"
+            headingLevel="h4"
             summary={
               categoryDraft.visible_from || categoryDraft.visible_until
                 ? `מוצגת ${categoryDraft.visible_from ? `מ-${formatDay(categoryDraft.visible_from)}` : ""}${
@@ -744,7 +483,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             <p className="text-xs text-muted-foreground">
               בלי תאריכים הלשונית מוצגת תמיד. עם תאריכים - רק בתקופה הזו, למשל סליחות.
             </p>
-          </Advanced>
+          </Collapsible>
           <div className="flex flex-wrap items-center gap-3">
             <Switch
               id="minyan-category-active"
@@ -753,9 +492,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             />
             <Label htmlFor="minyan-category-active">הלשונית מוצגת באתר</Label>
             <div className="mr-auto flex gap-2">
-              <Button type="submit" disabled={saveCategory.isPending}>
-                שמירת הלשונית
-              </Button>
+              <SaveButton pending={saveCategory.isPending} />
               <Button type="button" variant="ghost" onClick={() => setCategoryDraft(null)}>
                 ביטול
               </Button>
@@ -775,18 +512,22 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
         </form>
       )}
 
-      {hasSubcategories && !chosen && (
+      {/* "ימים, תפילות ותצוגה" from the tiles: how the times are shown, open, in place of the list. */}
+      {manageOnly && prayerDisplay}
+
+      {showList && hasSubcategories && !chosen && (
         <div
           role="group"
           dir="rtl"
           className="flex gap-1 rounded-lg bg-secondary p-1 text-right"
-          aria-label="תתי־קטגוריות מניינים"
+          aria-label="תפילות"
         >
           {prayerTabs.map((item) => (
             <button
               type="button"
               key={item.id}
               onClick={() => setPrayer(item.id)}
+              aria-pressed={prayer === item.id}
               className={
                 "flex-1 rounded-md px-3 py-2 text-sm " +
                 (prayer === item.id
@@ -800,59 +541,45 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
         </div>
       )}
 
-      {/* Under the tabs and sub-categories, over the list it adds to: a new
-          minyan goes into what is chosen above it. */}
+      {showList && (
+        <>
+      {/* Under the tabs and the prayers, over the list it adds to: a new
+          minyan goes into what is chosen above it, at the end of its list. */}
       <div className="flex justify-end">
         <Button
           disabled={!selectedCategory}
-          onClick={() => selectedCategory && openDraft(emptyDraft(selectedCategory))}
+          onClick={() =>
+            selectedCategory &&
+            openDraft({
+              ...newMinyan(selectedCategory),
+              prayer: hasSubcategories ? prayer : "other",
+              sort_order: nextSortOrder(minyanim),
+            })
+          }
         >
           <Plus className="size-4" /> מניין חדש
         </Button>
       </div>
 
       <div className="card-elev divide-y divide-border">
+        {minyanimError && <AdminError what="המניינים" onRetry={() => void refetch()} />}
         {minyanimLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
-        {!minyanimLoading && rows.length === 0 && (
+        {!minyanimLoading && !minyanimError && rows.length === 0 && (
           <p className="p-6 text-center text-muted-foreground">אין מניינים כאן עדיין.</p>
         )}
-        {rows.map((m) => {
+        {minyanOrder.ordered.map((m) => {
           const resolved = resolveMinyan(m, zmanim);
           return (
             <div
               key={m.id}
-              data-reorder-id={m.id}
-              data-reorder-kind="minyan"
+              {...minyanOrder.rowProps(m.id)}
               data-testid={`minyan-row-${m.id}`}
               className={
                 "flex flex-wrap items-center gap-2 px-3 py-3 sm:flex-nowrap sm:gap-3 sm:px-4 " +
-                (draggedMinyanId === m.id ? "opacity-50" : "")
+                (minyanOrder.draggedId === m.id ? "opacity-50" : "")
               }
             >
-              <button
-                type="button"
-                aria-label={`גרירת המניין ${m.label}`}
-                title="גררו לשינוי סדר המניינים"
-                className="cursor-grab touch-none p-2 text-muted-foreground active:cursor-grabbing"
-                onPointerDown={(event) => {
-                  beginPointerDrag(
-                    event,
-                    m.id,
-                    '[data-reorder-kind="minyan"]',
-                    moveMinyan,
-                    () => {
-                      draggedMinyanRef.current = m.id;
-                      setDraggedMinyanId(m.id);
-                    },
-                    () => {
-                      draggedMinyanRef.current = null;
-                      setDraggedMinyanId(null);
-                    },
-                  );
-                }}
-              >
-                <GripVertical className="size-5" />
-              </button>
+              <DragGrip label={`גרירת המניין ${m.label}`} {...minyanOrder.gripProps(m.id)} />
               <div className="min-w-0 basis-[calc(100%-4rem)] sm:basis-auto sm:flex-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-2 font-medium">
                   <InlineEdit
@@ -923,7 +650,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                   ariaLabel={`עריכת שעה ${m.label}`}
                   className="font-display text-lg tabular-nums text-primary"
                   inputClassName="w-28"
-                  display={resolved?.time ?? "—"}
+                  display={resolved?.time ?? "-"}
                 />
               ) : (
                 <button
@@ -933,7 +660,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                   aria-label={`עריכת זמן יחסי ${m.label}`}
                   title="הזמן מחושב - לחצו לעריכת הכלל"
                 >
-                  {resolved?.time ?? "—"}
+                  {resolved?.time ?? "-"}
                 </button>
               )}
               <Button
@@ -956,8 +683,10 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
           );
         })}
       </div>
+        </>
+      )}
 
-      {draft && (
+      {showList && draft && (
         <form ref={formRef} onSubmit={submit} className="card-elev scroll-mt-24 space-y-4 p-5">
           <h3 className="text-lg font-semibold">{draft.id ? "עריכת מניין" : "מניין חדש"}</h3>
 
@@ -973,12 +702,12 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             </div>
             {hasSubcategories && (
               <div className="space-y-2">
-                <Label>תת־קטגוריה</Label>
+                <Label>תפילה (שחרית, מנחה…)</Label>
                 <Select
                   value={draft.prayer ?? "shacharit"}
                   onValueChange={(v) => setDraft({ ...draft, prayer: v })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger aria-label="תפילה">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1102,8 +831,13 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             </div>
           </div>
 
-          {/* The order of the minyanim is set by dragging them in the list. */}
-          <Advanced
+          {/* The order of the minyanim is set by dragging them in the list.
+              What a gabbai needs to build a minyan is its name, its time and
+              its place; a season and a reminder are folded away here, with a
+              line saying what is set in it so nothing hidden is also forgotten. */}
+          <Collapsible
+            title="מתקדם"
+            headingLevel="h4"
             summary={
               [
                 draft.active_from || draft.active_until
@@ -1146,7 +880,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                   onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
                   id="minyan-notification"
                 />
-                <Label htmlFor="minyan-notification">לאפשר תזכורת למניין</Label>
+                <Label htmlFor="minyan-notification">לאפשר תזכורת</Label>
               </div>
               <div className="space-y-2">
                 <Label>כמה דקות לפני</Label>
@@ -1163,17 +897,28 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                 />
               </div>
             </div>
-          </Advanced>
+          </Collapsible>
 
           <div className="flex gap-2">
-            <Button type="submit" disabled={save.isPending}>
-              שמירה
-            </Button>
+            <SaveButton pending={save.isPending} />
             <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
               ביטול
             </Button>
           </div>
         </form>
+      )}
+
+      {/* On the tabs, the list comes first; how the times are shown is folded
+          under it, closed, and opened when a link asked for it (#prayer-display). */}
+      {!chosen && !manageOnly && (
+        <Collapsible
+          title="איך יראו זמני התפילות"
+          icon={MonitorSmartphone}
+          defaultOpen={typeof window !== "undefined" && window.location.hash === "#prayer-display"}
+          testId="prayer-display-fold"
+        >
+          {prayerDisplay}
+        </Collapsible>
       )}
     </div>
   );
@@ -1183,23 +928,4 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
 function formatDay(iso: string) {
   const [y, m, d] = iso.split("-").map(Number);
   return y && m && d ? `${d}.${m}.${y}` : iso;
-}
-
-/**
- * What a gabbai needs to build a minyan is its name, its time and its place.
- * Everything else - a season, a reminder, a tab shown only for a while - is
- * folded away here, closed by default, with a line saying what is set in it
- * so nothing hidden is also forgotten.
- */
-function Advanced({ summary, children }: { summary?: string; children: ReactNode }) {
-  return (
-    <details className="group rounded-lg border border-border">
-      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-2.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-        <ChevronLeft className="size-4 transition-transform group-open:-rotate-90" />
-        מתקדם
-        {summary && <span className="truncate text-xs font-normal text-muted-foreground">· {summary}</span>}
-      </summary>
-      <div className="space-y-3 border-t border-border p-4">{children}</div>
-    </details>
-  );
 }

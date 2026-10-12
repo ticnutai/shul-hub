@@ -24,20 +24,41 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import "@community/components/admin/adminMobile.css";
-import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { DAYS_HE, minyanSubcategories, useMinyanCategories } from "@community/lib/data";
 import { hebrewError } from "@community/lib/hebrewError";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
-import { communityId } from "@/community/lib/community";
 import { useAdminButtons } from "@community/lib/adminButtons";
+import { createAnnouncement, createChavruta, createMinyan, createShiur } from "@community/lib/createContent";
+import { SaveButton } from "@community/components/admin/adminUi";
 import { FloatingDraggable } from "./FloatingDraggable";
+import { HEADER_ICON_BUTTON } from "./headerIconButton";
 
 /**
- * "הוספה מהירה" for the admin: a round button floating in the corner, or a
+ * "הוספה מהירה" for the gabbai: a round button floating in the corner, or a
  * small one in the top bar - as he chose in the site's settings (adminButtons).
  * Each place renders it with its own placement; only the chosen one shows.
+ * What it adds is written as the full forms write it (createContent.ts): the
+ * same defaults, at the end of its list.
  */
+
+/** Writes one, says "נשמר" (or why not), refreshes its list. */
+async function quickSave(
+  qc: ReturnType<typeof useQueryClient>,
+  queryKey: string,
+  write: () => Promise<void>,
+  failure: string,
+): Promise<boolean> {
+  try {
+    await write();
+  } catch (error) {
+    toast.error(hebrewError(error, failure));
+    return false;
+  }
+  await qc.invalidateQueries({ queryKey: [queryKey] });
+  toast.success("נשמר");
+  return true;
+}
 export function QuickAddButton({ placement = "floating" }: { placement?: "floating" | "header" }) {
   const { isAdmin, loading } = useAuth();
   const { prefs, set } = useAdminButtons();
@@ -87,7 +108,7 @@ export function QuickAddButton({ placement = "floating" }: { placement?: "floati
             aria-label="הוספה מהירה"
             title="הוספה מהירה"
             data-testid="quick-add-header"
-            className="inline-flex size-9 items-center justify-center rounded-full border border-amber-400/45 bg-amber-400/10 text-amber-300 transition hover:bg-amber-400/20 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+            className={HEADER_ICON_BUTTON}
           >
             <Plus className="size-5" aria-hidden="true" />
           </button>
@@ -138,6 +159,7 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [kind, setKind] = useState<string>("general");
   const [pinned, setPinned] = useState(false);
   const [showOnHome, setShowOnHome] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -145,27 +167,33 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
   async function save() {
     if (!title.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("announcements").insert({
-      community_id: communityId(),
-      title: title.trim(),
-      body: body.trim(),
-      kind: "general",
-      pinned,
-      notification_enabled: false,
-      show_on_home: showOnHome,
-    });
+    const ok = await quickSave(
+      qc,
+      "announcements",
+      () => createAnnouncement({ title: title.trim(), body: body.trim(), kind, pinned, show_on_home: showOnHome }),
+      "שמירת המודעה נכשלה",
+    );
     setSaving(false);
-    if (error) {
-      toast.error(hebrewError(error, "שמירת המודעה נכשלה"));
-      return;
-    }
-    await qc.invalidateQueries({ queryKey: ["announcements"] });
-    toast.success("המודעה נשמרה");
-    onDone();
+    if (ok) onDone();
   }
 
   return (
     <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>סוג מודעה</Label>
+        <Select value={kind} onValueChange={setKind}>
+          <SelectTrigger aria-label="סוג מודעה">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {ANNOUNCEMENT_KINDS.map((k) => (
+              <SelectItem key={k.id} value={k.id}>
+                {k.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
       <div className="space-y-2">
         <Label>כותרת</Label>
         <Input
@@ -186,9 +214,7 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
         <Switch id="quick-show-on-home" checked={showOnHome} onCheckedChange={setShowOnHome} />
         <Label htmlFor="quick-show-on-home">להציג גם בדף הבית</Label>
       </div>
-      <Button onClick={save} disabled={saving || !title.trim()}>
-        שמירה
-      </Button>
+      <SaveButton onClick={() => void save()} pending={saving} disabled={!title.trim()} />
     </div>
   );
 }
@@ -205,27 +231,21 @@ function QuickShiur({ onDone }: { onDone: () => void }) {
   async function save() {
     if (!title.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("shiurim").insert({
-      community_id: communityId(),
-      title: title.trim(),
-      teacher: teacher.trim(),
-      time_text: time.trim(),
-      location: location.trim(),
-      day_of_week: Number(day),
-      schedule_type: "weekly",
-      sort_order: 100,
-      active: true,
-      notification_enabled: false,
-      reminder_minutes: 15,
-    });
+    const ok = await quickSave(
+      qc,
+      "shiurim",
+      () =>
+        createShiur({
+          title: title.trim(),
+          teacher: teacher.trim(),
+          time_text: time.trim(),
+          location: location.trim(),
+          day_of_week: Number(day),
+        }),
+      "שמירת השיעור נכשלה",
+    );
     setSaving(false);
-    if (error) {
-      toast.error(hebrewError(error, "שמירת השיעור נכשלה"));
-      return;
-    }
-    await qc.invalidateQueries({ queryKey: ["shiurim"] });
-    toast.success("השיעור נשמר");
-    onDone();
+    if (ok) onDone();
   }
 
   return (
@@ -269,9 +289,7 @@ function QuickShiur({ onDone }: { onDone: () => void }) {
           <Input value={location} onChange={(e) => setLocation(e.target.value)} />
         </div>
       </div>
-      <Button onClick={save} disabled={saving || !title.trim()}>
-        שמירה
-      </Button>
+      <SaveButton onClick={() => void save()} pending={saving} disabled={!title.trim()} />
     </div>
   );
 }
@@ -288,25 +306,21 @@ function QuickChavruta({ onDone }: { onDone: () => void }) {
   async function save() {
     if (!topic.trim()) return;
     setSaving(true);
-    const { error } = await supabase.from("chavrutot").insert({
-      community_id: communityId(),
-      topic: topic.trim(),
-      partners: partners.trim(),
-      time_text: time.trim(),
-      contact: contact.trim(),
-      looking_for_partner: looking,
-      sort_order: 100,
-      active: true,
-      notification_enabled: false,
-    });
+    const ok = await quickSave(
+      qc,
+      "chavrutot",
+      () =>
+        createChavruta({
+          topic: topic.trim(),
+          partners: partners.trim(),
+          time_text: time.trim(),
+          contact: contact.trim(),
+          looking_for_partner: looking,
+        }),
+      "שמירת החברותא נכשלה",
+    );
     setSaving(false);
-    if (error) {
-      toast.error(hebrewError(error, "שמירת החברותא נכשלה"));
-      return;
-    }
-    await qc.invalidateQueries({ queryKey: ["chavrutot"] });
-    toast.success("החברותא נשמרה");
-    onDone();
+    if (ok) onDone();
   }
 
   return (
@@ -333,21 +347,19 @@ function QuickChavruta({ onDone }: { onDone: () => void }) {
         <Switch id="quick-looking" checked={looking} onCheckedChange={setLooking} />
         <Label htmlFor="quick-looking">מחפשים חברותא</Label>
       </div>
-      <Button onClick={save} disabled={saving || !topic.trim()}>
-        שמירה
-      </Button>
+      <SaveButton onClick={() => void save()} pending={saving} disabled={!topic.trim()} />
     </div>
   );
 }
 
 /**
- * A minyan, into the same tabs and sub-categories as the full minyan form.
+ * A minyan, into the same tabs and prayers as the full minyan form.
  *
  * It used to write only the old day type ("weekday"/"friday") with a fixed
  * list of prayers - no tab at all - so a minyan added here could land in no
  * tab, or under a prayer the synagogue's tab does not have. Now it is put in
- * a tab (category_id) and, when the tab has them, a sub-category, exactly as
- * the full form does.
+ * a tab (category_id) and, when the tab has them, a prayer, exactly as the
+ * full form does (createContent.ts).
  */
 function QuickMinyan({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
@@ -378,29 +390,21 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
     }
     setSaving(true);
     const fixedTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`;
-    const { error } = await supabase.from("minyanim").insert({
-      community_id: communityId(),
-      label: label.trim(),
-      category_id: category.id,
-      // As the full form sets it: the tab's own key, or "custom" for a tab the synagogue made.
-      day_type: category.system_key ?? "custom",
-      prayer: chosenPrayer,
-      time_mode: "fixed",
-      fixed_time: fixedTime,
-      room: room.trim(),
-      sort_order: 100,
-      active: true,
-      notification_enabled: false,
-      reminder_minutes: 15,
-    });
+    const ok = await quickSave(
+      qc,
+      "minyanim",
+      () =>
+        createMinyan(category, {
+          label: label.trim(),
+          prayer: chosenPrayer,
+          time_mode: "fixed",
+          fixed_time: fixedTime,
+          room: room.trim(),
+        }),
+      "שמירת המניין נכשלה",
+    );
     setSaving(false);
-    if (error) {
-      toast.error(hebrewError(error, "שמירת המניין נכשלה"));
-      return;
-    }
-    await qc.invalidateQueries({ queryKey: ["minyanim"] });
-    toast.success("המניין נשמר");
-    onDone();
+    if (ok) onDone();
   }
 
   return (
@@ -439,9 +443,9 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
         </div>
         {subcategories.length > 0 && (
           <div className="space-y-2">
-            <Label>תת־קטגוריה</Label>
+            <Label>תפילה (שחרית, מנחה…)</Label>
             <Select value={chosenPrayer} onValueChange={setPrayer}>
-              <SelectTrigger aria-label="תת־קטגוריה">
+              <SelectTrigger aria-label="תפילה">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -472,9 +476,7 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
           <Input id="quick-minyan-room" value={room} onChange={(e) => setRoom(e.target.value)} placeholder="אולם מרכזי" />
         </div>
       </div>
-      <Button onClick={save} disabled={saving || !label.trim() || !time.trim() || !category}>
-        {saving ? "שומר…" : "שמירה"}
-      </Button>
+      <SaveButton onClick={() => void save()} pending={saving} disabled={!label.trim() || !time.trim() || !category} />
     </div>
   );
 }

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type PointerEvent, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { usePointerDrag } from "@/tv/usePointerDrag";
 import {
   ChevronDown,
   ChevronUp,
@@ -194,46 +195,31 @@ export function StudioPanel({
    * handler serves all eight handles.
    */
   type Edge = { top?: boolean; bottom?: boolean; left?: boolean; right?: boolean };
-  const gesture = useRef<{ kind: "move" | Edge; sx: number; sy: number; start: Box } | null>(null);
-  const begin = (kind: "move" | Edge) => (e: PointerEvent<HTMLElement>) => {
-    if (e.button !== 0) return;
-    if (kind === "move" && (e.target as HTMLElement).closest("button")) return;
-    e.preventDefault();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {
-      /* already released */
-    }
-    gesture.current = { kind, sx: e.clientX, sy: e.clientY, start: box };
-  };
-  const onMove = useCallback((e: PointerEvent<HTMLElement>) => {
-    const g = gesture.current;
-    if (!g) return;
-    const dx = e.clientX - g.sx;
-    const dy = e.clientY - g.sy;
-    const s = g.start;
-    if (g.kind === "move") {
-      setBox(fit({ ...s, x: s.x + dx, y: s.y + dy }));
-      return;
-    }
-    // Dragging a left or top edge moves the panel as it resizes, so the
-    // opposite edge stays where the eye expects it.
-    const next = { ...s };
-    if (g.kind.right) next.w = s.w + dx;
-    if (g.kind.left) {
-      next.w = Math.max(MIN_W, s.w - dx);
-      next.x = s.x + (s.w - next.w);
-    }
-    if (g.kind.bottom) next.h = s.h + dy;
-    if (g.kind.top) {
-      next.h = Math.max(MIN_H, s.h - dy);
-      next.y = s.y + (s.h - next.h);
-    }
-    setBox(fit(next));
-  }, []);
-  const end = () => {
-    gesture.current = null;
-  };
+  const gesture = usePointerDrag<"move" | Edge, { kind: "move" | Edge; start: Box }>({
+    // A press on the header's buttons is theirs, not a move.
+    start: (kind, e) => (kind === "move" && (e.target as HTMLElement).closest("button") ? null : { kind, start: box }),
+    move: (g, { dx, dy }) => {
+      const s = g.start;
+      if (g.kind === "move") {
+        setBox(fit({ ...s, x: s.x + dx, y: s.y + dy }));
+        return;
+      }
+      // Dragging a left or top edge moves the panel as it resizes, so the
+      // opposite edge stays where the eye expects it.
+      const next = { ...s };
+      if (g.kind.right) next.w = s.w + dx;
+      if (g.kind.left) {
+        next.w = Math.max(MIN_W, s.w - dx);
+        next.x = s.x + (s.w - next.w);
+      }
+      if (g.kind.bottom) next.h = s.h + dy;
+      if (g.kind.top) {
+        next.h = Math.max(MIN_H, s.h - dy);
+        next.y = s.y + (s.h - next.h);
+      }
+      setBox(fit(next));
+    },
+  });
   const dock = (side: "left" | "right") =>
     setBox((b) =>
       fit({
@@ -257,7 +243,7 @@ export function StudioPanel({
         title="שמירה ושידור לכל המסכים (Ctrl+S)"
         data-testid="studio-compact-save"
       >
-        <Save className="size-4" /> {saving ? "שומר…" : canSave ? "שמירה" : "הכול שמור"}
+        <Save className="size-4" /> {saving ? "שומר…" : canSave ? "שמור ושדר למסכים" : "הכול שמור"}
       </Button>
     );
 
@@ -288,10 +274,7 @@ export function StudioPanel({
     >
       <div
         className="flex cursor-move touch-none select-none flex-wrap items-center gap-1 border-b bg-muted/60 px-2 py-1.5"
-        onPointerDown={begin("move")}
-        onPointerMove={onMove}
-        onPointerUp={end}
-        onPointerCancel={end}
+        {...gesture("move")}
         onDoubleClick={() => setBox((b) => ({ ...b, collapsed: !b.collapsed }))}
         title="גררו כדי להזיז · לחיצה כפולה: כיווץ"
       >
@@ -359,10 +342,7 @@ export function StudioPanel({
               style={{ cursor: h.cursor, touchAction: "none" }}
               role="separator"
               aria-label={h.label}
-              onPointerDown={begin(h.edge)}
-              onPointerMove={onMove}
-              onPointerUp={end}
-              onPointerCancel={end}
+              {...gesture(h.edge)}
             />
           ))}
           {/* the corner grips, drawn so the panel looks resizable */}

@@ -21,15 +21,16 @@
  * field present or absent.
  */
 import { spacingFallback } from "./BoardLook";
-import { Fragment, useMemo, useRef, useState } from "react";
-import { BookmarkPlus, CalendarDays, Plus, RotateCcw, X } from "lucide-react";
+import { Fragment, useMemo, useState } from "react";
+import { BookmarkPlus, CalendarDays, Plus, RotateCcw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { confirmAction } from "@/components/ConfirmDialog";
-import { NameForm, SELECT_CLASS, Stepper } from "./editorParts";
+import { NameForm, SELECT_CLASS, Stepper, SwitchRow } from "./editorParts";
 import { TileRemove } from "./ReadyShelf";
-import { Switch } from "@/components/ui/switch";
+import { ChipNumber, choiceChipClass, itemChipClass } from "./Notice";
+import { usePointerDrag } from "@/tv/usePointerDrag";
 import { BLOCKS, blockSpec } from "@/tv/blocks";
 import { addCustomBox, editCustomBox, removeCustomBox } from "@/tv/customBoxes";
 import { MAX_CUSTOM_BOXES, newCustomBoxId, type CustomBlockId } from "@/tv/config";
@@ -367,13 +368,9 @@ export function ScreenComposer({
                     }
                     onSelect(i, s);
                   }}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
-                    !occasion && i === index
-                      ? "border-primary ring-2 ring-primary ring-offset-1"
-                      : "hover:border-primary/50"
-                  }`}
+                  className={choiceChipClass(!occasion && i === index)}
                 >
-                  <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
+                  <ChipNumber n={i + 1} />
                   <span>{s.name}</span>
                   {empty(s) && (
                     <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-900">
@@ -382,22 +379,17 @@ export function ScreenComposer({
                   )}
                 </button>
                 {/* Its own button beside the tab (a button inside a button reached no one), shown on touch too. */}
-                {screens.length > 1 && (
-                  <button
-                    type="button"
-                    aria-label={`מחיקת המסך ${s.name}`}
-                    title="מחיקת המסך"
-                    onClick={() => void removeScreen(i)}
-                    className="absolute -end-1.5 -top-1.5 z-[1] flex size-5 items-center justify-center rounded-full border bg-background text-muted-foreground opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
-                  >
-                    <X className="size-3" aria-hidden />
-                  </button>
-                )}
+                {screens.length > 1 && <TileRemove name={`המסך ${s.name}`} ready={false} onClick={() => void removeScreen(i)} />}
               </div>
             ))}
             <Button type="button" variant="outline" size="sm" onClick={addScreen}>
               <Plus className="size-4" /> מסך
             </Button>
+            {(upcoming.length > 0 || later.length > 0) && (
+              <span className="text-xs text-muted-foreground" title="מה עומד על המסך של המועד ואיפה. את העיצוב שלו (ערכה, רקע, מסגרות) - בעמוד המועד: כפתור הפלטה בלשונית מועדים">
+                סידור המסך של המועד:
+              </span>
+            )}
             {upcoming.map(({ occasion: o, day, inDays }) => (
               <button
                 key={o.id}
@@ -409,12 +401,10 @@ export function ScreenComposer({
                   setOccasionId(o.id);
                   onOccasion?.(o, day);
                 }}
-                title={`המסך של ${o.name} - מופיע רק ביום שלו (${whenLabel(inDays)})`}
-                className={`flex items-center gap-2 rounded-lg border border-amber-400/70 bg-amber-50 px-3 py-1.5 text-sm text-amber-950 transition dark:bg-amber-950/30 dark:text-amber-100 ${
-                  occasion?.id === o.id ? "ring-2 ring-amber-500 ring-offset-1" : "hover:border-amber-500"
-                }`}
+                title={`סידור המסך של ${o.name} - מופיע רק ביום שלו (${whenLabel(inDays)})`}
+                className={choiceChipClass(occasion?.id === o.id, occasion?.id === o.id ? "" : "border-dashed")}
               >
-                <CalendarDays className="size-3.5" aria-hidden />
+                <CalendarDays className="size-3.5 text-amber-700" aria-hidden />
                 <span>{o.name}</span>
                 <span className="rounded bg-amber-200/80 px-1 text-[10px] text-amber-950">
                   {inDays < OCCASION_DAYS_AHEAD ? whenLabel(inDays) : dayLabel(day)}
@@ -423,7 +413,7 @@ export function ScreenComposer({
             ))}
             {later.length > 0 && (
               <select
-                aria-label="מועד אחר"
+                aria-label="סידור המסך של מועד אחר"
                 data-testid="occasion-screen-more"
                 value=""
                 onChange={(e) => {
@@ -432,7 +422,7 @@ export function ScreenComposer({
                   setOccasionId(u.occasion.id);
                   onOccasion?.(u.occasion, u.day);
                 }}
-                className="h-8 max-w-[11rem] rounded-lg border border-amber-400/70 bg-amber-50 px-2 text-sm text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
+                className={`${SELECT_CLASS} max-w-[11rem] border-dashed`}
               >
                 <option value="">מועד אחר…</option>
                 {later.map((u) => (
@@ -640,7 +630,7 @@ export function ScreenComposer({
                             .flatMap((r) => r.blocks)
                             .map((b) => spec(b).name)
                             .join(", ")}`}
-                          className="flex items-center gap-2 rounded-md border bg-background px-2 py-1 text-xs hover:border-primary"
+                          className={itemChipClass("gap-2 py-1 hover:border-primary")}
                         >
                           <KitThumb kit={kit} />
                           {kit.name}
@@ -677,22 +667,18 @@ export function ScreenComposer({
                       key={id}
                       className="flex items-center gap-2 rounded-md px-1 py-1 hover:bg-muted/50"
                     >
-                      <Switch
-                        id={`block-${id}`}
-                        checked={checked}
-                        // The card is what makes it the occasion's screen.
-                        disabled={id === CARD_BLOCK}
-                        onCheckedChange={(v) => toggle(id, v)}
-                        aria-label={blockOf.name}
-                      />
-                      <label htmlFor={`block-${id}`} className="min-w-0 flex-1 cursor-pointer">
-                        <span className="block text-sm leading-tight">{blockOf.name}</span>
-                        {blockOf.note && (
-                          <span className="block text-[11px] leading-tight text-muted-foreground">
-                            {blockOf.note}
-                          </span>
-                        )}
-                      </label>
+                      {/* The card is what makes it the occasion's screen: it cannot be taken off. */}
+                      <div className="min-w-0 flex-1">
+                        <SwitchRow
+                          id={`block-${id}`}
+                          label={<span className="leading-tight">{blockOf.name}</span>}
+                          note={blockOf.note}
+                          ariaLabel={blockOf.name}
+                          checked={checked}
+                          disabled={id === CARD_BLOCK}
+                          onChange={(v) => toggle(id, v)}
+                        />
+                      </div>
                       {checked && blockOf.zone === "main" && (
                         <select
                           aria-label={`מיקום של ${blockOf.name}`}
@@ -781,7 +767,15 @@ function Sketch({
   ids: BlockId[];
   strip?: { scale: number; onScale: (scale: number) => void };
 }) {
-  const start = useRef<{ y: number; scale: number } | null>(null);
+  // 40 px of drag is the strip's whole size again; up is bigger.
+  const drag = usePointerDrag<null, number>({
+    start: () => (strip ? strip.scale : null),
+    move: (from, { dy }) => {
+      if (!strip) return;
+      const next = Math.round(Math.min(2, Math.max(0.5, from - dy / 40)) * 20) / 20;
+      if (next !== strip.scale) strip.onScale(next);
+    },
+  });
   if (!ids.length) return <div aria-hidden className="h-1" />;
   return (
     <div
@@ -810,29 +804,7 @@ function Sketch({
                 aria-label="גובה שורת הפרשה והנרות"
                 title="גררו למעלה כדי להגדיל את השורה, למטה כדי להקטין; לחיצה כפולה - רגיל"
                 className="absolute left-[12%] right-[12%] -top-[6px] z-10 h-2.5 cursor-ns-resize rounded bg-[#f0c35c]/0 hover:bg-[#f0c35c]/70"
-                onPointerDown={(e) => {
-                  if (e.button !== 0) return;
-                  e.preventDefault();
-                  start.current = { y: e.clientY, scale: strip.scale };
-                  e.currentTarget.setPointerCapture(e.pointerId);
-                }}
-                onPointerMove={(e) => {
-                  const s = start.current;
-                  if (!s) return;
-                  // 40 px of drag is the strip's whole size again; up is bigger.
-                  const next =
-                    Math.round(Math.min(2, Math.max(0.5, s.scale + (s.y - e.clientY) / 40)) * 20) /
-                    20;
-                  if (next !== strip.scale) strip.onScale(next);
-                }}
-                onPointerUp={(e) => {
-                  start.current = null;
-                  if (e.currentTarget.hasPointerCapture(e.pointerId))
-                    e.currentTarget.releasePointerCapture(e.pointerId);
-                }}
-                onPointerCancel={() => {
-                  start.current = null;
-                }}
+                {...drag(null)}
                 onDoubleClick={() => strip.onScale(1)}
               />
             )}

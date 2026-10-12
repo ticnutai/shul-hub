@@ -1,7 +1,9 @@
-import { useEffect, useRef, useId, useState } from 'react';
+import { useEffect, useRef, useId, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useElementEditing } from './elementEditing';
 import {gridDelta,linkedSection} from './sectionGeometry';
 import { ElementDataProvider, BoundElement, PlainText, type ElementData } from './elementData';
+import { partBelow, partsAt, pressKind, pressSelection, type Press } from './elementHits';
+import { PartPickMenu } from './PartPickMenu';
 import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, resizeElements, type BoardElement, type ResizeHandle } from './elements';
 
 /** Where each handle stands on the selection's box, and the cursor it shows. */
@@ -11,6 +13,18 @@ const HANDLE_AT: Record<ResizeHandle, { left: string; top: string; cursor: strin
   ne: { left: '100%', top: '0%', cursor: 'nesw-resize' }, sw: { left: '0%', top: '100%', cursor: 'nesw-resize' },
   nw: { left: '0%', top: '0%', cursor: 'nwse-resize' }, se: { left: '100%', top: '100%', cursor: 'nwse-resize' },
 };
+/**
+ * Once in a visit: the first press where parts stand one over another tells
+ * how to reach the ones underneath. The note is the editor's; the board on a
+ * screen never loads it.
+ */
+let pileHintShown = false;
+function showPileHint() {
+  if (pileHintShown) return;
+  pileHintShown = true;
+  try { if (sessionStorage.getItem('tv-pile-hint')) return; sessionStorage.setItem('tv-pile-hint', '1'); } catch { /* without storage: once in this page */ }
+  void import('sonner').then(({ toast }) => toast('לחיצה נוספת באותו מקום בוחרת את החלק שמתחת. לחיצה ימנית - רשימת כל החלקים במקום.'));
+}
 const HANDLE_NAMES: Record<ResizeHandle, string> = { n: 'למעלה', s: 'למטה', e: 'ימינה', w: 'שמאלה', ne: 'פינה ימנית עליונה', nw: 'פינה שמאלית עליונה', se: 'פינה ימנית תחתונה', sw: 'פינה שמאלית תחתונה' };
 
 export function ElementArt({ element: e }: { element: BoardElement }) {
@@ -67,8 +81,30 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
    * captures the pointer for dragging, and the click is then the board's.
    */
   const lastDown = useRef<{ id: string; at: number } | null>(null);
-  return <ElementDataProvider value={data}><div data-testid="board-elements" data-free-edit={enabled ? 'true' : undefined}
-    tabIndex={enabled ? 0 : undefined} aria-label={enabled ? 'עריכת אלמנטים על הלוח' : undefined}
+  /**
+   * The press before this one and the part it chose (elementHits.ts): a quick
+   * second press there takes that part alone, a slower one the part under it.
+   */
+  const lastPress = useRef<Press | null>(null);
+  /** The parts at the place of a right click, to choose one of them. */
+  const [pickMenu, setPickMenu] = useState<{ x: number; y: number; ids: string[] } | null>(null);
+  useEffect(() => { if (!enabled) setPickMenu(null); }, [enabled]);
+  const boardRef = useRef<HTMLDivElement>(null);
+  /** Where on the board (in its percent) the pointer stands. */
+  const pointAt = (board: HTMLElement, clientX: number, clientY: number) => {
+    const r = board.getBoundingClientRect();
+    return { x: (clientX - r.left) / r.width * 100, y: (clientY - r.top) / r.height * 100 };
+  };
+  /** Takes one part alone - not the section it moves with - and holds it for dragging. */
+  const takeAlone = (ev: ReactPointerEvent<HTMLDivElement>, id: string) => {
+    editor!.select([id]);
+    if (elements.find(x => x.id === id)?.locked) return;
+    const box = ev.currentTarget.getBoundingClientRect();
+    ev.currentTarget.setPointerCapture(ev.pointerId);
+    drag.current = { x: ev.clientX, y: ev.clientY, all: elements, ids: [id], width: box.width, height: box.height, pointer: ev.pointerId, last: null, resize: null };
+  };
+  return <ElementDataProvider value={data}><div ref={boardRef} data-testid="board-elements" data-free-edit={enabled ? 'true' : undefined}
+    tabIndex={enabled ? 0 : undefined} aria-label={enabled ? 'עריכת חלקים על הלוח' : undefined}
     style={{ position: 'absolute', inset: 0, pointerEvents: surface ? 'auto' : 'none', zIndex: 15, outline: 'none' }}
     onClick={enabled ? e => { if (!e.altKey) e.stopPropagation(); } : undefined}
     onDoubleClick={enabled ? ev => {
@@ -109,15 +145,28 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       d.last = d.resize ? normalizeElements(resizeElements(d.all, d.ids, d.resize, dx, dy)) : moveElements(d.all, d.ids, dx, dy);
       editor.setDraft(d.last);
     } : undefined}
-    onPointerUp={enabled ? ev => { const d = drag.current; if (!d) return; ev.stopPropagation(); if (d.last && d.all === editor.api.current?.elements) api.commit(d.last); stop(); } : undefined}
+    onPointerUp={enabled ? ev => {
+      const d = drag.current; if (!d) return; ev.stopPropagation();
+      // A part carried away: the next press there is a press of its own, not one part down.
+      if (d.last) lastPress.current = null;
+      if (d.last && d.all === editor.api.current?.elements) api.commit(d.last); stop();
+    } : undefined}
+    onContextMenu={enabled ? ev => {
+      // A right click: every part at that place, to choose one - also one covered by others.
+      const ids = partsAt(elements, pointAt(ev.currentTarget, ev.clientX, ev.clientY));
+      if (!ids.length) return;
+      ev.preventDefault(); ev.stopPropagation(); stop();
+      setPickMenu({ x: ev.clientX, y: ev.clientY, ids });
+    } : undefined}
     onPointerCancel={stop} onLostPointerCapture={stop}
     onPointerDown={enabled ? ev => {
-      if (ev.button !== 0 || ev.altKey) return;
+      if (ev.button !== 0) return;
       // Inside the text being written: the caret moves, nothing is dragged.
       if ((ev.target as Element).closest('[data-writing]')) return;
       // A handle of the selection: stretch or narrow it, from that side.
       const handle = (ev.target as HTMLElement).dataset.elementHandle as ResizeHandle | undefined;
-      if (handle && editor.selected.length) {
+      if (handle && editor.selected.length && !ev.altKey) {
+        lastPress.current = null;
         ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.focus({ preventScroll: true });
         if (elements.some(x => editor.selected.includes(x.id) && x.locked)) return;
         const box = ev.currentTarget.getBoundingClientRect();
@@ -126,19 +175,40 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
         return;
       }
       const node = (ev.target as Element).closest<HTMLElement>('[data-element-id]');
-      if (!node) { editor.select([]); return; }
+      // Alt on the empty board: the board's ordinary click, as before.
+      if (!node) { lastPress.current = null; if (!ev.altKey) editor.select([]); return; }
+      // The part pressed: the one drawn on top at that place (a turned part, too).
       const e = elements.find(x => x.id === node.dataset.elementId); if (!e) return;
       const at = Date.now(), last = lastDown.current;
       lastDown.current = { id: e.id, at };
-      if (last?.id === e.id && at - last.at < 450 && writable(e)) {
+      if (!ev.altKey && last?.id === e.id && at - last.at < 450 && writable(e)) {
         ev.preventDefault(); ev.stopPropagation();
-        stop(); editor.select([e.id]); setWriting(e.id); lastDown.current = null;
+        stop(); editor.select([e.id]); setWriting(e.id); lastDown.current = null; lastPress.current = null;
         return;
       }
       ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.focus({ preventScroll: true });
-      const linked=editor.linkSection?linkedSection(elements,e.id):[e.id];
-      const family = [e.id,...linked.filter(id=>id!==e.id)];
-      const ids = ev.shiftKey ? [...new Set([...editor.selected, ...family])] : editor.selected.includes(e.id) ? editor.selected : family;
+      const pile = partsAt(elements, pointAt(ev.currentTarget, ev.clientX, ev.clientY));
+      if (pile.length > 1) showPileHint();
+      // Where on the board, not on the screen: the panel above it may grow when a part is chosen,
+      // and the board then stands lower under the same hand.
+      const r = ev.currentTarget.getBoundingClientRect(), here = { x: ev.clientX - r.left, y: ev.clientY - r.top, at };
+      const before = lastPress.current, kind = ev.shiftKey ? 'new' : pressKind(before, here);
+      // Alt + click, or a double click: that part alone, without its frame and box.
+      if (ev.altKey || kind === 'double') {
+        const id = ev.altKey || !before ? e.id : before.id;
+        lastPress.current = ev.altKey ? { ...here, id } : null;
+        takeAlone(ev, id); return;
+      }
+      // Pressed again at the same place: the part under the one chosen there, alone.
+      if (kind === 'again' && before && pile.length > 1) {
+        const id = partBelow(pile, before.id) ?? e.id;
+        lastPress.current = { ...here, id };
+        takeAlone(ev, id); return;
+      }
+      lastPress.current = { ...here, id: e.id };
+      // With the section on, the frame, box and text move together - the part pressed first,
+      // so the panel of the chosen part shows it and not its frame.
+      const ids = pressSelection(e.id, editor.linkSection ? linkedSection(elements, e.id) : [e.id], editor.selected, ev.shiftKey);
       editor.select(ids);
       if (elements.some(x => ids.includes(x.id) && x.locked)) return;
       const box = ev.currentTarget.getBoundingClientRect();
@@ -157,6 +227,14 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       {enabled && editor.selected.includes(e.id) && <span data-edit-ui="true" style={{ position: 'absolute', inset: 0, outline: '2px solid #38bdf8', pointerEvents: 'none' }} />}
     </div>)}
     {enabled && <SelectionHandles elements={shown} ids={editor.selected} />}
+    {enabled && pickMenu && <PartPickMenu x={pickMenu.x} y={pickMenu.y} current={editor.selected[0]}
+      parts={pickMenu.ids.map(id => ({ id, name: elements.find(x => x.id === id)?.name ?? id }))}
+      onClose={() => { setPickMenu(null); boardRef.current?.focus({ preventScroll: true }); }}
+      onPick={id => {
+        // Chosen from the list: that part alone, to move or change by itself.
+        setPickMenu(null); editor.select([id]); lastPress.current = null;
+        boardRef.current?.focus({ preventScroll: true });
+      }} />}
   </div></ElementDataProvider>;
 }
 

@@ -31,7 +31,6 @@ import { HomeHero } from "@community/components/HomeHero";
 import { formatHebrewDate } from "@community/lib/hebrewDate";
 import { israelMinutes, nextPrayer, normalizeHomeHero } from "@community/lib/homeHero";
 import { useNow } from "@community/lib/realtime";
-import { QuickAddButton } from "@community/components/QuickAddButton";
 import { normalizePrayerLayout } from "@community/components/PrayerLayoutPicker";
 import { DaySchedule } from "@community/components/DaySchedule";
 import { WeekSchedule } from "@community/components/WeekSchedule";
@@ -437,7 +436,6 @@ export function CommunityHome() {
       </main>
 
       <CommunityFooter />
-      <QuickAddButton />
     </div>
   );
 }

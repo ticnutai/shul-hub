@@ -2,22 +2,25 @@ import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition as NativeSpeech } from "@capacitor-community/speech-recognition";
 import { useQueryClient } from "@tanstack/react-query";
-import { Camera, Check, KeyRound, Loader2, Mic, MicOff, Sparkles, Trash2, X } from "lucide-react";
+import { Camera, Check, KeyRound, Loader2, Mic, MicOff, Sparkles, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { useMinyanCategories, useMinyanim, DAYS_HE, PRAYERS } from "@community/lib/data";
 import { ZMAN_LABELS, type SolarEvent } from "@community/lib/zmanim";
 import { jerusalemDateKey } from "@community/lib/minyan-time";
-import { presetAnnouncementStyle } from "@community/lib/announcement-style";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
 import { eventSystemKey, specialDayByKey } from "@community/lib/specialDays";
 import { analyzeDirect, getPersonalKey, maskKey } from "@community/lib/aiIntakeDirect";
 import { useAccountApiKey } from "@community/lib/apiKeys";
-import { useSearchParams } from "react-router-dom";
 import { hebrewError } from "@community/lib/hebrewError";
+import { createAnnouncement, createMinyan, createShiur } from "@community/lib/createContent";
+import { nextSortOrder } from "@community/lib/useReorder";
 
 /**
  * "עוזר חכם": a photo, a dictated sentence or a pasted message becomes
@@ -26,7 +29,10 @@ import { hebrewError } from "@community/lib/hebrewError";
  * The analysis runs in the ai-intake edge function (the shul's key, kept on
  * the server), or - when the admin entered a Claude API key of their own -
  * straight from this browser with that key (aiIntakeDirect.ts). It only proposes: every item shows here, can be corrected or
- * unticked, and only "אישור והכנסה" writes - with this admin's own session.
+ * unticked, and only "אישור והכנסה" writes - with this admin's own session,
+ * through the same functions as the full forms and "הוספה מהירה"
+ * (createContent.ts), so what it adds gets the same defaults and goes to the
+ * end of its list.
  */
 
 type MinyanProposal = {
@@ -117,8 +123,33 @@ function newRecognition(): Recognition | null {
 }
 
 const on = <T,>(list: T[]): Picked<T>[] => list.map((x) => ({ ...x, _on: true }));
-// One look for every plain field and list here, the same as the other admin forms.
-const input = "h-9 rounded-md border bg-background px-2 text-sm";
+// One look for every field here: the site's own fields and lists, a little
+// lower than in the forms, so a proposal fits on one line.
+const input = "h-9 text-sm";
+
+/** A short list of choices inside a proposal's line. */
+function MiniSelect({ label, value, onChange, options, className }: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger aria-label={label} className={`h-9 w-auto min-w-24 text-sm ${className ?? ""}`}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((o) => (
+          <SelectItem key={o.value} value={o.value}>
+            {o.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
 
 export function AiIntakeAdmin() {
   const qc = useQueryClient();
@@ -140,7 +171,8 @@ export function AiIntakeAdmin() {
   const { data: accountKey = null } = useAccountApiKey();
   const [localKey] = useState<string | null>(() => getPersonalKey());
   const personalKey = accountKey ?? localKey;
-  const [, setSearchParams] = useSearchParams();
+  /** The key's own panel, just below on this screen (ApiKeysAdmin). */
+  const showKeyPanel = () => document.getElementById("assistant-key")?.scrollIntoView({ behavior: "smooth", block: "start" });
   const recRef = useRef<Recognition | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -219,7 +251,7 @@ export function AiIntakeAdmin() {
     }
     const rec = newRecognition();
     if (!rec) {
-      toast.error("הדפדפן לא תומך בהקלטה. נסו ב-Chrome, או הקלידו.");
+      toast.error("הדפדפן הזה לא תומך בהקלטה. נסו בדפדפן כרום, או הקלידו.");
       return;
     }
     rec.lang = "he-IL";
@@ -326,7 +358,8 @@ export function AiIntakeAdmin() {
                 community_id: cid,
                 name,
                 active: true,
-                sort_order: 100 + newCats.size * 10,
+                // At the end of the row of tabs, as a tab added by hand.
+                sort_order: nextSortOrder(categories) + newCats.size * 10,
                 system_key: event ? eventSystemKey(event) : null,
                 visible_from: m.new_category_from || null,
                 visible_until: m.new_category_until || m.new_category_from || null,
@@ -354,14 +387,17 @@ export function AiIntakeAdmin() {
           room: m.room,
           note: m.note,
         };
-        const { error } =
-          m.action === "update" && m.existing_id
-            ? await supabase.from("minyanim").update(row as never).eq("id", m.existing_id)
-            : await supabase
-                .from("minyanim")
-                .insert({ ...row, community_id: cid, active: true, sort_order: 100, notification_enabled: false, reminder_minutes: 15 } as never);
-        if (error) failed.push(m.label || m.prayer);
-        else done++;
+        try {
+          if (m.action === "update" && m.existing_id) {
+            const { error } = await supabase.from("minyanim").update(row as never).eq("community_id", cid).eq("id", m.existing_id);
+            if (error) throw error;
+          } else {
+            await createMinyan(categories.find((c) => c.id === categoryId) ?? null, row as never);
+          }
+          done++;
+        } catch {
+          failed.push(m.label || m.prayer);
+        }
       }
       for (const o of overrides.filter((x) => x._on)) {
         const { error } = await supabase.from("minyan_overrides").upsert(
@@ -379,39 +415,28 @@ export function AiIntakeAdmin() {
         else done++;
       }
       for (const a of anns.filter((x) => x._on)) {
-        const { error } = await supabase.from("announcements").insert({
-          community_id: cid,
-          kind: a.kind,
-          title: a.title,
-          body: a.body,
-          expires_at: a.expires_at,
-          pinned: a.pinned,
-          notification_enabled: false,
-          show_on_home: true,
-          home_width: "half",
-          sort_order: 5,
-          style: presetAnnouncementStyle("classic"),
-        } as never);
-        if (error) failed.push(a.title);
-        else done++;
+        try {
+          await createAnnouncement({ kind: a.kind, title: a.title, body: a.body, expires_at: a.expires_at, pinned: a.pinned });
+          done++;
+        } catch {
+          failed.push(a.title);
+        }
       }
       for (const s of shiurim.filter((x) => x._on)) {
-        const { error } = await supabase.from("shiurim").insert({
-          community_id: cid,
-          title: s.title,
-          teacher: s.teacher,
-          description: s.description,
-          location: s.location,
-          schedule_type: s.schedule_type,
-          day_of_week: s.day_of_week,
-          time_text: s.time_text,
-          active: true,
-          notification_enabled: false,
-          reminder_minutes: 15,
-          sort_order: 100,
-        } as never);
-        if (error) failed.push(s.title);
-        else done++;
+        try {
+          await createShiur({
+            title: s.title,
+            teacher: s.teacher,
+            description: s.description,
+            location: s.location,
+            schedule_type: s.schedule_type,
+            day_of_week: s.day_of_week,
+            time_text: s.time_text,
+          });
+          done++;
+        } catch {
+          failed.push(s.title);
+        }
       }
     } finally {
       await qc.invalidateQueries();
@@ -419,7 +444,7 @@ export function AiIntakeAdmin() {
     }
     if (failed.length) toast.error(`נכנסו ${done}. נכשלו: ${failed.join(", ")}`);
     else {
-      toast.success(`נכנסו ${done} פריטים`);
+      toast.success("נשמר", { description: `נכנסו ${done} פריטים` });
       setSummary(null);
       setMins([]);
       setOverrides([]);
@@ -437,7 +462,7 @@ export function AiIntakeAdmin() {
       <section className="card-elev space-y-4 p-5">
         <div className="flex items-center gap-2">
           <Sparkles className="size-5 text-primary" />
-          <h2 className="text-lg font-semibold">עוזר חכם</h2>
+          <h3 className="text-lg font-semibold">עוזר חכם</h3>
         </div>
         <p className="text-sm text-muted-foreground">
           מצלמים לוח זמנים או מודעה, אומרים בקול, או מדביקים הודעה. העוזר מציע מה להכניס ולאן - ושום דבר
@@ -454,7 +479,7 @@ export function AiIntakeAdmin() {
                 ? `שמור רק בדפדפן הזה · ${maskKey(localKey)}`
                 : "לא הוגדר - בלי מפתח העוזר עובד רק אם הוגדר מפתח בשרת"}
           </span>
-          <Button type="button" size="sm" variant="outline" className="ms-auto h-7" onClick={() => setSearchParams({ tab: "api" })}>
+          <Button type="button" size="sm" variant="outline" className="ms-auto h-7" onClick={showKeyPanel}>
             {accountKey ? "ניהול המפתח" : "הוספת מפתח"}
           </Button>
         </div>
@@ -508,12 +533,12 @@ export function AiIntakeAdmin() {
 
         <label className="block text-sm">
           טקסט (או מה שנאמר בקול)
-          <textarea
+          <Textarea
             value={listening && interim ? `${text} ${interim}` : text}
             onChange={(e) => setText(e.target.value)}
             rows={4}
             placeholder={'לדוגמה: "מנחה ביום שישי 10 דקות לפני הדלקת נרות, ושיעור דף יומי כל יום ב-20:30 עם הרב כהן"'}
-            className="mt-1 block w-full rounded-md border bg-background p-2 text-base"
+            className="mt-1 text-base"
           />
         </label>
 
@@ -553,19 +578,21 @@ export function AiIntakeAdmin() {
                         ? ` · ${specialDayByKey(m.new_category_event)!.name}`
                         : ""}
                       {!m.category_id && m.new_category_from
-                        ? ` · ${m.new_category_from}${m.new_category_until && m.new_category_until !== m.new_category_from ? `–${m.new_category_until}` : ""}`
+                        ? ` · ${m.new_category_from}${m.new_category_until && m.new_category_until !== m.new_category_from ? ` עד ${m.new_category_until}` : ""}`
                         : ""}
                     </span>
-                    <input aria-label="שם" value={m.label} onChange={(e) => set({ label: e.target.value })} className={`${input} w-32`} />
-                    <select aria-label="סוג שעה" value={m.time_mode} onChange={(e) => set({ time_mode: e.target.value as MinyanProposal["time_mode"] })} className={input}>
-                      <option value="fixed">שעה קבועה</option>
-                      <option value="relative">יחסית לזמן</option>
-                    </select>
+                    <Input aria-label="שם" value={m.label} onChange={(e) => set({ label: e.target.value })} className={`${input} w-32`} />
+                    <MiniSelect
+                      label="סוג שעה"
+                      value={m.time_mode}
+                      onChange={(v) => set({ time_mode: v as MinyanProposal["time_mode"] })}
+                      options={[{ value: "fixed", label: "שעה קבועה" }, { value: "relative", label: "יחסית לזמן" }]}
+                    />
                     {m.time_mode === "fixed" ? (
-                      <input aria-label="שעה" type="time" dir="ltr" value={m.fixed_time ?? ""} onChange={(e) => set({ fixed_time: e.target.value })} className={input} />
+                      <Input aria-label="שעה" type="time" dir="ltr" value={m.fixed_time ?? ""} onChange={(e) => set({ fixed_time: e.target.value })} className={`${input} w-auto`} />
                     ) : (
                       <>
-                        <input
+                        <Input
                           aria-label="דקות"
                           type="number"
                           dir="ltr"
@@ -573,22 +600,18 @@ export function AiIntakeAdmin() {
                           onChange={(e) => set({ offset_minutes: Math.sign(m.offset_minutes || -1) * Math.abs(Number(e.target.value)) })}
                           className={`${input} w-16`}
                         />
-                        <select
-                          aria-label="לפני או אחרי"
+                        <MiniSelect
+                          label="לפני או אחרי"
                           value={m.offset_minutes < 0 ? "before" : "after"}
-                          onChange={(e) => set({ offset_minutes: (e.target.value === "before" ? -1 : 1) * Math.abs(m.offset_minutes) })}
-                          className={input}
-                        >
-                          <option value="before">דק׳ לפני</option>
-                          <option value="after">דק׳ אחרי</option>
-                        </select>
-                        <select aria-label="זמן" value={m.relative_to ?? "sunset"} onChange={(e) => set({ relative_to: e.target.value as SolarEvent })} className={input}>
-                          {(Object.keys(ZMAN_LABELS) as SolarEvent[]).map((z) => (
-                            <option key={z} value={z}>
-                              {ZMAN_LABELS[z]}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(v) => set({ offset_minutes: (v === "before" ? -1 : 1) * Math.abs(m.offset_minutes) })}
+                          options={[{ value: "before", label: "דק׳ לפני" }, { value: "after", label: "דק׳ אחרי" }]}
+                        />
+                        <MiniSelect
+                          label="זמן"
+                          value={m.relative_to ?? "sunset"}
+                          onChange={(v) => set({ relative_to: v as SolarEvent })}
+                          options={(Object.keys(ZMAN_LABELS) as SolarEvent[]).map((z) => ({ value: z, label: ZMAN_LABELS[z] }))}
+                        />
                       </>
                     )}
                   </Row>
@@ -605,12 +628,12 @@ export function AiIntakeAdmin() {
                 return (
                   <Row key={i} on={o._on} onToggle={(v) => set({ _on: v })} reason={o.reason}>
                     <span className="text-sm">{minyanName(o.minyan_id)}</span>
-                    <input aria-label="תאריך" type="date" dir="ltr" value={o.on_date} onChange={(e) => set({ on_date: e.target.value })} className={input} />
+                    <Input aria-label="תאריך" type="date" dir="ltr" value={o.on_date} onChange={(e) => set({ on_date: e.target.value })} className={`${input} w-auto`} />
                     <label className="flex items-center gap-1.5 text-sm">
                       <Switch checked={o.cancelled} onCheckedChange={(cancelled) => set({ cancelled })} aria-label="אין מניין ביום הזה" /> מבוטל
                     </label>
                     {!o.cancelled && (
-                      <input aria-label="שעה" type="time" dir="ltr" value={o.at_time ?? ""} onChange={(e) => set({ at_time: e.target.value })} className={input} />
+                      <Input aria-label="שעה" type="time" dir="ltr" value={o.at_time ?? ""} onChange={(e) => set({ at_time: e.target.value })} className={`${input} w-auto`} />
                     )}
                   </Row>
                 );
@@ -625,18 +648,17 @@ export function AiIntakeAdmin() {
                   setAnns((cur) => cur.map((x, j) => (j === i ? { ...x, ...p } : x)));
                 return (
                   <Row key={i} on={a._on} onToggle={(v) => set({ _on: v })} reason={a.reason}>
-                    <select aria-label="סוג" value={a.kind} onChange={(e) => set({ kind: e.target.value })} className={input}>
-                      {ANNOUNCEMENT_KINDS.map((k) => (
-                        <option key={k.id} value={k.id}>
-                          {k.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input aria-label="כותרת" value={a.title} onChange={(e) => set({ title: e.target.value })} className={`${input} w-full sm:w-56`} />
-                    <textarea aria-label="תוכן" value={a.body} onChange={(e) => set({ body: e.target.value })} rows={2} className="w-full rounded-md border bg-background p-2 text-sm" />
+                    <MiniSelect
+                      label="סוג"
+                      value={a.kind}
+                      onChange={(v) => set({ kind: v })}
+                      options={ANNOUNCEMENT_KINDS.map((k) => ({ value: k.id, label: k.label }))}
+                    />
+                    <Input aria-label="כותרת" value={a.title} onChange={(e) => set({ title: e.target.value })} className={`${input} w-full sm:w-56`} />
+                    <Textarea aria-label="תוכן" value={a.body} onChange={(e) => set({ body: e.target.value })} rows={2} className="w-full text-sm" />
                     <label className="flex items-center gap-1 text-xs">
                       עד
-                      <input type="date" dir="ltr" value={a.expires_at ?? ""} onChange={(e) => set({ expires_at: e.target.value || null })} className={input} />
+                      <Input type="date" dir="ltr" value={a.expires_at ?? ""} onChange={(e) => set({ expires_at: e.target.value || null })} className={`${input} w-auto`} />
                     </label>
                   </Row>
                 );
@@ -651,26 +673,17 @@ export function AiIntakeAdmin() {
                   setShiurim((cur) => cur.map((x, j) => (j === i ? { ...x, ...p } : x)));
                 return (
                   <Row key={i} on={s._on} onToggle={(v) => set({ _on: v })} reason={s.reason}>
-                    <input aria-label="נושא" value={s.title} onChange={(e) => set({ title: e.target.value })} className={`${input} w-40`} />
-                    <input aria-label="מרצה" value={s.teacher} onChange={(e) => set({ teacher: e.target.value })} className={`${input} w-32`} />
-                    <select
-                      aria-label="מתי"
+                    <Input aria-label="נושא" value={s.title} onChange={(e) => set({ title: e.target.value })} className={`${input} w-40`} />
+                    <Input aria-label="מגיד השיעור" value={s.teacher} onChange={(e) => set({ teacher: e.target.value })} className={`${input} w-32`} />
+                    <MiniSelect
+                      label="מתי"
                       value={s.schedule_type === "daily" ? "daily" : String(s.day_of_week)}
-                      onChange={(e) =>
-                        e.target.value === "daily"
-                          ? set({ schedule_type: "daily" })
-                          : set({ schedule_type: "weekly", day_of_week: Number(e.target.value) })
+                      onChange={(v) =>
+                        v === "daily" ? set({ schedule_type: "daily" }) : set({ schedule_type: "weekly", day_of_week: Number(v) })
                       }
-                      className={input}
-                    >
-                      <option value="daily">כל יום</option>
-                      {DAYS_HE.map((d, n) => (
-                        <option key={d} value={n}>
-                          יום {d}
-                        </option>
-                      ))}
-                    </select>
-                    <input aria-label="שעה" value={s.time_text} onChange={(e) => set({ time_text: e.target.value })} className={`${input} w-24`} />
+                      options={[{ value: "daily", label: "כל יום" }, ...DAYS_HE.map((d, n) => ({ value: String(n), label: `יום ${d}` }))]}
+                    />
+                    <Input aria-label="שעה" value={s.time_text} onChange={(e) => set({ time_text: e.target.value })} className={`${input} w-24`} />
                   </Row>
                 );
               })}
@@ -687,7 +700,7 @@ export function AiIntakeAdmin() {
               אישור והכנסה ({picked})
             </Button>
             <Button type="button" variant="ghost" className="h-11" onClick={() => setSummary(null)} disabled={applying}>
-              <Trash2 className="size-4" /> ביטול
+              <X className="size-4" /> ביטול
             </Button>
           </div>
         </section>

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig, type TvConfig } from "./config";
 import { BUILTIN_DESIGNS, findDesign } from "./designs";
 import { calendarId, readOccasions } from "./occasions";
-import { editOccasionDesign, occasionLook } from "./occasionDesign";
+import { editOccasionDesign, isOccasionKit, occasionLook } from "./occasionDesign";
 
 const YK = calendarId("yom_kippur");
 const RH = calendarId("rosh_hashana");
@@ -64,5 +64,26 @@ describe("editing an occasion's own design in the design tab", () => {
     expect(after.texts["dash.zmanim"]).toBe("זמנים");
     expect(after.designs).toEqual(before.designs);
     expect(occ(after, YK).design).toBe(occ(before, YK).design);
+  });
+});
+
+describe("an occasion's own kit, apart from the gabbai's", () => {
+  it("is marked for its occasion, kept through saving, and not counted among one's own kits", () => {
+    const after = editOccasionDesign(board(), YK, paint("#123456"));
+    const kit = findDesign(after, occ(after, YK).design)!;
+    expect(kit.occasion).toBe(YK);
+    expect(isOccasionKit(after, kit)).toBe(true);
+    const saved = normalizeTvConfig(JSON.parse(JSON.stringify(after)));
+    expect(saved.designs.find((d) => d.id === kit.id)?.occasion).toBe(YK);
+  });
+
+  it("a kit of one's own worn by an occasion and changed there stays one's own", () => {
+    const mine = { ...structuredClone(BUILTIN_DESIGNS[0]), id: "d_mine1234", name: "שלי" };
+    const start = board();
+    const withMine: TvConfig = { ...start, designs: [mine], occasions: readOccasions(start).map((o) => (o.id === YK ? { ...o, design: mine.id } : o)) };
+    const after = editOccasionDesign(withMine, YK, paint("#123456"));
+    const kit = after.designs.find((d) => d.id === mine.id)!;
+    expect(kit.occasion).toBeUndefined();
+    expect(isOccasionKit(after, kit)).toBe(false);
   });
 });

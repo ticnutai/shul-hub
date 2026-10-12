@@ -12,6 +12,7 @@ import { TvVersions } from "./TvVersions";
 import { WorkspaceTransfer } from "./WorkspaceTransfer";
 import type { DraftAction } from "./draftState";
 import { Section } from "./editorParts";
+import { Folded } from "./Parts";
 
 export function ToolsTab({ draft, view, edit, dispatch, shownVersion, setShownVersion, setBeforeAfter, showPreview, doExport, doImport, figmaHandoff }: {
   draft: TvConfig;
@@ -54,18 +55,26 @@ export function ToolsTab({ draft, view, edit, dispatch, shownVersion, setShownVe
         />
       </Section>
 
-      <div data-testid="board-transfer-section" className="scroll-mt-24 rounded-xl border p-4 space-y-4">
-        <h2 tabIndex={-1} className="font-semibold">ייבוא וייצוא</h2>
-        <WorkspaceTransfer config={draft} onImport={(config) => dispatch({ type: "edit", key: "workspace-import", update: () => config })} />
-        <TransferPanel onExport={doExport} onImport={doImport} />
+      {/*
+        Every file in and out of the board, in one place: the package of the
+        whole board first, then the old file of colours, then the colours of
+        a design from פיגמה. (A selection of parts goes out and in from the
+        list of parts, in the same words.)
+      */}
+      <div data-testid="board-transfer-section" className="scroll-mt-24">
+        <Section title="ייבוא וייצוא" hint="קובץ אחד עם כל הלוח - לגיבוי או להעברה; קובץ צבעים ישן; וצבעים מעיצוב בפיגמה. כל ייבוא נכנס לטיוטה עד &quot;שמור ושדר&quot;.">
+          <h2 tabIndex={-1} className="sr-only">ייבוא וייצוא</h2>
+          <WorkspaceTransfer config={draft} onImport={(config) => dispatch({ type: "edit", key: "workspace-import", update: () => config })} />
+          <Folded label="קובץ ישן - צבעי בסיס, מעברי צבע ומבנה הלוח" testId="old-transfer">
+            <TransferPanel onExport={doExport} onImport={doImport} />
+          </Folded>
+          <div className="space-y-2 rounded-xl border p-4" data-testid="figma-section">
+            <h3 className="font-semibold">צבעים מפיגמה</h3>
+            <p className="text-sm text-muted-foreground">קובץ הצבעים שמייצאים מפיגמה (תוכנת העיצוב) הופך לצבעי הבסיס של הלוח. בלי מפתח גישה ובלי חשבון - הקובץ נקרא כאן בדפדפן.</p>
+            <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
+          </div>
+        </Section>
       </div>
-
-      <Section
-        title="ייבוא מפיגמה"
-        hint="קובץ המשתנים שמייצאים מפיגמה הופך לצבעי הבסיס של הלוח. בלי מפתח גישה ובלי חשבון - הקובץ נקרא כאן בדפדפן."
-      >
-        <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
-      </Section>
 
     </>
   );

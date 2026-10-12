@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { Outlet } from "react-router-dom";
 
 import { GlobalAppHeader } from "@community/components/CommunityChrome";
+import { AdminFloatingButtons } from "@community/components/AdminFloatingButtons";
 
 const AppSettings = lazy(() => import("@/components/Settings").then(module => ({ default: module.Settings })));
 
@@ -17,6 +18,8 @@ export function GlobalAppShell() {
         <AppSettings showTrigger={false} />
       </Suspense>
       <Outlet />
+      {/* The gabbai's floating buttons, once for every page (AdminFloatingButtons.tsx). */}
+      <AdminFloatingButtons />
     </div>
   );
 }

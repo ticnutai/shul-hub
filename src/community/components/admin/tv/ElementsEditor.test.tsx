@@ -159,18 +159,21 @@ describe("a long notice: shrunk, or the moving curtain", () => {
     render(<PartsHarness start={board()} />);
     fireEvent.change(screen.getByRole("combobox", { name: "איזה תוכן להוסיף" }), { target: { value: "announcements" } });
     fireEvent.click(screen.getByRole("button", { name: "הוספה" }));
-    const fit = screen.getByRole("combobox", { name: "כשלא נכנס - הודעות" }) as HTMLSelectElement;
-    expect(fit.value).toBe("");
-    expect([...fit.options].map((o) => o.textContent)).toEqual(["הקטנה כדי שייכנס", "גלילה עם עצירות", "וילון רציף"]);
-    fireEvent.change(fit, { target: { value: "loop" } });
+    const fit = screen.getByRole("radiogroup", { name: "כשלא נכנס - הודעות" });
+    const choice = (name: string) => within(fit).getByRole("radio", { name });
+    expect(choice("בלי גלילה").getAttribute("aria-checked")).toBe("true");
+    // One name for not moving, wherever it is asked; what it does here is in its hint.
+    expect(within(fit).getAllByRole("radio").map((o) => o.textContent)).toEqual(["בלי גלילה", "גלילה עם עצירות", "וילון רציף"]);
+    expect(choice("בלי גלילה").getAttribute("title")).toBe("התוכן מוקטן כדי שייכנס");
+    fireEvent.click(choice("וילון רציף"));
     const notice = latest.elements.find((e) => e.binding === "announcements")!;
     expect(notice.scroll).toBe("loop");
     expect(normalizeElements(latest.elements).find((e) => e.id === notice.id)!.scroll).toBe("loop");
     expect(screen.getByRole("radiogroup", { name: "מהירות הגלילה" })).toBeTruthy();
     // A list pages by default; a clock has nothing to move.
-    expect((screen.getByRole("combobox", { name: "כשלא נכנס - שיעורי תורה" }) as HTMLSelectElement).options[0].textContent).toBe("דפדוף בין עמודים");
-    expect(screen.queryByRole("combobox", { name: "כשלא נכנס - שעון מחוגים" })).toBeNull();
-    fireEvent.change(fit, { target: { value: "" } });
+    expect(within(screen.getByRole("radiogroup", { name: "כשלא נכנס - שיעורי תורה" })).getByRole("radio", { name: "בלי גלילה" }).getAttribute("title")).toBe("הרשימה מתחלקת לעמודים שמתחלפים");
+    expect(screen.queryByRole("radiogroup", { name: "כשלא נכנס - שעון מחוגים" })).toBeNull();
+    fireEvent.click(choice("בלי גלילה"));
     expect(latest.elements.find((e) => e.id === notice.id)!.scroll).toBeUndefined();
   });
 });
@@ -405,7 +408,7 @@ describe("content changing frames, a frame like the middle's, one's own boxes, a
   it("keeps a frame in one's parts and boxes, and adds it again from the list", async () => {
     render(<PartsHarness start={board()} />);
     const row = screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }).closest("[data-frame-of]") as HTMLElement;
-    fireEvent.click(within(row).getByRole("button", { name: "שמירת זמני תפילות בחלקים והתיבות שלי" }));
+    fireEvent.click(within(row).getByRole("button", { name: "שמירת זמני תפילות בחלקים שלי" }));
     fireEvent.change(within(row).getByRole("textbox", { name: "שם לתיבה של זמני תפילות" }), { target: { value: "תפילות בזהב" } });
     fireEvent.click(within(row).getByRole("button", { name: /^שמירה$/ }));
     await waitFor(() => expect(latest.elementLibrary.map((l) => l.name)).toEqual(["תפילות בזהב"]));

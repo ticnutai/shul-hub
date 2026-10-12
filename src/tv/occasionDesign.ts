@@ -1,5 +1,5 @@
 import type { TvConfig } from "./config";
-import { DESIGN_KEYS, DESIGN_PARTS, MAX_DESIGNS, applyDesign, captureDesign, findDesign, newDesignId } from "./designs";
+import { DESIGN_KEYS, DESIGN_PARTS, MAX_DESIGNS, applyDesign, captureDesign, findDesign, newDesignId, type SavedDesign } from "./designs";
 import { readOccasions } from "./occasions";
 
 /**
@@ -42,7 +42,11 @@ export function editOccasionDesign(config: TvConfig, occasionId: string, update:
   const own = config.designs.find((d) => d.id === occ.design);
   const shared = own && readOccasions(config).some((o) => o.id !== occasionId && o.design === own.id);
   const id = own && !shared ? own.id : newDesignId();
-  const design = captureDesign(after, own && !shared ? own.name : `עיצוב ${occ.name}`, [...DESIGN_PARTS], id);
+  const captured = captureDesign(after, own && !shared ? own.name : `עיצוב ${occ.name}`, [...DESIGN_PARTS], id);
+  // A copy made here is the occasion's own (kept out of "הערכות שלי"); a kit of
+  // the gabbai's, changed in place, stays his.
+  const owner = own && !shared ? own.occasion : occasionId;
+  const design = owner ? { ...captured, occasion: owner } : captured;
   const designs = board.designs.some((d) => d.id === id)
     ? board.designs.map((d) => (d.id === id ? design : d))
     : [...board.designs, design].slice(-MAX_DESIGNS);
@@ -51,4 +55,15 @@ export function editOccasionDesign(config: TvConfig, occasionId: string, update:
     o.id === occasionId ? { ...o, design: id, designOn: o.design ? o.designOn : ("screen" as const) } : o,
   );
   return { ...board, designs, occasions };
+}
+
+/**
+ * A kit that belongs to an occasion: made for it here, or - saved before
+ * kits were marked - one an occasion wears under the name this file gives
+ * ("עיצוב …"). It is edited through the occasion's page, not offered among
+ * the gabbai's own kits.
+ */
+export function isOccasionKit(config: TvConfig, d: SavedDesign): boolean {
+  if (d.occasion) return true;
+  return d.name.startsWith("עיצוב ") && readOccasions(config).some((o) => o.design === d.id);
 }

@@ -44,7 +44,7 @@ export function useApiKeyActions() {
         .upsert({ provider: "anthropic", api_key: clean, updated_at: new Date().toISOString() } as never, {
           onConflict: "user_id,provider",
         });
-      if (error) throw new Error(error.message.includes("row-level security") ? "רק מנהל יכול לשמור מפתח" : error.message);
+      if (error) throw new Error(error.message.includes("row-level security") ? "רק גבאי יכול לשמור מפתח" : error.message);
       await refresh();
     },
     remove: async () => {

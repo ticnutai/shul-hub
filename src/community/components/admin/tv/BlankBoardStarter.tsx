@@ -1,22 +1,13 @@
-import { useState, type ReactNode } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { useState } from "react";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { Notice } from "./Notice";
 import { BLOCK_BY_ID } from "@/tv/blocks";
 import { STARTER_BLOCKS, STARTER_DEFAULT } from "@/tv/blankBoard";
 import type { BlockId } from "@/tv/config";
 
 /** The steps after a new board, in order: what stands where, then the look. */
-export const BUILD_STEPS = [
+const BUILD_STEPS = [
   { id: "arrange", label: "סידור על המסך" },
   { id: "design-background", label: "רקע" },
   { id: "design-boxes", label: "תיבות" },
@@ -38,6 +29,8 @@ export type BuildStep = (typeof BUILD_STEPS)[number]["id"];
  * until "שמור ושדר", and a step back (Ctrl+Z) undoes them; once saved, the
  * board before is in "גרסאות קודמות". It was two things in two tabs - this,
  * and a "reset" in "כלים" that said it reset the colours and deleted it all.
+ * (A kit of parts also has "איפוס הערכה הנוכחית", in the layout tab: that
+ * kit's parts back to how the kit has them - not a new board.)
  */
 export function BlankBoardStarter({
   onCreate,
@@ -60,10 +53,14 @@ export function BlankBoardStarter({
 
   if (unavailable)
     return (
-      <p className="rounded-lg border border-dashed p-3 text-xs text-muted-foreground" data-testid="blank-board">
+      <Notice variant="neutral" className="text-xs" data-testid="blank-board">
         {unavailable}
-      </p>
+      </Notice>
     );
+  /** Each way to start over asks first, the same question as every other in the editor. */
+  const asked = async (title: string, description: string, confirmLabel: string, destructive: boolean, then: () => void) => {
+    if (await confirmAction({ title, description, confirmLabel, destructive })) then();
+  };
 
   if (!open)
     return (
@@ -71,29 +68,37 @@ export function BlankBoardStarter({
         <Button type="button" onClick={() => setOpen(true)}>
           לוח ריק - בוחרים מה יופיע
         </Button>
-        <Confirm
-          trigger={
-            <Button type="button" variant="outline">
-              הלוח הרגיל של המערכת
-            </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() =>
+            void asked(
+              "לחזור ללוח הרגיל של המערכת?",
+              "המראה והמסכים יחזרו להיות כמו בלוח חדש. הנוסחים, הלוגואים, המועדים, הגלריות והערכות שלכם נשארים.",
+              "חזרה ללוח הרגיל",
+              false,
+              onStandard,
+            )
           }
-          title="לחזור ללוח הרגיל של המערכת?"
-          text="המראה והמסכים יחזרו להיות כמו בלוח חדש. הנוסחים, הלוגואים, המועדים, הגלריות והערכות שלכם נשארים."
-          action="חזרה ללוח הרגיל"
-          onConfirm={onStandard}
-        />
-        <Confirm
-          trigger={
-            <Button type="button" variant="ghost" className="text-destructive">
-              מחיקת הכול
-            </Button>
+        >
+          לוח רגיל של המערכת
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          className="text-destructive"
+          onClick={() =>
+            void asked(
+              "למחוק את כל ההגדרות של הלוח?",
+              'הכול חוזר להיות כמו בבית כנסת חדש: המראה והמסכים, וגם הנוסחים, הלוגואים, המועדים, התמונות, הגלריות, הערכות והתיבות שלכם. המניינים, ההודעות והשיעורים לא נמחקים. זו טיוטה עד "שמור ושדר"; אחרי שמירה אפשר להחזיר מ"גרסאות קודמות" בלשונית "כלים".',
+              "מחיקת הכול",
+              true,
+              onWipe,
+            )
           }
-          title="למחוק את כל ההגדרות של הלוח?"
-          text='הכול חוזר להיות כמו בבית כנסת חדש: המראה והמסכים, וגם הנוסחים, הלוגואים, המועדים, התמונות, הגלריות, הערכות והתיבות שלכם. המניינים, ההודעות והשיעורים לא נמחקים. זו טיוטה עד "שמור ושדר"; אחרי שמירה אפשר להחזיר מ"גרסאות קודמות" בלשונית "כלים".'
-          action="מחיקת הכול"
-          destructive
-          onConfirm={onWipe}
-        />
+        >
+          מחיקת הכול
+        </Button>
         <p className="w-full text-[11px] text-muted-foreground">הכול טיוטה עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר.</p>
       </div>
     );
@@ -123,7 +128,7 @@ export function BlankBoardStarter({
       <div className="text-sm font-semibold">לוח חדש - שלב 1: מה יופיע על הלוח?</div>
       {group("התוכן", content)}
       {group("למעלה ולמטה", fixed)}
-      {!hasContent && <p className="text-xs text-amber-700 dark:text-amber-400">בחרו לפחות דבר אחד מהתוכן - מסך בלי תוכן לא מוצג.</p>}
+      {!hasContent && <Notice variant="warning" className="p-2 text-xs">בחרו לפחות דבר אחד מהתוכן - מסך בלי תוכן לא מוצג.</Notice>}
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
@@ -146,54 +151,19 @@ export function BlankBoardStarter({
   );
 }
 
-/** Asked before it is done, the same way for each way to start over. */
-function Confirm({
-  trigger,
-  title,
-  text,
-  action,
-  destructive = false,
-  onConfirm,
-}: {
-  trigger: ReactNode;
-  title: string;
-  text: string;
-  action: string;
-  destructive?: boolean;
-  onConfirm: () => void;
-}) {
-  return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent dir="rtl">
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{text}</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>ביטול</AlertDialogCancel>
-          <AlertDialogAction
-            className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : undefined}
-            onClick={onConfirm}
-          >
-            {action}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
-
 /** After a new board: the steps that are left, each a click away, with the one done so far marked. */
 export function BuildGuide({ done, onStep, onClose }: { done: BuildStep[]; onStep: (s: BuildStep) => void; onClose: () => void }) {
   return (
-    <div className="space-y-2 rounded-lg border-2 border-emerald-500/50 bg-emerald-500/5 p-3" data-testid="build-guide">
-      <div className="flex items-center gap-2">
-        <span className="flex-1 text-sm font-semibold">הלוח החדש נוצר. הצעדים הבאים:</span>
-        <button type="button" className="text-xs underline" onClick={onClose}>
+    <Notice
+      variant="info"
+      data-testid="build-guide"
+      actions={
+        <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={onClose}>
           סגירה
-        </button>
-      </div>
+        </Button>
+      }
+    >
+      <p className="mb-2 text-sm font-semibold">הלוח החדש נוצר. הצעדים הבאים:</p>
       <ol className="flex flex-wrap gap-1.5">
         {BUILD_STEPS.map((s, i) => (
           <li key={s.id}>
@@ -208,6 +178,6 @@ export function BuildGuide({ done, onStep, onClose }: { done: BuildStep[]; onSte
           </li>
         ))}
       </ol>
-    </div>
+    </Notice>
   );
 }

@@ -10,7 +10,7 @@ import { backdropUrl } from "@/tv/backdrops";
 import { FRAME_PICTURES, framePictureRef } from "@/tv/framePictures";
 import { FRAME_CHOICES } from "./tvChoices";
 import { THEME_VAR_LAYERS, TV_FONTS, isSafeGradient, type ThemeVar } from "@/tv/themes";
-import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { HiddenShelf } from "./ReadyShelf";
 import { Folded, InnerCard, SubPart } from "./Parts";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import {
@@ -34,7 +34,7 @@ import { BOARD_FRAME_KNOBS, BOARD_FRAME_LIMITS, DEFAULT_BOARD_FRAME_TUNE, type B
 import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
-import { uploadImages } from "./uploadImages";
+import { useUpload } from "./Upload";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -140,36 +140,14 @@ export function BackgroundLayer({
     [target, write, setPreview],
   );
 
-  const [uploading, setUploading] = useState(false);
-  const upload = async (files: File[]) => {
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      const urls = await uploadImages(files);
-      if (!urls.length) return;
-      // Every uploaded picture is kept in the gallery - an upload used to
-      // replace the one before it, which was then gone from every list.
-      onEdit("bg-gallery:upload", (c) => {
-        const items = urls.map((url, i) => ({
-          id: newBackgroundId(),
-          name: `תמונה שלי ${c.backgrounds.length + i + 1}`,
-          fill: null,
-          picture: url,
-          overlay: null,
-          strength: c.backgroundDim,
-          tune: DEFAULT_BACKGROUND_TUNE,
-        }));
-        return { ...c, backgrounds: [...items, ...c.backgrounds].slice(0, MAX_BACKGROUNDS) };
-      });
+  const { uploading, upload: uploadFiles } = useUpload();
+  const upload = (files: File[]) =>
+    uploadFiles(files, (urls) => {
+      onEdit("bg-gallery:upload", (c) => withUploadedBackgrounds(c, urls));
       setSource("picture");
       apply(urls[0]!);
       toast.success(urls.length > 1 ? `${urls.length} תמונות נשמרו בגלריה` : "התמונה נשמרה בגלריה");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
-    } finally {
-      setUploading(false);
-    }
-  };
+    });
 
   const tune = saved.backgroundTune;
   const setTune = (patch: Partial<BackgroundTune>) =>
@@ -302,7 +280,26 @@ const GALLERY_FILTERS: Array<{ id: GalleryFilter; name: string }> = [
 const KIND_NAMES: Record<BackgroundKind, string> = { colour: "צבע שלי", gradient: "מעבר צבעים שלי", picture: "תמונה שלי" };
 
 /** A background as a small picture of itself: its fill, its picture, the layer over the picture. */
-function BackgroundTile({ b }: { b: Look }) {
+/**
+ * Uploaded pictures, kept in the gallery of backgrounds - every one: an
+ * upload used to replace the one before it, which was then gone from every
+ * list. The same from the design tab and from the board clicked on.
+ */
+export function withUploadedBackgrounds(c: TvConfig, urls: string[]): TvConfig {
+  const items = urls.map((url, i) => ({
+    id: newBackgroundId(),
+    name: `תמונה שלי ${c.backgrounds.length + i + 1}`,
+    fill: null,
+    picture: url,
+    overlay: null,
+    strength: c.backgroundDim,
+    tune: DEFAULT_BACKGROUND_TUNE,
+  }));
+  return { ...c, backgrounds: [...items, ...c.backgrounds].slice(0, MAX_BACKGROUNDS) };
+}
+
+/** One background, drawn inside a gallery tile (here, and in the panel of the board clicked on). */
+export function BackgroundTile({ b }: { b: Look }) {
   const t = tileOf(b);
   return (
     <span className="absolute inset-0" style={{ backgroundImage: t.fill ?? undefined }}>
@@ -573,7 +570,7 @@ function BoardFrameControls({ config, onEdit }: { config: TvConfig; onEdit: Laye
  * A box's background used to be under "רקעים" and its line here: two places
  * for one box.
  */
-export type BoxPart = "shape" | "background" | "frames";
+type BoxPart = "shape" | "background" | "frames";
 
 export function FramesLayer(
   props: LayerProps & {
@@ -603,23 +600,14 @@ export function FramesLayer(
   };
   const wearing = frame ? own?.image ?? null : fs.image;
 
-  const [uploading, setUploading] = useState(false);
-  const uploadFrame = async (files: File[]) => {
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      const urls = await uploadImages(files);
-      if (!urls.length) return;
+  const { uploading, upload } = useUpload();
+  const uploadFrame = (files: File[]) =>
+    upload(files, (urls) => {
       // Kept in the gallery of frames, whether a box wears it or not.
       onEdit("frame-uploads", (c) => ({ ...c, frameUploads: [...new Set([...urls, ...c.frameUploads])].slice(0, 40) }));
       wearPicture(urls[0]!);
       toast.success("המסגרת נשמרה בגלריה");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
-    } finally {
-      setUploading(false);
-    }
-  };
+    });
 
   const pictures = [
     // The worn one stays in sight even when hidden: what is on the board is always marked.
@@ -917,20 +905,17 @@ export function TextLayer({
               show={pct}
               onChange={(v) => onEdit("scale", (c) => ({ ...c, textScale: v }))}
             />
-            <div className="space-y-1">
-              <Range
-                label="מרווח אותיות בכותרות"
-                value={saved.tracking ?? 0}
-                min={0}
-                max={0.24}
-                step={0.01}
-                show={(v) => (saved.tracking === null ? "רגיל" : `${v.toFixed(2)}em`)}
-                onChange={(v) => onEdit("track", (c) => ({ ...c, tracking: v }))}
-              />
-              {saved.tracking !== null && (
-                <ResetButton onClick={() => onEdit("track", (c) => ({ ...c, tracking: null }))}>חזרה למרווח הרגיל</ResetButton>
-              )}
-            </div>
+            {/* In hundredths of the letters' size, shown as a share; "רגיל" leaves it to the board. */}
+            <Range
+              label="מרווח אותיות בכותרות"
+              value={saved.tracking ?? 0}
+              min={0}
+              max={0.24}
+              step={0.01}
+              show={(v) => `${Math.round(v * 100)}%`}
+              onChange={(v) => onEdit("track", (c) => ({ ...c, tracking: v }))}
+              auto={{ isDefault: saved.tracking === null, onToggle: () => onEdit("track", (c) => ({ ...c, tracking: c.tracking === null ? 0 : null })) }}
+            />
           </SubPart>
           <SubPart title="סגנון הכותרת">
             <TitleStylePicker config={saved} onEdit={onEdit} />

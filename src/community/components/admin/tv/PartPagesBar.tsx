@@ -9,14 +9,15 @@
  * of parts at all, so there is one list of what takes turns, not two.
  */
 import { toast } from 'sonner';
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Pause, Play, Trash2, X } from 'lucide-react';
+import { CalendarDays, Copy, Pause, Play, Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
 import { MAX_PAGES, addPage, copyPage, movePage, readPages, removePage, setPage } from '@/tv/partPages';
-import { Stepper } from './editorParts';
+import { INPUT_CLASS, MoveButtons, SELECT_CLASS, Stepper } from './editorParts';
 import { ChipNumber, choiceChipClass } from './Notice';
+import { ChipRemove } from './ReadyShelf';
 
 /** An occasion's screen offered beside the pages: on now (or on the preview's day), or with a design of its own. */
 export interface OccasionTab {
@@ -128,15 +129,7 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
                   {!o.design && <span className="text-xs text-muted-foreground">בלי ערכה</span>}
                 </button>
                 {o.pinned && !o.on && onUnpin && (
-                  <button
-                    type="button"
-                    aria-label={`הסרת ${o.name} מהפס`}
-                    title="הסרה מהפס בלבד - המועד, הערכה שלו והמידע שלו נשארים"
-                    onClick={() => onUnpin(o.id)}
-                    className="me-1 grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
-                  >
-                    <X className="size-3" aria-hidden />
-                  </button>
+                  <ChipRemove label={`הסרת ${o.name} מהפס`} title="הסרה מהפס בלבד - המועד, הערכה שלו והמידע שלו נשארים" onClick={() => onUnpin(o.id)} />
                 )}
               </span>
             ))}
@@ -145,7 +138,7 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
                 aria-label="הוספת מועד לפס"
                 value=""
                 onChange={e => e.target.value && onPin(e.target.value)}
-                className="h-8 rounded-md border border-dashed bg-background px-2 text-sm"
+                className={`${SELECT_CLASS} border-dashed`}
                 title="מועד שלא חל היום - כדי להכין את המסך שלו מראש. על המסכים הוא יופיע רק ביום שלו."
               >
                 <option value="">+ הוספת מועד…</option>
@@ -173,7 +166,7 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
               maxLength={40}
               aria-label="שם העמוד"
               onChange={e => onEdit(`name:${page.id}`, c => setPage(c, current, { name: e.target.value }))}
-              className="h-8 rounded border bg-background px-2 text-sm text-foreground"
+              className={`${INPUT_CLASS} text-foreground`}
             />
           </label>
           <div className="flex flex-col gap-1 text-xs text-muted-foreground">
@@ -189,14 +182,9 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
             />
           </div>
           <div className="flex items-center gap-1">
-            <Button type="button" size="sm" variant="outline" className="h-8" disabled={current === 0} onClick={() => move(-1)} aria-label="הקדמת העמוד" title="הקדמה - יופיע לפני העמוד שלפניו">
-              <ChevronRight className="size-4" aria-hidden /> הקדמה
-            </Button>
-            <Button type="button" size="sm" variant="outline" className="h-8" disabled={current === pages.length - 1} onClick={() => move(1)} aria-label="העברת העמוד אחורה" title="העברה אחורה - יופיע אחרי העמוד שאחריו">
-              העברה אחורה <ChevronLeft className="size-4" aria-hidden />
-            </Button>
+            <MoveButtons name="העמוד" words first={current === 0} last={current === pages.length - 1} onMove={move} />
             <select aria-label="להעתיק לכאן עמוד אחר" value="" onChange={e => e.target.value !== '' && void copyFrom(Number(e.target.value))}
-              className="h-8 rounded-md border bg-background px-2 text-sm" title="מחליף את העמוד הזה בהעתק של עמוד אחר">
+              className={SELECT_CLASS} title="מחליף את העמוד הזה בהעתק של עמוד אחר">
               <option value="">להעתיק לכאן…</option>
               {pages.map((p, i) => i !== current && <option key={p.id} value={i}>{p.name}</option>)}
             </select>

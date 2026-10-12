@@ -16,17 +16,17 @@
  */
 
 /** Pixels the image must cover on the TV so no step ever enlarges it. */
-export const TV_IMAGE_TARGET = { width: 2400, height: 1350 };
+const TV_IMAGE_TARGET = { width: 2400, height: 1350 };
 /** Common GPU texture limit on TV boxes; larger images may not draw at all. */
 const MAX_SIDE = 4096;
 /** Below this share of the target the TV visibly enlarges the image. */
 const LOW_RES_RATIO = 0.8;
 /** Originals are only read locally, so a generous limit is fine. */
-export const MAX_SOURCE_BYTES = 40 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 40 * 1024 * 1024;
 /** What is actually stored stays under the 5 MB the uploader always allowed. */
 const STORED_MAX_BYTES = 4.5 * 1024 * 1024;
 
-export interface FitResult {
+interface FitResult {
   width: number;
   height: number;
   /** The source is smaller than what the TV needs; it will look soft. */
@@ -47,7 +47,7 @@ export function fitForTv(w: number, h: number, target = TV_IMAGE_TARGET): FitRes
   };
 }
 
-export interface PreparedImage {
+interface PreparedImage {
   blob: Blob;
   extension: string;
   width: number;

@@ -1,25 +1,28 @@
 import { useRef } from "react";
-import { Copy, Download, Globe2, Smartphone } from "lucide-react";
+import { Copy, Download, Globe2, Smartphone, type LucideIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useCommunity } from "@/community/lib/community";
 
-const QR_TARGETS = [
-  {
-    id: "website",
-    title: "אתר בית הכנסת",
-    url: "https://shul-hub.lovable.app",
-    Icon: Globe2,
-  },
-  {
-    id: "android-app",
-    title: "האפליקציה בחנות של גוגל",
-    url: "https://play.google.com/store/apps/details?id=com.ticnutai.bsr3synagogue",
-    Icon: Smartphone,
-  },
-] as const;
+/** The published site, for when this page runs where its own address is no use to a phone (the app, a computer at home). */
+const PUBLIC_SITE = "https://shul-hub.lovable.app";
 
-function QrCard({ target }: { target: (typeof QR_TARGETS)[number] }) {
+/**
+ * This synagogue's own page: the address the site is open on now, and the
+ * synagogue in it (?shul=), so a code printed for one synagogue never opens
+ * another. It was one fixed address for every synagogue.
+ */
+export function synagogueSiteUrl(slug: string | undefined): string {
+  const { protocol, hostname, origin } = window.location;
+  const local = !protocol.startsWith("http") || hostname === "localhost" || hostname === "127.0.0.1";
+  const base = local ? PUBLIC_SITE : origin;
+  return slug ? `${base}/community?shul=${encodeURIComponent(slug)}` : `${base}/community`;
+}
+
+type QrTarget = { id: string; title: string; url: string; Icon: LucideIcon };
+
+function QrCard({ target }: { target: QrTarget }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   function downloadSvg() {
@@ -68,16 +71,24 @@ function QrCard({ target }: { target: (typeof QR_TARGETS)[number] }) {
 }
 
 export function QrCodesAdmin() {
+  const shul = useCommunity();
+  const targets: QrTarget[] = [
+    { id: "website", title: shul?.name ? `האתר של ${shul.name}` : "אתר בית הכנסת", url: synagogueSiteUrl(shul?.slug), Icon: Globe2 },
+    {
+      id: "android-app",
+      title: "האפליקציה בחנות של גוגל",
+      url: "https://play.google.com/store/apps/details?id=com.ticnutai.bsr3synagogue",
+      Icon: Smartphone,
+    },
+  ];
   return (
-    <section dir="rtl" className="space-y-4 text-right">
-      <div>
-        <h2 className="text-2xl font-semibold">קודי QR</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          סריקה מהטלפון תפתח ישירות את האתר או את דף האפליקציה בחנות של גוגל.
-        </p>
-      </div>
+    <section dir="rtl" className="space-y-4 text-right" data-testid="qr-codes">
+      {/* No heading of its own: the section's name is on its tab or tile, as for every section. */}
+      <p className="text-sm text-muted-foreground">
+        קודים להדפסה ולתלייה: סריקה מהטלפון תפתח ישירות את האתר של בית הכנסת, או את דף האפליקציה בחנות של גוגל.
+      </p>
       <div className="grid gap-4 md:grid-cols-2">
-        {QR_TARGETS.map((target) => (
+        {targets.map((target) => (
           <QrCard key={target.id} target={target} />
         ))}
       </div>

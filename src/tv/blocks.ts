@@ -31,8 +31,8 @@
  * lingers, so nothing here is hand-kept - the composer's switches are built
  * from this array.
  */
-import { EDITABLE, SHOWN_ZMANIM } from "./boardEdit";
-import { BLOCK_IDS, type BlockId, type SlideKind, type TvConfig } from "./config";
+import { SHOWN_ZMANIM } from "./boardEdit";
+import { type BlockId, type SlideKind, type TvConfig } from "./config";
 
 export type { BlockId };
 

@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Columns2, GripVertical, Eye, EyeOff, PanelTop } from "lucide-react";
+import { Columns2, Eye, EyeOff, PanelTop } from "lucide-react";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -14,90 +14,44 @@ import { supabase } from "@community/integrations/supabase/client";
 import { useHomeWidgets, type HomeWidget } from "@community/lib/data";
 import { communityId } from "@/community/lib/community";
 import { hebrewError } from "@community/lib/hebrewError";
-import { SettingsSaveBar, useUnsavedChangesGuard } from "@community/components/admin/HomeHeroSettings";
-
-function reorder(list: HomeWidget[], from: number, to: number) {
-  const next = [...list];
-  const [moved] = next.splice(from, 1);
-  if (!moved) return list;
-  next.splice(to, 0, moved);
-  return next;
-}
+import { SettingsSaveBar } from "@community/components/admin/HomeHeroSettings";
+import { useUnsavedChangesGuard } from "@community/lib/unsavedChanges";
+import { DragGrip, useReorder } from "@community/lib/useReorder";
+import { SectionLink, useFocusTarget } from "./adminUi";
 
 function WidgetList({
   title,
   hint,
   items,
   onChange,
+  footer,
 }: {
   title: string;
   hint: string;
   items: HomeWidget[];
   onChange: (items: HomeWidget[]) => void;
+  footer?: ReactNode;
 }) {
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const dragIndexRef = useRef<number | null>(null);
-  const itemsRef = useRef(items);
-  itemsRef.current = items;
-
-  function beginPointerDrag(index: number, pointerId: number) {
-    dragIndexRef.current = index;
-    setDragIndex(index);
-
-    const move = (event: PointerEvent) => {
-      if (event.pointerId !== pointerId) return;
-      const target = document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest<HTMLElement>("[data-widget-index]");
-      const nextIndex = Number(target?.dataset.widgetIndex);
-      const currentIndex = dragIndexRef.current;
-      if (!Number.isInteger(nextIndex) || currentIndex === null || nextIndex === currentIndex)
-        return;
-      onChange(reorder(itemsRef.current, currentIndex, nextIndex));
-      dragIndexRef.current = nextIndex;
-      setDragIndex(nextIndex);
-    };
-
-    const end = (event: PointerEvent) => {
-      if (event.pointerId !== pointerId) return;
-      dragIndexRef.current = null;
-      setDragIndex(null);
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", end);
-      document.removeEventListener("pointercancel", end);
-    };
-
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", end);
-    document.addEventListener("pointercancel", end);
-  }
+  // Dragged like every list (useReorder.ts), but kept with the other changes until "שמירה".
+  const { ordered, draggedId, rowProps, gripProps } = useReorder(items, { onReorder: onChange });
 
   return (
     <div className="card-elev p-5">
       <h3 className="text-lg font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted-foreground">{hint}</p>
+      {footer}
       <ul className="mt-4 space-y-2">
-        {items.map((item, index) => (
+        {ordered.map((item) => (
           <li
             key={item.id}
-            data-widget-index={index}
+            {...rowProps(item.id)}
             data-widget-key={item.key}
             className={
               "flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5 transition-opacity " +
-              (dragIndex === index ? "opacity-60" : "")
+              (draggedId === item.id ? "opacity-60" : "")
             }
           >
-            <button
-              type="button"
-              className="touch-none cursor-grab rounded-md p-2 text-muted-foreground hover:bg-muted active:cursor-grabbing"
-              onPointerDown={(event) => {
-                event.preventDefault();
-                beginPointerDrag(index, event.pointerId);
-              }}
-              aria-label={`גרירת ${item.label}`}
-            >
-              <GripVertical className="size-5" />
-            </button>
+            <DragGrip label={`גרירת ${item.label}`} {...gripProps(item.id)} />
             <span className="min-w-0 flex-1 truncate text-sm font-medium">{item.label}</span>
             {item.kind === "section" && (
               <Select
@@ -126,10 +80,11 @@ function WidgetList({
                 </SelectContent>
               </Select>
             )}
+            {/* Only a picture of what the switch beside it says. */}
             {item.visible ? (
-              <Eye className="size-4 text-muted-foreground" />
+              <Eye className="size-4 text-muted-foreground" aria-hidden />
             ) : (
-              <EyeOff className="size-4 text-muted-foreground" />
+              <EyeOff className="size-4 text-muted-foreground" aria-hidden />
             )}
             <Switch
               checked={item.visible}
@@ -151,6 +106,8 @@ export function WidgetsAdmin() {
   const [sections, setSections] = useState<HomeWidget[]>([]);
   const [zmanim, setZmanim] = useState<HomeWidget[]>([]);
   const [saving, setSaving] = useState(false);
+  // Opened from the announcement form's "מקטעי דף הבית": brought into view.
+  const focusRef = useFocusTarget<HTMLDivElement>("sections", !isLoading);
 
   const resetFromSaved = () => {
     if (!data) return;
@@ -198,12 +155,20 @@ export function WidgetsAdmin() {
   if (isLoading) return <p className="text-muted-foreground">טוען…</p>;
 
   return (
-    <div className="space-y-4">
+    <div ref={focusRef} className="scroll-mt-24 space-y-4" data-testid="home-sections">
       <WidgetList
         title="מקטעי דף הבית"
         hint="גררו לשינוי סדר, בחרו רוחב מלא או חצי שורה, וכבו כדי להסתיר מכל המתפללים."
         items={sections}
         onChange={setSections}
+        footer={
+          <SectionLink
+            hint="אילו מודעות מופיעות בדף הבית, ובאיזה רוחב - נקבע בכל מודעה."
+            label="מודעות"
+            tab="announcements"
+            testId="go-announcements"
+          />
+        }
       />
       <WidgetList
         title="זמני היום"

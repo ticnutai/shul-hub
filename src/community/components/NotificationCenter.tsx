@@ -243,14 +243,14 @@ export function NotificationCenter() {
           enabled={preferences.announcements}
           onEnabled={(value) => setPreferences((current) => ({ ...current, announcements: value }))}
         >
-          <p className="text-sm text-muted-foreground">התראה על מודעות שהמנהל סימן.</p>
+          <p className="text-sm text-muted-foreground">תזכורת על מודעות שהגבאי סימן.</p>
         </PreferenceGroup>
         <PreferenceGroup
           title="חברותות חדשות"
           enabled={preferences.chavrutot}
           onEnabled={(value) => setPreferences((current) => ({ ...current, chavrutot: value }))}
         >
-          <p className="text-sm text-muted-foreground">התראה על הצעות חברותא שהמנהל סימן.</p>
+          <p className="text-sm text-muted-foreground">תזכורת על הצעות חברותא שהגבאי סימן.</p>
         </PreferenceGroup>
         <PreferenceGroup
           title="שיעורים"

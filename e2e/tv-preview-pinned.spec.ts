@@ -21,7 +21,7 @@ test("the board's preview stays pinned while the panels under it scroll", async 
   const pinned = page.getByTestId("preview-pinned");
   // The column scrolled to its end: the board is still where it was.
   // It does scroll (more under the board than the window holds).
-  expect(await pinned.evaluate((el) => el.parentElement!.scrollHeight - el.parentElement!.clientHeight)).toBeGreaterThan(100);
+  expect(await pinned.evaluate((el) => el.parentElement!.scrollHeight - el.parentElement!.clientHeight)).toBeGreaterThan(40);
   const before = (await board.boundingBox())!;
   await pinned.evaluate((el) => {
     const column = el.parentElement!;

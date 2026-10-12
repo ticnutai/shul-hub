@@ -14,13 +14,16 @@ import { useElementEditing } from '@/tv/elementEditing';
 import { ElementLibrary } from './ElementLibrary';
 import { exportElementSet, importElementSet } from '@/tv/elements';
 import { downloadFile } from '@/tv/workspaceTransfer';
-import { uploadImages } from './uploadImages';
 import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
 import { SubPart } from './Parts';
-import { ColourRow, FIT_CHOICES, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Stepper, SwitchRow, sideButtonClass } from './editorParts';
+import { Notice } from './Notice';
+import { FileButton, useFileTask, useUpload } from './Upload';
+import { ColourRow, FIT_CHOICES, HideToggle, INPUT_CLASS, LockToggle, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
 /** A field of the chosen part: the editor's one height and border. */
-const FIELD = 'mt-1 block h-8 w-full rounded-md border bg-background px-2 text-sm';
+const FIELD = `mt-1 block w-full ${INPUT_CLASS}`;
+/** Where it stands and how big it is, in shares of the board; the turn in degrees. Typed or stepped. */
+const PLACE = [['x', 'מיקום אופקי', 0, 100, 0.5], ['y', 'מיקום אנכי', 0, 100, 0.5], ['width', 'רוחב החלק', 1, 100, 0.5], ['height', 'גובה החלק', 1, 100, 0.5], ['rotation', 'סיבוב', -180, 180, 1]] as const;
 /** Alignment, right to left as the page reads. */
 const ALIGNMENTS = [['right', 'לימין'], ['center-x', 'מרכוז אופקי'], ['left', 'לשמאל'], ['top', 'למעלה'], ['center-y', 'מרכוז אנכי'], ['bottom', 'למטה']] as const;
 
@@ -85,6 +88,19 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     const r = placeSection(elements, e.id, side);
     if (announcePlace(r, e.name, side, hideParts)) { commit(r.elements, `element-side:${e.id}:${side}`); select(r.ids); }
   };
+  const { uploading, upload } = useUpload();
+  const files = useFileTask('ייבוא החלקים נכשל');
+  /** A picture as a part of its own: into the synagogue's picture storage, transparency kept - the board keeps only its address. */
+  const addPicture = (f: File) => {
+    if (elements.length >= MAX_ELEMENTS || f.size > 15_000_000 || !['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) return void toast.error(`בחרו קובץ תמונה רגיל (עד 15 מגה), ועד ${MAX_ELEMENTS} חלקים בלוח`);
+    void upload([f], ([image]) => { const e = { ...newElement('image'), image, name: f.name }; commit([...elements, e]); select([e.id]); });
+  };
+  const importParts = (f: File) => files.run(async () => {
+    if (f.size > 15_000_000) throw new Error('הקובץ גדול מדי');
+    const added = importElementSet(await f.text());
+    if (elements.length + added.length > MAX_ELEMENTS) throw new Error(`עד ${MAX_ELEMENTS} חלקים בלוח`);
+    commit([...elements, ...added]); select(added.map(e => e.id));
+  });
   const manual = (e: BoardElement) => {
     const ids = sections.get(e.id)?.ids ?? [e.id];
     select([...ids]);
@@ -93,26 +109,17 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
 
   return <div className="space-y-5" data-testid="elements-editor">
     {elements.some(e => e.sourceMask)
-      ? <p className="rounded-md border p-3 text-sm" data-testid="artwork-mask-disclosure">פרטי הציור המקורי מופרדים במסכות: מסגרות, מילויים, עמודים וקישוטים. אפשר להזיז ולהסתיר כל חלק בנפרד; הטקסט והשעון חיים. הקישוט של הפמוטים, הספר והענף נשמר כקבוצה אחת. רקע משלים ייחשף כאשר תזיזו חלק.</p>
-      : elements.some(e => e.crop) && <p className="rounded-md border border-amber-400 bg-amber-50 p-3 text-sm text-amber-950" data-testid="artwork-layer-disclosure">בערכה זו יש תמונות חתוכות. חיתוך מלבני לבדו אינו מפריד מסגרת מהרקע שסביבה; בערכות הציור הוותיקות הם נשארים יחד. הטקסט והשעון נפרדים.</p>}
+      ? <Notice variant="neutral" data-testid="artwork-mask-disclosure">פרטי הציור המקורי מופרדים במסכות: מסגרות, מילויים, עמודים וקישוטים. אפשר להזיז ולהסתיר כל חלק בנפרד; הטקסט והשעון חיים. הקישוט של הפמוטים, הספר והענף נשמר כקבוצה אחת. רקע משלים ייחשף כאשר תזיזו חלק.</Notice>
+      : elements.some(e => e.crop) && <Notice variant="warning" data-testid="artwork-layer-disclosure">בערכה זו יש תמונות חתוכות. חיתוך מלבני לבדו אינו מפריד מסגרת מהרקע שסביבה; בערכות הציור הוותיקות הם נשארים יחד. הטקסט והשעון נפרדים.</Notice>}
 
     <SubPart title="הוספת חלק" hint={parts ? 'גררו חלק למקומו. Shift + לחיצה לבחירה משותפת. המסגרות, המילויים והתוכן החי של הערכה נמצאים ברשימת החלקים למטה.' : 'גררו חלק למקומו. Shift + לחיצה לבחירה משותפת. החלקים עומדים מעל תוכן הלוח; הרקע והתיבות נשארים בכלים שלמעלה.'}>
       <div className="flex flex-wrap gap-2">
         {ELEMENT_KINDS.filter(k => k !== 'image').map(kind => <Button size="sm" variant="outline" className="h-8" key={kind} disabled={elements.length >= MAX_ELEMENTS} onClick={() => { const e = newElement(kind); commit([...elements, e]); select([e.id]); }}>הוספת {ELEMENT_NAMES[kind]}</Button>)}
-        <Button asChild size="sm" variant="outline" className="h-8 cursor-pointer">
-          <label>הוספת תמונה<input className="sr-only" aria-label="הוספת תמונה כחלק" type="file" accept="image/png,image/jpeg,image/webp" onChange={async ev => {
-            const f = ev.target.files?.[0]; ev.target.value = ''; if (!f) return;
-            if (elements.length >= MAX_ELEMENTS || f.size > 15_000_000 || !['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) return toast.error(`בחרו קובץ תמונה רגיל (עד 15 מגה), ועד ${MAX_ELEMENTS} חלקים בלוח`);
-            // Into the synagogue's picture storage, transparency kept: the board keeps only its address.
-            const [image] = await uploadImages([f]).catch((e) => { toast.error(e instanceof Error ? e.message : 'העלאת התמונה נכשלה'); return [] as string[]; });
-            if (!image) return;
-            const e = { ...newElement('image'), image, name: f.name }; commit([...elements, e]); select([e.id]);
-          }} /></label>
-        </Button>
+        <FileButton label="הוספת תמונה" ariaLabel="הוספת תמונה כחלק" accept="image/png,image/jpeg,image/webp" busy={uploading} onFiles={([f]) => addPicture(f)} />
       </div>
     </SubPart>
 
-    <SubPart title="משטח העבודה" hint="בעריכה ישירה בלוח אפשר לגרור גם על התצוגה האמיתית. כשהלוח ממוקד: חצים להזזה עדינה, Shift לתזוזה גדולה, Delete למחיקה, Ctrl+D לשכפול ו־Esc לביטול בחירה. Alt + לחיצה משאיר את פעולת הלוח הרגילה.">
+    <SubPart title="משטח העבודה" hint="בעריכה ישירה בלוח אפשר לגרור גם על התצוגה האמיתית. כשהלוח ממוקד: חצים להזזה עדינה, Shift לתזוזה גדולה, Delete למחיקה, Ctrl+D לשכפול ו־Esc לביטול בחירה. לחיצה עם Alt או לחיצה כפולה - החלק לבדו. לחיצה נוספת באותו מקום - החלק שמתחת. לחיצה ימנית - רשימת כל החלקים במקום.">
       <SwitchRow label="הצמדה לרשת" ariaLabel="הצמדה לרשת" checked={snap} onChange={setSnap} />
       <SwitchRow label="מסגרת, תיבה וטקסט יחד" ariaLabel="מסגרת, תיבה וטקסט יחד" hint="גרירה, גודל וסיבוב חלים על כל החלקים של אותה מסגרת" checked={linkSection} onChange={(on) => { setLinkSection(on); if (!on && first) select([first.id]); }} />
       <SwitchRow label="הצגת רשת ומידות" ariaLabel="הצגת רשת ומידות" checked={showGrid} onChange={setShowGrid} />
@@ -122,7 +129,9 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
           {[1, 2, 5, 10].map(v => <option key={v} value={v}>{v}% - {Math.round(19.2 * v)} על {Math.round(10.8 * v)} נקודות במסך מלא</option>)}
         </select>
       </label>
-      {first && <p className="text-[11px] text-muted-foreground" data-testid="element-measurements"><span dir="ltr">{first.width.toFixed(1)}% × {first.height.toFixed(1)}%</span> - מידות החלק. שוליים: שמאל <span dir="ltr">{first.x.toFixed(1)}%</span>, ימין <span dir="ltr">{(100 - first.x - first.width).toFixed(1)}%</span>, למעלה <span dir="ltr">{first.y.toFixed(1)}%</span>, למטה <span dir="ltr">{(100 - first.y - first.height).toFixed(1)}%</span>. המידות יחסיות ללוח; במסך מלא (<span dir="ltr">1920×1080</span>) זה <span dir="ltr">{Math.round(first.width * 19.2)}×{Math.round(first.height * 10.8)}</span> נקודות.</p>}
+      {/* Its line is always there (empty with nothing chosen): choosing a part must not push the board down under the mouse. */}
+      {!first && <p className="min-h-[3.75em] text-[11px]" aria-hidden />}
+      {first && <p className="min-h-[3.75em] text-[11px] text-muted-foreground" data-testid="element-measurements"><span dir="ltr">{first.width.toFixed(1)}% × {first.height.toFixed(1)}%</span> - מידות החלק. שוליים: שמאל <span dir="ltr">{first.x.toFixed(1)}%</span>, ימין <span dir="ltr">{(100 - first.x - first.width).toFixed(1)}%</span>, למעלה <span dir="ltr">{first.y.toFixed(1)}%</span>, למטה <span dir="ltr">{(100 - first.y - first.height).toFixed(1)}%</span>. המידות יחסיות ללוח; במסך מלא (<span dir="ltr">1920×1080</span>) זה <span dir="ltr">{Math.round(first.width * 19.2)}×{Math.round(first.height * 10.8)}</span> נקודות.</p>}
       <div data-testid="elements-canvas" dir="ltr" className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-[#0b1628]" style={{ containerType: 'size', backgroundImage: undefined }}>
         <BoardElements elements={elements} surface />
       </div>
@@ -136,20 +145,12 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={duplicate}>שכפול החלק</Button>
         <Button size="sm" variant="outline" className="h-8" disabled={selected.length < 2 || lockedInSelection} onClick={() => patch({ group: elementId() })}>קיבוץ</Button>
         <Button size="sm" variant="outline" className="h-8" disabled={!first?.group} onClick={() => patch({ group: null })}>פירוק קבוצה</Button>
-        <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={() => commit([...elements.filter(e => !selected.includes(e.id)), ...elements.filter(e => selected.includes(e.id))])}>קדימה</Button>
-        <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={() => commit([...elements.filter(e => selected.includes(e.id)), ...elements.filter(e => !selected.includes(e.id))])}>אחורה</Button>
-        <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={() => downloadFile(new Blob([exportElementSet(elements.filter(e => selected.includes(e.id)))], { type: 'application/json' }), 'חלקים.json')}>ייצוא הבחירה</Button>
-        <Button asChild size="sm" variant="outline" className="h-8 cursor-pointer">
-          <label>ייבוא חלקים<input className="sr-only" type="file" aria-label="ייבוא חלקים מקובץ" accept=".json" onChange={async ev => {
-            const f = ev.target.files?.[0]; ev.target.value = ''; if (!f) return;
-            try {
-              if (f.size > 15_000_000) throw new Error('הקובץ גדול מדי');
-              const added = importElementSet(await f.text());
-              if (elements.length + added.length > MAX_ELEMENTS) throw new Error(`עד ${MAX_ELEMENTS} חלקים בלוח`);
-              commit([...elements, ...added]); select(added.map(e => e.id));
-            } catch (e) { toast.error(e instanceof Error ? e.message : 'ייבוא החלקים נכשל'); }
-          }} /></label>
-        </Button>
+        {/* Over and under the others: the layers, not an order of turns. */}
+        <Button size="sm" variant="outline" className="h-8" disabled={!first} title="מעל שאר החלקים" onClick={() => commit([...elements.filter(e => !selected.includes(e.id)), ...elements.filter(e => selected.includes(e.id))])}>שכבה למעלה</Button>
+        <Button size="sm" variant="outline" className="h-8" disabled={!first} title="מתחת לשאר החלקים" onClick={() => commit([...elements.filter(e => selected.includes(e.id)), ...elements.filter(e => !selected.includes(e.id))])}>שכבה למטה</Button>
+        {/* In and out in a file, in the words of "ייבוא וייצוא" in the tools tab: these are the parts alone. */}
+        <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={() => downloadFile(new Blob([exportElementSet(elements.filter(e => selected.includes(e.id)))], { type: 'application/json' }), 'חלקים.json')}>ייצוא הבחירה לקובץ</Button>
+        <FileButton label="ייבוא חלקים מקובץ" ariaLabel="ייבוא חלקים מקובץ" accept=".json" icon={null} busy={files.busy} onFiles={([f]) => void importParts(f)} />
         <Button size="sm" variant="outline" className="h-8 text-destructive" disabled={!first || lockedInSelection} onClick={() => void removeSelection()}>מחיקת הבחירה</Button>
       </div>
     </SubPart>
@@ -157,16 +158,18 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     {first && <SubPart title="החלק שנבחר">
       <fieldset disabled={first.locked} className="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-3">
         <p className="col-span-full text-[11px] text-muted-foreground" data-testid="selected-layer-type">סוג החלק: {first.sourceMask ? 'חלק מהציור עם מסכה שקופה' : first.crop ? 'אזור מתוך תמונה' : first.binding ? 'תוכן חי נפרד' : ELEMENT_NAMES[first.kind]}</p>
-        {['prayers', 'lessons', 'zmanim'].includes(first.binding ?? '') && <div className="text-xs">שורות בכל עמוד<div className="mt-1"><Stepper label="שורות בכל עמוד בחלק" value={first.rowsPerPage ?? 3} min={1} max={30} step={1} onChange={v => patch({ rowsPerPage: v })} /></div></div>}
-        {SCROLLABLE.includes(first.binding as ElementBinding) && <label className="text-xs">כשהתוכן לא נכנס<select className={`${SELECT_CLASS} mt-1 block w-full`} aria-label="כשהתוכן לא נכנס בחלק" value={first.scroll ?? ''} onChange={ev => patch({ scroll: (ev.target.value || undefined) as BoardElement['scroll'] })}>{FIT_CHOICES(first.binding as ElementBinding).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>}
+        {['prayers', 'lessons', 'zmanim'].includes(first.binding ?? '') && <div className="text-xs">שורות בכל עמוד<div className="mt-1"><Stepper label="שורות בכל עמוד בחלק" value={first.rowsPerPage ?? 3} min={1} max={30} step={1} onChange={v => patch({ rowsPerPage: v })} /></div><p className="mt-1 text-[11px] text-muted-foreground">לחלק הזה בלבד. בלוח הרגיל, כמה מניינים בכל מסך נקבע בלשונית "פריסה", תחת "זמני התפילות בלוח".</p></div>}
+        {SCROLLABLE.includes(first.binding as ElementBinding) && <div className="col-span-full space-y-1 text-xs">כשהתוכן לא נכנס<Segments label="כשהתוכן לא נכנס בחלק" value={first.scroll ?? ''} onChange={v => patch({ scroll: (v || undefined) as BoardElement['scroll'] })} options={FIT_CHOICES(first.binding as ElementBinding)} /><p className="text-[11px] text-muted-foreground">לחלק הזה בלבד. לתיבות של הלוח הרגיל - בלשונית "פריסה", תחת "כשהתוכן לא נכנס לתיבה".</p></div>}
         {first.binding === 'zmanim' && <div className="col-span-full space-y-2" data-testid="element-zmanim-picker">
-          <p className="text-[11px] text-muted-foreground">מג״א מחושב לפי 72 דקות קבועות לפני הנץ ואחרי השקיעה. הגר״א מחושב מהנץ לשקיעה.</p>
+          <p className="text-[11px] text-muted-foreground">מג״א מחושב לפי 72 דקות קבועות לפני הנץ ואחרי השקיעה. הגר״א מחושב מהנץ לשקיעה. ברירת המחדל: הזמנים שלא הוסתרו בלוח (בעריכה ישירה בלוח).</p>
           <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => patch({ zmanKeys: [...ZMAN_DISPLAY_KEYS], rowsPerPage: ZMAN_DISPLAY_KEYS.length, fontSize: Math.min(first.fontSize, first.height / (ZMAN_DISPLAY_KEYS.length * 2.2)) })}>הצגת כל זמני היום יחד</Button>
           {/* Several to pick: tick boxes. */}
           <div className="grid gap-2 sm:grid-cols-2">{ZMAN_DISPLAY_KEYS.map(key => <label key={key} className="flex gap-2 text-xs"><input type="checkbox" checked={(first.zmanKeys ?? ZMAN_DISPLAY_KEYS.filter(k => !config.hidden.includes(`zman.${k}`))).includes(key)} onChange={ev => { const keys = first.zmanKeys ?? ZMAN_DISPLAY_KEYS.filter(k => !config.hidden.includes(`zman.${k}`)); patch({ zmanKeys: ev.target.checked ? [...keys, key] : keys.filter(k => k !== key) }); }} />{ZMAN_DISPLAY_LABELS[key]}</label>)}</div>
         </div>}
         <label className="text-xs">שם החלק<input className={FIELD} aria-label="שם החלק" value={first.name} onChange={e => patch({ name: e.target.value })} /></label>
-        {([['x', 'מיקום אופקי', 0, 100], ['y', 'מיקום אנכי', 0, 100], ['width', 'רוחב החלק', 1, 100], ['height', 'גובה החלק', 1, 100], ['rotation', 'סיבוב', -180, 180], ['opacity', 'אטימות', 0, 1]] as const).map(([key, label, min, max]) => <label className="text-xs" key={key}>{label}<input type="number" className={FIELD} aria-label={label} min={min} max={max} step={key === 'opacity' ? .1 : .5} value={Number(first[key].toFixed(2))} onChange={ev => { if (ev.target.value !== '') patch({ [key]: Number(ev.target.value) }); }} /></label>)}
+        {PLACE.map(([key, label, min, max, step]) => <div className="space-y-1 text-xs" key={key}>{label}<Stepper label={label} value={Number(first[key].toFixed(2))} min={min} max={max} step={step} format={(v) => key === 'rotation' ? `${v}°` : `${v}%`} onChange={v => patch({ [key]: v })} /></div>)}
+        {/* See-through, as everywhere in the editor: a share, 100% hides what is under it. */}
+        <div className="col-span-full"><Range label="אטימות" value={Math.round(first.opacity * 100)} min={0} max={100} step={5} show={(v) => `${v}%`} onChange={v => patch({ opacity: v / 100 })} /></div>
         {/* A picture's colour is its own (tuned below), and a text's is in the text bar when that is open:
             a colour row there changed nothing that could be seen. */}
         {!pictured && !(first.kind === 'text' && textToolsElsewhere) && <div className="col-span-full"><ColourRow label="צבע החלק" value={first.color} onChange={v => patch({ color: v })} /></div>}
@@ -200,18 +203,17 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         {first.kind === 'text' && <label className="text-xs">מקור התוכן<select className={`${SELECT_CLASS} mt-1 block w-full`} aria-label="מקור התוכן של החלק" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label>}
         {/* The letters - size, font, bold, wrapping, the words - in the same bar as under the board's preview. */}
         {first.kind === 'text' && <div className="col-span-full">{textToolsElsewhere
-          ? <p className="rounded-md border border-dashed p-2 text-xs text-muted-foreground" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות) נמצא מתחת לתצוגה המקדימה של הלוח.</p>
+          ? <Notice variant="neutral" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות) נמצא מתחת לתצוגה המקדימה של הלוח.</Notice>
           : <ElementTextTools elements={elements} ids={selected} withColor={false} onPatch={textPatch} />}</div>}
       </fieldset>
     </SubPart>}
 
     {/* Adding content: a new frame, instead of a frame's content, or into a frame. On a board of parts - in the layout tab. */}
     <SubPart title="הוספת תוכן" hint={parts ? undefined : 'תוכן חי - פרשת השבוע, הדף היומי, זמני היום ועוד - במסגרת חדשה, במקום תוכן של מסגרת, או בתוכה.'}>
-      {parts ? <p className="rounded-md border border-dashed p-3 text-sm" data-testid="add-content-elsewhere">הוספת תוכן (פרשת השבוע, הדף היומי, זמני היום ועוד), והצד של כל תוכן - בלשונית <b>פריסה</b>, תחת "מה יופיע על הלוח, ובאיזה צד".</p> : <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
+      {parts ? <Notice variant="neutral" data-testid="add-content-elsewhere">הוספת תוכן (פרשת השבוע, הדף היומי, זמני היום ועוד), והצד של כל תוכן - בלשונית <b>פריסה</b>, תחת "מה יופיע על הלוח, ובאיזה צד".</Notice> : <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
         library={config.elementLibrary}
         defaults={config.elementDefaults}
-        onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))}
-        onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />}
+        onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))} />}
     </SubPart>
 
     <SubPart title="רשימת החלקים" hint={`${parts ? 'לחלקים שאינם תוכן (עיטורים, עמודים, תמונות): ' : ''}בכל שורה: ימין, אמצע או שמאל מזיזים את החלק יחד עם המסגרת שלו. אם בצד הזה כבר עומד חלק אחר, השניים מתחלפים. הסמל האחרון בוחר את החלק לגרירה ידנית על הלוח.`}>
@@ -243,8 +245,10 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
             {!inLayoutTab.has(e.id) && SIDE_CHOICES.map(([side, label, Icon]) => <button key={side} type="button" aria-label={`${e.name} ל${label}`} aria-pressed={sec?.side === side} title={`להעביר ל${label}${tip}`} disabled={e.locked} onClick={() => place(e, side)} className={sideButtonClass(sec?.side === side)}><Icon className="size-4" aria-hidden /></button>)}
             <button type="button" aria-label={`הזזה ידנית של ${e.name}`} title={`הזזה ידנית: בוחר את החלק${mates.length ? ' ואת מה שזז איתו' : ''}, ואז גוררים על הלוח`} disabled={e.locked} onClick={() => manual(e)} className={SIDE_BUTTON}><Move className="size-4" aria-hidden /></button>
           </div>
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" aria-label={`${e.hidden ? 'הצגת' : 'הסתרת'} ${e.name}`} onClick={() => commit(elements.map(x => x.id === e.id ? { ...x, hidden: !x.hidden } : x))}>{e.hidden ? 'הצגה' : 'הסתרה'}</Button>
-          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" aria-label={`${e.locked ? 'שחרור' : 'נעילת'} ${e.name}`} onClick={() => commit(elements.map(x => x.id === e.id ? { ...x, locked: !x.locked } : x))}>{e.locked ? 'שחרור' : 'נעילה'}</Button>
+          <span className="flex shrink-0 items-center gap-0.5">
+            <HideToggle hidden={e.hidden} name={e.name} onToggle={() => commit(elements.map(x => x.id === e.id ? { ...x, hidden: !x.hidden } : x))} />
+            <LockToggle locked={e.locked} name={e.name} onToggle={() => commit(elements.map(x => x.id === e.id ? { ...x, locked: !x.locked } : x))} />
+          </span>
         </div>;
       })}</div>
     </SubPart>

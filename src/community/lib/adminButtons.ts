@@ -14,7 +14,7 @@ export type AdminButtonsPrefs = Record<AdminButtonId, AdminButtonPref>;
 
 export const ADMIN_BUTTONS: { id: AdminButtonId; label: string; hint: string }[] = [
   { id: "quickAdd", label: "הוספה מהירה (+)", hint: "הוספת מודעה, שיעור, חברותא או מניין בלי לעבור למסך הניהול" },
-  { id: "assistant", label: "עוזר חכם (✨)", hint: "קיצור דרך לעוזר החכם של המנהל" },
+  { id: "assistant", label: "עוזר חכם (✨)", hint: "קיצור דרך לעוזר החכם של הגבאי" },
 ];
 
 export const DEFAULT_ADMIN_BUTTONS: AdminButtonsPrefs = {

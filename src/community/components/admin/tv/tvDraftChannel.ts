@@ -14,9 +14,9 @@ import type { TvConfig } from "@/tv/config";
  * the saved design, never overwrites unsaved work in the other one, while
  * each edit made anywhere shows everywhere.
  */
-export const TV_DRAFT_CHANNEL = "shul-tv-draft";
+const TV_DRAFT_CHANNEL = "shul-tv-draft";
 
-export type DraftMessage =
+type DraftMessage =
   | { type: "hello" }
   | { type: "draft"; config: TvConfig; editedAt: number }
   /** A window saved: the others refresh their "saved" copy. */

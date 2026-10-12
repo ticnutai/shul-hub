@@ -510,11 +510,11 @@ export function exportElementSet(elements: BoardElement[]) {
   return JSON.stringify({ format: 'new-shul-elements', version: elements.some(e=>e.zmanKeys || ['parasha','dafYomi','amudYomi','seasonal'].includes(e.binding??''))?3:elements.some(e=>e.sourceMask)?2:1, elements: normalizeElements(elements) }, null, 2);
 }
 export function importElementSet(text: string): BoardElement[] {
-  if (text.length > 15_000_000) throw new Error('חבילת האלמנטים גדולה מדי');
+  if (text.length > 15_000_000) throw new Error('קובץ החלקים גדול מדי');
   const raw = JSON.parse(text);
   if (raw?.format !== 'new-shul-elements' || ![1,2,3].includes(raw?.version) || !Array.isArray(raw.elements)) throw new Error('זה אינו קובץ חלקים של הלוח');
   const elements = normalizeElements(raw.elements);
-  if (!elements.length || elements.length !== raw.elements.length) throw new Error('חבילת האלמנטים אינה תקינה');
+  if (!elements.length || elements.length !== raw.elements.length) throw new Error('קובץ החלקים אינו תקין');
   const groups = new Map<string, string>();
   return elements.map(e => {
     if (e.group && !groups.has(e.group)) groups.set(e.group, elementId());

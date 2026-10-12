@@ -15,7 +15,7 @@
  */
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, ChevronDown, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { CalendarClock, Loader2, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,9 @@ import { communityId, useCommunityId } from "@/community/lib/community";
 import { useMinyanCategories, useMinyanim, type MinyanOverrideRow } from "@community/lib/data";
 import { DAY_TYPE_LABEL, jerusalemDateKey } from "@community/lib/minyan-time";
 import { hebrewError } from "@community/lib/hebrewError";
+import { useDeleteRow } from "@community/lib/admin";
+import { Collapsible } from "./Collapsible";
+import { AdminError, SaveButton } from "./adminUi";
 
 /** Today and the next fortnight: far enough to plan, near enough to mean it. */
 const HORIZON_DAYS = 14;
@@ -72,26 +75,7 @@ export function MinyanOverridesAdmin() {
   const [time, setTime] = useState("");
   const [cancelled, setCancelled] = useState(false);
   const [note, setNote] = useState("");
-  // Folds down to its title line, and stays as it was left: most days the
-  // timetable is the whole job, and this form is the rest of the page.
-  const [open, setOpen] = useState(() => {
-    try {
-      return localStorage.getItem(OPEN_KEY) !== "0";
-    } catch {
-      return true;
-    }
-  });
-  const toggle = () =>
-    setOpen((was) => {
-      try {
-        localStorage.setItem(OPEN_KEY, was ? "0" : "1");
-      } catch {
-        /* private mode: it simply is not remembered */
-      }
-      return !was;
-    });
-
-  const { data: overrides = [], isLoading } = useQuery({
+  const { data: overrides = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["minyan-overrides-admin", community],
     enabled: Boolean(community),
     queryFn: async (): Promise<MinyanOverrideRow[]> => {
@@ -135,7 +119,7 @@ export function MinyanOverridesAdmin() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("השינוי נשמר ליום הזה בלבד");
+      toast.success("נשמר", { description: "השינוי נשמר ליום הזה בלבד" });
       setTime("");
       setCancelled(false);
       setNote("");
@@ -144,16 +128,9 @@ export function MinyanOverridesAdmin() {
     onError: (e: Error) => toast.error(hebrewError(e, "הפעולה נכשלה")),
   });
 
-  const remove = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("minyan_overrides").delete().eq("id", id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("השינוי בוטל - המניין חוזר ללוח הרגיל");
-      refresh();
-    },
-    onError: (e: Error) => toast.error(hebrewError(e, "הפעולה נכשלה")),
+  // The board and the website read their own copy ("minyan-overrides"): both are refreshed.
+  const remove = useDeleteRow("minyan_overrides", ["minyan-overrides-admin", "minyan-overrides"], {
+    description: "המניין חוזר ללוח הרגיל",
   });
 
   // A row that changes nothing is a row somebody will later read as meaning
@@ -162,35 +139,21 @@ export function MinyanOverridesAdmin() {
   const canSave = Boolean(minyanId) && Boolean(date) && saysSomething && !save.isPending;
 
   return (
-    <section className="card-elev space-y-4 p-4 sm:p-5" data-testid="minyan-overrides">
-      <header>
-        <button
-          type="button"
-          onClick={toggle}
-          aria-expanded={open}
-          className="flex w-full items-center gap-2 text-right"
-        >
-          <CalendarClock className="size-4 shrink-0" />
-          <h3 className="text-base font-semibold">שינוי ליום אחד</h3>
-          {!open && overrides.length > 0 && (
-            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-              {overrides.length === 1 ? "שינוי קרוב אחד" : `${overrides.length} שינויים קרובים`}
-            </span>
-          )}
-          <span className="ms-auto flex items-center gap-1 text-xs text-muted-foreground">
-            {open ? "מזעור" : "פתיחה"}
-            <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
-          </span>
-        </button>
-        {open && (
-          <p className="mt-1 text-sm text-muted-foreground">
+    // Folds down to its title line, and stays as it was left: most days the
+    // timetable is the whole job, and this form is the rest of the page.
+    <Collapsible
+      title="שינוי ליום אחד"
+      icon={CalendarClock}
+      rememberKey={OPEN_KEY}
+      defaultOpen
+      testId="minyan-overrides"
+      summary={
+        overrides.length > 0 ? (overrides.length === 1 ? "שינוי קרוב אחד" : `${overrides.length} שינויים קרובים`) : undefined
+      }
+    >
+          <p className="text-sm text-muted-foreground">
             להזיז או לבטל מניין ביום מסוים, בלי לשנות את הלוח הקבוע. אחרי אותו יום הכול חוזר מעצמו.
           </p>
-        )}
-      </header>
-
-      {open && (
-        <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="lg:col-span-2">
               <Label className="text-sm">המניין</Label>
@@ -269,14 +232,7 @@ export function MinyanOverridesAdmin() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button disabled={!canSave} onClick={() => save.mutate()}>
-              {save.isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                <Plus className="size-4" />
-              )}
-              שמירת השינוי
-            </Button>
+            <SaveButton pending={save.isPending} disabled={!canSave} onClick={() => save.mutate()} />
             {minyanId && !saysSomething && (
               <p className="flex items-center gap-1.5 text-[11px] text-amber-700 dark:text-amber-400">
                 <TriangleAlert className="size-3.5" />
@@ -287,7 +243,9 @@ export function MinyanOverridesAdmin() {
 
           <div className="border-t pt-3">
             <h4 className="text-sm font-medium">שינויים קרובים</h4>
-            {isLoading ? (
+            {isError ? (
+              <AdminError what="השינויים הקרובים" onRetry={() => void refetch()} />
+            ) : isLoading ? (
               <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" /> טוען…
               </p>
@@ -325,6 +283,7 @@ export function MinyanOverridesAdmin() {
                             title: `לבטל את השינוי של „${m?.label ?? "המניין"}” ב${hebrewDay(o.on_date)}?`,
                             description: "המניין יתקיים ביום הזה כרגיל.",
                             confirmLabel: "חזרה ללוח הרגיל",
+                            destructive: false,
                           });
                           if (ok) remove.mutate(o.id);
                         }}
@@ -337,9 +296,7 @@ export function MinyanOverridesAdmin() {
               </ul>
             )}
           </div>
-        </>
-      )}
-    </section>
+    </Collapsible>
   );
 }
 

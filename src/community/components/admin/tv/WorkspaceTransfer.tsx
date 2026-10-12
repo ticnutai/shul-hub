@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { getFontEmbedCSS, toPng } from 'html-to-image';
 import { toast } from 'sonner';
-import { Button, buttonVariants } from '@/components/ui/button';
+import { Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Notice } from './Notice';
+import { SELECT_CLASS } from './editorParts';
+import { FileButton, useFileTask } from './Upload';
 import type { TvConfig } from '@/tv/config';
 import { downloadFile, exportWorkspace, importWorkspace, exportAppearance, applyAppearance, type StoreImage } from '@/tv/workspaceTransfer';
 import { uploadTvImage } from './tvAdminData';
@@ -21,19 +24,9 @@ const storeImage: StoreImage = async (blob, type) => {
  * WhatsApp, is a separate export.
  */
 export function WorkspaceTransfer({ config, onImport }: { config: TvConfig; onImport: (c: TvConfig) => void }) {
-  const [busy, setBusy] = useState(false);
+  const { busy, run } = useFileTask();
   const [incoming, setIncoming] = useState<TvConfig | null>(null);
   const [resolution, setResolution] = useState(1920);
-  const run = async (job: () => Promise<void>) => {
-    setBusy(true);
-    try {
-      await job();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'הפעולה נכשלה');
-    } finally {
-      setBusy(false);
-    }
-  };
   const picture = async () => {
     const board = [...document.querySelectorAll<HTMLElement>('.tv-frame .tv-root')].find((e) => e.getBoundingClientRect().width > 0);
     if (!board) throw new Error('פתחו את התצוגה המקדימה לפני הייצוא');
@@ -60,24 +53,17 @@ export function WorkspaceTransfer({ config, onImport }: { config: TvConfig; onIm
         <Button disabled={busy} onClick={() => run(async () => { downloadFile(await exportAppearance(config), 'עיצוב-הלוח.zip'); toast.success('קובץ העיצוב מוכן'); })}>
           ייצוא העיצוב בלבד
         </Button>
-        <Button variant="outline" disabled={busy} onClick={() => run(async () => { downloadFile(await exportWorkspace(config), 'הלוח-כולו.zip'); toast.success('קובץ הלוח מוכן'); })}>
+        <Button variant="outline" disabled={busy} onClick={() => run(async () => { downloadFile(await exportWorkspace(config), 'גיבוי-הלוח-כולו.zip'); toast.success('קובץ הלוח מוכן'); })}>
           ייצוא הלוח כולו
         </Button>
-        <label className={`${buttonVariants({ variant: 'outline' })} cursor-pointer`}>
-          {busy ? 'טוען…' : 'ייבוא מקובץ'}
-          <input
-            type="file"
-            aria-label="ייבוא חבילת לוח"
-            disabled={busy}
-            className="sr-only"
-            accept=".zip,.json"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              e.target.value = '';
-              if (f) void run(async () => setIncoming(await importWorkspace(f, storeImage)));
-            }}
-          />
-        </label>
+        <FileButton
+          label="ייבוא מקובץ"
+          ariaLabel="ייבוא חבילת לוח"
+          accept=".zip,.json"
+          busy={busy}
+          icon={<Upload className="size-4" aria-hidden />}
+          onFiles={([f]) => void run(async () => setIncoming(await importWorkspace(f, storeImage)))}
+        />
       </div>
 
       {incoming && (
@@ -100,7 +86,7 @@ export function WorkspaceTransfer({ config, onImport }: { config: TvConfig; onIm
 
       <h3 className="pt-2 font-semibold">תמונה של הלוח</h3>
       <div className="flex flex-wrap items-center gap-2">
-        <select aria-label="איכות התמונה" className="h-10 rounded-md border bg-background px-2 text-sm" value={resolution} onChange={(e) => setResolution(Number(e.target.value))}>
+        <select aria-label="איכות התמונה" className={SELECT_CLASS} value={resolution} onChange={(e) => setResolution(Number(e.target.value))}>
           <option value={1920}>רגילה (רוחב 1920 נקודות)</option>
           <option value={3840}>גבוהה מאוד (רוחב 3840 נקודות)</option>
         </select>

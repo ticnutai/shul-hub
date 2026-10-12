@@ -1,4 +1,5 @@
-import { useLayoutEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { usePointerDrag } from "@/tv/usePointerDrag";
 import { ChevronDown, Columns2, LayoutGrid, Maximize2, RotateCw } from "lucide-react";
 import { DEVICE_ORDER, DEVICES, viewportOf, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { Button } from "@/components/ui/button";
@@ -196,30 +197,19 @@ function ResizeHandles({
   onResize: (size: { width: number; height: number }) => void;
   onReset?: () => void;
 }) {
-  const start = useRef<{ edge: Edge; x: number; y: number; w: number; h: number } | null>(null);
-  const down = (edge: Edge) => (e: PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    start.current = { edge, x: e.clientX, y: e.clientY, w: width, h: height };
-    e.currentTarget.setPointerCapture(e.pointerId);
-    document.body.style.userSelect = "none";
-  };
-  const move = (e: PointerEvent<HTMLDivElement>) => {
-    const s = start.current;
-    if (!s) return;
-    const dx = e.clientX - s.x;
-    const dy = e.clientY - s.y;
-    const byWidth = s.edge.includes("e") ? s.w + dx * 2 : s.edge.includes("w") ? s.w - dx * 2 : null;
-    const byHeight = s.edge.includes("s") ? s.h + dy : s.edge.includes("n") ? s.h - dy : null;
-    const h = Math.max(120, Math.max(byHeight ?? 0, byWidth !== null ? byWidth * ratio : 0));
-    onResize({ width: h / ratio, height: h });
-  };
-  const up = (e: PointerEvent<HTMLDivElement>) => {
-    start.current = null;
-    document.body.style.userSelect = "";
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
-  };
+  const drag = usePointerDrag<Edge, { edge: Edge; w: number; h: number }>({
+    start: (edge, e) => {
+      // A handle's press is the handle's, not the board's (editing on the board listens under it).
+      e.stopPropagation();
+      return { edge, w: width, h: height };
+    },
+    move: (s, { dx, dy }) => {
+      const byWidth = s.edge.includes("e") ? s.w + dx * 2 : s.edge.includes("w") ? s.w - dx * 2 : null;
+      const byHeight = s.edge.includes("s") ? s.h + dy : s.edge.includes("n") ? s.h - dy : null;
+      const h = Math.max(120, Math.max(byHeight ?? 0, byWidth !== null ? byWidth * ratio : 0));
+      onResize({ width: h / ratio, height: h });
+    },
+  });
   return (
     <>
       {EDGES.map((h) => (
@@ -231,10 +221,7 @@ function ResizeHandles({
           data-resize={h.edge}
           className="tv-resize-handle"
           style={{ position: "absolute", zIndex: 5, cursor: h.cursor, touchAction: "none", ...h.style }}
-          onPointerDown={down(h.edge)}
-          onPointerMove={move}
-          onPointerUp={up}
-          onPointerCancel={up}
+          {...drag(h.edge)}
           onDoubleClick={onReset}
         />
       ))}

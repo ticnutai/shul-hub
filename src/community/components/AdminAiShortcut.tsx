@@ -3,13 +3,15 @@ import { Sparkles } from "lucide-react";
 import { useAuth } from "@community/lib/use-auth";
 import { useAdminButtons } from "@community/lib/adminButtons";
 import { FloatingDraggable } from "./FloatingDraggable";
+import { HEADER_ICON_BUTTON } from "./headerIconButton";
 
 /**
- * The admin's smart assistant (✨), on every page of the site and the phone
- * app but the admin page itself - shown only to a signed-in admin (the
+ * The gabbai's smart assistant (✨), on every page of the site and the phone
+ * app but the admin page itself - shown only to a signed-in gabbai (the
  * assistant checks the role again on its own). A round button floating in
- * the corner, above "הוספה מהירה" when that floats too, or a small one in
- * the top bar - as he chose in the site's settings (adminButtons).
+ * the corner, above "הוספה מהירה" when that floats too (both are placed by
+ * AdminFloatingButtons), or a small one in the top bar - as he chose in the
+ * site's settings (adminButtons).
  */
 export function AdminAiShortcut({ placement = "floating" }: { placement?: "floating" | "header" }) {
   const { isAdmin } = useAuth();
@@ -21,10 +23,10 @@ export function AdminAiShortcut({ placement = "floating" }: { placement?: "float
     return (
       <Link
         to="/community/admin?tab=ai"
-        aria-label="עוזר חכם למנהל"
+        aria-label="עוזר חכם לגבאי"
         title="עוזר חכם"
         data-testid="admin-ai-header"
-        className="inline-flex size-9 items-center justify-center rounded-full border border-amber-400/45 bg-amber-400/10 text-amber-300 transition hover:bg-amber-400/20 hover:text-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        className={HEADER_ICON_BUTTON}
       >
         <Sparkles className="size-5" aria-hidden="true" />
       </Link>
@@ -37,7 +39,7 @@ export function AdminAiShortcut({ placement = "floating" }: { placement?: "float
     >
       <Link
         to="/community/admin?tab=ai"
-        aria-label="עוזר חכם למנהל"
+        aria-label="עוזר חכם לגבאי"
         title="עוזר חכם - אפשר לגרור למקום אחר"
         data-testid="admin-ai-shortcut"
         draggable={false}

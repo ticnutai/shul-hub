@@ -71,6 +71,12 @@ export interface SavedDesign {
   colours: Partial<Record<ThemeVar, string>>;
   /** Its parts' settings, as a TvConfig carries them. */
   values: Partial<TvConfig>;
+  /**
+   * The occasion it was made for (occasionDesign.ts): edited through that
+   * occasion's page, and not offered among "הערכות שלי" beside the kits the
+   * gabbai saved himself.
+   */
+  occasion?: string;
 }
 
 export const MAX_DESIGNS = 40;
@@ -223,6 +229,7 @@ export function normalizeDesigns(raw: unknown, normalize: (raw: unknown) => TvCo
       theme: typeof r.theme === "string" ? r.theme.slice(0, 40) : "navy",
       colours,
       values,
+      ...(typeof r.occasion === "string" && r.occasion ? { occasion: r.occasion.slice(0, 80) } : {}),
     });
   }
   return out;

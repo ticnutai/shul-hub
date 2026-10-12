@@ -1,50 +1,49 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { TvConfig } from '@/tv/config';
 import { importElementSet, exportElementSet, MAX_ELEMENTS } from '@/tv/elements';
-import { loadSharedCatalog, type SharedCatalog } from '@/tv/sharedCatalog';
+import { useSharedCatalog, type SharedCatalog } from '@/tv/sharedCatalog';
 import { CATALOG_CATEGORIES, catalogCategory, type CatalogCategory } from '@/tv/catalogCategories';
 import { SELECT_CLASS } from './editorParts';
 import { PartGrid, PartTile } from './GalleryTile';
+import { Notice } from './Notice';
 
 const PAGE = 12;
+
+/** The shared catalogue did not load: one note, the same in the library of kits and of parts, with a retry. */
+export function CatalogNotice({ onRetry }: { onRetry: () => void }) {
+  return (
+    <Notice
+      variant="error"
+      role="alert"
+      actions={
+        <Button type="button" variant="outline" size="sm" className="h-7 px-2" onClick={onRetry}>
+          ניסיון נוסף
+        </Button>
+      }
+    >
+      לא ניתן לטעון את האוסף המשותף. הלוח והערכות שלכם לא השתנו.
+    </Notice>
+  );
+}
 
 /**
  * The parts of the shared catalogue - every kit's parts, and parts that stand
  * alone - offered to any board. Read-only: opening it never saves or changes
  * a board; adding a part changes the draft only. (The kits of the catalogue
- * are offered in the design tab's library of kits, DesignLibrary.)
+ * are offered in the design tab's library of kits, DesignLibrary; both read
+ * the catalogue through useSharedCatalog.)
  */
-export function SharedCatalogLibrary({ config, onEdit, onSelect, includeStandalone = true }: {
+export function SharedCatalogLibrary({ config, onEdit, onSelect }: {
   config: TvConfig;
-  includeStandalone?: boolean;
   onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void;
   onSelect?: (ids: string[]) => void;
 }) {
-  const [catalog, setCatalog] = useState<SharedCatalog>();
-  const [error, setError] = useState(false);
+  const { catalog, error, retry } = useSharedCatalog();
   const [search, setSearch] = useState('');
   const [source, setSource] = useState('standalone');
   const [limit, setLimit] = useState(PAGE);
-  const [attempt, setAttempt] = useState(0);
   const [category, setCategory] = useState<CatalogCategory>('הכול');
-
-  useEffect(() => {
-    let active = true;
-    setError(false);
-    loadSharedCatalog(attempt > 0)
-      .then((c) => {
-        if (!active) return;
-        setCatalog(c);
-        if (!includeStandalone) setSource(c.designs.find((d) => c.parts.some((p) => p.designId === d.id))?.id ?? '');
-      })
-      .catch(() => {
-        if (active) setError(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [attempt, includeStandalone]);
 
   const categoryDesigns = catalog?.designs.filter((d) => category === 'הכול' || catalogCategory(d) === category) ?? [];
   const parts = catalog?.parts.filter((p) => p.designId === source && p.name.includes(search.trim())) ?? [];
@@ -56,9 +55,9 @@ export function SharedCatalogLibrary({ config, onEdit, onSelect, includeStandalo
     setSearch('');
     setLimit(PAGE);
     setSource(
-      next === 'הכול' && includeStandalone
+      next === 'הכול'
         ? 'standalone'
-        : catalog.designs.find((d) => (next === 'הכול' || catalogCategory(d) === next) && catalog.parts.some((p) => p.designId === d.id))?.id ?? '',
+        : catalog.designs.find((d) => catalogCategory(d) === next && catalog.parts.some((p) => p.designId === d.id))?.id ?? '',
     );
   };
 
@@ -72,14 +71,7 @@ export function SharedCatalogLibrary({ config, onEdit, onSelect, includeStandalo
     <div className="space-y-3" dir="rtl">
       <p className="text-[11px] text-muted-foreground">הנושאים מסננים את האוסף בלבד; כל חלק אפשר להוסיף בכל יום.</p>
       {!catalog && !error && <p role="status" className="text-sm text-muted-foreground">טוען את האוסף המשותף…</p>}
-      {error && (
-        <p role="alert" className="text-sm">
-          לא ניתן לטעון את האוסף המשותף. הלוח לא השתנה.{' '}
-          <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => setAttempt((a) => a + 1)}>
-            ניסיון נוסף
-          </Button>
-        </p>
-      )}
+      {error && <CatalogNotice onRetry={retry} />}
       {catalog && (
         <>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
@@ -103,7 +95,7 @@ export function SharedCatalogLibrary({ config, onEdit, onSelect, includeStandalo
                   setLimit(PAGE);
                 }}
               >
-                {includeStandalone && (category === 'הכול' || source === 'standalone') && <option value="standalone">חלקים עצמאיים מהאוסף</option>}
+                {(category === 'הכול' || source === 'standalone') && <option value="standalone">חלקים עצמאיים מהאוסף</option>}
                 {categoryDesigns
                   .filter((d) => catalog.parts.some((p) => p.designId === d.id))
                   .map((d) => (

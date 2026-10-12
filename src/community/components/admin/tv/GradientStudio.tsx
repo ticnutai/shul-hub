@@ -1,22 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Check, Download, Upload, X } from "lucide-react";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
   isSafeGradient,
 } from "@/tv/themes";
 import { ColourRow, Range, Segments } from "./editorParts";
+import { FileButton } from "./Upload";
 
 /**
  * Building and keeping gradients.
@@ -201,7 +192,7 @@ export function GradientStudio({
             setTouched(true);
             setAdvanced(e.target.value);
           }}
-          placeholder="linear-gradient(160deg, #0b1628 0%, #1b3054 55%, #16304f 100%)"
+          placeholder="כותבים כאן את קוד מעבר הצבעים, או מדביקים אותו"
           className={`mt-2 h-8 font-mono text-xs ${
             advanced && !isSafeGradient(advanced) ? "border-destructive" : ""
           }`}
@@ -217,6 +208,14 @@ export function GradientStudio({
 
 /* ------------------------------------------------ import / export UI -- */
 
+/**
+ * The old file of colours (צבעי בסיס, מעברי צבע and the shape of a board from
+ * the tablets' editor) - "קובץ ישן" in the tools tab's "ייבוא וייצוא", under
+ * the package of the whole board. An import asks first, from a file and from
+ * pasted text alike; it adds and never deletes. (Its export of the gradients
+ * alone is gone: nothing in the editor makes a gradient of its own but this
+ * import, and "הכול" carries them.)
+ */
 export function TransferPanel({
   onExport,
   onImport,
@@ -226,6 +225,17 @@ export function TransferPanel({
 }) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
+  const importAsked = async (body: string) => {
+    const ok = await confirmAction({
+      title: "לייבא מהקובץ?",
+      description: 'צבעי הבסיס ומעברי הצבע יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר. הכול נשאר טיוטה עד "שמור ושדר".',
+      confirmLabel: "ייבוא",
+      destructive: false,
+    });
+    if (!ok) return false;
+    onImport(body);
+    return true;
+  };
   return (
     <div className="space-y-3">
       <div className="space-y-1.5">
@@ -237,7 +247,6 @@ export function TransferPanel({
             [
               ["all", "הכול + מבנה הלוח"],
               ["themes", "צבעי בסיס"],
-              ["gradients", "מעברי צבע"],
             ] as const
           ).map(([what, label]) => (
             <Button
@@ -262,27 +271,19 @@ export function TransferPanel({
       </div>
 
       <div className="space-y-1.5">
-        <div className="text-xs font-medium text-muted-foreground">ייבוא</div>
+        <div className="text-xs font-medium text-muted-foreground">ייבוא קובץ ישן</div>
         <p className="text-xs text-muted-foreground">
           קובץ מעורך לוחות הברית מביא גם את מבנה הלוח: קשת או פינות, רקע, מרווחים, גודל טקסט ושם
           בית הכנסת. הכול נכנס לטיוטה עד "שמור ושדר".
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="outline" asChild>
-            <label className="cursor-pointer">
-              <Upload className="size-4" /> בחירת קובץ
-              <input
-                type="file"
-                accept="application/json,.json"
-                className="sr-only"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file) onImport(await file.text());
-                  e.target.value = "";
-                }}
-              />
-            </label>
-          </Button>
+          <FileButton
+            label="ייבוא קובץ ישן"
+            ariaLabel="ייבוא קובץ ישן של צבעים"
+            accept="application/json,.json"
+            icon={<Upload className="size-4" aria-hidden />}
+            onFiles={async ([file]) => void importAsked(await file.text())}
+          />
           <Button type="button" size="sm" variant="ghost" onClick={() => setOpen((v) => !v)}>
             {open ? <X className="size-4" /> : null} {open ? "סגירה" : "או הדבקת טקסט"}
           </Button>
@@ -295,36 +296,12 @@ export function TransferPanel({
               onChange={(e) => setText(e.target.value)}
               rows={4}
               aria-label="תוכן הקובץ לייבוא"
-              placeholder='{"kind":"shul-hub-tv-design", …}'
+              placeholder="מדביקים כאן את כל התוכן של הקובץ"
               className="w-full rounded-md border bg-background p-2 font-mono text-xs"
             />
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button type="button" size="sm" disabled={!text.trim()}>
-                  ייבוא
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent dir="rtl">
-                <AlertDialogHeader>
-                  <AlertDialogTitle>לייבא מהקובץ?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    צבעי הבסיס ומעברי הצבע יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
-                    הכול נשאר טיוטה עד "שמור ושדר".
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>ביטול</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => {
-                      onImport(text);
-                      setText("");
-                    }}
-                  >
-                    ייבוא
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            <Button type="button" size="sm" disabled={!text.trim()} onClick={async () => { if (await importAsked(text)) setText(""); }}>
+              ייבוא
+            </Button>
           </div>
         )}
       </div>

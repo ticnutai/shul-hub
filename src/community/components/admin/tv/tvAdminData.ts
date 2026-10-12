@@ -16,9 +16,9 @@ import { communityId } from "@/community/lib/community";
 export const tvDb = typedClient as unknown as SupabaseClient;
 
 /** 2.5 missed heartbeats (every 60 s) before a screen counts as disconnected. */
-export const OFFLINE_AFTER_MS = 150_000;
+const OFFLINE_AFTER_MS = 150_000;
 
-export interface TvDeviceState {
+interface TvDeviceState {
   slideId?: string | null;
   slideKind?: string | null;
   slideIndex?: number;
@@ -289,7 +289,7 @@ export function useTvConfig() {
 
 /* ------------------------------------------------------------- versions -- */
 
-export interface TvConfigVersion {
+interface TvConfigVersion {
   id: string;
   /** When this version was saved (it stood on the screens from then). */
   saved_at: string;
@@ -363,7 +363,7 @@ export function useTvEvents(days: number) {
   return query;
 }
 
-export interface UploadedTvImage {
+interface UploadedTvImage {
   url: string;
   /** Set when the picture is too small to be sharp on the TV. */
   lowRes: { width: number; height: number } | null;

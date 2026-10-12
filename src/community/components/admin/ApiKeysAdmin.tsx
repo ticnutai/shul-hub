@@ -2,18 +2,22 @@ import { useState } from "react";
 import { CheckCircle2, KeyRound, Loader2, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { SaveButton, useFocusTarget } from "./adminUi";
 import { checkApiKey, useAccountApiKey, useApiKeyActions } from "@community/lib/apiKeys";
 import { getPersonalKey, maskKey, setPersonalKey } from "@community/lib/aiIntakeDirect";
 import { hebrewError } from "@community/lib/hebrewError";
-import { confirmAction } from "@/components/ConfirmDialog";
+import { confirmDelete } from "@community/lib/admin";
 
 /**
- * "מפתח API": the gabbai's Claude key, kept with his account - entered once,
- * there on every device he signs in on, replaced or deleted here. It is what
- * "עוזר חכם" reads photos and dictation with, billed to his own Anthropic
- * account.
+ * The assistant's key: the gabbai's Claude key, kept with his account -
+ * entered once, there on every device he signs in on, replaced or deleted
+ * here. It is what "עוזר חכם" reads photos and dictation with, billed to his
+ * own Anthropic account. A panel of the assistant's section (it was a
+ * section of its own, "מפתח API"; an old link to it lands here, ?focus=key).
  */
 export function ApiKeysAdmin() {
+  const focusRef = useFocusTarget<HTMLDivElement>("key");
   const { data: key, isLoading } = useAccountApiKey();
   const actions = useApiKeyActions();
   const [draft, setDraft] = useState("");
@@ -34,7 +38,9 @@ export function ApiKeysAdmin() {
       }
       setDraft("");
       setReplacing(false);
-      toast.success(fromBrowser ? "המפתח עבר לחשבון - מעכשיו הוא זמין בכל מכשיר" : "המפתח נשמר בחשבון");
+      toast.success("נשמר", {
+        description: fromBrowser ? "המפתח עבר לחשבון - מעכשיו הוא זמין בכל מכשיר" : "המפתח שמור בחשבון",
+      });
     } catch (e) {
       toast.error(hebrewError(e, "השמירה נכשלה"));
     } finally {
@@ -45,10 +51,10 @@ export function ApiKeysAdmin() {
   const showForm = !key || replacing;
 
   return (
-    <div className="card-elev max-w-2xl space-y-4 p-5" dir="rtl" data-testid="api-keys">
+    <div ref={focusRef} id="assistant-key" className="card-elev max-w-2xl scroll-mt-24 space-y-4 p-5" dir="rtl" data-testid="api-keys">
       <div className="flex items-center gap-2">
         <KeyRound className="size-5 text-primary" />
-        <h2 className="text-lg font-semibold">המפתח של העוזר החכם</h2>
+        <h3 className="text-lg font-semibold">המפתח של העוזר החכם</h3>
       </div>
       <p className="text-sm text-muted-foreground">
         המפתח שאיתו "עוזר חכם" קורא תמונות, הקלטות והודעות. מכניסים אותו פעם אחת והוא נשמר בחשבון שלכם - זמין בכל מחשב
@@ -93,15 +99,11 @@ export function ApiKeysAdmin() {
                   size="sm"
                   variant="ghost"
                   onClick={async () => {
-                    const ok = await confirmAction({
-                      title: "למחוק את המפתח מהחשבון?",
-                      description: "העוזר החכם לא יעבוד עד שתכניסו מפתח שוב.",
-                      confirmLabel: "מחיקה",
-                    });
+                    const ok = await confirmDelete("המפתח", maskKey(key), "העוזר החכם לא יעבוד עד שתכניסו מפתח שוב.");
                     if (!ok) return;
                     try {
                       await actions.remove();
-                      toast.success("המפתח נמחק מהחשבון");
+                      toast.success("נמחק");
                     } catch (e) {
                       toast.error(hebrewError(e, "המחיקה נכשלה"));
                     }
@@ -144,7 +146,7 @@ export function ApiKeysAdmin() {
                 {key ? "מפתח חדש במקום הקיים" : "הדביקו כאן את המפתח"}
               </label>
               <div className="flex gap-2">
-                <input
+                <Input
                   id="claude-key"
                   type="password"
                   autoComplete="off"
@@ -154,11 +156,9 @@ export function ApiKeysAdmin() {
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="sk-ant-..."
                   aria-label="המפתח של העוזר החכם"
-                  className="h-9 flex-1 rounded-md border bg-background px-2 text-sm"
+                  className="flex-1"
                 />
-                <Button type="submit" size="sm" className="h-9" disabled={busy || !draft.trim()}>
-                  שמירה
-                </Button>
+                <SaveButton pending={busy} disabled={!draft.trim()} />
               </div>
               <p className="text-xs text-muted-foreground">
                 את המפתח יוצרים באתר של חברת אנתרופיק, בחשבון שלכם, בעמוד המפתחות (שם הוא נקרא <bdi dir="ltr">API Keys</bdi>). הוא מתחיל ב-<bdi dir="ltr">sk-ant-</bdi>.

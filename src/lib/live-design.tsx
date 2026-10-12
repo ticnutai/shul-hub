@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VisualColorPicker } from "@/components/VisualColorPicker";
 import { useTheme } from "@/contexts/ThemeContext";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 type Scope = "element" | "component" | "global";
 type Override = {
@@ -455,8 +456,17 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
     setSelected(null);
   };
 
-  const clear = () => {
-    if (!overrides.length || !window.confirm("למחוק את כל שינויי העיצוב השמורים?")) return;
+  const clear = async () => {
+    // The site's one "בטוח?" window (ConfirmDialog), not the browser's own box.
+    if (
+      !overrides.length ||
+      !(await confirmAction({
+        title: "למחוק את כל שינויי העיצוב השמורים?",
+        description: "אפשר לחזור צעד אחורה מיד אחרי המחיקה.",
+        confirmLabel: "מחיקה",
+      }))
+    )
+      return;
     setHistory((items) => [...items, overrides]);
     setFuture([]);
     setOverrides([]);
@@ -817,7 +827,7 @@ export function LiveDesignProvider({ children }: { children: ReactNode }) {
                     size="sm"
                     variant="destructive"
                     disabled={!overrides.length}
-                    onClick={clear}
+                    onClick={() => void clear()}
                   >
                     <RotateCcw className="size-4" /> איפוס הכול
                   </Button>

@@ -113,8 +113,8 @@ const BRAID = svg(
 );
 
 export const FRAME_PICTURES: FramePicture[] = [
-  {id:'silver-acanthus',name:'כסף וזהב — גילופי עלים',url:'/new-shul-assets/catalog-silver-acanthus-frame.png',slice:20,width:3},
-  {id:'walnut-vine',name:'אגוז וברונזה — ענפי גפן',url:'/new-shul-assets/catalog-walnut-vine-frame.png',slice:20,width:3},
+  {id:'silver-acanthus',name:'כסף וזהב - גילופי עלים',url:'/new-shul-assets/catalog-silver-acanthus-frame.png',slice:20,width:3},
+  {id:'walnut-vine',name:'אגוז וברונזה - ענפי גפן',url:'/new-shul-assets/catalog-walnut-vine-frame.png',slice:20,width:3},
   { id: "gold-ornate", name: "זהב מעוטר", url: goldOrnate, slice: 32, width: 3 },
   { id: "carved-wood", name: "עץ מגולף", url: carvedWood, slice: 24, width: 3 },
   { id: "double-gold", name: "קו כפול זהב", url: DOUBLE("#c9a227", "#f2d98a"), slice: 14, width: 1.4 },

@@ -49,7 +49,7 @@ function make(id:'luminous-ivory'|'royal-sapphire',name:string):SavedDesign {
   const divider=ivory?rect(671,468,346,47):rect(675,460,324,35);
   add('main_fill','מילוי התיבה המרכזית',[ivory?512:549,ivory?297:237,ivory?645:571,ivory?517:550],mainInner,[still,divider,clockOuter]);
   add('main_rule','עיטור מרכזי נפרד',[671,460,346,55],divider);
-  add('still','פמוטים ספר וענף — קבוצת קישוט',[565,ivory?535:511,ivory?463:542,ivory?264:268],still);
+  add('still','פמוטים ספר וענף - קבוצת קישוט',[565,ivory?535:511,ivory?463:542,ivory?264:268],still);
   add('main_frame','מסגרת מרכזית מהמקור',[ivory?512:549,ivory?297:237,ivory?645:571,ivory?517:550],mainOuter,[mainInner,clockOuter]);
   if(ivory){
     const outer=round(518,189,637,106,46),inner=round(539,205,593,76,26);

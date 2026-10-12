@@ -1,49 +1,48 @@
 /**
  * The content tab: a slideshow of pictures, the running ticker, and the reminders and countdowns.
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
+ * Everything here reads `scoped` - the board as the screen, page or occasion being worked on has
+ * it - which is where the edits go too: what is shown is what is changed.
  */
-import { ImagePlus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import type { TvConfig } from "@/tv/config";
 import { AlertsSettings, type AlertExample } from "./AlertsSettings";
-import { Section, Stepper } from "./editorParts";
+import { Section, Stepper, SwitchRow } from "./editorParts";
+import { FileButton, useUpload } from "./Upload";
 
-export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertExample }: {
-  draft: TvConfig;
+export function ContentTab({ scoped, edit, showAlertExample }: {
   scoped: TvConfig;
   edit: (key: string, update: (c: TvConfig) => TvConfig) => void;
-  uploading: boolean;
-  upload: (files: FileList | null) => Promise<void>;
   showAlertExample: (what?: AlertExample) => void;
 }) {
+  const { uploading, upload } = useUpload();
+  const addPictures = (files: File[]) =>
+    upload(files, (urls) => {
+      edit("show", (c) => ({
+        ...c,
+        slideshow: { ...c.slideshow, images: [...c.slideshow.images, ...urls.map((url) => ({ url }))] },
+        slides: c.slides.map((s) => (s.kind === "slideshow" ? { ...s, enabled: true } : s)),
+      }));
+      toast.success(urls.length > 1 ? `${urls.length} תמונות הועלו` : "התמונה הועלתה");
+    });
   return (
     <>
       <Section
         title="מצגת תמונות"
-        hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף לשמור כתמונה בלי דחיסה (קובץ שהסיומת שלו png), כדי שהאותיות יישארו חדות."
+        hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כמסך נפרד. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף לשמור כתמונה בלי דחיסה (כשמורידים אותה, לבחור &quot;איכות מלאה&quot; ולא &quot;דחוסה&quot;), כדי שהאותיות יישארו חדות."
       >
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
-            <label className="cursor-pointer">
-              <ImagePlus className="size-4" /> {uploading ? "מעלה…" : "הוספת תמונות"}
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="sr-only"
-                onChange={(e) => void upload(e.target.files)}
-              />
-            </label>
-          </Button>
+          <FileButton label="הוספת תמונות" multiple busy={uploading} onFiles={(files) => void addPictures(files)} />
           <span className="flex items-center gap-2 text-sm">
             זמן לתמונה:
             <Stepper
               label="זמן לתמונה"
-              value={draft.slideshow.secondsPerImage}
+              value={scoped.slideshow.secondsPerImage}
               min={3}
               max={60}
               step={1}
@@ -57,9 +56,9 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
             />
           </span>
         </div>
-        {draft.slideshow.images.length > 0 && (
+        {scoped.slideshow.images.length > 0 && (
           <ul className="grid gap-2 sm:grid-cols-2">
-            {draft.slideshow.images.map((img, i) => (
+            {scoped.slideshow.images.map((img, i) => (
               <li key={img.url + i} className="flex items-center gap-2 rounded-lg border p-2">
                 <img src={img.url} alt="" className="h-12 w-20 shrink-0 rounded object-cover" />
                 <Input
@@ -112,16 +111,12 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
         title="סרגל הודעה רץ"
         hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (כ-45%) כל עוד הסרגל פעיל."
       >
-        <label className="flex items-center gap-3">
-          <Switch
-            checked={scoped.ticker.enabled}
-            onCheckedChange={(on) =>
-              edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))
-            }
-            aria-label="סרגל ההודעה מוצג בלוח"
-          />
-          סרגל ההודעה מוצג בלוח
-        </label>
+        <SwitchRow
+          label="סרגל ההודעה מוצג בלוח"
+          ariaLabel="סרגל ההודעה מוצג בלוח"
+          checked={scoped.ticker.enabled}
+          onChange={(on) => edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))}
+        />
         <Textarea
           value={scoped.ticker.text}
           maxLength={400}
@@ -136,7 +131,7 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
         title="תזכורות וספירה לאחור"
         hint="תזכורות לפני סוף זמן קריאת שמע, סוף זמן תפילה, שקיעה ועוד: מתי הן מופיעות, באילו שלבים, ואיך הן נראות - צבעים, צורה, גודל ומיקום. ובסוף - ספירה לתפילה הבאה."
       >
-        <AlertsSettings config={draft} countdown={scoped.countdown.enabled} edit={edit} onExample={showAlertExample} />
+        <AlertsSettings config={scoped} countdown={scoped.countdown.enabled} edit={edit} onExample={showAlertExample} />
       </Section>
     </>
   );

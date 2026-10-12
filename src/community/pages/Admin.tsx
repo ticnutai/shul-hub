@@ -1,8 +1,8 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminButtonsSettings } from "@community/components/admin/AdminButtonsSettings";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
-import { Building2, LayoutGrid, LogOut, Rows3, ShieldAlert } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { lazy, Suspense, useEffect } from "react";
+import { Building2, LayoutGrid, List, LogOut, ShieldAlert } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,17 +23,16 @@ import { AppDownloadsAdmin } from "@community/components/admin/AppDownloadsAdmin
 import { useIsStoreApp } from "@/lib/storeApp";
 import { AiIntakeAdmin } from "@community/components/admin/AiIntakeAdmin";
 import { ApiKeysAdmin } from "@community/components/admin/ApiKeysAdmin";
-import { QuickAddButton } from "@community/components/QuickAddButton";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
 import { useAdminMessages } from "@community/lib/data";
 import { CommunitySwitcher, ShulNow } from "@/community/components/admin/CommunitySwitcher";
-import { listMyCommunities } from "@/community/lib/community";
 import { CommunitiesAdmin } from "@/community/components/admin/CommunitiesAdmin";
 import { SilentScreensAlert } from "@community/components/admin/tv/SilentScreensAlert";
 import { AdminTiles } from "@community/components/admin/AdminTiles";
-import { ADMIN_SECTIONS } from "@community/lib/adminSections";
+import { ADMIN_SECTIONS, SECTION_ALIASES, type AdminSection } from "@community/lib/adminSections";
 import { useAdminLayout } from "@community/lib/adminLayout";
+import { confirmLeave } from "@community/lib/unsavedChanges";
 
 // Loaded only when the tab is opened: it brings the whole TV board with it.
 const TvAdmin = lazy(() => import("@community/components/admin/tv/TvAdmin"));
@@ -45,44 +44,40 @@ export function AdminPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const qc = useQueryClient();
 
-  // "הגדרות" is gone: the synagogue's details moved to its window under
-  // "בתי כנסת", the site header and themes to "תצוגת דף הבית". An old link
-  // or bookmark to it lands where the details are now.
-  const requestedTab = searchParams.get("tab") === "settings" ? "communities" : searchParams.get("tab");
   // The app from Google Play has no TV boards (storeApp.ts): run from the website.
   const storeApp = useIsStoreApp();
-  const activeTab = [
-    "minyanim", "announcements", "shiurim", "chavrutot", "chavruta-requests",
-    "messages", "widgets", "users", "data", "qr", "ai", "api", "communities",
-    ...(storeApp ? [] : ["apps", "tv"]),
-  ].includes(requestedTab ?? "") ? (requestedTab ?? "minyanim") : "minyanim";
+  // One list of the sections (adminSections.ts): the tabs, the phone's list
+  // and the tiles all read it, and which tabs are valid comes from it too.
+  const sections = ADMIN_SECTIONS.filter((section) => !storeApp || section.value !== "tv");
+
+  // A section that was merged into another (an old link or bookmark to
+  // "מפתח API", "קודי QR", "הגדרות"…) opens the one it is part of now, on
+  // the panel it became there.
+  const requested = searchParams.get("tab") ?? "";
+  const alias = SECTION_ALIASES[requested];
+  useEffect(() => {
+    if (!alias) return;
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", alias.tab);
+    if (alias.focus) next.set("focus", alias.focus);
+    setSearchParams(next, { replace: true });
+  }, [alias, searchParams, setSearchParams]);
+  const requestedTab = alias?.tab ?? requested;
+  const activeTab = sections.some((section) => section.value === requestedTab) ? requestedTab : "minyanim";
 
   const unread = messages.filter((m) => !m.is_read).length;
-  // One list of the sections (AdminTiles.tsx): the phone's list and the tiles read it.
-  const sections = ADMIN_SECTIONS.filter((section) => !storeApp || (section.value !== "apps" && section.value !== "tv"));
-  const mobileSections = sections.map((section) => ({
-    value: section.value,
-    label: section.value === "messages" && unread > 0 ? `${section.label} (${unread})` : section.label,
-  }));
+  /** A section's name, with the count of new messages beside "הודעות" - the same in every list of them. */
+  const sectionLabel = (section: AdminSection) =>
+    section.value === "messages" && unread > 0 ? `${section.label} (${unread})` : section.label;
   const { layout, setLayout } = useAdminLayout();
 
-  // Every admin has at least the synagogue they run, and its details (the
-  // address, the location, its logos) live in its window under this button.
-  // With several, or for the platform admin, it is the list of them.
-  const { data: myShuls = [] } = useQuery({
-    queryKey: ["my-communities"],
-    queryFn: listMyCommunities,
-  });
-  const { data: isPlatformAdmin = false } = useQuery({
-    queryKey: ["is-platform-admin"],
-    queryFn: async () => Boolean((await supabase.rpc("is_platform_admin")).data),
-  });
-  const manyShuls = myShuls.length > 1 || isPlatformAdmin;
-
-  function openTab(tab: string) {
+  /** Another section - after asking, when a form on this one has unsaved changes. */
+  async function openTab(tab: string) {
+    if (tab === activeTab || !(await confirmLeave())) return;
     const next = new URLSearchParams(searchParams);
     next.set("tab", tab);
     next.delete("settingsTab");
+    next.delete("focus");
     setSearchParams(next, { replace: true });
   }
 
@@ -127,14 +122,23 @@ export function AdminPage() {
         return <UsersAdmin />;
       case "data":
         return <DataExportImportAdmin />;
-      case "qr":
-        return <QrCodesAdmin />;
       case "ai":
-        return <AiIntakeAdmin />;
-      case "api":
-        return <ApiKeysAdmin />;
-      case "apps":
-        return <AppDownloadsAdmin />;
+        return (
+          <>
+            {/* The assistant, then the key it works with ("מפתח API" was a section of its own). */}
+            <AiIntakeAdmin />
+            <ApiKeysAdmin />
+          </>
+        );
+      case "share":
+        return (
+          <>
+            {/* The codes to print, then the installers ("קודי QR" and "הורדת אפליקציות" were two sections).
+                The app from Google Play installs nothing beside itself. */}
+            <QrCodesAdmin />
+            {!storeApp && <AppDownloadsAdmin />}
+          </>
+        );
       case "tv":
         return (
           <Suspense fallback={<p className="p-6 text-center text-muted-foreground">טוען את מרכז הבקרה…</p>}>
@@ -147,11 +151,14 @@ export function AdminPage() {
   }
 
   async function signOut() {
+    if (!(await confirmLeave())) return;
     await qc.cancelQueries();
     qc.clear();
     await supabase.auth.signOut();
     navigate("/auth", { replace: true });
   }
+
+  const communities = sections.find((section) => section.value === "communities");
 
   return (
     <div className="min-h-screen">
@@ -172,36 +179,40 @@ export function AdminPage() {
           </div>
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             {/* Beside the switcher rather than among the tabs: it is about all
-                the synagogues, and the tabs below are about the one chosen. */}
-            {isAdmin && (
+                the synagogues, and the tabs below are about the one chosen.
+                Not with the tiles: there it is a tile of its own, by the same name. */}
+            {isAdmin && layout === "tabs" && communities && (
               <Button
                 variant={activeTab === "communities" ? "default" : "outline"}
                 aria-pressed={activeTab === "communities"}
-                onClick={() => openTab("communities")}
+                onClick={() => void openTab("communities")}
               >
-                <Building2 className="size-4" /> {manyShuls ? "בתי כנסת" : "פרטי בית הכנסת"}
+                <Building2 className="size-4" /> {communities.label}
               </Button>
             )}
             <CommunitySwitcher />
-            {/* Two ways into the same screens (adminLayout.ts): the tabs, or tiles step by step.
+            {/* Two ways into the same screens (adminLayout.ts): a list of tabs (on a
+                phone, a list to choose from), or tiles step by step.
                 Only for a gabbai - to anyone else there are no screens to lay out. */}
             {isAdmin && (
             <div role="radiogroup" aria-label="פריסת מסך הניהול" className="flex rounded-lg border p-0.5" data-testid="admin-layout-switch">
-              {([["tabs", "לשוניות", Rows3], ["tiles", "אריחים", LayoutGrid]] as const).map(([value, label, Icon]) => (
+              {([["tabs", "רשימה", List], ["tiles", "אריחים", LayoutGrid]] as const).map(([value, label, Icon]) => (
                 <button
                   key={value}
                   type="button"
                   role="radio"
                   aria-checked={layout === value}
-                  onClick={() => setLayout(value)}
-                  className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm ${layout === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+                  onClick={async () => {
+                    if (layout !== value && (await confirmLeave())) setLayout(value);
+                  }}
+                  className={`flex min-h-11 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm sm:min-h-0 ${layout === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
                 >
                   <Icon className="size-4" aria-hidden /> {label}
                 </button>
               ))}
             </div>
             )}
-            <Button variant="outline" onClick={signOut}>
+            <Button variant="outline" onClick={() => void signOut()}>
               <LogOut className="size-4" /> יציאה
             </Button>
           </div>
@@ -228,19 +239,19 @@ export function AdminPage() {
           <Tabs
             dir="rtl"
             value={activeTab}
-            onValueChange={openTab}
+            onValueChange={(tab) => void openTab(tab)}
             className="mt-5 min-w-0 text-right sm:mt-6"
             data-focus-tight
           >
             <div className="sticky top-[var(--app-header-height,7rem)] z-20 bg-background py-2 sm:hidden" data-focus-hide>
-              <Select dir="rtl" value={activeTab} onValueChange={openTab}>
+              <Select dir="rtl" value={activeTab} onValueChange={(tab) => void openTab(tab)}>
                 <SelectTrigger aria-label="מדור ניהול" className="h-12 w-full font-semibold">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent dir="rtl" position="popper" className="max-h-[60dvh]">
-                  {mobileSections.map((section) => (
+                  {sections.map((section) => (
                     <SelectItem key={section.value} value={section.value} className="min-h-11 py-3">
-                      {section.label}
+                      {sectionLabel(section)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -257,7 +268,7 @@ export function AdminPage() {
               {sections.filter((section) => section.value !== "communities").map((section) => (
                 <TabsTrigger key={section.value} value={section.value} className="gap-1.5">
                   <section.icon className="size-4" aria-hidden />
-                  {section.value === "messages" && unread > 0 ? `${section.label} (${unread})` : section.label}
+                  {sectionLabel(section)}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -269,7 +280,8 @@ export function AdminPage() {
             ))}
           </Tabs>
         )}
-        <QuickAddButton />
+        {/* "הוספה מהירה" does not float here: every section has its own add
+            button, and the top bar keeps its small one (AdminFloatingButtons). */}
       </main>
     </div>
   );

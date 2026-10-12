@@ -44,7 +44,7 @@ for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library','d_
   await board.screenshot({path:'../outputs/'+id+'-board.png'});
   const layers=page.getByLabel('שכבות החלקים',{exact:true});
   await layers.getByRole('button',{name:greeting,exact:true}).click();
-  await page.getByLabel('מיקום אופקי',{exact:true}).fill('32');
+  const across=page.getByRole('spinbutton',{name:'מיקום אופקי',exact:true});await across.fill('32');await across.press('Enter');
   await page.getByLabel('מה כתוב בטקסט',{exact:true}).fill('חודש טוב ומבורך');
   await page.getByRole('button',{name:'שכפול החלק',exact:true}).click();
   await expect(board.locator('[data-element-id]')).toHaveCount(d.values.elements.length+1);

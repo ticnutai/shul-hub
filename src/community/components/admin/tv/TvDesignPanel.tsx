@@ -2,8 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftRight,
   Check,
+  ChevronDown,
   ExternalLink,
-  Expand,
   Columns2,
   Rows2,
   Palette,
@@ -14,13 +14,14 @@ import {
   Save,
   Undo2,
   Scaling,
-  PanelTopClose,
-  Tv,
 } from "lucide-react";
+import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useLocation } from 'react-router-dom';
 import { toast } from "sonner";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -66,11 +67,12 @@ import { type AlertExample } from "./AlertsSettings";
 import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { ContentTab } from "./ContentTab";
 import { DesignTab } from "./DesignTab";
+import { SaveKitButton } from "./DesignLibrary";
 import type { DeviceMode } from "./devices";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { draftReducer } from "./draftState";
 import { BARE_KEY, FOCUS_KEY, LAYOUT_KEY, SIDE_H_KEY, SIDE_HEIGHT_DEFAULT, SIDE_KEY, SIDE_SHARE_DEFAULT, STUDIO_CHROME, TOP_HEIGHT_DEFAULT, TOP_KEY, clampHeight, clampShare, clampSideHeight, readStored, writeStored } from "./editorLayout";
-import { ColorField, Section } from "./editorParts";
+import { ColorField, INPUT_CLASS, Section } from "./editorParts";
 import { ElementEditingProvider } from "./ElementEditingProvider";
 import { ElementTextTools } from "./ElementTextTools";
 import { type LayerProps } from "./LayerEditors";
@@ -88,7 +90,6 @@ import { TvEditInspector } from "./TvEditInspector";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
 import { useTvSlides } from "./tvPreviewData";
 import { commitRecordEdits } from "./tvRecords";
-import { uploadImages } from "./uploadImages";
 
 /**
  * Live editor for the board's look and content rotation.
@@ -544,7 +545,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80);
   };
 
-  /** "ביטול שינויים" asks inline before it throws the draft away. */
+  // A link with ?panel= (or the old ?tvTab=events) opens its tab, also on a page already open.
   useEffect(() => {
     const search=new URLSearchParams(routerLocation.search);
     const panel=search.get('panel');
@@ -552,11 +553,15 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     else if(search.get('tvTab')==='events') setTab('occasions');
   },[routerLocation.search,routerLocation.key]);
 
-  const [confirmDiscard, setConfirmDiscard] = useState(false);
-  // Saving, or an undo back to the saved design, answers the question itself.
-  useEffect(() => {
-    if (!dirty) setConfirmDiscard(false);
-  }, [dirty]);
+  /** "ביטול שינויים" asks first - the one question every throwing away asks (confirmAction). */
+  const discard = async () => {
+    const ok = await confirmAction({
+      title: "לבטל את כל השינויים שלא נשמרו?",
+      description: 'הטיוטה חוזרת למה שעל המסכים עכשיו. "צעד קדימה" (Ctrl+Y) מחזיר אותם.',
+      confirmLabel: "ביטול השינויים",
+    });
+    if (ok && saved.data) dispatch({ type: "load", config: saved.data.config });
+  };
   const [fullscreen, setFullscreen] = useState(false);
   const previewColumn = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -626,10 +631,13 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   };
 
   // Preview another moment: Shabbat, an occasion's day, any date - until the
-  // admin goes back to real time.
+  // admin goes back to real time. One control under the preview chooses the
+  // day; an occasion's eye (its row in "מועדים") shows its own.
+  const [dayPreview, setDayPreview] = useState(false);
   const [shabbatPreview, setShabbatPreview] = useState(false);
   const previewAt = (at: Date | null) => {
-    setShabbatPreview(Boolean(at));
+    setDayPreview(Boolean(at));
+    setShabbatPreview(false);
     setSimulatedNow(at);
     setPreviewIndex(0);
   };
@@ -654,14 +662,11 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     // nor a glide run in a tab that is not in front.
     window.setTimeout(() => document.querySelector("[data-board-preview]")?.scrollIntoView({ block: "center" }), 0);
   const toggleShabbatPreview = () => {
-    if (shabbatPreview) {
-      setShabbatPreview(false);
-      setSimulatedNow(null);
-      return;
-    }
+    if (shabbatPreview) return previewAt(null);
     const candle = nextCandleLighting(new Date(), board.data.settings);
     if (!candle) return toast.error("חישוב זמן הדלקת הנרות נכשל");
     previewAt(new Date(candle.getTime() + 20 * 60_000));
+    setShabbatPreview(true);
   };
 
   /* -------------------------------------------------------------- save -- */
@@ -910,28 +915,6 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     }
   };
 
-  const [uploading, setUploading] = useState(false);
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setUploading(true);
-    try {
-      const urls = await uploadImages(files);
-      edit("show", (c) => ({
-        ...c,
-        slideshow: {
-          ...c.slideshow,
-          images: [...c.slideshow.images, ...urls.map((url) => ({ url }))],
-        },
-        slides: c.slides.map((s) => (s.kind === "slideshow" ? { ...s, enabled: true } : s)),
-      }));
-      toast.success(urls.length > 1 ? `${urls.length} תמונות הועלו` : "התמונה הועלתה");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "ההעלאה נכשלה");
-    } finally {
-      setUploading(false);
-    }
-  };
-
   if (saved.isLoading)
     return <p className="p-6 text-center text-muted-foreground">טוען את עיצוב הלוח…</p>;
   if (saved.error)
@@ -973,28 +956,46 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         {/* A toggle: the way back to the draft is offered once, on the note over the preview. */}
         <ArrowLeftRight className="size-4" /> לפני / אחרי
       </Button>
-      <Button
-        type="button"
-        variant={autoplay ? "default" : "outline"}
-        size="sm"
-        aria-pressed={autoplay}
-        onClick={() => setAutoplay((a) => !a)}
-      >
-        {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
-        {autoplay ? "עצירת הסבב" : "הפעלת סבב"}
-      </Button>
-      <Button
-        type="button"
-        variant={shabbatPreview ? "default" : "outline"}
-        size="sm"
-        aria-pressed={shabbatPreview}
-        onClick={toggleShabbatPreview}
-      >
-        🕯️ {shabbatPreview ? "חזרה לזמן אמת" : "תצוגת מסך שבת"}
-      </Button>
+      {/* A board of parts turns its pages from the bar of pages ("הפעלת סבב העמודים"), not here as well. */}
+      {view.screenLayout !== "composition" && (
+        <Button
+          type="button"
+          variant={autoplay ? "default" : "outline"}
+          size="sm"
+          aria-pressed={autoplay}
+          onClick={() => setAutoplay((a) => !a)}
+        >
+          {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
+          {autoplay ? "עצירת הסבב" : "הפעלת סבב"}
+        </Button>
+      )}
+      {/* "תצוגה בתאריך": the one control for the day the preview shows - any date, or the coming Shabbat - and the way back. */}
+      <span className="flex flex-wrap items-center gap-1.5" role="group" aria-label="יום בתצוגה" data-testid="preview-date">
+        <label className="flex items-center gap-1.5 text-xs">
+          תצוגה בתאריך
+          <input
+            type="date"
+            aria-label="תצוגה בתאריך"
+            className={INPUT_CLASS}
+            value={dayPreview && simulatedNow ? jerusalemDateKey(simulatedNow) : ""}
+            onChange={(e) => {
+              previewAt(e.target.value ? new Date(Date.parse(`${e.target.value}T11:00:00+03:00`)) : null);
+              setPreviewScreen(null);
+            }}
+          />
+        </label>
+        <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} onClick={toggleShabbatPreview}>
+          🕯️ תצוגת מסך שבת
+        </Button>
+        {simulatedNow && (
+          <Button type="button" variant="ghost" size="sm" onClick={() => previewAt(null)}>
+            חזרה לזמן אמת
+          </Button>
+        )}
+      </span>
       {simulatedNow && (
         <span className="text-xs text-muted-foreground">
-          מדמה {shabbatPreview ? <><span dir="ltr">{simulatedNow.toLocaleDateString("he-IL")}</span>, </> : "את השעה "}
+          מדמה {dayPreview ? <><span dir="ltr">{simulatedNow.toLocaleDateString("he-IL")}</span>, </> : "את השעה "}
           <span dir="ltr">{simulatedNow.toTimeString().slice(0, 5)}</span>
         </span>
       )}
@@ -1043,7 +1044,6 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       : headerOffset;
 
   // Every design control, shared by the admin page and the live window's panel.
-  // "ביטול שינויים" asks first, inline (see below).
   /** The one save bar: first in every layout, and in the live window too, pinned while all else scrolls. */
   const saveBar = (
       <div
@@ -1075,34 +1075,9 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         >
           <Redo2 className="size-4" />
         </Button>
-        {confirmDiscard ? (
-          <span className="flex items-center gap-1">
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              onClick={() => {
-                setConfirmDiscard(false);
-                if (saved.data) dispatch({ type: "load", config: saved.data.config });
-              }}
-            >
-              לבטל הכול?
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setConfirmDiscard(false)}>
-              ביטול
-            </Button>
-          </span>
-        ) : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={!dirty}
-            onClick={() => setConfirmDiscard(true)}
-          >
-            ביטול שינויים
-          </Button>
-        )}
+        <Button type="button" variant="ghost" size="sm" disabled={!dirty} onClick={() => void discard()}>
+          ביטול שינויים
+        </Button>
         <span className="ms-auto text-xs text-muted-foreground">
           {dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}
         </span>
@@ -1211,7 +1186,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                 );
               }}
             >
-              ייבוא וייצוא בקובץ
+              ייבוא וייצוא
             </Button>
           </div>
         )}
@@ -1249,13 +1224,13 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="layout"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <LayoutTab draft={draft} scoped={scoped} view={view} edit={edit} openPartsList={openPartsList} composerScreen={composerScreen} setComposerScreen={setComposerScreen} setPreviewScreen={setPreviewScreen} previewAt={previewAt} />
+          <LayoutTab scoped={scoped} view={view} edit={edit} openPartsList={openPartsList} composerScreen={composerScreen} setComposerScreen={setComposerScreen} setPreviewScreen={setPreviewScreen} previewAt={previewAt} />
         </TabsContent>
         <TabsContent
           value="content"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <ContentTab draft={draft} scoped={scoped} edit={edit} uploading={uploading} upload={upload} showAlertExample={showAlertExample} />
+          <ContentTab scoped={scoped} edit={edit} showAlertExample={showAlertExample} />
         </TabsContent>
         <TabsContent
           value="tools"
@@ -1301,7 +1276,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
               <b>Alt + לחיצה</b> = לחיצה רגילה על הלוח · <b>Esc</b> = ביטול הבחירה · <b>Ctrl+S</b> = שמירה · הכול
               בטיוטה עד "שמור ושדר", ומתעדכן גם בעורך שבעמוד הניהול.
             </p>
-            <div className="flex flex-wrap items-center gap-2">{previewActions}</div>
+            <div className="flex flex-wrap items-center gap-2">
+              {previewActions}
+              <SaveKitButton config={view} onEdit={edit} />
+            </div>
             {/* A board of parts turns its pages (above the tabs), not these. */}
             {view.screenLayout !== "composition" && <SlideStrip
               slides={board.slides}
@@ -1332,9 +1310,14 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const side = layout === "side" && !fullscreen;
 
   // On the studio's own toolbar row, beside the device menu: one row above
-  // the board, not three.
+  // the board, not three. The two layouts stay in sight; the rest of how big
+  // the board is and what is around it - four buttons that took a row of
+  // their own - are in one menu, "גודל ותצוגה", each with its tick.
+  const viewItem = "cursor-pointer gap-2";
   const layoutButtons = (
     <>
+      {/* What is on the board, kept as a kit without scrolling to "ערכות" - the same form and the same save. */}
+      <SaveKitButton config={view} onEdit={edit} />
       <div className="col-span-2 hidden rounded-md border p-0.5 sm:inline-flex" role="group" aria-label="פריסת העורך">
         <Button
           type="button"
@@ -1359,46 +1342,34 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           <Rows2 className="size-4" /> תצוגה למעלה
         </Button>
       </div>
-      <Button
-        type="button"
-        variant={fullscreen ? "default" : "outline"}
-        size="sm"
-        aria-pressed={fullscreen}
-        onClick={toggleFullscreen}
-        title="התצוגה והעורך על כל המסך (Esc ליציאה)"
-      >
-        <Expand className="size-4" /> {fullscreen ? "יציאה ממסך מלא" : "מסך מלא לעריכה"}
-      </Button>
-      <Button
-        type="button"
-        variant={focus ? "default" : "outline"}
-        size="sm"
-        aria-pressed={focus}
-        onClick={() => setFocus(!focus)}
-        title="מסתיר את הסרגל של האתר ואת שורות הלשוניות שמעל העורך, כדי שכל המסך יהיה ללוח ולבקרות"
-      >
-        <PanelTopClose className="size-4" /> {focus ? "יציאה ממצב עבודה" : "מצב עבודה"}
-      </Button>
-      <Button
-        type="button"
-        variant={beforeMax ? "default" : "outline"}
-        size="sm"
-        aria-pressed={Boolean(beforeMax)}
-        onClick={toggleMax}
-        title="הלוח בגודל הגדול ביותר שנכנס; לחיצה נוספת מחזירה לגודל הקודם"
-      >
-        <Scaling className="size-4" /> {beforeMax ? "חזרה לגודל הקודם" : "הגדלה למקסימום"}
-      </Button>
-      <Button
-        type="button"
-        variant={bare ? "default" : "outline"}
-        size="sm"
-        aria-pressed={bare}
-        onClick={() => setBare(!bare)}
-        title="מסתיר את הטלוויזיה המצוירת (השוליים והמעמד), והמקום שלה הולך ללוח"
-      >
-        <Tv className="size-4" /> בלי מסגרת טלוויזיה
-      </Button>
+      <DropdownMenu dir="rtl" modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant={fullscreen || focus || beforeMax || bare ? "default" : "outline"} size="sm" data-testid="view-menu">
+            <Scaling className="size-4" aria-hidden /> גודל ותצוגה <ChevronDown className="size-3.5" aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        {/* In full screen only the board's column is on the screen: the menu opens inside it, or it would not be seen. */}
+        <DropdownMenuPrimitive.Portal container={fullscreen ? previewColumn.current : undefined}>
+          <DropdownMenuPrimitive.Content
+            align="end"
+            sideOffset={4}
+            className="z-[100] min-w-[14rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          >
+            <DropdownMenuCheckboxItem className={viewItem} checked={fullscreen} onCheckedChange={toggleFullscreen} title="התצוגה והעורך על כל המסך (Esc ליציאה)">
+              מסך מלא לעריכה
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem className={viewItem} checked={focus} onCheckedChange={(on) => setFocus(on)} title="מסתיר את הסרגל של האתר ואת שורות הלשוניות שמעל העורך, כדי שכל המסך יהיה ללוח ולבקרות">
+              מצב עבודה
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem className={viewItem} checked={Boolean(beforeMax)} onCheckedChange={toggleMax} title="הלוח בגודל הגדול ביותר שנכנס; עוד בחירה מחזירה לגודל הקודם">
+              הגדלה למקסימום
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem className={viewItem} checked={bare} onCheckedChange={(on) => setBare(on)} title="מסתיר את הטלוויזיה המצוירת (השוליים והמעמד), והמקום שלה הולך ללוח">
+              בלי מסגרת טלוויזיה
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuPrimitive.Content>
+        </DropdownMenuPrimitive.Portal>
+      </DropdownMenu>
     </>
   );
 

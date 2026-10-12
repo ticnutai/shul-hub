@@ -83,7 +83,7 @@ export function SlideStrip({
 }) {
   const shown = entries ?? slides.map((s, i) => ({ index: i, label: slideLabel(s) }));
   return (
-    <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="שקופיות">
+    <div className="flex flex-wrap gap-1.5" role="tablist" aria-label="מסכים">
       {shown.map((e, n) => (
         <button
           key={`${slides[e.index]?.id ?? ""}${e.index}`}

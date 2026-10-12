@@ -17,6 +17,12 @@ test.describe("TV editor, the preview's room", () => {
     await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 20_000 });
   });
 
+  /** One of the four in "גודל ותצוגה", the menu beside the layouts: ticked on, or off. */
+  const viewOption = async (page: import("@playwright/test").Page, name: string) => {
+    await page.getByTestId("view-menu").first().click();
+    await page.getByRole("menuitemcheckbox", { name }).click();
+  };
+
   const boardBox = async (page: import("@playwright/test").Page) => (await page.locator(".tv-frame").first().boundingBox())!;
 
   test("a handle on any side makes the board bigger, and a double click puts it back", async ({ page }) => {
@@ -40,10 +46,10 @@ test.describe("TV editor, the preview's room", () => {
   test("מקסימום makes the board as big as it goes, and gives back the size it had", async ({ page }) => {
     await page.getByRole("button", { name: "זה לצד זה" }).click();
     const before = await boardBox(page);
-    await page.getByRole("button", { name: "הגדלה למקסימום" }).click();
+    await viewOption(page, "הגדלה למקסימום");
     const max = await boardBox(page);
     expect(max.width).toBeGreaterThan(before.width + 50);
-    await page.getByRole("button", { name: "חזרה לגודל הקודם" }).click();
+    await viewOption(page, "הגדלה למקסימום");
     const back = await boardBox(page);
     expect(Math.abs(back.width - before.width)).toBeLessThan(4);
   });
@@ -51,13 +57,13 @@ test.describe("TV editor, the preview's room", () => {
   test("without the drawn TV the board takes its room; work mode hides what stands above", async ({ page }) => {
     await page.getByRole("button", { name: "תצוגה למעלה" }).click();
     const framed = await boardBox(page);
-    await page.getByRole("button", { name: "בלי מסגרת טלוויזיה" }).click();
+    await viewOption(page, "בלי מסגרת טלוויזיה");
     const bare = await boardBox(page);
     expect(bare.height).toBeGreaterThan(framed.height);
 
-    await page.getByRole("button", { name: "מצב עבודה" }).click();
+    await viewOption(page, "מצב עבודה");
     await expect(page.locator("body")).toHaveClass(/tv-focus/);
-    await page.getByRole("button", { name: "יציאה ממצב עבודה" }).click();
+    await viewOption(page, "מצב עבודה");
     await expect(page.locator("body")).not.toHaveClass(/tv-focus/);
     await expectNotFrozen(page, "room");
   });

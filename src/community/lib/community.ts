@@ -197,3 +197,27 @@ export function useCommunityId(): string | null {
 export function useCommunity(): Community | null {
   return useSyncExternalStore(subscribeCommunity, communitySnapshot, communitySnapshot);
 }
+
+/**
+ * Moving the whole admin over to another synagogue - the one way, from the
+ * switcher at the top and from "לערוך את זה" in the list of synagogues.
+ *
+ * Remembered, written into the address bar, the cache emptied (one
+ * synagogue's rows must never be shown for a moment under another's name),
+ * and said out loud - with a warning when the public cannot see it yet.
+ * Returns false when it was the one already being edited.
+ */
+export function switchCommunity(
+  next: Community,
+  queryClient: { clear: () => void },
+  say: (message: string, options?: { description?: string }) => void,
+): boolean {
+  if (next.id === current?.id) return false;
+  setCommunity(next);
+  writeCommunityToUrl(next.slug);
+  queryClient.clear();
+  say(`עכשיו עורכים את ${next.name}`, {
+    description: next.active === false ? "בית הכנסת כבוי - השינויים לא יופיעו באתר הציבורי" : undefined,
+  });
+  return true;
+}

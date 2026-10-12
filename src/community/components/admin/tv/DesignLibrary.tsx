@@ -1,18 +1,22 @@
 import { CatalogPreview } from './CatalogPreview';
-import {loadSharedCatalog,type SharedCatalog} from '@/tv/sharedCatalog';
+import { useSharedCatalog } from '@/tv/sharedCatalog';
 import {CATALOG_CATEGORIES,catalogCategory,type CatalogCategory} from '@/tv/catalogCategories';
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { SubPart } from "./Parts";
-import { Plus, Save } from "lucide-react";
+import { BookmarkPlus, Plus } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import type { TvConfig } from "@/tv/config";
+import { isOccasionKit } from "@/tv/occasionDesign";
+import { NameForm, SELECT_CLASS } from "./editorParts";
+import { PART_GRID } from "./GalleryTile";
+import { CatalogNotice } from "./SharedCatalogLibrary";
 import { findBackdrop } from "@/tv/backdrops";
 import { framePictureUrl } from "@/tv/framePictures";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { HiddenShelf, TileRemove } from "./ReadyShelf";
-import { BoardElements } from "@/tv/BoardElements";
 import {
   BUILTIN_DESIGNS,
   DESIGN_GROUPS,
@@ -30,35 +34,152 @@ import {
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
 /**
+ * What is on the board now, kept as a kit of one's own under a name - the one
+ * way, from "הערכות שלי", from the toolbar over the preview and from a board
+ * of parts' "שמירה כערכה": the same name is asked about and then replaced,
+ * the limit is said, and it waits in the draft. Through the editor's `onEdit`,
+ * so on an occasion's page it is the occasion's look that is kept.
+ * True when kept.
+ */
+export async function saveKitAs(config: TvConfig, onEdit: Edit, rawName: string, asked: DesignPart[]): Promise<boolean> {
+  // A board of parts is kept with its parts and its layout, always: without them it comes back as an ordinary board, nothing to edit part by part.
+  const parts = DESIGN_PARTS.filter((p) => asked.includes(p) || PARTS_KEPT(config).includes(p));
+  const name = rawName.trim().slice(0, 40);
+  if (!name) return toast.error("צריך לתת שם לערכה"), false;
+  if (!parts.length) return toast.error("צריך לבחור לפחות חלק אחד"), false;
+  const existing = config.designs.find((d) => d.name === name);
+  if (existing && !(await confirmAction({ title: `כבר יש ערכה בשם „${name}”`, description: "להחליף אותה במה שעל הלוח עכשיו?", confirmLabel: "החלפה", destructive: false })))
+    return false;
+  if (!existing && config.designs.length >= MAX_DESIGNS) {
+    toast.error(`הגעתם למספר הערכות המרבי (${MAX_DESIGNS}). מחקו ערכה ב"הערכות שלי".`);
+    return false;
+  }
+  onEdit(`design-new:${name}`, (c) => {
+    const kit = captureDesign(c, name, parts, existing?.id);
+    return { ...c, designs: existing ? c.designs.map((d) => (d.id === existing.id ? kit : d)) : [...c.designs, kit].slice(0, MAX_DESIGNS) };
+  });
+  toast.success(`הערכה "${name}" נשמרה - בטיוטה עד "שמור ושדר".`);
+  return true;
+}
+
+/** What a new kit holds to start with: a board of parts whole (its layout is what makes it one), else its look. */
+const startingParts = (config: TvConfig): DesignPart[] =>
+  config.screenLayout === "composition" ? [...DESIGN_PARTS] : ["background", "frames", "text"];
+/** On a board of parts, its parts ("מסגרות") and their layout ("פריסה") are always kept: they are what makes the kit editable. */
+const PARTS_KEPT = (config: TvConfig): DesignPart[] => (config.screenLayout === "composition" ? ["frames", "layout"] : []);
+/** A kit made of free parts: put on, its parts are edited one by one in "חלקים חופשיים". */
+const ofParts = (d: SavedDesign) => d.values.screenLayout === "composition" || Boolean(d.values.elements?.length);
+
+/** The form of a new kit: its name and what it holds. One form, wherever a kit is saved from. */
+export function KitSaveForm({ config, onEdit, onDone, testId }: { config: TvConfig; onEdit: Edit; onDone: () => void; testId?: string }) {
+  const [name, setName] = useState("");
+  const [parts, setParts] = useState<DesignPart[]>(() => startingParts(config));
+  const kept = PARTS_KEPT(config);
+  return (
+    <NameForm
+      testId={testId}
+      label="שם הערכה"
+      value={name}
+      maxLength={40}
+      placeholder="שם לערכה, למשל: חגים"
+      onChange={setName}
+      onSave={async () => {
+        if (await saveKitAs(config, onEdit, name, parts)) onDone();
+      }}
+      onCancel={onDone}
+      saveLabel="שמירת הערכה"
+      extra={
+        <fieldset className="space-y-1">
+          <legend className="text-xs font-medium">מה הערכה כוללת</legend>
+          <div className="flex flex-wrap gap-3">
+            {DESIGN_PARTS.map((p) => (
+              <label key={p} className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={parts.includes(p) || kept.includes(p)}
+                  disabled={kept.includes(p)}
+                  onChange={(e) => setParts(e.target.checked ? [...parts, p] : parts.filter((x) => x !== p))}
+                />
+                {DESIGN_PART_LABELS[p]}
+              </label>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            כשמפעילים את הערכה, רק החלקים המסומנים משתנים בלוח. השאר נשאר כמו שהוא.
+            {kept.length > 0 && " בלוח מחלקים, המסגרות והפריסה תמיד נשמרות - בלעדיהן לא יהיה אפשר לערוך את הערכה חלק אחרי חלק."}
+          </p>
+        </fieldset>
+      }
+    />
+  );
+}
+
+/** "שמירה כערכה חדשה" beside the preview's device menu (and in the live window): the same form, in a small window. */
+export function SaveKitButton({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
+  const [open, setOpen] = useState(false);
+  const full = config.designs.length >= MAX_DESIGNS;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={full}
+          data-testid="toolbar-save-kit"
+          title={full ? `הגעתם למספר הערכות המרבי (${MAX_DESIGNS})` : 'שומר את מה שעל הלוח עכשיו כערכה משלכם - תופיע ב"הערכות שלי"'}
+        >
+          <BookmarkPlus className="size-4" aria-hidden /> שמירה כערכה חדשה
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent dir="rtl" align="end" className="w-96 max-w-[calc(100vw-1rem)] space-y-2 p-3 text-right">
+        <p className="text-sm font-semibold">שמירה כערכה חדשה</p>
+        {open && <KitSaveForm config={config} onEdit={onEdit} onDone={() => setOpen(false)} testId="toolbar-kit-form" />}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
  * "העיצובים שלי": looks the gabbai built and saved - all of it, or only the
  * parts they chose - shown beside the themes, put on the board with a tap.
  * The model and its rules are designs.ts.
  */
 export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
-  const [form, setForm] = useState<{ mode: "new" | "rename"; id?: string; name: string; parts: DesignPart[] } | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [form, setForm] = useState<{ mode: "new" | "rename"; id?: string; name: string } | null>(null);
   const designs = config.designs;
-  const [catalog,setCatalog]=useState<SharedCatalog>();
-  const [catalogError,setCatalogError]=useState(false);
-  const [attempt,setAttempt]=useState(0);
+  // An occasion's own kit is edited on its page (its 🎨), not listed among the gabbai's kits.
+  const mine = designs.filter((d) => !isOccasionKit(config, d));
+  const { catalog, error: catalogError, retry } = useSharedCatalog();
   const [category,setCategory]=useState<CatalogCategory>('הכול');
-  useEffect(()=>{let active=true;setCatalogError(false);loadSharedCatalog(attempt>0).then(c=>{if(active)setCatalog(c);}).catch(()=>{if(active)setCatalogError(true);});return()=>{active=false;};},[attempt]);
   const extra=(catalog?.designs??[]).filter(d=>!BUILTIN_DESIGNS.some(b=>b.id===d.id));
   const available=[...BUILTIN_DESIGNS,...extra];
   const groups=[...DESIGN_GROUPS,{id:'shared',title:'האוסף המשותף - לכל הלוחות',hint:'כל ערכה זמינה בכל יום. בוחרים עותק ומשנים אותו בלוח בלבד.',ids:extra.map(d=>d.id)}];
 
-  const commit = () => {
+  /** A kit of one's own renamed (a new one is KitSaveForm's). */
+  const rename = () => {
     if (!form) return;
     const name = form.name.trim().slice(0, 40);
     if (!name) return toast.error("צריך לתת שם לערכה");
-    if (form.mode === "new") {
-      if (!form.parts.length) return toast.error("צריך לבחור לפחות חלק אחד");
-      onEdit("design-new", (c) => ({ ...c, designs: [...c.designs, captureDesign(c, name, form.parts)].slice(0, MAX_DESIGNS) }));
-      toast.success(`הערכה "${name}" נשמרה. היא תגיע למסכים ב"שמור ושדר".`);
-    } else {
-      onEdit("design-rename", (c) => ({ ...c, designs: c.designs.map((d) => (d.id === form.id ? { ...d, name } : d)) }));
-    }
+    onEdit("design-rename", (c) => ({ ...c, designs: c.designs.map((d) => (d.id === form.id ? { ...d, name } : d)) }));
     setForm(null);
+  };
+
+  /** One's own kit, deleted - asked first, as every delete is. */
+  const remove = async (d: SavedDesign) => {
+    const ok = await confirmAction({
+      title: `למחוק את הערכה „${d.name}”?`,
+      description: 'לוח שכבר לובש אותה לא ישתנה. אפשר לבטל עם "צעד אחורה" (Ctrl+Z) עד השמירה.',
+      confirmLabel: "מחיקה",
+    });
+    if (ok) onEdit("design-delete", (cfg) => ({ ...cfg, designs: cfg.designs.filter((x) => x.id !== d.id) }));
+  };
+
+  /** A kit of parts, put on and opened part by part: the list of free parts, where each is chosen, moved and changed. */
+  const editInParts = (d: SavedDesign) => {
+    onEdit("design-apply", (cfg) => applyDesign(cfg, d));
+    // Once the board has its parts; instant, as a smooth scroll stops in a background window.
+    window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80);
   };
 
   const update = (d: SavedDesign) => {
@@ -77,17 +198,12 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       >
       <label className="flex flex-wrap items-center gap-2 text-sm">
         <span className="font-medium">נושא הערכות:</span>
-        <select aria-label="נושא הערכות" className="h-8 rounded-md border bg-background px-2 text-sm" value={category} onChange={(e) => setCategory(e.target.value as CatalogCategory)}>
+        <select aria-label="נושא הערכות" className={SELECT_CLASS} value={category} onChange={(e) => setCategory(e.target.value as CatalogCategory)}>
           {CATALOG_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
         </select>
       </label>
       <p className="text-[11px] text-muted-foreground">הנושא מסנן את הספרייה בלבד ואינו מגביל את יום השימוש. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
-      {catalogError && (
-        <p role="alert" className="text-sm">
-          לא ניתן לטעון את האוסף המשותף. הלוח והערכות הקיימות לא השתנו.{" "}
-          <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={() => setAttempt((n) => n + 1)}>ניסיון נוסף</Button>
-        </p>
-      )}
+      {catalogError && <CatalogNotice onRetry={retry} />}
       <div className="space-y-4" data-testid="builtin-designs">
       {groups.map((group) => {
         const shown = available.filter((d) => group.ids.includes(d.id) && !isHiddenReady(config, "design", d.id) && (category==='הכול'||catalogCategory(d)===category));
@@ -96,7 +212,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       <section key={group.id} data-design-group={group.id} className="space-y-1.5">
         <h4 className="text-sm font-semibold">{group.title}</h4>
         <p className="text-[11px] leading-snug text-muted-foreground">{group.hint}</p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className={PART_GRID}>
         {shown.map((d) => (
           <KitTile
             key={d.id}
@@ -121,6 +237,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             >
               שכפול לעריכה
             </TileAction>
+            {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
           </KitTile>
         ))}
       </div>
@@ -135,93 +252,37 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
       />
       </SubPart>
       <SubPart title="הערכות שלי" hint="ערכות ששמרתם: לחיצה מלבישה; אפשר לשנות שם, לעדכן למה שעל הלוח עכשיו, ולמחוק.">
-      {designs.length > 0 && (
-        <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {designs.map((d) => (
-              <KitTile
-                key={d.id}
-                design={d}
-                config={config}
-                onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
-                onRemove={() => setConfirmDelete(d.id)}
-              >
-                {confirmDelete === d.id ? (
-                  <>
-                    <TileAction
-                      destructive
-                      onClick={() => {
-                        setConfirmDelete(null);
-                        onEdit("design-delete", (cfg) => ({ ...cfg, designs: cfg.designs.filter((x) => x.id !== d.id) }));
-                      }}
-                    >
-                      למחוק?
-                    </TileAction>
-                    <TileAction onClick={() => setConfirmDelete(null)}>ביטול</TileAction>
-                  </>
-                ) : (
-                  <>
-                    <TileAction onClick={() => update(d)} title="הערכה מקבלת את מה שעל הלוח עכשיו">עדכון</TileAction>
-                    <TileAction onClick={() => setForm({ mode: "rename", id: d.id, name: d.name, parts: d.parts })}>שינוי שם</TileAction>
-                  </>
-                )}
-              </KitTile>
-            ))}
-          </div>
-        </>
+      {mine.length > 0 && (
+        <div className={PART_GRID}>
+          {mine.map((d) => (
+            <KitTile
+              key={d.id}
+              design={d}
+              config={config}
+              onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
+              onRemove={() => void remove(d)}
+            >
+              <TileAction onClick={() => update(d)} title="הערכה מקבלת את מה שעל הלוח עכשיו">עדכון</TileAction>
+              {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
+              <TileAction onClick={() => setForm({ mode: "rename", id: d.id, name: d.name })}>שינוי שם</TileAction>
+            </KitTile>
+          ))}
+        </div>
       )}
 
-      {form ? (
-        <form
-          className="space-y-2 rounded-lg border p-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            commit();
-          }}
-        >
-          <Input
-            autoFocus
-            aria-label="שם הערכה"
-            value={form.name}
-            maxLength={40}
-            placeholder="שם לערכה, למשל: חגים"
-            className="h-9"
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-          />
-          {form.mode === "new" && (
-            <fieldset className="space-y-1">
-              <legend className="text-xs font-medium">מה הערכה כוללת</legend>
-              <div className="flex flex-wrap gap-3">
-                {DESIGN_PARTS.map((p) => (
-                  <label key={p} className="flex items-center gap-1.5 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={form.parts.includes(p)}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          parts: e.target.checked ? [...form.parts, p] : form.parts.filter((x) => x !== p),
-                        })
-                      }
-                    />
-                    {DESIGN_PART_LABELS[p]}
-                  </label>
-                ))}
-              </div>
-              <p className="text-[11px] text-muted-foreground">
-                כשמפעילים את הערכה, רק החלקים המסומנים משתנים בלוח. השאר נשאר כמו שהוא.
-              </p>
-            </fieldset>
-          )}
-          <div className="flex gap-2">
-            <Button type="submit" size="sm">
-              <Save className="size-4" /> {form.mode === "new" ? "שמירת הערכה" : "שינוי השם"}
-            </Button>
-            <Button type="button" size="sm" variant="ghost" onClick={() => setForm(null)}>
-              ביטול
-            </Button>
-          </div>
-        </form>
+      {form?.mode === "new" ? (
+        <KitSaveForm config={config} onEdit={onEdit} onDone={() => setForm(null)} />
+      ) : form ? (
+        <NameForm
+          label="שם הערכה"
+          value={form.name}
+          maxLength={40}
+          placeholder="שם לערכה, למשל: חגים"
+          onChange={(name) => setForm({ ...form, name })}
+          onSave={rename}
+          onCancel={() => setForm(null)}
+          saveLabel="שינוי השם"
+        />
       ) : (
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -229,8 +290,7 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             variant="outline"
             size="sm"
             disabled={designs.length >= MAX_DESIGNS}
-            // A board of parts is saved whole: its layout is what makes it one - without it, the kit came back as an ordinary board.
-            onClick={() => setForm({ mode: "new", name: "", parts: config.screenLayout === "composition" ? [...DESIGN_PARTS] : ["background", "frames", "text"] })}
+            onClick={() => setForm({ mode: "new", name: "" })}
           >
             <Plus className="size-4" /> שמירה כערכה חדשה
           </Button>
@@ -246,17 +306,16 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
 }
 
 /** An action under a kit's tile: the same size, look and place for every kit. */
-function TileAction({ children, onClick, disabled, destructive, title }: {
+function TileAction({ children, onClick, disabled, title }: {
   children: ReactNode;
   onClick: () => void;
   disabled?: boolean;
-  destructive?: boolean;
   title?: string;
 }) {
   return (
     <Button
       type="button"
-      variant={destructive ? "destructive" : "ghost"}
+      variant="ghost"
       size="sm"
       className="h-7 px-2 text-xs"
       disabled={disabled}

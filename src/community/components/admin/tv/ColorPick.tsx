@@ -9,10 +9,17 @@
  * as the colour is dragged, and the dropper first brings the board into sight.
  *
  * One panel at a time: opening another closes the one open.
+ *
+ * The colour's code is typed inside the panel, the one place for it: the
+ * editor had a second box with the code beside some swatches and not others.
+ * With `anyCode`, a colour that is not a plain #rrggbb (one with transparency,
+ * rgba(...)) can be typed there too, and its swatch shows it as it is.
  */
-import { useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Pipette, X } from 'lucide-react';
+import { isSafeCssValue } from '@/tv/themes';
+import { usePointerDrag } from '@/tv/usePointerDrag';
 
 const OPEN_EVENT = 'colorpick:open';
 const RECENT_KEY = 'tv-editor.recent-colours';
@@ -61,16 +68,20 @@ function showBoard() {
 }
 
 /* ------------------------------------------------------------- the box -- */
-export function ColorPick({ value, onChange, label, className = '' }: {
+export function ColorPick({ value, onChange, label, className = '', anyCode = false }: {
   value: string;
   /** Every change while dragging; the editor folds them into one step to undo. */
   onChange: (hex: string) => void;
   label: string;
   className?: string;
+  /** The code typed in the panel may be any safe colour (rgba with transparency), not only #rrggbb. */
+  anyCode?: boolean;
 }) {
   const id = useId();
   const [open, setOpen] = useState(false);
   const hex = isHex(value) ? value.toLowerCase() : '#000000';
+  // A colour with transparency is shown as it is, not as the black the dials start from.
+  const shown = isHex(value) ? hex : anyCode && isSafeCssValue(value) ? value.trim() : hex;
   useEffect(() => {
     const other = (e: Event) => { if ((e as CustomEvent<string>).detail !== id) setOpen(false); };
     window.addEventListener(OPEN_EVENT, other);
@@ -86,29 +97,41 @@ export function ColorPick({ value, onChange, label, className = '' }: {
         type="button"
         aria-label={label}
         aria-expanded={open}
-        title={`${label}: ${hex}`}
+        title={`${label}: ${shown}`}
         onClick={toggle}
         data-colorpick={hex}
         className={`h-8 w-11 shrink-0 cursor-pointer rounded border-2 shadow-inner ${open ? 'border-primary ring-2 ring-primary/40' : 'border-border'} ${className}`}
-        style={{ background: hex }}
+        style={{ background: shown }}
       />
-      {open && createPortal(<Panel label={label} value={hex} onChange={onChange} onClose={() => { keepRecent(hex); setOpen(false); }} />, document.body)}
+      {open && createPortal(<Panel label={label} value={hex} code={shown} anyCode={anyCode} onChange={onChange} onClose={() => { keepRecent(hex); setOpen(false); }} />, document.body)}
     </>
   );
 }
 
 /* ----------------------------------------------------------- the panel -- */
-function Panel({ label, value, onChange, onClose }: { label: string; value: string; onChange: (hex: string) => void; onClose: () => void }) {
+function Panel({ label, value, code, anyCode, onChange, onClose }: {
+  label: string;
+  value: string;
+  /** What the code field shows: the hex, or a colour with transparency as it was given. */
+  code: string;
+  anyCode: boolean;
+  onChange: (hex: string) => void;
+  onClose: () => void;
+}) {
   const [hsv, setHsv] = useState<Hsv>(() => hexToHsv(value));
-  const [typed, setTyped] = useState(value);
+  const [typed, setTyped] = useState(code);
   const recent = useRef(readRecent());
   // A colour changed from outside (undo, another control): the panel follows it.
   useEffect(() => {
     if (hsvToHex(hsv) !== value) setHsv(hexToHsv(value));
-    setTyped(value);
+    setTyped(code);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  }, [value, code]);
+  // A dial being dragged reads the colour as it is now, not as it was when the drag began.
+  const hsvRef = useRef(hsv);
+  hsvRef.current = hsv;
   const set = (next: Hsv) => {
+    hsvRef.current = next;
     setHsv(next);
     const hex = hsvToHex(next);
     setTyped(hex);
@@ -120,20 +143,19 @@ function Panel({ label, value, onChange, onClose }: { label: string; value: stri
     onChange(hex);
   };
 
-  const drag = (el: HTMLElement, ev: ReactPointerEvent, move: (x: number, y: number) => void) => {
-    ev.preventDefault();
-    el.setPointerCapture(ev.pointerId);
-    const at = (e: { clientX: number; clientY: number }) => {
-      const r = el.getBoundingClientRect();
-      move(clamp((e.clientX - r.left) / r.width), clamp((e.clientY - r.top) / r.height));
-    };
-    at(ev);
-    const onMove = (e: PointerEvent) => at(e);
-    const onUp = () => { el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp); el.removeEventListener('pointercancel', onUp); };
-    el.addEventListener('pointermove', onMove);
-    el.addEventListener('pointerup', onUp);
-    el.addEventListener('pointercancel', onUp);
+  // A dial dragged: where the pointer is across it and down it, as shares of its size.
+  type Dial = (x: number, y: number) => void;
+  const share = (el: HTMLElement, x: number, y: number, to: Dial) => {
+    const r = el.getBoundingClientRect();
+    to(clamp((x - r.left) / r.width), clamp((y - r.top) / r.height));
   };
+  const drag = usePointerDrag<Dial, { el: HTMLElement; to: Dial }>({
+    start: (to, e) => {
+      share(e.currentTarget, e.clientX, e.clientY, to);
+      return { el: e.currentTarget, to };
+    },
+    move: ({ el, to }, at) => share(el, at.x, at.y, to),
+  });
 
   const dropper = 'EyeDropper' in window;
   const takeFromScreen = async () => {
@@ -172,7 +194,7 @@ function Panel({ label, value, onChange, onClose }: { label: string; value: stri
         tabIndex={0}
         className="relative h-32 w-full cursor-crosshair touch-none rounded-md"
         style={{ background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, ${hueColour})` }}
-        onPointerDown={(e) => drag(e.currentTarget, e, (x, y) => set({ ...hsv, s: x, v: 1 - y }))}
+        {...drag((x, y) => set({ ...hsvRef.current, s: x, v: 1 - y }))}
         onKeyDown={(e) => {
           const step = e.shiftKey ? 0.1 : 0.02;
           const by: Record<string, [number, number]> = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, step], ArrowDown: [0, -step] };
@@ -191,7 +213,7 @@ function Panel({ label, value, onChange, onClose }: { label: string; value: stri
         tabIndex={0}
         className="relative h-4 w-full cursor-pointer touch-none rounded-full"
         style={{ background: 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }}
-        onPointerDown={(e) => drag(e.currentTarget, e, (x) => set({ ...hsv, h: x * 359.9 }))}
+        {...drag((x) => set({ ...hsvRef.current, h: x * 359.9 }))}
         onKeyDown={(e) => {
           const by = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : 0;
           if (by) { e.preventDefault(); set({ ...hsv, h: (hsv.h + by * (e.shiftKey ? 15 : 3) + 360) % 360 }); }
@@ -204,14 +226,15 @@ function Panel({ label, value, onChange, onClose }: { label: string; value: stri
           dir="ltr"
           aria-label="קוד הצבע"
           value={typed}
-          maxLength={7}
+          maxLength={anyCode ? 40 : 7}
           onChange={(e) => {
             const v = e.target.value.trim();
             setTyped(v);
             const full = v.startsWith('#') ? v : `#${v}`;
             if (isHex(full)) pick(full.toLowerCase());
+            else if (anyCode && isSafeCssValue(v)) onChange(v);
           }}
-          className="h-8 w-24 rounded border bg-background px-2 font-mono text-sm"
+          className={`h-8 rounded border bg-background px-2 font-mono text-sm ${anyCode ? 'w-36' : 'w-24'}`}
         />
         {dropper && (
           <button type="button" onClick={() => void takeFromScreen()} title="לוקחים צבע מכל מקום במסך - קודם הלוח עולה למעלה" className="flex h-8 items-center gap-1 rounded border px-2 text-xs hover:border-primary">

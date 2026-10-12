@@ -16,7 +16,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { AlertTriangle, Info, XCircle, type LucideIcon } from "lucide-react";
 
-export type NoticeVariant = "info" | "neutral" | "warning" | "error";
+type NoticeVariant = "info" | "neutral" | "warning" | "error";
 
 const VARIANTS: Record<NoticeVariant, { box: string; icon: string; Icon: LucideIcon }> = {
   info: { box: "border-primary/40 bg-primary/5", icon: "text-primary", Icon: Info },
@@ -71,4 +71,29 @@ export const choiceChipClass = (selected: boolean, extra = "") =>
 /** The number in front of a chip's name, the same everywhere: "1." */
 export function ChipNumber({ n }: { n: number }) {
   return <span className="tabular-nums text-muted-foreground">{n}.</span>;
+}
+
+/**
+ * One chip for an item standing in a row that is not chosen among - the
+ * minutes of a reminder, the contents taking turns in a frame, a saved
+ * arrangement: a small bordered tag, with its ✕ (ChipRemove) when it can go.
+ */
+export const itemChipClass = (extra = "") =>
+  `inline-flex items-center gap-1 rounded-md border bg-background px-2 py-0.5 text-xs ${extra}`;
+
+/**
+ * "נשמר מיד": the few things in the editor that are written at once rather
+ * than with "שמור ושדר" (the shared library of logos, an occasion's prayer
+ * times), marked the same small way wherever they are.
+ */
+export function SavedNowTag({ title }: { title: string }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center rounded-full border border-amber-400/70 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+      title={title}
+      data-testid="saved-now"
+    >
+      נשמר מיד
+    </span>
+  );
 }

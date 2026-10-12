@@ -141,7 +141,7 @@ export function buildExport(
 
 export function exportFileName(what: "themes" | "gradients" | "all"): string {
   const day = new Date().toISOString().slice(0, 10);
-  const label = what === "themes" ? "צבעי-בסיס" : what === "gradients" ? "גרדיאנטים" : "עיצוב";
+  const label = what === "themes" ? "צבעי-בסיס" : what === "gradients" ? "מעברי-צבע" : "עיצוב";
   return `לוח-${label}-${day}.json`;
 }
 
