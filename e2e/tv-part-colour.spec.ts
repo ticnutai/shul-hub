@@ -1,6 +1,64 @@
 import { expect, test } from "@playwright/test";
 import { serveEditor } from "./support/tvEditor";
 import { PREMIUM_DESIGNS } from "../src/tv/premiumDesigns";
+import {readFileSync} from 'node:fs';
+import {DEFAULT_TV_CONFIG,normalizeTvConfig} from '../src/tv/config';
+
+test('arched fill has one colour picker and saves its colour and shape',async({page})=>{
+ test.setTimeout(60000);await page.setViewportSize({width:1600,height:1000});
+ const c=JSON.parse(readFileSync('public/new-shul-catalog.json','utf8'));
+ const d=c.designs.find(x=>x.id==='d_rc_walnut_vines');
+ const server=await serveEditor(page,{...structuredClone(DEFAULT_TV_CONFIG),...d.values});
+ await page.goto('/e2e/harness/editor.html');
+ await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
+ await page.getByLabel('שכבות החלקים',{exact:true}).getByRole('button',{name:'מילוי זמני תפילות',exact:true}).click();
+ await expect(page.getByRole('switch',{name:'מילוי בצורת קשת',exact:true})).toBeChecked();
+ const picker=page.getByRole('button',{name:'מילוי החלק',exact:true});await expect(picker).toHaveCount(1);await picker.click();
+ await page.getByTestId('color-panel').getByLabel('קוד הצבע',{exact:true}).fill('#e8d9b0');
+ await page.getByLabel('סגירת בחירת הצבע',{exact:true}).click();
+ const id=d.values.elements.find(e=>e.name==='מילוי זמני תפילות').id;
+ const fill=page.locator('.tv-frame [data-element-id="'+id+'"] > div').first();
+ await expect(fill).toHaveCSS('background-color','rgb(232, 217, 176)');
+ await page.getByRole('button',{name:/שמור ושדר/}).first().click();
+ await expect.poll(()=>server.writes()).toBeGreaterThan(0);
+ await page.reload();await expect(fill).toHaveCSS('background-color','rgb(232, 217, 176)');
+ expect(normalizeTvConfig(server.saved()).elements.find(e=>e.id===id)).toMatchObject({archFill:true,fill:'#e8d9b0'});
+});
+
+test('image background and frame colour controls are effective, unique and persisted',async({page})=>{
+ test.setTimeout(90000);await page.setViewportSize({width:1600,height:1000});
+ const catalog=JSON.parse(readFileSync('public/new-shul-catalog.json','utf8'));
+ const d=catalog.designs.find(x=>x.id==='d_rc_moon_crown_balanced');
+ const server=await serveEditor(page,{...structuredClone(DEFAULT_TV_CONFIG),...d.values});
+ await page.goto('/e2e/harness/editor.html');
+ await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
+ const layers=page.getByLabel('שכבות החלקים',{exact:true});
+ for(const name of ['רקע היכל כתר הלבנה','מסגרת זמני תפילות']){
+  await layers.getByRole('button',{name,exact:true}).click();
+  await expect(page.getByTestId('image-colour-tools')).toHaveCount(1);
+  await expect(page.getByRole('button',{name:'צבע החלק',exact:true})).toHaveCount(0);
+  // The colour of a picture is tuned on sliders (the editor's one slider): set as a hand would leave them.
+  for (const [label, v] of [['גוון התמונה', '45'], ['רוויה בתמונה', '0.7'], ['בהירות התמונה', '1.1']] as const) {
+   await page.getByLabel(label, { exact: true }).evaluate((el, value) => {
+    const input = el as HTMLInputElement;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+   }, v);
+  }
+  const id=d.values.elements.find(e=>e.name===name).id;
+  await expect(page.locator('.tv-frame [data-element-id="'+id+'"]').first()).toHaveCSS('filter','hue-rotate(45deg) saturate(0.7) brightness(1.1)');
+ }
+ await page.getByRole('button',{name:/שמור ושדר/}).first().click();
+ await expect.poll(()=>server.writes()).toBeGreaterThan(0);
+ expect(normalizeTvConfig(server.saved()).elements.filter(e=>e.imageTune)).toHaveLength(2);
+ await page.reload();
+ const bgId=d.values.elements[0].id;
+ await expect(page.locator('.tv-frame [data-element-id="'+bgId+'"]').first()).toHaveCSS('filter','hue-rotate(45deg) saturate(0.7) brightness(1.1)');
+ await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
+ await layers.getByRole('button',{name:'רקע היכל כתר הלבנה',exact:true}).click();
+ await page.getByRole('button',{name:'חזרה לצבעוניות המקורית',exact:true}).click();
+ await expect(page.locator('.tv-frame [data-element-id="'+bgId+'"]').first()).toHaveCSS('filter','none');
+});
 
 for (const occasion of [false, true]) {
   test(`colour of a part, ${occasion ? "on the occasion" : "on the board"}`, async ({ page }) => {

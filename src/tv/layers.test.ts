@@ -81,6 +81,8 @@ describe("ready-made frame pictures", () => {
   it("are stored by name and resolve to the shipped file", async () => {
     const { FRAME_PICTURES, framePictureRef, framePictureUrl } = await import("./framePictures");
     expect(FRAME_PICTURES.map((f) => f.id)).toEqual([
+      "silver-acanthus",
+      "walnut-vine",
       "gold-ornate",
       "carved-wood",
       "double-gold",
@@ -98,15 +100,16 @@ describe("ready-made frame pictures", () => {
       "sapphire-royal",
     ]);
     // The drawn ones are pictures too: an SVG, transparent inside.
-    for (const f of FRAME_PICTURES.slice(2, 11)) {
+    for (const f of FRAME_PICTURES.slice(4, 13)) {
       expect(f.url).toMatch(/^data:image\/svg\+xml;utf8,/);
       expect(decodeURIComponent(f.url)).toContain('fill="none"');
     }
     // The design frames are pictures this build ships, transparent in the middle.
-    for (const f of FRAME_PICTURES.slice(11)) expect(f.url).toMatch(/^\/new-shul-assets\/[\w-]+\.webp$/);
+    for (const f of FRAME_PICTURES.slice(13)) expect(f.url).toMatch(/^\/new-shul-assets\/[\w-]+\.webp$/);
+    for (const f of FRAME_PICTURES.slice(0,2)) expect(framePictureUrl(framePictureRef(f.id))).toBe(f.url);
     const ref = framePictureRef("gold-ornate");
     expect(normalizeFrameStyle({ image: ref }).image).toBe(ref);
-    expect(framePictureUrl(ref)).toBe(FRAME_PICTURES[0].url);
+    expect(framePictureUrl(ref)).toBe(FRAME_PICTURES.find(f=>f.id==='gold-ornate')!.url);
     expect(framePictureUrl("frame:gone")).toBeNull();
     expect(layerVars(DEFAULT_BACKGROUND_TUNE, { ...DEFAULT_FRAME_STYLE, image: ref }).classes).toContain("has-frame-image");
     expect(layerVars(DEFAULT_BACKGROUND_TUNE, { ...DEFAULT_FRAME_STYLE, image: "frame:gone" }).classes).not.toContain("has-frame-image");

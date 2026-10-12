@@ -4,6 +4,7 @@ import { Move } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
+import { SECTION_SHAPES, setSectionShape, sectionGeometry, linkedSection } from '@/tv/sectionGeometry';
 import { BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, ELEMENT_KINDS, ELEMENT_NAMES, MAX_ELEMENTS, alignElements, boundsOf, elementId, liveFrames, moveElements, newElement, normalizeElements, placeSection, sectionOf, sideOf, type BoardElement, type ElementBinding, type ElementSide } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
 import { ElementTextTools } from './ElementTextTools';
@@ -16,7 +17,7 @@ import { downloadFile } from '@/tv/workspaceTransfer';
 import { uploadImages } from './uploadImages';
 import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
 import { SubPart } from './Parts';
-import { ColourRow, FIT_CHOICES, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Stepper, SwitchRow, sideButtonClass } from './editorParts';
+import { ColourRow, FIT_CHOICES, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
 /** A field of the chosen part: the editor's one height and border. */
 const FIELD = 'mt-1 block h-8 w-full rounded-md border bg-background px-2 text-sm';
@@ -31,17 +32,21 @@ type Props = {
 };
 export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: Props) {
   const elements = config.elements;
-  const { selected, select, snap, setSnap } = useElementEditing()!;
+  const { selected, select, snap, setSnap, gridStep, setGridStep, showGrid, setShowGrid, linkSection, setLinkSection } = useElementEditing()!;
   const first = elements.find(e => e.id === selected[0]);
+  /** A picture (or a frame drawn from one): its colours are tuned, not painted. */
+  const pictured = !!first && (first.kind === 'image' || (first.kind === 'frame' && !!first.image));
   const lockedInSelection = elements.some(e => selected.includes(e.id) && e.locked);
   const commit = (next: BoardElement[], key = `elements:${crypto.randomUUID()}`) => onEdit(key, c => ({ ...c, elements: normalizeElements(next) }));
   const patch = (p: Partial<BoardElement>) => {
-    if (first && ('x' in p || 'y' in p)) { commit(moveElements(elements, selected, (p.x ?? first.x) - first.x, (p.y ?? first.y) - first.y)); return; }
+    // A frame, its box and its text, linked: a size or a turn is the whole section's, kept fitting together.
+    if (first && linkSection) { for (const key of ['width', 'height', 'rotation'] as const) if (key in p) { commit(sectionGeometry(elements, first.id, key, p[key]!)); return; } }
+    if (first && ('x' in p || 'y' in p)) { commit(moveElements(elements, linkSection ? linkedSection(elements, first.id) : selected, (p.x ?? first.x) - first.x, (p.y ?? first.y) - first.y)); return; }
     commit(elements.map(e => selected.includes(e.id) && !e.locked ? { ...e, ...p } : e), `element-property:${selected.join(',')}:${Object.keys(p).join(',')}`);
   };
   const choose = (e: BoardElement, multi: boolean) => {
-    const ids = e.group ? elements.filter(x => x.group === e.group).map(x => x.id) : [e.id];
-    const next = multi ? [...new Set([...selected, ...ids])] : ids; select(next); return next;
+    const ids = linkSection && e.group ? elements.filter(x => x.group === e.group).map(x => x.id) : [e.id];
+    const ordered = [e.id, ...ids.filter(id => id !== e.id)]; const next = multi ? [...new Set([...selected, ...ordered])] : ordered; select(next); return next;
   };
   const duplicate = () => {
     const copies = elements.filter(e => selected.includes(e.id));
@@ -109,7 +114,16 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
 
     <SubPart title="משטח העבודה" hint="בעריכה ישירה בלוח אפשר לגרור גם על התצוגה האמיתית. כשהלוח ממוקד: חצים להזזה עדינה, Shift לתזוזה גדולה, Delete למחיקה, Ctrl+D לשכפול ו־Esc לביטול בחירה. Alt + לחיצה משאיר את פעולת הלוח הרגילה.">
       <SwitchRow label="הצמדה לרשת" checked={snap} onChange={setSnap} />
-      <div data-testid="elements-canvas" dir="ltr" className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-[#0b1628]" style={{ containerType: 'size', backgroundImage: snap ? 'linear-gradient(#ffffff0d 1px, transparent 1px), linear-gradient(90deg, #ffffff0d 1px, transparent 1px)' : undefined, backgroundSize: '5% 5%' }}>
+      <SwitchRow label="מסגרת, תיבה וטקסט יחד" hint="גרירה, גודל וסיבוב חלים על כל החלקים של אותה מסגרת" checked={linkSection} onChange={(on) => { setLinkSection(on); if (!on && first) select([first.id]); }} />
+      <SwitchRow label="הצגת רשת ומידות" checked={showGrid} onChange={setShowGrid} />
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        מרווח הרשת:
+        <select aria-label="מרווח הרשת" className={SELECT_CLASS} value={gridStep} onChange={e => setGridStep(Number(e.target.value))}>
+          {[1, 2, 5, 10].map(v => <option key={v} value={v}>{v}% - {Math.round(19.2 * v)} על {Math.round(10.8 * v)} נקודות במסך מלא</option>)}
+        </select>
+      </label>
+      {first && <p className="text-[11px] text-muted-foreground" data-testid="element-measurements"><span dir="ltr">{first.width.toFixed(1)}% × {first.height.toFixed(1)}%</span> - מידות החלק. שוליים: שמאל <span dir="ltr">{first.x.toFixed(1)}%</span>, ימין <span dir="ltr">{(100 - first.x - first.width).toFixed(1)}%</span>, למעלה <span dir="ltr">{first.y.toFixed(1)}%</span>, למטה <span dir="ltr">{(100 - first.y - first.height).toFixed(1)}%</span>. המידות יחסיות ללוח.</p>}
+      <div data-testid="elements-canvas" dir="ltr" className="relative isolate aspect-video w-full overflow-hidden rounded-lg border border-amber-700/50 bg-[#0b1628]" style={{ containerType: 'size', backgroundImage: undefined }}>
         <BoardElements elements={elements} surface />
       </div>
     </SubPart>
@@ -153,8 +167,36 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         </div>}
         <label className="text-xs">שם החלק<input className={FIELD} aria-label="שם החלק" value={first.name} onChange={e => patch({ name: e.target.value })} /></label>
         {([['x', 'מיקום אופקי', 0, 100], ['y', 'מיקום אנכי', 0, 100], ['width', 'רוחב החלק', 1, 100], ['height', 'גובה החלק', 1, 100], ['rotation', 'סיבוב', -180, 180], ['opacity', 'אטימות', 0, 1]] as const).map(([key, label, min, max]) => <label className="text-xs" key={key}>{label}<input type="number" className={FIELD} aria-label={label} min={min} max={max} step={key === 'opacity' ? .1 : .5} value={Number(first[key].toFixed(2))} onChange={ev => { if (ev.target.value !== '') patch({ [key]: Number(ev.target.value) }); }} /></label>)}
-        <div className="col-span-full"><ColourRow label="צבע החלק" value={first.color} onChange={v => patch({ color: v })} /></div>
-        {['box', 'frame'].includes(first.kind) && <div className="col-span-full"><ColourRow label="מילוי החלק" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={v => patch({ fill: v })} reset={{ label: 'בלי מילוי', onClick: () => patch({ fill: 'transparent' }), disabled: first.fill === 'transparent' }} /></div>}
+        {/* A picture's colour is its own (tuned below), and a text's is in the text bar when that is open:
+            a colour row there changed nothing that could be seen. */}
+        {!pictured && !(first.kind === 'text' && textToolsElsewhere) && <div className="col-span-full"><ColourRow label="צבע החלק" value={first.color} onChange={v => patch({ color: v })} /></div>}
+        {(first.kind === 'box' || (first.kind === 'frame' && !first.image)) && <div className="col-span-full"><ColourRow label="מילוי החלק" value={first.fill === 'transparent' ? '#ffffff' : first.fill} onChange={v => patch({ fill: v })} reset={{ label: 'בלי מילוי', onClick: () => patch({ fill: 'transparent' }), disabled: first.fill === 'transparent' }} /></div>}
+        {sectionOf(elements, first.id).some(id => { const x = elements.find(e => e.id === id)!; return x.kind === 'frame' || x.kind === 'box' || x.name.startsWith('מסגרת'); }) && (
+          <div className="col-span-full space-y-1">
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              צורת התיבה והמסגרת:
+              <select aria-label="צורת התיבה והמסגרת" className={SELECT_CLASS} value={elements.find(e => sectionOf(elements, first.id).includes(e.id) && e.shape)?.shape ?? ''} onChange={ev => { if (ev.target.value) commit(setSectionShape(elements, first.id, ev.target.value as NonNullable<BoardElement['shape']>)); }}>
+                <option value="" disabled>בחירת צורה</option>
+                {Object.entries(SECTION_SHAPES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+              </select>
+            </label>
+            <p className="text-[11px] text-muted-foreground">הצורה חלה על המסגרת, המילוי ומקום התוכן יחד. מסגרת מצולמת מתחלפת במסגרת מצוירת; אפשר לחזור בצעד אחורה.</p>
+          </div>
+        )}
+        {first.kind === 'box' && !first.shape && <div className="col-span-full"><SwitchRow label="מילוי בצורת קשת" ariaLabel="מילוי בצורת קשת" checked={first.archFill ?? false} onChange={(on) => patch({ archFill: on })} /></div>}
+        {pictured && (
+          // The whole picture's colours - a background, a frame or an ornament - not one carving in it.
+          <div className="col-span-full space-y-2 rounded-md border p-3" data-testid="image-colour-tools">
+            <p className="text-sm font-medium">צבעוניות התמונה</p>
+            <p className="text-[11px] text-muted-foreground">משנה את כל התמונה שנבחרה - רקע, מסגרת או קישוט. לא צובע גילוף מסוים בתוך התמונה.</p>
+            {([['hue', 'גוון התמונה', -180, 180, 1, 0], ['saturation', 'רוויה בתמונה', 0, 2, 0.05, 1], ['brightness', 'בהירות התמונה', 0.2, 2, 0.05, 1]] as const).map(([key, label, min, max, step, base]) => (
+              <Range key={key} label={label} min={min} max={max} step={step} value={first.imageTune?.[key] ?? base}
+                show={(v) => (key === 'hue' ? `${Math.round(v)}°` : `${Math.round(v * 100)}%`)}
+                onChange={(v) => patch({ imageTune: { hue: 0, saturation: 1, brightness: 1, ...first.imageTune, [key]: v } })} />
+            ))}
+            <ResetButton onClick={() => patch({ imageTune: undefined })}>חזרה לצבעוניות המקורית</ResetButton>
+          </div>
+        )}
         {first.kind === 'text' && <label className="text-xs">מקור התוכן<select className={`${SELECT_CLASS} mt-1 block w-full`} aria-label="מקור התוכן של החלק" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label>}
         {/* The letters - size, font, bold, wrapping, the words - in the same bar as under the board's preview. */}
         {first.kind === 'text' && <div className="col-span-full">{textToolsElsewhere

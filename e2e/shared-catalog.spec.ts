@@ -19,25 +19,31 @@ test('every catalogue design can be applied, edited and captured without mutatin
  }
 });
 
-for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library']){
+for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library','d_rc_moon_crown_balanced','d_rc_moon_crown_right','d_rc_moon_crown_left','d_rc_silver_leaves','d_rc_walnut_vines','d_daily_air','d_daily_noir','d_daily_stone']){
  test('layer editing and persistence: '+id,async({page})=>{
   test.setTimeout(90000);await page.setViewportSize({width:1600,height:1000});
+  const greeting=id.startsWith('d_daily_')?'ברכת היום':'ברכת ראש חודש';
+  const category=id.startsWith('d_daily_')?'כללי':'ראש חודש';
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   const server=await serveEditor(page,JSON.parse(JSON.stringify(DEFAULT_TV_CONFIG)));
   await page.goto('/e2e/harness/editor.html');
   await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
   const library=page.getByTestId('design-library');
-  await library.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
+  await library.getByLabel('נושא הערכות',{exact:true}).selectOption(category);
   const d=raw.designs.find(x=>x.id===id);
   const card=library.locator(`[data-design-id="${id}"]`);
   await card.getByRole('button',{name:'שכפול לעריכה',exact:true}).click();
   await card.getByRole('button',{name:'החלת ערכה '+d.name,exact:true}).click();
+  const parts=page.getByTestId('shared-catalog-parts');
+  await parts.getByLabel('נושא החלקים',{exact:true}).selectOption(category);
+  await parts.getByLabel('חלקים מאיזו ערכה').selectOption(id);
+  await expect(parts.getByTestId('shared-count')).toHaveText(d.values.elements.length+' חלקים זמינים');
   const board=page.locator('.tv-frame .tv-root').first();
   await expect(board.locator('[data-element-id]')).toHaveCount(d.values.elements.length);
   await expect.poll(()=>board.locator('img').evaluateAll(imgs=>imgs.every(i=>(i as HTMLImageElement).complete&&(i as HTMLImageElement).naturalWidth>0))).toBe(true);
   await board.screenshot({path:'../outputs/'+id+'-board.png'});
   const layers=page.getByLabel('שכבות החלקים',{exact:true});
-  await layers.getByRole('button',{name:'ברכת ראש חודש',exact:true}).click();
+  await layers.getByRole('button',{name:greeting,exact:true}).click();
   await page.getByLabel('מיקום אופקי',{exact:true}).fill('32');
   await page.getByLabel('מה כתוב בטקסט',{exact:true}).fill('חודש טוב ומבורך');
   await page.getByRole('button',{name:'שכפול החלק',exact:true}).click();
@@ -48,7 +54,7 @@ for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library']){
   await page.getByRole('button',{name:/שמור ושדר/}).first().click();
   await expect.poll(()=>server.writes()).toBeGreaterThan(0);
   const saved=normalizeTvConfig(server.saved());
-  expect(saved.elements.find(e=>e.name==='ברכת ראש חודש')).toMatchObject({x:32,text:'חודש טוב ומבורך'});
+  expect(saved.elements.find(e=>e.name===greeting)).toMatchObject({x:32,text:'חודש טוב ומבורך'});
   expect(saved.designs).toHaveLength(1);
   await page.reload();await expect(board.locator('[data-element-id]')).toHaveCount(d.values.elements.length);
   expect(errors).toEqual([]);
@@ -56,7 +62,7 @@ for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library']){
 }
 test('catalog preserves images, masks and bindings through central normalizer',()=>{
  const parsed=parseSharedCatalog(raw);
- expect(parsed.designs).toHaveLength(80);expect(parsed.parts).toHaveLength(923);
+ expect(parsed.designs).toHaveLength(88);expect(parsed.parts).toHaveLength(1138);
  for(const d of parsed.designs){
   const source=raw.designs.find(x=>x.id===d.id);
   expect(d.values.elements?.length??0).toBe(source.values.elements?.length??0);
@@ -76,7 +82,7 @@ test('central editor shares categorized themes and parts without changing a boar
  await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
  const library=page.getByTestId('design-library');
  await library.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
- await expect(library.locator('[data-design-id^="d_rc_"]')).toHaveCount(10);
+ await expect(library.locator('[data-design-id^="d_rc_"]')).toHaveCount(15);
  expect(server.writes()).toBe(0);expect(server.saved()).toEqual(original);
  await library.getByLabel('נושא הערכות',{exact:true}).selectOption('הכול');
  const ids=await library.locator('[data-design-id]').evaluateAll(els=>els.map(e=>e.getAttribute('data-design-id')));

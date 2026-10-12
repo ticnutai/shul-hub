@@ -27,16 +27,16 @@ test("the layout tab chooses what a frame does with content that does not fit", 
   await expect(frame.locator("[data-scrolling]")).toHaveCount(0);
 
   await page.getByRole("tab", { name: "פריסה" }).click();
-  await page.getByRole("button", { name: "גלילה עם עצירות" }).click();
+  await page.getByRole("radio", { name: "גלילה עם עצירות" }).click();
   await expect(frame.locator('[data-scrolling="pause"]').first()).toBeVisible();
   // The daf yomi's cards fill their frame; they never scroll.
   await expect(frame.locator('[data-block="learning"] [data-scrolling]')).toHaveCount(0);
 
-  await page.getByRole("button", { name: "וילון רציף" }).click();
+  await page.getByRole("radio", { name: "וילון רציף" }).click();
   await expect(frame.locator('[data-scrolling="loop"]').first()).toBeVisible();
   await expect(frame.locator(".tv-autoscroll-copy.is-echo").first()).toBeAttached();
 
-  await page.getByRole("button", { name: "בלי גלילה" }).click();
+  await page.getByRole("radio", { name: "בלי גלילה" }).click();
   await expect(frame.locator("[data-scrolling]")).toHaveCount(0);
   await expectNotFrozen(page, "overflow");
 });

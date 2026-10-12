@@ -14,6 +14,10 @@ export interface BoardElement {
   crop?: { x: number; y: number; width: number; height: number };
   /** Non-destructive source-pixel mask. Holes expose independent layers below. */
   sourceMask?: { width: number; height: number; path: string; holes: string[] };
+  /** Non-destructive colour adjustment for image artwork, including image frames. */
+  imageTune?: { hue: number; saturation: number; brightness: number };
+  /** A colour-editable arched fill beneath an independent arched picture frame. */
+  archFill?: boolean;
   binding?: ElementBinding;
   rowsPerPage?: number;
   zmanKeys?: (typeof ZMAN_DISPLAY_KEYS)[number][];
@@ -120,6 +124,8 @@ export function normalizeElements(raw: unknown): BoardElement[] {
     return [{ ...d, id: v.id, width, height, x: n(v.x, 0, 0, 100 - width), y: n(v.y, 0, 0, 100 - height),
       ...(v.crop && typeof v.crop === 'object' ? { crop: { x: n(v.crop.x, 0, 0, 100 - cropWidth), y: n(v.crop.y, 0, 0, 100 - cropHeight), width: cropWidth, height: cropHeight } } : {}),
       ...(normalizeMask(v.sourceMask) ? {sourceMask:normalizeMask(v.sourceMask)} : {}),
+      ...(v.kind==='box' && v.archFill===true ? {archFill:true} : {}),
+      ...((v.kind === 'image' || v.kind === 'frame') && v.imageTune && typeof v.imageTune === 'object' ? {imageTune:{hue:n(v.imageTune.hue,0,-180,180),saturation:n(v.imageTune.saturation,1,0,2),brightness:n(v.imageTune.brightness,1,.2,2)}} : {}),
       ...(ELEMENT_BINDINGS.includes(v.binding) ? { binding: v.binding } : {}),
       ...(typeof v.rowsPerPage === 'number' ? { rowsPerPage: Math.round(n(v.rowsPerPage, 3, 1, 30)) } : {}),
       ...(v.scroll === 'pause' || v.scroll === 'loop' ? { scroll: v.scroll as ElementScroll } : {}),
@@ -516,6 +522,7 @@ export function importElementSet(text: string): BoardElement[] {
 
 export function elementStyle(e: BoardElement): CSSProperties {
   return { position: 'absolute', left: `${e.x}%`, top: `${e.y}%`, width: `${e.width}%`, height: `${e.height}%`, opacity: e.opacity, transform: `rotate(${e.rotation}deg)`, color: e.color, display: e.hidden ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center',
+    ...((e.kind === 'image' || e.kind === 'frame') && e.image && e.imageTune ? {filter:`hue-rotate(${e.imageTune.hue}deg) saturate(${e.imageTune.saturation}) brightness(${e.imageTune.brightness})`} : {}),
     ...(e.backdrop ? backdropStyle(e.color) : {}) };
 }
 

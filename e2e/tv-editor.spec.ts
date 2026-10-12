@@ -347,7 +347,8 @@ test.describe("TV editor", () => {
     await expect(library.getByRole("button", { name: /^החלת ערכה רקע אחר/ })).toBeVisible();
     await expectNotFrozen(page, "design renamed");
 
-    await library.getByRole("button", { name: "מחיקה" }).click();
+    // Deleting one's own kit: ✕ in its corner, then "למחוק?" under it.
+    await library.getByRole("button", { name: "מחיקת רקע אחר" }).click();
     await library.getByRole("button", { name: "למחוק?" }).click();
     await expect(library.getByRole("button", { name: /^החלת ערכה רקע אחר/ })).toHaveCount(0);
     await expectNotFrozen(page, "design deleted");
