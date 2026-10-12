@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { getFontEmbedCSS, toPng } from 'html-to-image';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Notice } from './Notice';
 import type { TvConfig } from '@/tv/config';
 import { downloadFile, exportWorkspace, importWorkspace, exportAppearance, applyAppearance, type StoreImage } from '@/tv/workspaceTransfer';
 import { uploadTvImage } from './tvAdminData';
@@ -62,7 +63,7 @@ export function WorkspaceTransfer({ config, onImport }: { config: TvConfig; onIm
         <Button variant="outline" disabled={busy} onClick={() => run(async () => { downloadFile(await exportWorkspace(config), 'הלוח-כולו.zip'); toast.success('קובץ הלוח מוכן'); })}>
           ייצוא הלוח כולו
         </Button>
-        <label className="cursor-pointer rounded border px-3 py-2 text-sm">
+        <label className={`${buttonVariants({ variant: 'outline' })} cursor-pointer`}>
           {busy ? 'טוען…' : 'ייבוא מקובץ'}
           <input
             type="file"
@@ -80,28 +81,28 @@ export function WorkspaceTransfer({ config, onImport }: { config: TvConfig; onIm
       </div>
 
       {incoming && (
-        <div className="space-y-2 rounded border border-amber-400 bg-amber-50 p-3 text-sm dark:bg-amber-950" role="alert" data-testid="workspace-incoming">
-          <p>
+        <Notice variant="warning" role="alert" data-testid="workspace-incoming">
+          <p className="mb-2">
             בקובץ {incoming.elements.length} חלקים ו־{incoming.screens?.length ?? 0} מסכים. הוא נטען כטיוטה: אפשר לחזור בצעד אחורה, והלוחות
             מתעדכנים רק בשמירה.
           </p>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => { onImport(applyAppearance(config, incoming)); setIncoming(null); toast.success('העיצוב נטען לטיוטה; תוכן הלוח נשאר'); }}>
+            <Button onClick={() => { onImport(applyAppearance(config, incoming)); setIncoming(null); toast.success('העיצוב נטען, תוכן הלוח נשאר - בטיוטה עד "שמור ושדר"'); }}>
               העיצוב בלבד - התוכן של הלוח נשאר
             </Button>
-            <Button variant="outline" onClick={() => { onImport(incoming); setIncoming(null); toast.success('הלוח נטען כטיוטה'); }}>
+            <Button variant="outline" onClick={() => { onImport(incoming); setIncoming(null); toast.success('הלוח נטען - בטיוטה עד "שמור ושדר"'); }}>
               הלוח כולו
             </Button>
-            <Button variant="ghost" onClick={() => setIncoming(null)}>ביטול</Button>
+            <Button variant="outline" onClick={() => setIncoming(null)}>ביטול</Button>
           </div>
-        </div>
+        </Notice>
       )}
 
       <h3 className="pt-2 font-semibold">תמונה של הלוח</h3>
       <div className="flex flex-wrap items-center gap-2">
-        <select aria-label="איכות התמונה" className="rounded border p-2 text-sm" value={resolution} onChange={(e) => setResolution(Number(e.target.value))}>
-          <option value={1920}>רגילה (1920)</option>
-          <option value={3840}>גבוהה מאוד (3840)</option>
+        <select aria-label="איכות התמונה" className="h-10 rounded-md border bg-background px-2 text-sm" value={resolution} onChange={(e) => setResolution(Number(e.target.value))}>
+          <option value={1920}>רגילה (רוחב 1920 נקודות)</option>
+          <option value={3840}>גבוהה מאוד (רוחב 3840 נקודות)</option>
         </select>
         <Button variant="outline" disabled={busy} onClick={() => run(async () => { const data = await picture(); downloadFile(await (await fetch(data)).blob(), 'הלוח.png'); })}>
           הורדת תמונה

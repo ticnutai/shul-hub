@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Eye, ImagePlus, Palette, Plus, Settings2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -28,7 +29,11 @@ import {
 } from "@/tv/occasions";
 import { SHABBAT_ART } from "@/tv/shabbat";
 import { uploadImages } from "./uploadImages";
+import { Stepper } from "./editorParts";
 import { TimetableButton, TimetableSection } from "./OccasionTimetable";
+
+/** One sentence for an occasion that is off, wherever it is opened (here, and its tab beside the pages). */
+export const occasionOffNote = (name: string) => `"${name}" כבוי - הוא לא יופיע על המסכים עד שתפעילו אותו בלשונית "מועדים".`;
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -134,7 +139,7 @@ export function OccasionsEditor({
     if (!d) return toast.error("לא נמצא תאריך קרוב למועד הזה");
     // The day in Israel: toISOString's is UTC, the day before from midnight to 03:00.
     onPreview(new Date(Date.parse(`${jerusalemDateKey(d)}T11:00:00+03:00`)), o.id);
-    if (!o.enabled) toast.warning(`"${o.name}" כבוי - הוא לא יופיע עד שתפעילו אותו.`);
+    if (!o.enabled) toast.warning(occasionOffNote(o.name));
   };
 
   const q = filter.trim();
@@ -159,7 +164,7 @@ export function OccasionsEditor({
           className="h-8 w-40"
         />
         <label className="flex items-center gap-1.5 text-xs">
-          <input type="checkbox" checked={onlyOn} onChange={(e) => setOnlyOn(e.target.checked)} /> רק פעילים
+          <Switch checked={onlyOn} onCheckedChange={setOnlyOn} aria-label="רק פעילים" /> רק פעילים
         </label>
         <label className="flex items-center gap-1.5 text-xs">
           תצוגה לתאריך:
@@ -184,7 +189,8 @@ export function OccasionsEditor({
               <div className="flex flex-col">
                 <button
                   type="button"
-                  aria-label={`${o.name} למעלה`}
+                  aria-label={`הקדמת ${o.name}`}
+                  title="הקדמה - חשוב יותר"
                   disabled={i === 0}
                   onClick={() => move(o.id, -1)}
                   className="text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -193,7 +199,8 @@ export function OccasionsEditor({
                 </button>
                 <button
                   type="button"
-                  aria-label={`${o.name} למטה`}
+                  aria-label={`העברת ${o.name} אחורה`}
+                  title="העברה אחורה - פחות חשוב"
                   disabled={i === list.length - 1}
                   onClick={() => move(o.id, 1)}
                   className="text-muted-foreground hover:text-foreground disabled:opacity-30"
@@ -209,7 +216,7 @@ export function OccasionsEditor({
                   {describeWhen(o)}
                   {inDays !== null && ` · ${inDays === 0 ? "היום" : inDays === 1 ? "מחר" : `בעוד ${inDays} ימים`}`}
                   {o.enabled && ` · ${DISPLAY_LABELS[o.display].name}`}
-                  {o.design && " · עם עיצוב"}
+                  {o.design && " · עם ערכה"}
                 </div>
               </button>
               {o.when.type === "calendar" && specialDayByKey(o.when.key) && <TimetableButton def={specialDayByKey(o.when.key)!} />}
@@ -227,7 +234,7 @@ export function OccasionsEditor({
                     preview(o);
                     onDesign(o.id);
                   }}
-                  title="עיצוב המסך של המועד, בעורך העיצוב הרגיל"
+                  title="עריכת המסך של המועד והערכה שלו, בעורך העיצוב הרגיל"
                   aria-label={`עיצוב המסך של ${o.name}`}
                   data-testid="occasion-design"
                 >
@@ -248,7 +255,13 @@ export function OccasionsEditor({
           config={config}
           onClose={() => setOpenId(null)}
           onPatch={(p) => patch(open.id, p)}
-          onDelete={() => {
+          onDelete={async () => {
+            const ok = await confirmAction({
+              title: `למחוק את "${open.name}"?`,
+              description: 'המועד והגדרותיו יימחקו מהרשימה. אפשר לבטל עם "צעד אחורה" (Ctrl+Z) עד השמירה.',
+              confirmLabel: "מחיקה",
+            });
+            if (!ok) return;
             change(`delete:${open.id}`, (l) => l.filter((o) => o.id !== open.id));
             setOpenId(null);
           }}
@@ -325,23 +338,11 @@ function OccasionDialog({
 
           {def && <TimetableSection def={def} />}
 
+          {/* Its own screen is shown or hidden by "איך מוצג" below ("בלי מסך משלו"): one control, not two. */}
+          {!o.screen && o.blocks.length > 0 && config.screenLayout !== "composition" && (
           <section className="space-y-2" data-testid="occasion-screens">
-            <h3 className="font-medium">המסכים של המועד</h3>
-            <p className="text-[11px] text-muted-foreground">כל מסך אפשר להסתיר כאן ולהחזיר מתי שרוצים, בלי למחוק את מה שהוגדר בו.</p>
-            <label className="flex items-center gap-3">
-              <Switch
-                checked={o.display !== "off"}
-                onCheckedChange={(on) => onPatch({ display: on ? "turns" : "off" })}
-                aria-label="מסך המועד מוצג"
-              />
-              <span>
-                <b>מסך המועד</b>
-                <span className="block text-[11px] text-muted-foreground">
-                  {o.display === "off" ? "מוסתר - המועד לא מקבל מסך משלו" : "הכרטיס של המועד, או הערכה שבחרתם לו למטה"}
-                </span>
-              </span>
-            </label>
-            {!o.screen && o.blocks.length > 0 && config.screenLayout !== "composition" && (
+            <h3 className="font-medium">המסך הנוסף מהלוח</h3>
+            <p className="text-[11px] text-muted-foreground">אפשר להסתיר אותו ולהחזיר מתי שרוצים, בלי למחוק את מה שהוגדר בו.</p>
               <label className="flex items-center gap-3">
                 <Switch
                   checked={!o.blocksOff}
@@ -355,8 +356,8 @@ function OccasionDialog({
                   </span>
                 </span>
               </label>
-            )}
           </section>
+          )}
 
           <section className="space-y-2">
             <h3 className="font-medium">שם</h3>
@@ -471,30 +472,32 @@ function OccasionDialog({
 
           <section className="space-y-1">
             <h3 className="font-medium">איך מוצג</h3>
+            <p className="text-[11px] text-muted-foreground">"בלי מסך משלו" מסתיר את מסך המועד; מה שהוגדר בו נשמר להחזרה.</p>
+            <div role="radiogroup" aria-label="איך מוצג" className="space-y-1">
             {(Object.keys(DISPLAY_LABELS) as Occasion["display"][]).map((d) => (
               <label key={d} className="flex items-center gap-2">
-                <input type="radio" name="display" checked={o.display === d} onChange={() => onPatch({ display: d })} />
+                <input type="radio" name="display" checked={o.display === d} onChange={() => onPatch({ display: d })} aria-label={DISPLAY_LABELS[d].name} />
                 <b>{DISPLAY_LABELS[d].name}</b>
                 <span className="text-[11px] text-muted-foreground">{DISPLAY_LABELS[d].note}</span>
               </label>
             ))}
-            <label className="flex items-center gap-2">
-              <input type="checkbox" checked={o.banner} onChange={(e) => onPatch({ banner: e.target.checked })} />
+            </div>
+            <label className="flex items-center gap-3 pt-1">
+              <Switch checked={o.banner} onCheckedChange={(on) => onPatch({ banner: on })} aria-label="פס בתחתית המסכים הרגילים" />
               גם פס בתחתית המסכים הרגילים (השם והזמנים)
             </label>
-            <label className="flex items-center gap-2 text-xs">
+            <div className="flex items-center gap-2 text-xs">
               משך מסך המועד בתור:
-              <Input
-                type="number"
+              <Stepper
+                label="משך מסך המועד"
+                value={o.seconds}
                 min={10}
                 max={600}
-                aria-label="משך מסך המועד"
-                value={o.seconds}
-                onChange={(e) => onPatch({ seconds: Math.max(10, Math.min(600, Number(e.target.value) || 45)) })}
-                className="h-8 w-20"
+                step={5}
+                format={(v) => `${v} שניות`}
+                onChange={(v) => onPatch({ seconds: v })}
               />
-              שניות
-            </label>
+            </div>
           </section>
 
           <section className="space-y-1">
@@ -527,7 +530,7 @@ function OccasionDialog({
               // A board of parts shows all of it in one picture: a screen of its blocks would be the board again.
               <p className="rounded-md bg-muted/60 p-2 text-[11px] text-muted-foreground" data-testid="occasion-parts-board">
                 הלוח שלכם בנוי מחלקים, וכל התוכן שלו מוצג בתמונה אחת - לכן למועד אין מסך נוסף "מהלוח". כאן נקבע מה בתוך
-                הכרטיס; את המסך של המועד מעצבים כמו עמוד (🎨, או הלשונית שלו ליד "עמוד 1").
+                הכרטיס; את המסך של המועד מעצבים כמו עמוד (כפתור הפלטה בשורה שלו, או הלשונית שלו ליד "עמוד 1").
               </p>
             ) : o.screen ? (
               // One place decides what stands beside the card, and where.
@@ -655,7 +658,9 @@ function OccasionDialog({
                       {info.thumb ? (
                         <img src={info.thumb} alt="" className="aspect-video w-full object-cover" loading="lazy" />
                       ) : (
-                        <span className="flex aspect-video w-full items-center justify-center bg-muted">🎨</span>
+                        <span className="flex aspect-video w-full items-center justify-center bg-muted">
+                          <Palette className="size-5 text-muted-foreground" aria-hidden />
+                        </span>
                       )}
                       <span className="block truncate px-1 py-0.5">{on ? info.label : `${info.label} · לא מוצגת`}</span>
                     </button>
@@ -664,12 +669,17 @@ function OccasionDialog({
                         type="button"
                         aria-label={`מחיקת ${info.label} מהגלריה`}
                         title="מחיקה מהגלריה"
-                        onClick={() =>
-                          onPatch({ pictures: o.pictures.filter((x) => x !== p), uploads: (o.uploads ?? []).filter((x) => x !== p) })
-                        }
-                        className="absolute -left-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background text-[11px] shadow hover:bg-destructive hover:text-destructive-foreground"
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: "למחוק את התמונה מהגלריה?",
+                            description: "היא תרד מהמסך של המועד ומהגלריה שלו.",
+                            confirmLabel: "מחיקה",
+                          });
+                          if (ok) onPatch({ pictures: o.pictures.filter((x) => x !== p), uploads: (o.uploads ?? []).filter((x) => x !== p) });
+                        }}
+                        className="absolute -left-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full border bg-background shadow hover:bg-destructive hover:text-destructive-foreground"
                       >
-                        ✕
+                        <X className="size-3" aria-hidden />
                       </button>
                     )}
                   </div>
@@ -691,19 +701,18 @@ function OccasionDialog({
                   }}
                 />
               </label>
-              <label className="flex items-center gap-1 text-xs">
+              <div className="flex items-center gap-2 text-xs">
                 כל תמונה
-                <Input
-                  type="number"
+                <Stepper
+                  label="שניות לכל תמונה"
+                  value={o.pictureSeconds}
                   min={5}
                   max={600}
-                  aria-label="שניות לכל תמונה"
-                  value={o.pictureSeconds}
-                  onChange={(e) => onPatch({ pictureSeconds: Math.max(5, Math.min(600, Number(e.target.value) || 30)) })}
-                  className="h-8 w-20"
+                  step={5}
+                  format={(v) => `${v} שניות`}
+                  onChange={(v) => onPatch({ pictureSeconds: v })}
                 />
-                שניות
-              </label>
+              </div>
             </div>
           </section>
 
@@ -741,7 +750,7 @@ function OccasionDialog({
               )}
             </select>
             <p className="text-[11px] text-muted-foreground">
-              ערכות מ"אוסף New Shul" המשותף: פותחים את המסך של המועד (🎨, או הלשונית שלו ליד "עמוד 1") ובוחרים שם - עותק נשמר למועד.
+              ערכות מהאוסף המשותף: פותחים את המסך של המועד (כפתור הפלטה בשורה שלו, או הלשונית שלו ליד "עמוד 1") ובוחרים שם - עותק נשמר למועד.
             </p>
             {o.design && (
               <div className="space-y-1 text-sm" role="radiogroup" aria-label="איפה העיצוב חל" data-testid="occasion-design-on">
@@ -775,20 +784,19 @@ function OccasionDialog({
             )}
           </section>
 
-          <div className="flex flex-wrap justify-between gap-2 border-t pt-3">
+          {/* Logical order: what it does first, closing at the end (the left, in Hebrew). */}
+          <div className="flex flex-wrap items-center gap-2 border-t pt-3">
             <Button type="button" variant="outline" onClick={onPreview}>
               <Eye className="size-4" /> תצוגה בתאריך הקרוב
             </Button>
-            <div className="flex gap-2">
-              {own && (
-                <Button type="button" variant="destructive" onClick={onDelete}>
-                  <Trash2 className="size-4" /> מחיקת המועד
-                </Button>
-              )}
-              <Button type="button" onClick={onClose}>
-                סגירה
+            {own && (
+              <Button type="button" variant="destructive" onClick={onDelete}>
+                <Trash2 className="size-4" /> מחיקת המועד
               </Button>
-            </div>
+            )}
+            <Button type="button" variant="ghost" className="ms-auto" onClick={onClose}>
+              <X className="size-4" /> סגירה
+            </Button>
           </div>
         </div>
       </DialogContent>

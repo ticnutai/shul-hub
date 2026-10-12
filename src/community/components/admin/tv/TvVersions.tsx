@@ -38,14 +38,14 @@ export function TvVersions({
     try {
       then(await readTvConfigVersion(id));
     } catch {
-      toast.error("לא הצלחנו לקרוא את הגרסה. נסו שוב.");
+      toast.error("קריאת הגרסה נכשלה. נסו שוב.");
     } finally {
       setBusy(null);
     }
   };
 
   if (versions.isLoading) return <p className="text-sm text-muted-foreground">טוען גרסאות…</p>;
-  if (versions.error) return <p className="text-sm text-muted-foreground">לא הצלחנו לטעון את הגרסאות הקודמות.</p>;
+  if (versions.error) return <p className="text-sm text-muted-foreground">טעינת הגרסאות הקודמות נכשלה.</p>;
   const list = versions.data ?? [];
   if (!list.length)
     return (
@@ -74,7 +74,8 @@ export function TvVersions({
                 on ? onShow(null) : open(v.id, (config) => onShow({ id: v.id, label: when(v.saved_at), config }))
               }
             >
-              <Eye className="size-4" /> {on ? "חזרה לטיוטה" : "הצגה"}
+              {/* A toggle; the way back to the draft is on the note over the preview, once. */}
+              <Eye className="size-4" /> {on ? "מוצגת" : "הצגה"}
             </Button>
             <Button
               type="button"

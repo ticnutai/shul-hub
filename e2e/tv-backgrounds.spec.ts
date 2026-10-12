@@ -25,11 +25,11 @@ test("a picture with a layer over it, kept in the gallery, changed, and removed 
     ["מעברי צבע", "לילה כחול", "שמיים בערב"],
     ["תמונות", "שמיים בערב", "כחול לילה"],
   ] as const) {
-    await gallery.getByRole("button", { name: filter, exact: true }).click();
+    await gallery.getByRole("radio", { name: filter, exact: true }).click();
     await expect(tile(has)).toBeVisible();
     await expect(tile(hasNot)).toHaveCount(0);
   }
-  await gallery.getByRole("button", { name: "הכול", exact: true }).click();
+  await gallery.getByRole("radio", { name: "הכול", exact: true }).click();
 
   // A ready picture with a gradient over it.
   await gallery.getByRole("button", { name: "שמיים בערב", exact: true }).click();
@@ -44,11 +44,12 @@ test("a picture with a layer over it, kept in the gallery, changed, and removed 
   await expect.poll(() => root.evaluate((el) => getComputedStyle(el).getPropertyValue("--tv-bg-overlay").trim())).toBe("#7a1020");
   const keep = page.getByTestId("background-keep");
   await expect(keep).toContainText("לא שמור בגלריה");
-  await keep.getByLabel("שם לרקע בגלריה").fill("שמיים בבורדו");
   await keep.getByRole("button", { name: "שמירה כרקע חדש" }).click();
+  await keep.getByLabel("שם לרקע בגלריה").fill("שמיים בבורדו");
+  await keep.getByRole("button", { name: "שמירה", exact: true }).click();
   await expect(keep).toHaveCount(0);
 
-  await gallery.getByRole("button", { name: /^שלי/ }).click();
+  await gallery.getByRole("radio", { name: /^שלי/ }).click();
   const mine = gallery.getByRole("button", { name: "שמיים בבורדו", exact: true });
   await expect(mine).toHaveAttribute("aria-pressed", "true");
 
@@ -60,6 +61,7 @@ test("a picture with a layer over it, kept in the gallery, changed, and removed 
 
   // Removed from the gallery: the board keeps wearing it.
   await gallery.getByRole("button", { name: "מחיקת שמיים בבורדו" }).click();
+  await page.getByTestId("confirm-dialog").getByRole("button", { name: "מחיקה" }).click();
   await expect(mine).toHaveCount(0);
   await expect(root).toHaveClass(/has-bg-overlay/);
   await expectNotFrozen(page, "backgrounds");

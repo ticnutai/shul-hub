@@ -3,6 +3,7 @@
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
  */
 import { ImagePlus, Trash2 } from "lucide-react";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -23,7 +24,7 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
     <>
       <Section
         title="מצגת תמונות"
-        hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף להעלות כ-PNG."
+        hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כשקופית נפרדת. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף לשמור כתמונה בלי דחיסה (קובץ שהסיומת שלו png), כדי שהאותיות יישארו חדות."
       >
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" variant="outline" size="sm" asChild disabled={uploading}>
@@ -46,7 +47,7 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
               min={3}
               max={60}
               step={1}
-              format={(v) => `${v} שנ׳`}
+              format={(v) => `${v} שניות`}
               onChange={(v) =>
                 edit("sh-sec", (c) => ({
                   ...c,
@@ -83,15 +84,21 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
                   size="icon"
                   className="size-8 shrink-0"
                   aria-label="הסרת תמונה"
-                  onClick={() =>
+                  onClick={async () => {
+                    const ok = await confirmAction({
+                      title: "להסיר את התמונה מהמצגת?",
+                      description: 'אפשר להחזיר עם "צעד אחורה" (Ctrl+Z) עד השמירה.',
+                      confirmLabel: "הסרה",
+                    });
+                    if (!ok) return;
                     edit("sh-del", (c) => ({
                       ...c,
                       slideshow: {
                         ...c.slideshow,
                         images: c.slideshow.images.filter((_, j) => j !== i),
                       },
-                    }))
-                  }
+                    }));
+                  }}
                 >
                   <Trash2 className="size-4" />
                 </Button>
@@ -103,7 +110,7 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
 
       <Section
         title="סרגל הודעה רץ"
-        hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (~45%) כל עוד הסרגל פעיל."
+        hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (כ-45%) כל עוד הסרגל פעיל."
       >
         <label className="flex items-center gap-3">
           <Switch
@@ -111,8 +118,9 @@ export function ContentTab({ draft, scoped, edit, uploading, upload, showAlertEx
             onCheckedChange={(on) =>
               edit("tk-on", (c) => ({ ...c, ticker: { ...c.ticker, enabled: on } }))
             }
+            aria-label="סרגל ההודעה מוצג בלוח"
           />
-          הצגת סרגל
+          סרגל ההודעה מוצג בלוח
         </label>
         <Textarea
           value={scoped.ticker.text}

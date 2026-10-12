@@ -19,9 +19,10 @@ import { CalendarClock, ChevronDown, Loader2, Plus, Trash2, TriangleAlert } from
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { confirmAction } from "@/components/ConfirmDialog";
 import {
   Select,
   SelectContent,
@@ -221,6 +222,7 @@ export function MinyanOverridesAdmin() {
               <Input
                 id="ov-date"
                 type="date"
+                dir="ltr"
                 className="mt-1"
                 value={date}
                 min={today}
@@ -236,6 +238,7 @@ export function MinyanOverridesAdmin() {
               <Input
                 id="ov-time"
                 type="time"
+                dir="ltr"
                 className="mt-1"
                 value={time}
                 disabled={cancelled && !time}
@@ -246,10 +249,10 @@ export function MinyanOverridesAdmin() {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox checked={cancelled} onCheckedChange={(v) => setCancelled(v === true)} />
-              אין מניין ביום הזה
-            </label>
+            <div className="flex items-center gap-2 text-sm">
+              <Switch id="ov-cancelled" checked={cancelled} onCheckedChange={setCancelled} />
+              <Label htmlFor="ov-cancelled" className="text-sm font-normal">אין מניין ביום הזה</Label>
+            </div>
             <div>
               <Label htmlFor="ov-note" className="text-sm">
                 הערה (לא חובה)
@@ -315,9 +318,16 @@ export function MinyanOverridesAdmin() {
                         size="sm"
                         variant="ghost"
                         className="ms-auto"
-                        aria-label="ביטול השינוי"
+                        aria-label={`ביטול השינוי של ${m?.label ?? "המניין"} ב${hebrewDay(o.on_date)}`}
                         title="ביטול השינוי - חזרה ללוח הרגיל"
-                        onClick={() => remove.mutate(o.id)}
+                        onClick={async () => {
+                          const ok = await confirmAction({
+                            title: `לבטל את השינוי של „${m?.label ?? "המניין"}” ב${hebrewDay(o.on_date)}?`,
+                            description: "המניין יתקיים ביום הזה כרגיל.",
+                            confirmLabel: "חזרה ללוח הרגיל",
+                          });
+                          if (ok) remove.mutate(o.id);
+                        }}
                       >
                         <Trash2 className="size-4" />
                       </Button>

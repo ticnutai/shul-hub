@@ -135,7 +135,7 @@ export function PrayerDisplaySettings({
                 value={normalizePrayerLayout(c.display_mode)}
                 disabled={saveCategory.isPending}
                 onChange={(e) => saveCategory.mutate({ id: c.id, display_mode: e.target.value })}
-                className="h-8 rounded-md border bg-background px-2 text-sm"
+                className="h-9 rounded-md border bg-background px-2 text-sm"
               >
                 {PRAYER_LAYOUTS.map((l) => (
                   <option key={l.value} value={l.value}>

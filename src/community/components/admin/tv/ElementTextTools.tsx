@@ -8,10 +8,10 @@
  * the same component in both, so the two never offer different things.
  */
 import { useEffect, useState } from 'react';
-import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, Minus, Plus, TriangleAlert, WrapText } from 'lucide-react';
+import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, TriangleAlert, WrapText } from 'lucide-react';
 
 import { ELEMENT_FONTS, wraps, type BoardElement, type ElementFont } from '@/tv/elements';
-import { ColorPick } from './ColorPick';
+import { ColourRow, SELECT_CLASS, Stepper } from './editorParts';
 
 const BTN = 'grid size-8 place-items-center rounded border text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40';
 const ON = 'border-primary bg-primary/10 text-primary';
@@ -43,18 +43,12 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
       <p className="text-xs font-semibold">הטקסט של: {label}</p>
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Size: the letters themselves, in the board's height. */}
-        <div className="flex items-center gap-0.5" role="group" aria-label="גודל הטקסט">
-          <button type="button" className={BTN} aria-label="הקטנת הטקסט" title="להקטין" onClick={() =>
-            set({ fontSize: Math.max(0.5, Math.round((first.fontSize - 0.25) * 100) / 100) }, 'fontSize')}><Minus className="size-4" aria-hidden /></button>
-          <input type="number" min={0.5} max={20} step={0.25} aria-label="גודל הטקסט" value={Number(first.fontSize.toFixed(2))}
-            onChange={ev => ev.target.value && set({ fontSize: Math.max(0.5, Math.min(20, Number(ev.target.value))) }, 'fontSize')}
-            className="h-8 w-16 rounded border bg-background px-1 text-center text-sm tabular-nums" />
-          <button type="button" className={BTN} aria-label="הגדלת הטקסט" title="להגדיל" onClick={() =>
-            set({ fontSize: Math.min(20, Math.round((first.fontSize + 0.25) * 100) / 100) }, 'fontSize')}><Plus className="size-4" aria-hidden /></button>
-        </div>
+        <Stepper label="גודל הטקסט" value={first.fontSize} min={0.5} max={20} step={0.25}
+          format={(v) => String(Number(v.toFixed(2)))}
+          onChange={(v) => set({ fontSize: Math.round(v * 100) / 100 }, 'fontSize')} />
         <select aria-label="גופן" value={texts.every(e => e.font === first.font) ? first.font ?? '' : ''}
           onChange={ev => set({ font: (ev.target.value || undefined) as ElementFont | undefined }, 'font')}
-          className="h-8 rounded border bg-background px-1 text-sm">
+          className={SELECT_CLASS}>
           <option value="">גופן: כמו בלוח</option>
           {(Object.keys(ELEMENT_FONTS) as ElementFont[]).map(f => (
             <option key={f} value={f} style={{ fontFamily: ELEMENT_FONTS[f].family }}>{ELEMENT_FONTS[f].name}</option>
@@ -80,10 +74,9 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
         <button type="button" className={`${WIDE} ${all('shadow', true) ? ON : ''}`} aria-label="צל לטקסט" aria-pressed={all('shadow', true)}
           title="צל רך מתחת לאותיות - לטקסט על רקע עמוס" onClick={() => set({ shadow: all('shadow', true) ? undefined : true }, 'shadow')}>צל</button>
         {withColor && (
-          <label className="flex items-center gap-1 text-xs text-muted-foreground">
-            צבע
-            <ColorPick label="צבע הטקסט" value={first.color} onChange={v => set({ color: v }, 'color')} />
-          </label>
+          <div className="min-w-32">
+            <ColourRow label="צבע הטקסט" value={first.color} onChange={v => set({ color: v }, 'color')} />
+          </div>
         )}
       </div>
       <p className="text-[11px] text-muted-foreground">

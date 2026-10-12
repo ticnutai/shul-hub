@@ -16,7 +16,7 @@ import {
 import {
   isSafeGradient,
 } from "@/tv/themes";
-import { ColorPick } from "./ColorPick";
+import { ColourRow, Range, Segments } from "./editorParts";
 
 /**
  * Building and keeping gradients.
@@ -134,86 +134,65 @@ export function GradientStudio({
             <Check className="size-4" /> {applyLabel}
           </Button>
           <span className="text-xs text-muted-foreground">
-            {valid ? "" : "הערך אינו גרדיאנט תקין"}
+            {valid ? "" : "הקוד אינו מעבר צבעים תקין"}
           </span>
         </div>
       </div>
 
       {/* the two-colour controls */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-        <div className="flex items-center gap-1">
-          {(
-            [
-              ["linear", "ישר"],
-              ["radial", "מעגלי"],
-            ] as const
-          ).map(([k, label]) => (
-            <Button
-              key={k}
-              type="button"
-              size="sm"
-              variant={kind === k ? "default" : "outline"}
-              aria-pressed={kind === k}
-              onClick={() => {
-                setTouched(true);
-                setKind(k);
-                setAdvanced("");
-              }}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-        <label className="flex items-center gap-2">
-          מ־
-          <ColorPick
-            label="צבע ראשון"
-            value={from}
-            onChange={(hex) => {
-              setTouched(true);
-              setFrom(hex);
-              setAdvanced("");
-            }}
-          />
-        </label>
-        <label className="flex items-center gap-2">
-          אל
-          <ColorPick
-            label="צבע שני"
-            value={to}
-            onChange={(hex) => {
-              setTouched(true);
-              setTo(hex);
-              setAdvanced("");
-            }}
-          />
-        </label>
+      <div className="space-y-2">
+        <Segments
+          label={of ? `סוג מעבר הצבעים של ${of}` : "סוג מעבר הצבעים"}
+          value={kind}
+          onChange={(k) => {
+            setTouched(true);
+            setKind(k);
+            setAdvanced("");
+          }}
+          options={[
+            { id: "linear", name: "ישר" },
+            { id: "radial", name: "מעגלי" },
+          ]}
+        />
+        <ColourRow
+          label="צבע ראשון"
+          value={from}
+          onChange={(hex) => {
+            setTouched(true);
+            setFrom(hex);
+            setAdvanced("");
+          }}
+        />
+        <ColourRow
+          label="צבע שני"
+          value={to}
+          onChange={(hex) => {
+            setTouched(true);
+            setTo(hex);
+            setAdvanced("");
+          }}
+        />
         {kind === "linear" && (
-          <label className="flex items-center gap-2">
-            כיוון
-            <input
-              type="range"
-              min={0}
-              max={360}
-              step={5}
-              value={angle}
-              aria-label={of ? `זווית מעבר הצבעים של ${of}` : "זווית הגרדיאנט"}
-              onChange={(e) => {
-                setTouched(true);
-                setAngle(Number(e.target.value));
-                setAdvanced("");
-              }}
-              className="w-28 accent-primary"
-            />
-            <span className="w-10 text-xs tabular-nums">{angle}°</span>
-          </label>
+          <Range
+            label={of ? `זווית מעבר הצבעים של ${of}` : "זווית מעבר הצבעים"}
+            value={angle}
+            min={0}
+            max={360}
+            step={5}
+            show={(v) => `${v}°`}
+            onChange={(v) => {
+              setTouched(true);
+              setAngle(v);
+              setAdvanced("");
+            }}
+          />
         )}
       </div>
 
       {/* raw CSS, for anything the controls above cannot express */}
       <details className="rounded-md border bg-muted/40 p-2">
         <summary className="cursor-pointer text-xs font-medium">
-          CSS מתקדם (שלוש שכבות, שקיפות, conic…)
+          קוד צבעים מתקדם (שלושה צבעים, שקיפות, מעבר סביב נקודה…)
         </summary>
         <Input
           dir="ltr"
@@ -226,10 +205,10 @@ export function GradientStudio({
           className={`mt-2 h-8 font-mono text-xs ${
             advanced && !isSafeGradient(advanced) ? "border-destructive" : ""
           }`}
-          aria-label={of ? `מעבר הצבעים של ${of} (קוד)` : "גרדיאנט CSS"}
+          aria-label={of ? `מעבר הצבעים של ${of} (קוד)` : "קוד מעבר הצבעים"}
         />
         <p className="mt-1 text-[11px] text-muted-foreground">
-          מה שנכתב כאן נשמר בדיוק כפי שהוא. שינוי של אחד הבקרים שלמעלה מחליף אותו בגרדיאנט פשוט.
+          מה שנכתב כאן נשמר בדיוק כפי שהוא. שינוי של אחד הבקרים שלמעלה מחליף אותו במעבר צבעים פשוט.
         </p>
       </details>
     </div>
@@ -251,14 +230,14 @@ export function TransferPanel({
     <div className="space-y-3">
       <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">
-          ייצוא — לגיבוי או להעברה לבית כנסת אחר
+          ייצוא - לגיבוי או להעברה לבית כנסת אחר
         </div>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              ["all", "הכל + מבנה הלוח"],
+              ["all", "הכול + מבנה הלוח"],
               ["themes", "צבעי בסיס"],
-              ["gradients", "גרדיאנטים"],
+              ["gradients", "מעברי צבע"],
             ] as const
           ).map(([what, label]) => (
             <Button
@@ -286,7 +265,7 @@ export function TransferPanel({
         <div className="text-xs font-medium text-muted-foreground">ייבוא</div>
         <p className="text-xs text-muted-foreground">
           קובץ מעורך לוחות הברית מביא גם את מבנה הלוח: קשת או פינות, רקע, מרווחים, גודל טקסט ושם
-          בית הכנסת. הכל נכנס לטיוטה עד "שמור ושדר".
+          בית הכנסת. הכול נכנס לטיוטה עד "שמור ושדר".
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" variant="outline" asChild>
@@ -329,8 +308,8 @@ export function TransferPanel({
                 <AlertDialogHeader>
                   <AlertDialogTitle>לייבא מהקובץ?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    צבעי הבסיס והגרדיאנטים יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
-                    הכל נשאר טיוטה עד "שמור ושדר".
+                    צבעי הבסיס ומעברי הצבע יתווספו למה שקיים, בלי למחוק כלום. שם שכבר תפוס יקבל מספר.
+                    הכול נשאר טיוטה עד "שמור ושדר".
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

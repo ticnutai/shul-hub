@@ -284,7 +284,7 @@ function BrowserBar({ device, height, turned }: { device: DeviceId; height: numb
             ))}
           </div>
           <div style={{ height: "80%", width: 240, background: "#fff", borderRadius: "10px 10px 0 0", font: "500 13px system-ui", color: "#333", display: "flex", alignItems: "center", padding: "0 14px", direction: "rtl" }}>
-            לוח תצוגה — בית הכנסת
+            לוח תצוגה - בית הכנסת
           </div>
         </div>
       )}
@@ -450,17 +450,26 @@ export function DeviceToolbar({
               {spec.bar && (
                 <Button
                   type="button"
-                  variant="outline"
+                  variant={view.fullscreen ? "default" : "outline"}
                   size="sm"
                   className="h-7 px-2 text-xs"
                   aria-pressed={view.fullscreen}
+                  title={view.fullscreen ? "מוצג על כל המסך, בלי סרגלי הדפדפן" : "מוצג בתוך הדפדפן, עם הסרגלים שלו"}
                   onClick={() => onView({ ...view, fullscreen: !view.fullscreen })}
                 >
-                  <Maximize2 className="size-3.5" /> {view.fullscreen ? "מסך מלא" : "בתוך דפדפן"}
+                  <Maximize2 className="size-3.5" /> בלי סרגלי הדפדפן
                 </Button>
               )}
-              <Button type="button" variant={actualSize ? "default" : "outline"} size="sm" className="h-7 px-2 text-xs" onClick={() => onActualSize(!actualSize)}>
-                {actualSize ? "גודל אמיתי 100%" : "מותאם לחלון"}
+              <Button
+                type="button"
+                variant={actualSize ? "default" : "outline"}
+                size="sm"
+                className="h-7 px-2 text-xs"
+                aria-pressed={actualSize}
+                title={actualSize ? "מוצג בגודל האמיתי; לחיצה - התאמה לחלון" : "מותאם לחלון; לחיצה - הגודל האמיתי"}
+                onClick={() => onActualSize(!actualSize)}
+              >
+                בגודל אמיתי (<span dir="ltr">100%</span>)
               </Button>
             </div>
           </div>

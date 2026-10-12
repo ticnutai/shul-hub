@@ -9,11 +9,14 @@
  * of parts at all, so there is one list of what takes turns, not two.
  */
 import { toast } from 'sonner';
-import { CalendarDays, ChevronLeft, ChevronRight, Copy, Play, Square, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Copy, Pause, Play, Trash2, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
 import { MAX_PAGES, addPage, copyPage, movePage, readPages, removePage, setPage } from '@/tv/partPages';
+import { Stepper } from './editorParts';
+import { ChipNumber, choiceChipClass } from './Notice';
 
 /** An occasion's screen offered beside the pages: on now (or on the preview's day), or with a design of its own. */
 export interface OccasionTab {
@@ -60,13 +63,13 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
     onSelect(index);
     toast.success(`נוסף עמוד ${index + 1} - העתק של "${page.name}". עכשיו עורכים אותו: בחרו לו ערכה בלשונית "עיצוב", ומה יופיע בו בלשונית "פריסה".`);
   };
-  const remove = () => {
-    if (!window.confirm(`למחוק את "${page.name}"? המסגרות והתוכן שלו יימחקו. אפשר לבטל עם Ctrl+Z.`)) return;
+  const remove = async () => {
+    if (!(await confirmAction({ title: `למחוק את "${page.name}"?`, description: 'המסגרות והתוכן שלו יימחקו. אפשר לבטל עם "צעד אחורה" (Ctrl+Z).', confirmLabel: 'מחיקה' }))) return;
     onEdit(`remove:${page.id}`, c => removePage(c, current));
     onSelect(Math.max(0, current - 1));
   };
-  const copyFrom = (from: number) => {
-    if (!window.confirm(`להעתיק את "${pages[from].name}" אל "${page.name}"? הערכה, המסגרות והתוכן של "${page.name}" יוחלפו. אפשר לבטל עם Ctrl+Z.`)) return;
+  const copyFrom = async (from: number) => {
+    if (!(await confirmAction({ title: `להעתיק את "${pages[from].name}" אל "${page.name}"?`, description: `הערכה, המסגרות והתוכן של "${page.name}" יוחלפו. אפשר לבטל עם "צעד אחורה" (Ctrl+Z).`, confirmLabel: 'העתקה' }))) return;
     onEdit(`copy:${pages[from].id}:${page.id}`, c => copyPage(c, from, current));
     toast.success(`"${page.name}" הוא עכשיו העתק של "${pages[from].name}".`);
   };
@@ -94,12 +97,12 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
             aria-selected={!occasion && i === current}
             onClick={() => onSelect(i)}
             data-playing={playing === i ? 'true' : undefined}
-            className={`flex items-center gap-2 rounded-lg border bg-background px-3 py-1.5 text-sm transition ${!occasion && i === current ? 'border-primary ring-2 ring-primary ring-offset-1' : 'hover:border-primary/50'} ${playing === i ? 'bg-emerald-50 outline outline-2 outline-emerald-500 dark:bg-emerald-950/40' : ''}`}
+            className={choiceChipClass(!occasion && i === current, playing === i ? 'outline outline-2 outline-emerald-500' : '')}
           >
             {playing === i && <Play className="size-3 fill-emerald-600 text-emerald-600" aria-label="מוצג עכשיו" />}
-            <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
+            <ChipNumber n={i + 1} />{' '}
             <span>{p.name}</span>
-            {pages.length > 1 && <span className="rounded bg-muted px-1 text-[10px] tabular-nums">{p.seconds} שנ׳</span>}
+            {pages.length > 1 && <span className="rounded bg-muted px-1 text-xs tabular-nums">{p.seconds} שניות</span>}
           </button>
         ))}
         {onOccasion && (occasions.length > 0 || addable.length > 0) && (
@@ -108,7 +111,7 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
             {occasions.map(o => (
               <span
                 key={o.id}
-                className={`flex items-center rounded-lg border border-dashed border-amber-500/70 bg-amber-50 text-sm transition dark:bg-amber-950/30 ${occasion === o.id ? 'border-solid ring-2 ring-amber-500 ring-offset-1' : 'hover:border-amber-600'}`}
+                className={choiceChipClass(occasion === o.id, occasion === o.id ? "" : "border-dashed")}
               >
                 <button
                   type="button"
@@ -117,22 +120,22 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
                   data-occasion-tab={o.id}
                   onClick={() => onOccasion(o.id)}
                   title={`${o.name}: ${o.on ? 'חל היום, ולכן מופיע כאן לבד' : 'נוסף ידנית - על המסכים הוא מופיע רק ביום שלו'}. לחיצה - עורכים את המסך שלו כמו עמוד, בעיצוב משלו.`}
-                  className="flex items-center gap-2 px-3 py-1.5"
+                  className="flex items-center gap-1.5"
                 >
                   <CalendarDays className="size-4 text-amber-700" aria-hidden />
                   <span>{o.name}</span>
-                  {o.on && <span className="rounded bg-amber-200 px-1 text-[10px] text-amber-900">היום</span>}
-                  {!o.design && <span className="text-[10px] text-muted-foreground">בלי ערכה</span>}
+                  {o.on && <span className="rounded bg-amber-200 px-1 text-xs text-amber-900">היום</span>}
+                  {!o.design && <span className="text-xs text-muted-foreground">בלי ערכה</span>}
                 </button>
                 {o.pinned && !o.on && onUnpin && (
                   <button
                     type="button"
                     aria-label={`הסרת ${o.name} מהפס`}
-                    title="הסרה מהפס בלבד - המועד, העיצוב שלו והמידע שלו נשארים"
+                    title="הסרה מהפס בלבד - המועד, הערכה שלו והמידע שלו נשארים"
                     onClick={() => onUnpin(o.id)}
-                    className="me-1 grid size-5 place-items-center rounded-full text-xs text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
+                    className="me-1 grid size-5 place-items-center rounded-full text-muted-foreground hover:bg-destructive hover:text-destructive-foreground"
                   >
-                    ✕
+                    <X className="size-3" aria-hidden />
                   </button>
                 )}
               </span>
@@ -142,7 +145,7 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
                 aria-label="הוספת מועד לפס"
                 value=""
                 onChange={e => e.target.value && onPin(e.target.value)}
-                className="h-8 rounded-lg border border-dashed border-amber-500/70 bg-background px-2 text-sm"
+                className="h-8 rounded-md border border-dashed bg-background px-2 text-sm"
                 title="מועד שלא חל היום - כדי להכין את המסך שלו מראש. על המסכים הוא יופיע רק ביום שלו."
               >
                 <option value="">+ הוספת מועד…</option>
@@ -157,7 +160,7 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
         {pages.length > 1 && onPlay && (
           <Button type="button" size="sm" variant={playing !== null ? 'default' : 'outline'} aria-pressed={playing !== null} onClick={() => onPlay(playing === null)}
             title="התצוגה המקדימה מתחלפת בין העמודים לפי השניות של כל אחד, כמו על הקיר">
-            {playing !== null ? <><Square className="size-4" aria-hidden /> עצירת ההחלפה</> : <><Play className="size-4" aria-hidden /> הצגת החלפה</>}
+            {playing !== null ? <><Pause className="size-4" aria-hidden /> עצירת הסבב</> : <><Play className="size-4" aria-hidden /> הפעלת סבב העמודים</>}
           </Button>
         )}
       </div>
@@ -173,31 +176,31 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
               className="h-8 rounded border bg-background px-2 text-sm text-foreground"
             />
           </label>
-          <label className="flex w-28 flex-col gap-1 text-xs text-muted-foreground">
+          <div className="flex flex-col gap-1 text-xs text-muted-foreground">
             כמה שניות על המסך
-            <input
-              type="number"
+            <Stepper
+              label="כמה שניות על המסך"
+              value={page.seconds}
               min={5}
               max={3600}
-              value={page.seconds}
-              aria-label="כמה שניות על המסך"
-              onChange={e => e.target.value && onEdit(`seconds:${page.id}`, c => setPage(c, current, { seconds: Number(e.target.value) }))}
-              className="h-8 rounded border bg-background px-2 text-sm text-foreground"
+              step={5}
+              format={v => `${v} שניות`}
+              onChange={v => onEdit(`seconds:${page.id}`, c => setPage(c, current, { seconds: v }))}
             />
-          </label>
+          </div>
           <div className="flex items-center gap-1">
-            <Button type="button" size="sm" variant="outline" className="h-8" disabled={current === 0} onClick={() => move(-1)} aria-label="להקדים את העמוד" title="להקדים - יופיע לפני העמוד שלפניו">
-              <ChevronRight className="size-4" aria-hidden /> להקדים
+            <Button type="button" size="sm" variant="outline" className="h-8" disabled={current === 0} onClick={() => move(-1)} aria-label="הקדמת העמוד" title="הקדמה - יופיע לפני העמוד שלפניו">
+              <ChevronRight className="size-4" aria-hidden /> הקדמה
             </Button>
-            <Button type="button" size="sm" variant="outline" className="h-8" disabled={current === pages.length - 1} onClick={() => move(1)} aria-label="לאחר את העמוד" title="לאחר - יופיע אחרי העמוד שאחריו">
-              לאחר <ChevronLeft className="size-4" aria-hidden />
+            <Button type="button" size="sm" variant="outline" className="h-8" disabled={current === pages.length - 1} onClick={() => move(1)} aria-label="העברת העמוד אחורה" title="העברה אחורה - יופיע אחרי העמוד שאחריו">
+              העברה אחורה <ChevronLeft className="size-4" aria-hidden />
             </Button>
-            <select aria-label="להעתיק לכאן עמוד אחר" value="" onChange={e => e.target.value !== '' && copyFrom(Number(e.target.value))}
+            <select aria-label="להעתיק לכאן עמוד אחר" value="" onChange={e => e.target.value !== '' && void copyFrom(Number(e.target.value))}
               className="h-8 rounded-md border bg-background px-2 text-sm" title="מחליף את העמוד הזה בהעתק של עמוד אחר">
               <option value="">להעתיק לכאן…</option>
               {pages.map((p, i) => i !== current && <option key={p.id} value={i}>{p.name}</option>)}
             </select>
-            <Button type="button" size="sm" variant="outline" className="h-8 text-destructive" onClick={remove} aria-label="מחיקת העמוד">
+            <Button type="button" size="sm" variant="outline" className="h-8 text-destructive" onClick={() => void remove()} aria-label="מחיקת העמוד">
               <Trash2 className="size-4" aria-hidden /> מחיקה
             </Button>
           </div>
@@ -205,12 +208,12 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
       )}
       {playing !== null && (
         <p className="text-xs text-emerald-800 dark:text-emerald-300" role="status" data-testid="part-pages-playing">
-          ▶ התצוגה מתחלפת בין העמודים. מוצג עכשיו: <b>{pages[playing]?.name}</b>. בחירת עמוד עוצרת את ההחלפה.
+          הסבב פועל: התצוגה מתחלפת בין העמודים. מוצג עכשיו: <b>{pages[playing]?.name}</b>. בחירת עמוד עוצרת את הסבב.
         </p>
       )}
       {current > 0 && !occasion && (
         <p className="text-xs" role="status" data-testid="part-page-editing">
-          ✏️ עורכים עכשיו את <b>{page.name}</b> - הערכה, המסגרות והתוכן שלו בלבד. העמודים האחרים לא משתנים.
+          עורכים עכשיו את <b>{page.name}</b> - הערכה, המסגרות והתוכן שלו בלבד. העמודים האחרים לא משתנים.
         </p>
       )}
     </div>

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { checkApiKey, useAccountApiKey, useApiKeyActions } from "@community/lib/apiKeys";
 import { getPersonalKey, maskKey, setPersonalKey } from "@community/lib/aiIntakeDirect";
 import { hebrewError } from "@community/lib/hebrewError";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 /**
  * "מפתח API": the gabbai's Claude key, kept with his account - entered once,
@@ -17,7 +18,6 @@ export function ApiKeysAdmin() {
   const actions = useApiKeyActions();
   const [draft, setDraft] = useState("");
   const [replacing, setReplacing] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [busy, setBusy] = useState(false);
   const [check, setCheck] = useState<{ ok: boolean; message: string } | null>(null);
   // A key kept the old way, in this browser only: one click moves it to the account.
@@ -48,16 +48,16 @@ export function ApiKeysAdmin() {
     <div className="card-elev max-w-2xl space-y-4 p-5" dir="rtl" data-testid="api-keys">
       <div className="flex items-center gap-2">
         <KeyRound className="size-5 text-primary" />
-        <h2 className="text-lg font-semibold">מפתח API של Claude</h2>
+        <h2 className="text-lg font-semibold">המפתח של העוזר החכם</h2>
       </div>
       <p className="text-sm text-muted-foreground">
         המפתח שאיתו "עוזר חכם" קורא תמונות, הקלטות והודעות. מכניסים אותו פעם אחת והוא נשמר בחשבון שלכם - זמין בכל מחשב
-        ובכל טלפון שנכנסים ממנו לחשבון, בלי להכניס שוב. השימוש מחויב בחשבון שלכם ב-Anthropic.
+        ובכל טלפון שנכנסים ממנו לחשבון, בלי להכניס שוב. השימוש מחויב בחשבון שלכם בחברת אנתרופיק.
       </p>
       <p className="flex items-start gap-1.5 rounded-md bg-muted/50 p-2 text-xs">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-        רק החשבון שלכם רואה את המפתח - לא מנהלים אחרים ולא המתפללים. הוא נשלח רק ל-Anthropic. מומלץ לקבוע לו תקרת
-        הוצאה חודשית בחשבון ב-Anthropic.
+        רק החשבון שלכם רואה את המפתח - לא גבאים אחרים ולא המתפללים. הוא נשלח רק לחברת אנתרופיק. מומלץ לקבוע לו תקרת
+        הוצאה חודשית בחשבון שם.
       </p>
 
       {isLoading ? (
@@ -88,34 +88,28 @@ export function ApiKeysAdmin() {
                 <Button type="button" size="sm" variant="outline" onClick={() => setReplacing((r) => !r)}>
                   החלפה
                 </Button>
-                {confirmDelete ? (
-                  <>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="destructive"
-                      onClick={async () => {
-                        try {
-                          await actions.remove();
-                          toast.success("המפתח נמחק מהחשבון");
-                        } catch (e) {
-                          toast.error(hebrewError(e, "המחיקה נכשלה"));
-                        }
-                        setConfirmDelete(false);
-                        setCheck(null);
-                      }}
-                    >
-                      כן, למחוק
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>
-                      ביטול
-                    </Button>
-                  </>
-                ) : (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setConfirmDelete(true)}>
-                    <Trash2 className="size-4" /> מחיקה
-                  </Button>
-                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => {
+                    const ok = await confirmAction({
+                      title: "למחוק את המפתח מהחשבון?",
+                      description: "העוזר החכם לא יעבוד עד שתכניסו מפתח שוב.",
+                      confirmLabel: "מחיקה",
+                    });
+                    if (!ok) return;
+                    try {
+                      await actions.remove();
+                      toast.success("המפתח נמחק מהחשבון");
+                    } catch (e) {
+                      toast.error(hebrewError(e, "המחיקה נכשלה"));
+                    }
+                    setCheck(null);
+                  }}
+                >
+                  <Trash2 className="size-4" /> מחיקה
+                </Button>
               </div>
             </div>
           )}
@@ -159,7 +153,7 @@ export function ApiKeysAdmin() {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder="sk-ant-..."
-                  aria-label="מפתח Claude"
+                  aria-label="המפתח של העוזר החכם"
                   className="h-9 flex-1 rounded-md border bg-background px-2 text-sm"
                 />
                 <Button type="submit" size="sm" className="h-9" disabled={busy || !draft.trim()}>
@@ -167,7 +161,7 @@ export function ApiKeysAdmin() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                את המפתח יוצרים באתר של Anthropic, בחשבון שלכם, בעמוד "API Keys". הוא מתחיל ב-sk-ant-.
+                את המפתח יוצרים באתר של חברת אנתרופיק, בחשבון שלכם, בעמוד המפתחות (שם הוא נקרא <bdi dir="ltr">API Keys</bdi>). הוא מתחיל ב-<bdi dir="ltr">sk-ant-</bdi>.
               </p>
             </form>
           )}

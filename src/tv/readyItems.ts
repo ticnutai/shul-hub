@@ -5,10 +5,10 @@ import type { TvConfig } from "./config";
  *
  * Whatever can be added can be deleted - the shul's own items are deleted
  * outright; a ready one (a design, a theme, a background, a frame, a ready
- * box) is hidden from this board's lists instead, so that a slip of the hand
+ * box, a ready part) is hidden from this board's lists instead, so that a slip of the hand
  * loses nothing, and every list offers to bring back what it hid.
  */
-export type ReadyKind = "design" | "theme" | "bg" | "frame" | "box" | "boardframe" | "shape" | "title";
+export type ReadyKind = "design" | "theme" | "bg" | "frame" | "box" | "boardframe" | "shape" | "title" | "part";
 
 /** The key of a ready item in TvConfig.hiddenReady. A frame's id is already "frame:<id>". */
 export const readyKey = (kind: ReadyKind, id: string) => (kind === "frame" && id.startsWith("frame:") ? id : `${kind}:${id}`);

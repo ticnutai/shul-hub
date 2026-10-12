@@ -10,12 +10,14 @@ import {
   type SpacingEdge,
   type TvConfig,
 } from "@/tv/config";
-import { useState, type ReactNode } from "react";
-import { ImagePlus } from "lucide-react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { toast } from "sonner";
+import { confirmAction } from "@/components/ConfirmDialog";
+import { GalleryGrid, GalleryTile, TilePicture, UploadTile } from "./GalleryTile";
+import { NameForm, Range } from "./editorParts";
 import { DEFAULT_BOARD_FRAME_TUNE, READY_PICTURE_BOARD_FRAMES, type BoardFrameTune } from "@/tv/boardFrame";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
-import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { HiddenShelf } from "./ReadyShelf";
 import { uploadImages } from "./uploadImages";
 import { setFrameLook, type FrameId, type TitleStyle } from "@/tv/frameLooks";
 import { BOARD_FRAME_CHOICES, FRAME_CHOICES, TITLE_STYLE_CHOICES } from "./tvChoices";
@@ -64,7 +66,8 @@ const SPACING_LABELS: Record<SpacingEdge, { name: string; hint: string }> = {
 export function BoardFramePicker({ config, onEdit, compact = false }: { config: TvConfig; onEdit: Edit; compact?: boolean }) {
   const [naming, setNaming] = useState<{ id: string | null; value: string } | null>(null);
   const [uploading, setUploading] = useState(false);
-  const ready = BOARD_FRAME_CHOICES.filter((f) => f.id === null || !isHiddenReady(config, "boardframe", f.id));
+  // The worn one stays in sight even when hidden: what is on the board is always marked.
+  const ready = BOARD_FRAME_CHOICES.filter((f) => f.id === null || f.id === config.boardFrame || !isHiddenReady(config, "boardframe", f.id));
   const wears = (m: MyBoardFrame) =>
     config.boardFrame === m.frame &&
     (m.frame !== "picture" || config.boardFrameImage === m.image) &&
@@ -77,18 +80,17 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
       ...(m.tune ? { boardFrameTune: structuredClone(m.tune) } : {}),
       ...(m.image !== undefined ? { boardFrameImage: m.image } : {}),
     }));
-  const tile = (on: boolean) =>
-    `block w-full rounded-lg border p-1.5 text-right transition ${on ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`;
-  const label = compact ? "text-[10px] leading-tight" : "text-xs";
   const previewOf = (m: MyBoardFrame) =>
     m.frame === "picture" && m.image ? (
-      <img src={m.image} alt="" className="size-full object-contain" loading="lazy" />
+      <span className="block size-full p-1">
+        <TilePicture src={m.image} />
+      </span>
     ) : (
       BOARD_FRAME_CHOICES.find((f) => f.id === m.frame)?.preview
     );
 
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const upload = async (files: File[]) => {
+    if (!files.length) return;
     setUploading(true);
     try {
       const [url] = await uploadImages(files);
@@ -101,7 +103,7 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
         boardFrameImage: url,
         boardFrameTune: structuredClone(DEFAULT_BOARD_FRAME_TUNE),
       }));
-      toast.success("המסגרת הועלתה ונשמרה ב\"המסגרות שלי\"");
+      toast.success("המסגרת נשמרה בגלריה");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
     } finally {
@@ -109,86 +111,87 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
     }
   };
 
-  const save = () => {
+  const save = async () => {
     const name = (naming?.value ?? "").trim().slice(0, 40);
     if (!name || !config.boardFrame) return;
     const id = naming?.id;
-    onEdit(`board-frame:${id ? "rename" : "save"}`, (c) =>
-      id
-        ? { ...c, myBoardFrames: c.myBoardFrames.map((m) => (m.id === id ? { ...m, name } : m)) }
+    // The same name: asked, then replaced - as everywhere a thing is kept under a name.
+    const same = config.myBoardFrames.find((m) => m.name === name && m.id !== id);
+    if (same) {
+      const ok = await confirmAction({
+        title: `כבר יש מסגרת בשם „${name}”`,
+        description: id ? "להחליף אותה במסגרת הזו?" : "להחליף אותה במסגרת שעל הלוח עכשיו?",
+        confirmLabel: "החלפה",
+        destructive: false,
+      });
+      if (!ok) return;
+    }
+    onEdit(`board-frame:${id ? "rename" : "save"}`, (c) => {
+      const others = same ? c.myBoardFrames.filter((m) => m.id !== same.id) : c.myBoardFrames;
+      return id
+        ? { ...c, myBoardFrames: others.map((m) => (m.id === id ? { ...m, name } : m)) }
         : {
             ...c,
             myBoardFrames: [
-              ...c.myBoardFrames,
+              ...others,
               { id: newMyBoardFrameId(), name, frame: c.boardFrame!, tune: structuredClone(c.boardFrameTune), image: c.boardFrame === "picture" ? c.boardFrameImage : null },
             ].slice(0, MAX_MY_BOARD_FRAMES),
-          },
-    );
+          };
+    });
     setNaming(null);
+  };
+  const removeMine = async (m: MyBoardFrame) => {
+    const ok = await confirmAction({
+      title: `למחוק את „${m.name}”?`,
+      description: "המסגרת יורדת מהמסגרות שלכם. לוח שמשתמש בה עכשיו לא ישתנה.",
+      confirmLabel: "מחיקה",
+    });
+    if (ok) onEdit("board-frame:delete", (c) => ({ ...c, myBoardFrames: c.myBoardFrames.filter((x) => x.id !== m.id) }));
   };
 
   return (
     <div className="space-y-3">
-      <div data-testid="board-frames" className={compact ? "grid grid-cols-4 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-4"}>
-        {ready.map((f) => {
-          // A frame of the shul's own being worn is marked there, not on the ready one it was made from.
-          const on = config.boardFrame === f.id && !worn;
-          return (
-            <div key={f.id ?? "none"} className="group relative">
-              {!compact && f.id && !on && (
-                <TileRemove name={f.name} ready onClick={() => onEdit("board-frame:hide", (c) => hideReady(c, "boardframe", f.id!))} />
-              )}
-              <button type="button" aria-pressed={on} title={f.hint} onClick={() => put("board-frame", { frame: f.id })} className={tile(on)}>
-                <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]" aria-hidden>
-                  {f.preview}
-                </span>
-                <span className={`block text-center font-medium ${label}`}>{f.name}</span>
-              </button>
-            </div>
-          );
-        })}
-        {READY_PICTURE_BOARD_FRAMES.filter((f) => !isHiddenReady(config, "boardframe", f.id)).map((f) => {
-          const on = config.boardFrame === "picture" && config.boardFrameImage === f.image && !worn;
-          return (
-            <div key={f.id} className="group relative" data-testid="ready-picture-board-frame">
-              {!compact && !on && (
-                <TileRemove name={f.name} ready onClick={() => onEdit("board-frame:hide", (c) => hideReady(c, "boardframe", f.id))} />
-              )}
-              <button type="button" aria-pressed={on} onClick={() => put("board-frame:ready-picture", { frame: "picture", image: f.image, tune: DEFAULT_BOARD_FRAME_TUNE })} className={tile(on)}>
-                <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628] p-1" aria-hidden>
-                  <img src={f.image} alt="" className="size-full object-contain" loading="lazy" />
-                </span>
-                <span className={`block text-center font-medium ${label}`}>{f.name}</span>
-              </button>
-            </div>
-          );
-        })}
-        {config.myBoardFrames.map((m) => {
-          const on = wears(m);
-          return (
-            <div key={m.id} className="group relative" data-testid="my-board-frame">
-              {!compact && (
-                <TileRemove name={m.name} ready={false} onClick={() => onEdit("board-frame:delete", (c) => ({ ...c, myBoardFrames: c.myBoardFrames.filter((x) => x.id !== m.id) }))} />
-              )}
-              <button type="button" aria-pressed={on} onClick={() => put(`board-frame:mine:${m.id}`, m)} className={tile(on)}>
-                <span className="mb-1 block aspect-[16/10] overflow-hidden rounded-md bg-[#0b1628]" aria-hidden>
-                  {previewOf(m)}
-                </span>
-                <span className={`block truncate text-center font-medium ${label}`}>{m.name}</span>
-              </button>
-            </div>
-          );
-        })}
-        {!compact && (
-          <label
-            className={`flex aspect-[16/12] cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed text-[11px] hover:border-primary ${uploading ? "opacity-60" : ""}`}
-          >
-            <ImagePlus className="size-4" />
-            {uploading ? "מעלה…" : "העלאת מסגרת ללוח"}
-            <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={(e) => void upload(e.target.files)} />
-          </label>
-        )}
-      </div>
+      <GalleryGrid testId="board-frames" compact={compact}>
+        {!compact && <UploadTile label="העלאת מסגרת" uploading={uploading} onFiles={(files) => void upload(files)} hint="תמונה משלכם סביב הלוח - נשמרת בגלריה" />}
+        {ready.map((f) => (
+          <GalleryTile
+            key={f.id ?? "none"}
+            name={f.name}
+            hint={f.hint}
+            compact={compact}
+            // A frame of the shul's own being worn is marked there, not on the ready one it was made from.
+            on={config.boardFrame === f.id && !worn}
+            onPick={() => put("board-frame", { frame: f.id })}
+            preview={f.preview}
+            remove={!compact && f.id ? { ready: true, onClick: () => onEdit("board-frame:hide", (c) => hideReady(c, "boardframe", f.id!)) } : undefined}
+          />
+        ))}
+        {READY_PICTURE_BOARD_FRAMES.filter((f) => (config.boardFrame === "picture" && config.boardFrameImage === f.image) || !isHiddenReady(config, "boardframe", f.id)).map((f) => (
+          <GalleryTile
+            key={f.id}
+            testId="ready-picture-board-frame"
+            name={f.name}
+            compact={compact}
+            on={config.boardFrame === "picture" && config.boardFrameImage === f.image && !worn}
+            onPick={() => put("board-frame:ready-picture", { frame: "picture", image: f.image, tune: DEFAULT_BOARD_FRAME_TUNE })}
+            padded
+            preview={<TilePicture src={f.image} />}
+            remove={!compact ? { ready: true, onClick: () => onEdit("board-frame:hide", (c) => hideReady(c, "boardframe", f.id)) } : undefined}
+          />
+        ))}
+        {config.myBoardFrames.map((m) => (
+          <GalleryTile
+            key={m.id}
+            testId="my-board-frame"
+            name={m.name}
+            compact={compact}
+            on={wears(m)}
+            onPick={() => put(`board-frame:mine:${m.id}`, m)}
+            preview={previewOf(m)}
+            remove={!compact ? { ready: false, onClick: () => void removeMine(m) } : undefined}
+          />
+        ))}
+      </GalleryGrid>
 
       {!compact && (
         <>
@@ -201,38 +204,23 @@ export function BoardFramePicker({ config, onEdit, compact = false }: { config: 
             onRestore={(id) => onEdit("board-frame:show", (c) => showReady(c, "boardframe", id))}
           />
           {naming ? (
-            <form
-              className="flex flex-wrap items-center gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                save();
-              }}
-            >
-              <input
-                aria-label="שם המסגרת"
-                value={naming.value}
-                maxLength={40}
-                autoFocus
-                onChange={(e) => setNaming({ ...naming, value: e.target.value })}
-                className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
-              />
-              <Button type="submit" size="sm" disabled={!naming.value.trim()}>
-                {naming.id ? "שינוי השם" : "שמירת המסגרת"}
-              </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => setNaming(null)}>
-                ביטול
-              </Button>
-            </form>
+            <NameForm
+              label="שם המסגרת"
+              value={naming.value}
+              onChange={(value) => setNaming({ ...naming, value })}
+              onSave={() => void save()}
+              onCancel={() => setNaming(null)}
+            />
           ) : (
             <div className="flex flex-wrap items-center gap-2 text-xs">
               {config.boardFrame && !worn && (
-                <Button type="button" size="sm" variant="outline" onClick={() => setNaming({ id: null, value: "" })}>
+                <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setNaming({ id: null, value: "" })}>
                   שמירה כמסגרת שלי
                 </Button>
               )}
               {worn && (
-                <Button type="button" size="sm" variant="outline" onClick={() => setNaming({ id: worn.id, value: worn.name })}>
-                  שינוי שם ל«{worn.name}»
+                <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setNaming({ id: worn.id, value: worn.name })}>
+                  שינוי שם ל„{worn.name}”
                 </Button>
               )}
               <span className="text-muted-foreground">
@@ -256,7 +244,7 @@ export function TitleStylePicker({ config, onEdit, frame }: { config: TvConfig; 
   const current = frame ? (config.frameLooks[frame]?.titleStyle ?? null) : config.titleStyle;
   const shown = TITLE_STYLE_CHOICES.filter((t) => t.id === "plain" || t.id === current || !isHiddenReady(config, "title", t.id));
   const choices: Array<{ id: TitleStyle | null; name: string; preview: ReactNode }> = frame
-    ? [{ id: null, name: "כמו כולן", preview: <span className="text-white/60">—</span> }, ...shown]
+    ? [{ id: null, name: "כמו כולן", preview: <span className="text-white/60">-</span> }, ...shown]
     : shown;
   const pick = (id: TitleStyle | null) =>
     frame
@@ -264,30 +252,19 @@ export function TitleStylePicker({ config, onEdit, frame }: { config: TvConfig; 
       : onEdit("title-style", (c) => ({ ...c, titleStyle: id ?? "plain" }));
   return (
     <div className="space-y-1.5">
-      <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4" data-testid="title-styles">
-        {choices.map((t) => {
-          const on = current === t.id;
-          return (
-            <div key={t.id ?? "all"} className="group relative">
-              {t.id && t.id !== "plain" && !on && (
-                <TileRemove name={t.name} ready onClick={() => onEdit("title-style:hide", (c) => hideReady(c, "title", t.id!))} />
-              )}
-              <button
-                type="button"
-                aria-pressed={on}
-                aria-label={`כותרת: ${t.name}`}
-                onClick={() => pick(t.id)}
-                className={`block w-full rounded-lg border p-1.5 text-center ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
-              >
-                <span className="mb-1 flex h-8 items-center justify-center rounded bg-[#12243f] text-[11px]" aria-hidden>
-                  {t.preview}
-                </span>
-                <span className="block text-[11px] leading-tight">{t.name}</span>
-              </button>
-            </div>
-          );
-        })}
-      </div>
+      <GalleryGrid testId="title-styles">
+        {choices.map((t) => (
+          <GalleryTile
+            key={t.id ?? "all"}
+            name={t.name}
+            ariaLabel={`כותרת: ${t.name}`}
+            on={current === t.id}
+            onPick={() => pick(t.id)}
+            preview={<span className="flex size-full items-center justify-center text-[11px]">{t.preview}</span>}
+            remove={t.id && t.id !== "plain" ? { ready: true, onClick: () => onEdit("title-style:hide", (c) => hideReady(c, "title", t.id!)) } : undefined}
+          />
+        ))}
+      </GalleryGrid>
       <HiddenShelf
         testId="title-styles-hidden"
         items={TITLE_STYLE_CHOICES.filter((t) => isHiddenReady(config, "title", t.id)).map((t) => ({ key: t.id, name: t.name }))}
@@ -297,7 +274,7 @@ export function TitleStylePicker({ config, onEdit, frame }: { config: TvConfig; 
   );
 }
 
-/** A slider with a "רגיל" way back to the default. */
+/** A slider with a "רגיל" way back to the default: the editor's one slider, with its "רגיל". */
 function AutoSlider({
   label,
   hint,
@@ -305,7 +282,6 @@ function AutoSlider({
   max,
   fallback,
   onChange,
-  compact,
 }: {
   label: string;
   hint?: string;
@@ -313,36 +289,28 @@ function AutoSlider({
   max: number;
   fallback: number;
   onChange: (next: number | null) => void;
-  compact: boolean;
+  compact?: boolean;
 }) {
   return (
-    <div className={`flex items-center gap-2 ${compact ? "text-xs" : "gap-3 text-sm"}`} title={hint}>
-      <span className={compact ? "w-24 shrink-0" : "w-28 shrink-0"}>{label}</span>
-      <input
-        type="range"
-        min={0}
-        max={max}
-        step={0.5}
-        value={value ?? fallback}
-        disabled={value === null}
-        aria-label={label}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className={`flex-1 accent-primary disabled:opacity-40 ${compact ? "h-1.5" : "h-2"}`}
-      />
-      <span className="w-8 text-end tabular-nums text-muted-foreground">
-        {value === null ? "—" : value}
-      </span>
-      <Button
-        type="button"
-        size="sm"
-        variant={value === null ? "default" : "outline"}
-        className={compact ? "h-7 px-2 text-[11px]" : ""}
-        aria-pressed={value === null}
-        onClick={() => onChange(value === null ? fallback : null)}
-      >
-        רגיל
-      </Button>
-    </div>
+    <Range
+      label={label}
+      hint={hint}
+      value={value ?? fallback}
+      min={0}
+      max={max}
+      step={0.5}
+      onChange={onChange}
+      auto={{ isDefault: value === null, onToggle: () => onChange(value === null ? fallback : null) }}
+    />
+  );
+}
+
+/** A box's shape, drawn small in a gallery tile. */
+export function ShapePreview({ css }: { css: CSSProperties }) {
+  return (
+    <span className="flex size-full items-center justify-center">
+      <span className="block h-3/5 w-2/5 border-2 border-[#c9a227] bg-[#12243f]" style={css} />
+    </span>
   );
 }
 
@@ -365,38 +333,20 @@ export function FrameCorners({
   return (
     <div className="space-y-2">
       {compact && <div className={heading}>צורת התיבות</div>}
-      <div
-        data-testid="frame-shapes"
-        className={compact ? "grid grid-cols-6 gap-1.5" : "grid grid-cols-3 gap-2 sm:grid-cols-6"}
-      >
+      <GalleryGrid testId="frame-shapes" compact={compact}>
         {shownShapes(config, config.frame.shape).map((fr) => (
-          <div key={fr.id} className="group relative">
-          {!compact && fr.id !== "auto" && config.frame.shape !== fr.id && (
-            <TileRemove name={fr.name} ready onClick={() => onEdit("frame.shape:hide", (c) => hideReady(c, "shape", fr.id))} />
-          )}
-          <button
-            type="button"
-            aria-pressed={config.frame.shape === fr.id}
-            title={fr.hint}
-            onClick={() => onEdit("frame.shape", (c) => ({ ...c, frame: { ...c.frame, shape: fr.id } }))}
-            className={`block w-full rounded-lg border p-1.5 text-center transition ${
-              config.frame.shape === fr.id
-                ? "ring-2 ring-primary ring-offset-2"
-                : "hover:border-primary/50"
-            }`}
-          >
-            <span
-              className={`mx-auto mb-1 block border-2 border-[#c9a227] bg-[#12243f] ${
-                compact ? "h-6 w-8" : "h-10 w-14"
-              }`}
-              style={fr.css}
-              aria-hidden
-            />
-            <span className="block text-[11px] font-medium leading-tight">{fr.name}</span>
-          </button>
-          </div>
+          <GalleryTile
+            key={fr.id}
+            name={fr.name}
+            hint={fr.hint}
+            compact={compact}
+            on={config.frame.shape === fr.id}
+            onPick={() => onEdit("frame.shape", (c) => ({ ...c, frame: { ...c.frame, shape: fr.id } }))}
+            preview={<ShapePreview css={fr.css} />}
+            remove={!compact && fr.id !== "auto" ? { ready: true, onClick: () => onEdit("frame.shape:hide", (c) => hideReady(c, "shape", fr.id)) } : undefined}
+          />
         ))}
-      </div>
+      </GalleryGrid>
       {!compact && (
         <HiddenShelf
           testId="frame-shapes-hidden"
@@ -419,7 +369,7 @@ export function FrameCorners({
         />
       ))}
       {!compact && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           כמה מעוגלות הפינות למעלה ולמטה. בצורות חתוכות (כיפה, משושה, מסולסל...) הצורה עצמה קובעת.
         </p>
       )}
@@ -457,7 +407,7 @@ export function FrameSpacing({
       ))}
 
       {!compact && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground">
           חל על כל התיבות בכל הפריסות - בטלוויזיה, בלפטופ ובנייד. מרווח קטן יותר מגביה את
           התיבות, ולפעמים מכניס שורה נוספת.
         </p>

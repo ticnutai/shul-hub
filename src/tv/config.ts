@@ -1525,7 +1525,7 @@ function normalizeStored(stored: unknown): TvConfig {
     hiddenReady: [
       ...new Set(
         (Array.isArray(raw.hiddenReady) ? raw.hiddenReady : []).filter(
-          (k): k is string => typeof k === "string" && /^(design|theme|bg|frame|box|boardframe|shape|title):[a-z0-9_-]{1,60}$/i.test(k),
+          (k): k is string => typeof k === "string" && /^(design|theme|bg|frame|box|boardframe|shape|title|part):[a-z0-9_-]{1,60}$/i.test(k),
         ),
       ),
     ].slice(0, 300),

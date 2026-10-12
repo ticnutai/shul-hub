@@ -92,7 +92,7 @@ function useTimetable(def: SpecialDayDef) {
   const copyFrom = async (target: MinyanCategory, sourceId: string) => {
     const rows = minyanim.filter((m) => m.category_id === sourceId);
     if (rows.length === 0) {
-      toast.error("אין מניינים בטאב הזה");
+      toast.error("אין מניינים בלשונית הזו");
       return;
     }
     setBusy(true);

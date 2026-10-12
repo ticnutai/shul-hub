@@ -21,7 +21,7 @@ interface DeviceSpec {
 
 export const DEVICES: Record<DeviceId, DeviceSpec> = {
   tv: {
-    label: "Android TV",
+    label: "טלוויזיית אנדרואיד",
     icon: Tv,
     width: 960,
     height: 540,
@@ -35,7 +35,7 @@ export const DEVICES: Record<DeviceId, DeviceSpec> = {
     height: 1080,
     bar: { portrait: 133, landscape: 133 },
     rotatable: false,
-    note: "מסך מחשב Full HD",
+    note: "מסך מחשב באיכות מלאה",
   },
   laptop: {
     label: "לפטופ",

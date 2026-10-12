@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderPlus, GripVertical, ImagePlus, Loader2, Palette, Pencil, Plus, RotateCcw, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -37,33 +37,7 @@ import {
   type AnnouncementStyle,
 } from "@community/lib/announcement-style";
 import { hebrewError } from "@community/lib/hebrewError";
-
-function RowShell({
-  title,
-  subtitle,
-  onEdit,
-  onDelete,
-}: {
-  title: string;
-  subtitle: string;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 px-4 py-3">
-      <div className="min-w-0 flex-1">
-        <p className="line-clamp-2 break-words font-medium sm:line-clamp-1">{title}</p>
-        <p className="break-words text-xs text-muted-foreground sm:truncate">{subtitle}</p>
-      </div>
-      <Button size="icon" variant="ghost" onClick={onEdit} aria-label="עריכה">
-        <Pencil className="size-4" />
-      </Button>
-      <Button size="icon" variant="ghost" onClick={onDelete} aria-label="מחיקה">
-        <Trash2 className="size-4 text-destructive" />
-      </Button>
-    </div>
-  );
-}
+import { confirmAction } from "@/components/ConfirmDialog";
 
 function reorder<T>(items: T[], from: number, to: number) {
   const next = [...items];
@@ -72,6 +46,150 @@ function reorder<T>(items: T[], from: number, to: number) {
   next.splice(to, 0, moved);
   return next;
 }
+
+/**
+ * Drag-to-reorder by the grip, the one way for every list here.
+ *
+ * Announcements had it first; shiurim used the browser's own drag (which a
+ * phone never starts, and its grip did nothing) and chavrutot had none. Pointer
+ * events work for a finger and a mouse alike, and the order is saved the
+ * moment the row is let go - the same as announcements always did.
+ */
+function usePointerReorder<T extends { id: string }>(
+  data: T[],
+  table: "announcements" | "shiurim" | "chavrutot",
+  /** What the rows are, for the toasts: "המודעות", "השיעורים". */
+  noun: string,
+) {
+  const qc = useQueryClient();
+  const [ordered, setOrdered] = useState<T[]>([]);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
+  const orderedRef = useRef<T[]>([]);
+  const draggedIndexRef = useRef<number | null>(null);
+  const rowAttr = `data-${table}-index`;
+
+  useEffect(() => {
+    if (draggedIndexRef.current !== null) return;
+    orderedRef.current = data;
+    setOrdered(data);
+  }, [data]);
+
+  async function persistOrder(items: T[]) {
+    setSavingOrder(true);
+    const results = await Promise.all(
+      items.map((item, index) =>
+        supabase
+          .from(table)
+          .update({ sort_order: (index + 1) * 10 })
+          .eq("community_id", communityId())
+          .eq("id", item.id),
+      ),
+    );
+    setSavingOrder(false);
+    const failure = results.find((result) => result.error)?.error;
+    await qc.invalidateQueries({ queryKey: [table] });
+    if (failure) toast.error(`שמירת סדר ${noun} נכשלה`);
+    else toast.success(`סדר ${noun} נשמר`);
+  }
+
+  function beginPointerDrag(index: number, pointerId: number) {
+    if (savingOrder) return;
+    const initialOrder = orderedRef.current.map((item) => item.id).join(",");
+    draggedIndexRef.current = index;
+    setDraggedId(orderedRef.current[index]?.id ?? null);
+
+    const move = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      event.preventDefault();
+      const target = document
+        .elementFromPoint(event.clientX, event.clientY)
+        ?.closest<HTMLElement>(`[${rowAttr}]`);
+      const targetIndex = Number(target?.getAttribute(rowAttr));
+      const currentIndex = draggedIndexRef.current;
+      if (!target || !Number.isInteger(targetIndex) || currentIndex === null || targetIndex === currentIndex)
+        return;
+      const next = reorder(orderedRef.current, currentIndex, targetIndex);
+      orderedRef.current = next;
+      draggedIndexRef.current = targetIndex;
+      setOrdered(next);
+    };
+
+    const cleanup = () => {
+      draggedIndexRef.current = null;
+      setDraggedId(null);
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", finish);
+      document.removeEventListener("pointercancel", cancel);
+    };
+
+    const finish = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      const finalItems = orderedRef.current;
+      const changed = finalItems.map((item) => item.id).join(",") !== initialOrder;
+      cleanup();
+      if (changed) void persistOrder(finalItems);
+    };
+
+    const cancel = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      orderedRef.current = data;
+      setOrdered(data);
+      cleanup();
+    };
+
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", finish);
+    document.addEventListener("pointercancel", cancel);
+  }
+
+  /** The row's own attribute (which place it holds) and the grip's handlers. */
+  const rowProps = (index: number) => ({ [rowAttr]: index });
+  const gripProps = (index: number) => ({
+    disabled: savingOrder,
+    onPointerDown: (event: ReactPointerEvent) => {
+      event.preventDefault();
+      beginPointerDrag(index, event.pointerId);
+    },
+  });
+
+  return { ordered, draggedId, savingOrder, rowProps, gripProps };
+}
+
+/** The grip a row is dragged by - the same look in every list. */
+function DragGrip({ label, testId, ...props }: { label: string; testId?: string } & ReturnType<ReturnType<typeof usePointerReorder>["gripProps"]>) {
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      className="touch-none cursor-grab rounded-md p-2 text-muted-foreground hover:bg-muted active:cursor-grabbing"
+      aria-label={label}
+      title="גררו לשינוי הסדר"
+      {...props}
+    >
+      <GripVertical className="size-5" />
+    </button>
+  );
+}
+
+/**
+ * Scrolls an opened form into view, as the minyan form does - it opens below
+ * the list, and on a phone that is out of sight. Keyed by which row is being
+ * edited, so moving from one row's edit to another's scrolls too.
+ */
+function useScrollIntoViewOn(key: string | null) {
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (key === null) return;
+    const frame = requestAnimationFrame(() =>
+      ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [key]);
+  return ref;
+}
+
+const draftKey = (draft: { id?: string } | null) => (draft ? (draft.id ?? "new") : null);
 
 function AnnouncementDesignEditor({
   value,
@@ -173,96 +291,14 @@ function AnnouncementDesignEditor({
 /* ---------------- מודעות ---------------- */
 
 export function AnnouncementsAdmin() {
-  const { data = [] } = useAnnouncements();
-  const qc = useQueryClient();
+  const { data = [], isLoading } = useAnnouncements();
   const save = useSaveRow("announcements", "announcements");
   const remove = useDeleteRow("announcements", "announcements");
   const [draft, setDraft] = useState<Partial<Announcement> | null>(null);
-  const [ordered, setOrdered] = useState<Announcement[]>([]);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [savingOrder, setSavingOrder] = useState(false);
+  const { ordered, draggedId, rowProps, gripProps } = usePointerReorder(data, "announcements", "המודעות");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [originalImagePath, setOriginalImagePath] = useState<string | null>(null);
-  const orderedRef = useRef<Announcement[]>([]);
-  const draggedIndexRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (draggedIndexRef.current !== null) return;
-    orderedRef.current = data;
-    setOrdered(data);
-  }, [data]);
-
-  async function persistOrder(items: Announcement[]) {
-    setSavingOrder(true);
-    const results = await Promise.all(
-      items.map((announcement, index) =>
-        supabase
-          .from("announcements")
-          .update({ sort_order: (index + 1) * 10 })
-          .eq("community_id", communityId())
-          .eq("id", announcement.id),
-      ),
-    );
-    setSavingOrder(false);
-    const failure = results.find((result) => result.error)?.error;
-    if (failure) {
-      toast.error("שמירת סדר המודעות נכשלה");
-      await qc.invalidateQueries({ queryKey: ["announcements"] });
-      return;
-    }
-    await qc.invalidateQueries({ queryKey: ["announcements"] });
-    toast.success("סדר המודעות נשמר");
-  }
-
-  function beginPointerDrag(index: number, pointerId: number) {
-    if (savingOrder) return;
-    const initialOrder = orderedRef.current.map((item) => item.id).join(",");
-    draggedIndexRef.current = index;
-    setDraggedId(orderedRef.current[index]?.id ?? null);
-
-    const move = (event: PointerEvent) => {
-      if (event.pointerId !== pointerId) return;
-      event.preventDefault();
-      const target = document
-        .elementFromPoint(event.clientX, event.clientY)
-        ?.closest<HTMLElement>("[data-announcement-index]");
-      const targetIndex = Number(target?.dataset.announcementIndex);
-      const currentIndex = draggedIndexRef.current;
-      if (!Number.isInteger(targetIndex) || currentIndex === null || targetIndex === currentIndex)
-        return;
-      const next = reorder(orderedRef.current, currentIndex, targetIndex);
-      orderedRef.current = next;
-      draggedIndexRef.current = targetIndex;
-      setOrdered(next);
-    };
-
-    const cleanup = () => {
-      draggedIndexRef.current = null;
-      setDraggedId(null);
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", finish);
-      document.removeEventListener("pointercancel", cancel);
-    };
-
-    const finish = (event: PointerEvent) => {
-      if (event.pointerId !== pointerId) return;
-      const finalItems = orderedRef.current;
-      const changed = finalItems.map((item) => item.id).join(",") !== initialOrder;
-      cleanup();
-      if (changed) void persistOrder(finalItems);
-    };
-
-    const cancel = (event: PointerEvent) => {
-      if (event.pointerId !== pointerId) return;
-      orderedRef.current = data;
-      setOrdered(data);
-      cleanup();
-    };
-
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", finish);
-    document.addEventListener("pointercancel", cancel);
-  }
+  const formRef = useScrollIntoViewOn(draftKey(draft));
 
   function editAnnouncement(announcement: Announcement) {
     setOriginalImagePath(announcement.image_path);
@@ -301,7 +337,7 @@ export function AnnouncementsAdmin() {
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      toast.error("התמונה גדולה מדי. הגודל המרבי הוא 5MB");
+      toast.error("התמונה גדולה מדי. הגודל המרבי הוא 5 מגה־בייט");
       return;
     }
     setUploadingImage(true);
@@ -332,7 +368,8 @@ export function AnnouncementsAdmin() {
     setDraft({ ...draft, image_url: null, image_path: null });
   }
 
-  function deleteAnnouncement(announcement: Announcement) {
+  async function deleteAnnouncement(announcement: Announcement) {
+    if (!(await confirmAction({ title: `למחוק את המודעה „${announcement.title}”?`, description: "אי אפשר לבטל את זה.", confirmLabel: "מחיקה" }))) return;
     remove.mutate(announcement.id, {
       onSuccess: () => {
         if (announcement.image_path) {
@@ -356,31 +393,23 @@ export function AnnouncementsAdmin() {
         גררו את הידית שליד מודעה כדי לקבוע מה תופיע ראשונה, שנייה וכן הלאה. הסדר נשמר מיד.
       </p>
       <div className="card-elev divide-y divide-border" data-testid="announcements-sort-list">
-        {ordered.length === 0 && <p className="p-6 text-center text-muted-foreground">אין מודעות.</p>}
+        {isLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
+        {!isLoading && ordered.length === 0 && <p className="p-6 text-center text-muted-foreground">אין מודעות.</p>}
         {ordered.map((announcement, index) => (
           <div
             key={announcement.id}
-            data-announcement-index={index}
+            {...rowProps(index)}
             data-testid={`announcement-row-${announcement.id}`}
             className={
               "flex items-center gap-2 px-3 py-3 transition-opacity " +
               (draggedId === announcement.id ? "opacity-55" : "")
             }
           >
-            <button
-              type="button"
-              data-testid={`announcement-drag-${announcement.id}`}
-              className="touch-none cursor-grab rounded-md p-2 text-muted-foreground hover:bg-muted active:cursor-grabbing"
-              aria-label={`גרירת המודעה ${announcement.title}`}
-              title="גרור לשינוי סדר המודעות"
-              disabled={savingOrder}
-              onPointerDown={(event) => {
-                event.preventDefault();
-                beginPointerDrag(index, event.pointerId);
-              }}
-            >
-              <GripVertical className="size-5" />
-            </button>
+            <DragGrip
+              testId={`announcement-drag-${announcement.id}`}
+              label={`גרירת המודעה ${announcement.title}`}
+              {...gripProps(index)}
+            />
             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
               {index + 1}
             </span>
@@ -389,13 +418,13 @@ export function AnnouncementsAdmin() {
               <p className="break-words text-xs text-muted-foreground sm:truncate">
                 {ANNOUNCEMENT_KINDS.find((kind) => kind.id === announcement.kind)?.label ?? ""}
                 {announcement.expires_at ? ` · בתוקף עד ${announcement.expires_at}` : ""}
-                {` · ${announcement.show_on_home ? "מופיעה גם בדף הבית" : "רק בטאב מודעות"}`}
+                {` · ${announcement.show_on_home ? "מופיעה גם בדף הבית" : "רק בלשונית המודעות"}`}
               </p>
             </div>
-            <Button size="icon" variant="ghost" onClick={() => editAnnouncement(announcement)} aria-label="עריכה">
+            <Button size="icon" variant="ghost" onClick={() => editAnnouncement(announcement)} aria-label={`עריכת ${announcement.title}`}>
               <Pencil className="size-4" />
             </Button>
-            <Button size="icon" variant="ghost" onClick={() => deleteAnnouncement(announcement)} aria-label="מחיקה">
+            <Button size="icon" variant="ghost" onClick={() => void deleteAnnouncement(announcement)} aria-label={`מחיקת ${announcement.title}`}>
               <Trash2 className="size-4 text-destructive" />
             </Button>
           </div>
@@ -404,7 +433,8 @@ export function AnnouncementsAdmin() {
 
       {draft && (
         <form
-          className="card-elev space-y-4 p-5"
+          ref={formRef}
+          className="card-elev scroll-mt-24 space-y-4 p-5"
           onSubmit={(e) => {
             e.preventDefault();
             save.mutate(
@@ -421,6 +451,7 @@ export function AnnouncementsAdmin() {
             );
           }}
         >
+          <h3 className="font-semibold">{draft.id ? "עריכת מודעה" : "מודעה חדשה"}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>סוג מודעה</Label>
@@ -463,7 +494,7 @@ export function AnnouncementsAdmin() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-semibold">תמונה למודעה</h3>
-                <p className="text-xs text-muted-foreground">JPG, PNG, WebP או GIF, עד 5MB.</p>
+                <p className="text-xs text-muted-foreground">תמונה רגילה מהטלפון או מהמחשב, עד 5 מגה־בייט.</p>
               </div>
               <Label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 {uploadingImage ? <Loader2 className="size-4 animate-spin" /> : <ImagePlus className="size-4" />}
@@ -539,8 +570,8 @@ export function AnnouncementsAdmin() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="full">רוחב מלא — מודעה אחת בשורה</SelectItem>
-                  <SelectItem value="half">חצי שורה — שתי מודעות זו לצד זו</SelectItem>
+                  <SelectItem value="full">רוחב מלא - מודעה אחת בשורה</SelectItem>
+                  <SelectItem value="half">חצי שורה - שתי מודעות זו לצד זו</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">במובייל המודעה תמיד תיפרס לרוחב המסך לקריאות טובה.</p>
@@ -572,40 +603,19 @@ export function AnnouncementsAdmin() {
 /* ---------------- שיעורים ---------------- */
 
 export function ShiurimAdmin() {
-  const { data = [] } = useShiurim();
+  const { data = [], isLoading } = useShiurim();
   const { data: categories = [] } = useShiurCategories();
-  const qc = useQueryClient();
   const save = useSaveRow("shiurim", "shiurim");
   const saveCategory = useSaveRow("shiur_categories", "shiur_categories");
   const remove = useDeleteRow("shiurim", "shiurim");
   const [draft, setDraft] = useState<Partial<Shiur> | null>(null);
   const [categoryName, setCategoryName] = useState("");
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const { ordered, draggedId, rowProps, gripProps } = usePointerReorder(data, "shiurim", "השיעורים");
+  const formRef = useScrollIntoViewOn(draftKey(draft));
 
-  async function moveShiur(targetId: string) {
-    if (!draggedId || draggedId === targetId) return;
-    const ordered = [...data];
-    const from = ordered.findIndex((item) => item.id === draggedId);
-    const to = ordered.findIndex((item) => item.id === targetId);
-    if (from < 0 || to < 0) return;
-    const [moved] = ordered.splice(from, 1);
-    ordered.splice(to, 0, moved!);
-    const results = await Promise.all(
-      ordered.map((item, index) =>
-        supabase
-          .from("shiurim")
-          .update({ sort_order: (index + 1) * 10 })
-          .eq("community_id", communityId())
-          .eq("id", item.id),
-      ),
-    );
-    setDraggedId(null);
-    const failure = results.find((result) => result.error)?.error;
-    if (failure) toast.error("שמירת סדר השיעורים נכשלה");
-    else {
-      await qc.invalidateQueries({ queryKey: ["shiurim"] });
-      toast.success("סדר השיעורים נשמר");
-    }
+  async function deleteShiur(shiur: Shiur) {
+    if (!(await confirmAction({ title: `למחוק את השיעור „${shiur.title}”?`, description: "אי אפשר לבטל את זה.", confirmLabel: "מחיקה" }))) return;
+    remove.mutate(shiur.id);
   }
 
   return (
@@ -643,7 +653,8 @@ export function ShiurimAdmin() {
               description: "",
               category_id: null,
               schedule_type: "weekly",
-              sort_order: 100,
+              // A new shiur goes last; dragging moves it from there.
+              sort_order: (ordered.length + 1) * 10,
               active: true,
               notification_enabled: false,
               reminder_minutes: 15,
@@ -654,44 +665,41 @@ export function ShiurimAdmin() {
         </Button>
       </div>
 
-      <div className="card-elev divide-y divide-border">
-        {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין שיעורים.</p>}
-        {data.map((s) => (
+      <p className="text-sm text-muted-foreground">
+        גררו את הידית שליד שיעור כדי לקבוע את הסדר באתר. הסדר נשמר מיד.
+      </p>
+      <div className="card-elev divide-y divide-border" data-testid="shiurim-sort-list">
+        {isLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
+        {!isLoading && ordered.length === 0 && <p className="p-6 text-center text-muted-foreground">אין שיעורים.</p>}
+        {ordered.map((s, index) => (
           <div
             key={s.id}
-            draggable
+            {...rowProps(index)}
             data-testid={`shiur-row-${s.id}`}
-            onDragStart={() => setDraggedId(s.id)}
-            onDragEnd={() => setDraggedId(null)}
-            onDragOver={(event) => event.preventDefault()}
-            onDrop={() => moveShiur(s.id)}
             className={
-              "flex items-center gap-2 px-3 py-3 " + (draggedId === s.id ? "opacity-50" : "")
+              "flex items-center gap-2 px-3 py-3 transition-opacity " + (draggedId === s.id ? "opacity-55" : "")
             }
           >
-            <button
-              type="button"
-              className="cursor-grab touch-none p-2 text-muted-foreground"
-              aria-label={`גרירת ${s.title}`}
-            >
-              <GripVertical className="size-5" />
-            </button>
+            <DragGrip testId={`shiur-drag-${s.id}`} label={`גרירת ${s.title}`} {...gripProps(index)} />
             <div className="min-w-0 flex-1">
-              <p className="line-clamp-2 break-words font-medium sm:line-clamp-1">{s.title}</p>
+              <p className="line-clamp-2 break-words font-medium sm:line-clamp-1">
+                {s.title}
+                {!s.active && <span className="text-xs font-normal text-muted-foreground"> (מוסתר)</span>}
+              </p>
               <p className="break-words text-xs text-muted-foreground sm:truncate">
                 {categories.find((category) => category.id === s.category_id)?.name ??
                   "ללא קטגוריה"}
                 {` · ${s.schedule_type === "daily" ? "בכל יום" : `יום ${DAYS_HE[s.day_of_week]}`} · ${s.time_text} · ${s.teacher}`}
               </p>
             </div>
-            <Button size="icon" variant="ghost" onClick={() => setDraft(s)} aria-label="עריכה">
+            <Button size="icon" variant="ghost" onClick={() => setDraft(s)} aria-label={`עריכת ${s.title}`}>
               <Pencil className="size-4" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              onClick={() => remove.mutate(s.id)}
-              aria-label="מחיקה"
+              onClick={() => void deleteShiur(s)}
+              aria-label={`מחיקת ${s.title}`}
             >
               <Trash2 className="size-4 text-destructive" />
             </Button>
@@ -701,12 +709,15 @@ export function ShiurimAdmin() {
 
       {draft && (
         <form
-          className="card-elev space-y-4 p-5"
+          ref={formRef}
+          className="card-elev scroll-mt-24 space-y-4 p-5"
           onSubmit={(e) => {
             e.preventDefault();
+            if (save.isPending) return;
             save.mutate({ ...draft }, { onSuccess: () => setDraft(null) });
           }}
         >
+          <h3 className="font-semibold">{draft.id ? "עריכת שיעור" : "שיעור חדש"}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>נושא השיעור</Label>
@@ -793,15 +804,6 @@ export function ShiurimAdmin() {
                 onChange={(e) => setDraft({ ...draft, location: e.target.value })}
               />
             </div>
-            <div className="space-y-2">
-              <Label>סדר תצוגה</Label>
-              <Input
-                type="number"
-                dir="ltr"
-                value={draft.sort_order ?? 0}
-                onChange={(e) => setDraft({ ...draft, sort_order: Number(e.target.value) })}
-              />
-            </div>
           </div>
           <div className="space-y-2">
             <Label>תיאור</Label>
@@ -844,7 +846,10 @@ export function ShiurimAdmin() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button type="submit">שמירה</Button>
+            <Button type="submit" disabled={save.isPending}>
+              {save.isPending && <Loader2 className="size-4 animate-spin" />}
+              {save.isPending ? "שומר…" : "שמירה"}
+            </Button>
             <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
               ביטול
             </Button>
@@ -858,10 +863,17 @@ export function ShiurimAdmin() {
 /* ---------------- חברותות ---------------- */
 
 export function ChavrutotAdmin() {
-  const { data = [] } = useChavrutot();
+  const { data = [], isLoading } = useChavrutot();
   const save = useSaveRow("chavrutot", "chavrutot");
   const remove = useDeleteRow("chavrutot", "chavrutot");
   const [draft, setDraft] = useState<Partial<Chavruta> | null>(null);
+  const { ordered, draggedId, rowProps, gripProps } = usePointerReorder(data, "chavrutot", "החברותות");
+  const formRef = useScrollIntoViewOn(draftKey(draft));
+
+  async function deleteChavruta(chavruta: Chavruta) {
+    if (!(await confirmAction({ title: `למחוק את החברותא „${chavruta.topic}”?`, description: "אי אפשר לבטל את זה.", confirmLabel: "מחיקה" }))) return;
+    remove.mutate(chavruta.id);
+  }
 
   return (
     <div className="space-y-4">
@@ -875,7 +887,7 @@ export function ChavrutotAdmin() {
               contact: "",
               looking_for_partner: false,
               notification_enabled: false,
-              sort_order: 100,
+              sort_order: (ordered.length + 1) * 10,
               active: true,
             })
           }
@@ -884,29 +896,52 @@ export function ChavrutotAdmin() {
         </Button>
       </div>
 
-      <div className="card-elev divide-y divide-border">
-        {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין חברותות.</p>}
-        {data.map((c) => (
-          <RowShell
+      <p className="text-sm text-muted-foreground">
+        גררו את הידית שליד חברותא כדי לקבוע את הסדר באתר. הסדר נשמר מיד.
+      </p>
+      <div className="card-elev divide-y divide-border" data-testid="chavrutot-sort-list">
+        {isLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
+        {!isLoading && ordered.length === 0 && <p className="p-6 text-center text-muted-foreground">אין חברותות.</p>}
+        {ordered.map((c, index) => (
+          <div
             key={c.id}
-            title={c.topic}
-            subtitle={`${c.partners} · ${c.time_text}${
-              c.looking_for_partner ? " · מחפשים חברותא" : ""
-            }`}
-            onEdit={() => setDraft(c)}
-            onDelete={() => remove.mutate(c.id)}
-          />
+            {...rowProps(index)}
+            data-testid={`chavruta-row-${c.id}`}
+            className={
+              "flex items-center gap-2 px-3 py-3 transition-opacity " + (draggedId === c.id ? "opacity-55" : "")
+            }
+          >
+            <DragGrip testId={`chavruta-drag-${c.id}`} label={`גרירת ${c.topic}`} {...gripProps(index)} />
+            <div className="min-w-0 flex-1">
+              <p className="line-clamp-2 break-words font-medium sm:line-clamp-1">
+                {c.topic}
+                {!c.active && <span className="text-xs font-normal text-muted-foreground"> (מוסתר)</span>}
+              </p>
+              <p className="break-words text-xs text-muted-foreground sm:truncate">
+                {`${c.partners} · ${c.time_text}${c.looking_for_partner ? " · מחפשים חברותא" : ""}`}
+              </p>
+            </div>
+            <Button size="icon" variant="ghost" onClick={() => setDraft(c)} aria-label={`עריכת ${c.topic}`}>
+              <Pencil className="size-4" />
+            </Button>
+            <Button size="icon" variant="ghost" onClick={() => void deleteChavruta(c)} aria-label={`מחיקת ${c.topic}`}>
+              <Trash2 className="size-4 text-destructive" />
+            </Button>
+          </div>
         ))}
       </div>
 
       {draft && (
         <form
-          className="card-elev space-y-4 p-5"
+          ref={formRef}
+          className="card-elev scroll-mt-24 space-y-4 p-5"
           onSubmit={(e) => {
             e.preventDefault();
+            if (save.isPending) return;
             save.mutate({ ...draft }, { onSuccess: () => setDraft(null) });
           }}
         >
+          <h3 className="font-semibold">{draft.id ? "עריכת חברותא" : "חברותא חדשה"}</h3>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>נושא הלימוד</Label>
@@ -965,7 +1000,10 @@ export function ChavrutotAdmin() {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button type="submit">שמירה</Button>
+            <Button type="submit" disabled={save.isPending}>
+              {save.isPending && <Loader2 className="size-4 animate-spin" />}
+              {save.isPending ? "שומר…" : "שמירה"}
+            </Button>
             <Button type="button" variant="ghost" onClick={() => setDraft(null)}>
               ביטול
             </Button>

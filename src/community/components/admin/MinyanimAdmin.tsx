@@ -39,6 +39,7 @@ import {
   type MinyanSubcategory,
 } from "@community/lib/data";
 import { useDeleteRow, useSaveRow } from "@community/lib/admin";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { RELATIVE_LABELS, heldOn, resolveMinyan, zmanimFor } from "@community/lib/minyan-time";
 import { RELATIVE_OPTIONS } from "@community/lib/zmanim";
 import { InlineEdit } from "@community/components/InlineEdit";
@@ -84,7 +85,7 @@ const emptyDraft = (category: MinyanCategory): Draft => ({
  * tiles stand in their place. Without it, the tabs as always.
  */
 export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; prayer?: string } } = {}) {
-  const { data: minyanim = [] } = useMinyanim();
+  const { data: minyanim = [], isLoading: minyanimLoading } = useMinyanim();
   const { data: categories = [] } = useMinyanCategories();
   const { data: settings } = useSettings();
   const queryClient = useQueryClient();
@@ -114,7 +115,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
   const [draggedCategoryId, setDraggedCategoryId] = useState<string | null>(null);
   const [draggedSubcategoryId, setDraggedSubcategoryId] = useState<string | null>(null);
 
-  /** Sub-categories are ordered by dragging, in the draft, until "שמירת קטגוריה". */
+  /** Sub-categories are ordered by dragging, in the draft, until "שמירת הלשונית". */
   function moveSubcategory(draggedId: string, targetId: string) {
     setCategoryDraft((current) => {
       if (!current) return current;
@@ -155,7 +156,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
       .select("id")
       .single();
     if (error || !data) {
-      toast.error(hebrewError(error, "יצירת הטאב נכשלה"));
+      toast.error(hebrewError(error, "יצירת הלשונית נכשלה"));
       return;
     }
     await queryClient.invalidateQueries({ queryKey: ["minyan_categories"] });
@@ -228,10 +229,29 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
     );
   }
 
+  async function deleteMinyan(minyan: { id: string; label: string }) {
+    if (
+      !(await confirmAction({
+        title: `למחוק את המניין „${minyan.label}”?`,
+        description: "אי אפשר לבטל את זה.",
+        confirmLabel: "מחיקה",
+      }))
+    )
+      return;
+    remove.mutate(minyan.id);
+  }
+
   async function deleteCategory(category: MinyanCategory) {
     const count = minyanim.filter((item) => item.category_id === category.id).length;
     const detail = count > 0 ? ` וכל ${count} המניינים שבתוכה` : "";
-    if (!window.confirm(`למחוק את הקטגוריה „${category.name}”${detail}?`)) return;
+    if (
+      !(await confirmAction({
+        title: `למחוק את הלשונית „${category.name}”${detail}?`,
+        description: "אי אפשר לבטל את זה.",
+        confirmLabel: "מחיקה",
+      }))
+    )
+      return;
     removeCategory.mutate(category.id, {
       onSuccess: () => {
         setCategoryId(null);
@@ -308,7 +328,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
       categories,
       draggedCategoryRef.current,
       targetId,
-      "סדר הטאבים נשמר",
+      "סדר הלשוניות נשמר",
     );
 
   useEffect(() => () => dragCleanupRef.current?.(), []);
@@ -484,8 +504,8 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             >
               <button
                 type="button"
-                aria-label={`גרירת הטאב ${category.name}`}
-                title="גרור לשינוי סדר הטאבים"
+                aria-label={`גרירת הלשונית ${category.name}`}
+                title="גררו לשינוי סדר הלשוניות"
                 className="cursor-grab touch-none p-1.5 active:cursor-grabbing"
                 onPointerDown={(event) => {
                   beginPointerDrag(
@@ -535,7 +555,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             }
             className="rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-card"
           >
-            <Plus className="ml-1 inline size-3.5" /> קטגוריה חדשה
+            <Plus className="ml-1 inline size-3.5" /> לשונית חדשה
           </button>
           {!hasShabbatTab && (
             <button
@@ -543,7 +563,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
               onClick={() => void createShabbatTab()}
               className="rounded-md px-3 py-1.5 text-sm font-medium text-primary hover:bg-card"
             >
-              <Plus className="ml-1 inline size-3.5" /> טאב שבת
+              <Plus className="ml-1 inline size-3.5" /> לשונית שבת
             </button>
           )}
         </div>
@@ -558,9 +578,9 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                   subcategories: minyanSubcategories(selectedCategory),
                 })
               }
-              aria-label={`ניהול הקטגוריה ${selectedCategory.name}`}
+              aria-label={`ניהול הלשונית ${selectedCategory.name}`}
             >
-              <Settings2 className="size-4" /> ניהול הטאב
+              <Settings2 className="size-4" /> ניהול הלשונית
             </Button>
           )}
         </div>
@@ -569,7 +589,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
       {selectedIsEvent && selectedCategory && (
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/40 bg-primary/5 p-3 text-sm">
           <span>
-            זמני התפילות של <b>{selectedCategory.name}</b> — ביום עצמו הם מחליפים באתר ובלוח את הזמנים הרגילים.
+            זמני התפילות של <b>{selectedCategory.name}</b> - ביום עצמו הם מחליפים באתר ובלוח את הזמנים הרגילים.
           </span>
           <Button size="sm" variant="ghost" onClick={() => openSpecialDays()}>
             ← חזרה למועדים
@@ -582,13 +602,13 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
           <div className="flex items-center gap-2">
             <CalendarRange className="size-5 text-primary" />
             <h3 className="text-lg font-semibold">
-              {categoryDraft.id ? "עריכת קטגוריית מניינים" : "קטגוריית מניינים חדשה"}
+              {categoryDraft.id ? "עריכת לשונית" : "לשונית חדשה"}
             </h3>
           </div>
           {/* The place of a tab is set by dragging it in the bar above, not
               by typing a number; the order field is gone from here. */}
           <div className="space-y-2 sm:max-w-md">
-            <Label htmlFor="minyan-category-name">שם הטאב</Label>
+            <Label htmlFor="minyan-category-name">שם הלשונית</Label>
             <Input
               id="minyan-category-name"
               value={categoryDraft.name}
@@ -603,7 +623,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
             <div>
               <h4 className="font-medium">תתי־קטגוריות (רשות)</h4>
               <p className="text-xs text-muted-foreground">
-                אפשר להשאיר ריק ולהוסיף מניינים ישירות לקטגוריה, או ליצור שמות חופשיים כגון שחרית,
+                אפשר להשאיר ריק ולהוסיף מניינים ישירות ללשונית, או ליצור שמות חופשיים כגון שחרית,
                 מנחה, ערבית או סליחות א׳.
               </p>
             </div>
@@ -620,7 +640,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                   <button
                     type="button"
                     aria-label={`גרירת ${subcategory.label || `תת־קטגוריה ${index + 1}`}`}
-                    title="גרור לשינוי הסדר"
+                    title="גררו לשינוי הסדר"
                     className="cursor-grab touch-none p-1.5 text-muted-foreground active:cursor-grabbing"
                     onPointerDown={(event) =>
                       beginPointerDrag(
@@ -689,7 +709,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
           <Advanced
             summary={
               categoryDraft.visible_from || categoryDraft.visible_until
-                ? `מוצג ${categoryDraft.visible_from ? `מ-${formatDay(categoryDraft.visible_from)}` : ""}${
+                ? `מוצגת ${categoryDraft.visible_from ? `מ-${formatDay(categoryDraft.visible_from)}` : ""}${
                     categoryDraft.visible_until ? ` עד ${formatDay(categoryDraft.visible_until)}` : ""
                   }`
                 : undefined
@@ -722,7 +742,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              בלי תאריכים הטאב מוצג תמיד. עם תאריכים — רק בתקופה הזו, למשל סליחות.
+              בלי תאריכים הלשונית מוצגת תמיד. עם תאריכים - רק בתקופה הזו, למשל סליחות.
             </p>
           </Advanced>
           <div className="flex flex-wrap items-center gap-3">
@@ -731,10 +751,10 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
               checked={categoryDraft.active}
               onCheckedChange={(active) => setCategoryDraft({ ...categoryDraft, active })}
             />
-            <Label htmlFor="minyan-category-active">הטאב מוצג באתר</Label>
+            <Label htmlFor="minyan-category-active">הלשונית מוצגת באתר</Label>
             <div className="mr-auto flex gap-2">
               <Button type="submit" disabled={saveCategory.isPending}>
-                שמירת קטגוריה
+                שמירת הלשונית
               </Button>
               <Button type="button" variant="ghost" onClick={() => setCategoryDraft(null)}>
                 ביטול
@@ -747,7 +767,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                   onClick={() => void deleteCategory(categories.find((c) => c.id === categoryDraft.id)!)}
                   disabled={removeCategory.isPending}
                 >
-                  <Trash2 className="size-4" /> מחיקת הקטגוריה
+                  <Trash2 className="size-4" /> מחיקת הלשונית
                 </Button>
               )}
             </div>
@@ -760,7 +780,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
           role="group"
           dir="rtl"
           className="flex gap-1 rounded-lg bg-secondary p-1 text-right"
-          aria-label="תתי קטגוריות מניינים"
+          aria-label="תתי־קטגוריות מניינים"
         >
           {prayerTabs.map((item) => (
             <button
@@ -792,8 +812,9 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
       </div>
 
       <div className="card-elev divide-y divide-border">
-        {rows.length === 0 && (
-          <p className="p-6 text-center text-muted-foreground">אין מניינים ליום זה.</p>
+        {minyanimLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
+        {!minyanimLoading && rows.length === 0 && (
+          <p className="p-6 text-center text-muted-foreground">אין מניינים כאן עדיין.</p>
         )}
         {rows.map((m) => {
           const resolved = resolveMinyan(m, zmanim);
@@ -811,7 +832,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
               <button
                 type="button"
                 aria-label={`גרירת המניין ${m.label}`}
-                title="גרור לשינוי סדר המניינים"
+                title="גררו לשינוי סדר המניינים"
                 className="cursor-grab touch-none p-2 text-muted-foreground active:cursor-grabbing"
                 onPointerDown={(event) => {
                   beginPointerDrag(
@@ -871,7 +892,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                     queryKey="minyanim"
                     alwaysEditable
                     ariaLabel={`עריכת מיקום ${m.label}`}
-                    placeholder="הוסף מיקום"
+                    placeholder="הוספת מיקום"
                     className="min-w-0"
                     inputClassName="w-36"
                   />
@@ -884,7 +905,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                     queryKey="minyanim"
                     alwaysEditable
                     ariaLabel={`עריכת הערה ${m.label}`}
-                    placeholder="הוסף הערה"
+                    placeholder="הוספת הערה"
                     className="min-w-0"
                     inputClassName="w-44"
                   />
@@ -910,7 +931,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
                   className="rounded-md px-1 font-display text-lg tabular-nums text-primary ring-1 ring-dashed ring-primary/40 hover:bg-primary/5"
                   onClick={() => openDraft(m)}
                   aria-label={`עריכת זמן יחסי ${m.label}`}
-                  title="הזמן מחושב — לחץ לעריכת הכלל"
+                  title="הזמן מחושב - לחצו לעריכת הכלל"
                 >
                   {resolved?.time ?? "—"}
                 </button>
@@ -926,8 +947,8 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => remove.mutate(m.id)}
-                aria-label="מחיקה"
+                onClick={() => void deleteMinyan(m)}
+                aria-label={`מחיקת ${m.label}`}
               >
                 <Trash2 className="size-4 text-destructive" />
               </Button>
@@ -971,7 +992,7 @@ export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; praye
               </div>
             )}
             <div className="space-y-2">
-              <Label>קטגוריית מניינים</Label>
+              <Label>לשונית</Label>
               <Select
                 value={draft.category_id ?? ""}
                 onValueChange={(value) => {

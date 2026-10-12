@@ -13,7 +13,7 @@ const QR_TARGETS = [
   },
   {
     id: "android-app",
-    title: "האפליקציה ב־Google Play",
+    title: "האפליקציה בחנות של גוגל",
     url: "https://play.google.com/store/apps/details?id=com.ticnutai.bsr3synagogue",
     Icon: Smartphone,
   },
@@ -60,7 +60,7 @@ function QrCard({ target }: { target: (typeof QR_TARGETS)[number] }) {
           <Copy className="size-4" /> העתקת כתובת
         </Button>
         <Button type="button" onClick={downloadSvg}>
-          <Download className="size-4" /> הורדת QR
+          <Download className="size-4" /> הורדת הקוד
         </Button>
       </div>
     </article>
@@ -73,7 +73,7 @@ export function QrCodesAdmin() {
       <div>
         <h2 className="text-2xl font-semibold">קודי QR</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          סריקה מהטלפון תפתח ישירות את האתר או את דף האפליקציה ב־Google Play.
+          סריקה מהטלפון תפתח ישירות את האתר או את דף האפליקציה בחנות של גוגל.
         </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">

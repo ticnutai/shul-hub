@@ -24,8 +24,8 @@ test("the text of the parts, from the preview", async ({ page, isMobile }) => {
   await expect(tools).toBeVisible();
   // One bar on screen at a time.
   await expect(page.getByTestId("element-text-tools")).toHaveCount(1);
-  await tools.getByRole("button", { name: "הגדלת הטקסט" }).click();
-  await tools.getByRole("button", { name: "הגדלת הטקסט" }).click();
+  await tools.getByRole("button", { name: "הגדלת גודל הטקסט" }).click();
+  await tools.getByRole("button", { name: "הגדלת גודל הטקסט" }).click();
   await tools.getByLabel("גופן").selectOption("rubik");
   await tools.getByRole("button", { name: "מודגש" }).click();
   // Written into on the board itself - and the board does not move for it.

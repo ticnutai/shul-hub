@@ -258,9 +258,9 @@ export function SynagogueDetailsDialog({
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
                   {field("latitude", "קו רוחב", "number")}
                   {field("longitude", "קו אורך", "number")}
-                  {field("candle_offset_minutes", "הדלקת נרות — דקות לפני השקיעה", "number")}
-                  {field("tzeit_offset_minutes", "צאת הכוכבים — דקות אחרי השקיעה", "number")}
-                  {field("shabbat_end_minutes", "צאת שבת וחג — דקות אחרי השקיעה (40 מקובל, 72 ר״ת)", "number")}
+                  {field("candle_offset_minutes", "הדלקת נרות - דקות לפני השקיעה", "number")}
+                  {field("tzeit_offset_minutes", "צאת הכוכבים - דקות אחרי השקיעה", "number")}
+                  {field("shabbat_end_minutes", "צאת שבת וחג - דקות אחרי השקיעה (40 מקובל, 72 ר״ת)", "number")}
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
                   קווי האורך והרוחב קובעים את חישוב זמני היום באתר ובלוח. ברירת המחדל היא בני ברק.

@@ -3,8 +3,6 @@
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
  */
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { PRAYER_DAYS, PRAYER_DAYS_LABELS, SLIDE_KIND_LABELS, SLIDE_LAYOUTS, type TvConfig } from "@/tv/config";
 import { readOccasions } from "@/tv/occasions";
 import { jerusalemDateKey } from "@community/lib/minyan-time";
@@ -13,7 +11,7 @@ import { LogoLibrary } from "./LogoLibrary";
 import { MedallionRows } from "./MedallionRows";
 import { PartsContent } from "./PartsContent";
 import { ScreenComposer } from "./ScreenComposer";
-import { CLOCK_CHOICES, LAYOUT_CHOICES, Section } from "./editorParts";
+import { CLOCK_CHOICES, LAYOUT_CHOICES, SELECT_CLASS, Section, Segments, Stepper, SwitchRow } from "./editorParts";
 
 export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerScreen, setComposerScreen, setPreviewScreen, previewAt }: {
   draft: TvConfig;
@@ -30,21 +28,21 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
     <>
       {view.screenLayout === 'composition' ? <Section
         id="layout-elements"
-        title="מה יופיע על הלוח, ובאיזה צד"
+        title="1. מה יופיע על הלוח, ובאיזה צד"
         hint="בערכה מחלקים, כל תוכן עומד במסגרת משלו: מדליקים מה שרוצים להציג, ובוחרים לו צד."
       >
-        <p className="mb-3 text-sm" data-testid="composition-layout-notice">
+        <p className="text-[11px] text-muted-foreground" data-testid="composition-layout-notice">
           כאן קובעים מה מופיע בעמוד שנבחר למעלה ב"עמודי הלוח", ובאיזה צד. כל עמוד מסודר בנפרד, והלוח מתחלף בין העמודים לפי השניות של כל אחד. לשינוי גודל ולהזזה מדויקת - רשימת החלקים.
         </p>
         <PartsContent config={view} onEdit={edit} onManual={openPartsList} />
-        <Button type="button" size="sm" variant="outline" className="mt-3" onClick={openPartsList}>
+        <Button type="button" size="sm" variant="outline" className="h-8" onClick={openPartsList}>
           לרשימת החלקים
         </Button>
       </Section> : <>
       <Section
         id="layout-screens"
-        title="מסכים ומה עליהם"
-        hint="כמה מסכים, ומה מופיע בכל אחד. מסך אחד — הלוח עומד; כמה — הוא מתחלף ביניהם."
+        title="1. מסכים ומה עליהם"
+        hint="כמה מסכים, ומה מופיע בכל אחד. מסך אחד - הלוח עומד; כמה - הוא מתחלף ביניהם."
       >
         <ScreenComposer
           config={scoped}
@@ -73,7 +71,8 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
       </Section>
 
       <Section
-        title="זמני התפילות בלוח"
+        id="layout-prayers"
+        title="2. זמני התפילות בלוח"
         hint="מה הלוח מראה ואיך זה נכנס במסך. באתר ובאפליקציה זה נקבע בנפרד, בניהול המניינים."
       >
         <p className="mb-2 text-sm font-medium">אילו ימים הלוח מראה?</p>
@@ -95,38 +94,31 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
           ))}
         </div>
         <p className="mb-2 text-xs text-muted-foreground">
-          כל השבוע: כל יום מוצג בתורו — במסגרת התפילות של המדליון, או כמסך תפילות משלו. "הבא" ו"עבר" מסומנים רק
-          בתפילות של היום. איך התפילות של יום מסודרות — בפריסת שקופית התפילות, ברשימת המסכים.
+          כל השבוע: כל יום מוצג בתורו - במסגרת התפילות של המדליון, או כמסך תפילות משלו. "הבא" ו"עבר" מסומנים רק
+          בתפילות של היום. איך התפילות של יום מסודרות - בפריסת שקופית התפילות, ברשימת המסכים.
         </p>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="w-32">
-            <label className="mb-1 block text-xs font-medium text-muted-foreground" htmlFor="rows-per-screen">
-              מניינים במסך
-            </label>
-            <Input
-              id="rows-per-screen"
-              type="number"
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="space-y-1 text-xs">
+            <span className="block font-medium text-muted-foreground">מניינים במסך</span>
+            <Stepper
+              label="מניינים במסך"
+              value={draft.prayerRowsPerScreen}
               min={4}
               max={60}
-              value={draft.prayerRowsPerScreen}
-              onChange={(e) =>
-                edit("rowsPerScreen", (c) => ({
-                  ...c,
-                  prayerRowsPerScreen: Math.min(60, Math.max(4, Number(e.target.value) || 14)),
-                }))
-              }
+              step={1}
+              onChange={(v) => edit("rowsPerScreen", (c) => ({ ...c, prayerRowsPerScreen: v }))}
             />
           </div>
           <p className="flex-1 text-xs text-muted-foreground">
             יום עם הרבה מניינים לא נכנס במסך אחד: הלוח לוקח עוד מסך במקום להקטין את הטקסט. התשובה
-            תלויה במסך — טלוויזיה מעל ארון הקודש מחזיקה יותר ממסך קטן על מדף. השבירה תמיד במעבר בין
+            תלויה במסך - טלוויזיה מעל ארון הקודש מחזיקה יותר ממסך קטן על מדף. השבירה תמיד במעבר בין
             תפילות, שחרית לא תיחתך באמצע.
           </p>
         </div>
         {scoped.screenLayout === "medallion" && <MedallionRows config={scoped} onEdit={edit} />}
       </Section>
 
-      <Section title="פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים — המסכים שלו קובעים, גם בשבת.">
+      <Section id="layout-screen" title="3. פריסת מסך" hint="איך המסך כולו מסודר. לוח שנבנה למעלה במסכים - המסכים שלו קובעים, גם בשבת.">
         <div className="grid grid-cols-2 gap-2">
           {LAYOUT_CHOICES.map((l) => (
             <button
@@ -156,103 +148,62 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
         <FrameSpacing config={view} onEdit={edit} />
 
         <div className="flex flex-wrap items-center gap-2 text-sm">
-          שעון:
-          {CLOCK_CHOICES.map((c) => (
-            <Button
-              key={c.id}
-              type="button"
-              size="sm"
-              variant={scoped.clockStyle === c.id ? "default" : "outline"}
-              aria-pressed={scoped.clockStyle === c.id}
-              onClick={() => edit("clock", (cfg) => ({ ...cfg, clockStyle: c.id }))}
-            >
-              {c.name}
-            </Button>
-          ))}
+          <span>שעון</span>
+          <Segments label="שעון" value={scoped.clockStyle} onChange={(id) => edit("clock", (cfg) => ({ ...cfg, clockStyle: id }))} options={CLOCK_CHOICES} />
         </div>
       </Section>
 
       <Section
-        title="כשהתוכן לא נכנס לתיבה"
-        hint="יום עם הרבה מניינים, שבוע של שיעורים, הודעה ארוכה: תיבה שאין בה מקום לכל - זזה לאט, כך שהכול עובר מול הקהל. תיבה שהכול נכנס בה לא זזה."
+        id="layout-overflow"
+        title="4. כשהתוכן לא נכנס לתיבה"
+        hint="יום עם הרבה מניינים, שבוע של שיעורים, הודעה ארוכה: תיבה שאין בה מקום לכול - זזה לאט, כך שהכול עובר מול הקהל. תיבה שהכול נכנס בה לא זזה."
       >
-        <div className="flex flex-wrap gap-2" role="group" aria-label="כשהתוכן לא נכנס">
-          {(
-            [
-              ["off", "בלי גלילה", "כמו היום: חלון סביב המניין הבא, והשאר נחתך"],
-              ["pause", "גלילה עם עצירות", "עומד למעלה, גולל לאט, עומד למטה וחוזר"],
-              ["loop", "וילון רציף", "רץ בלי הפסקה; ההתחלה באה אחרי הסוף"],
-            ] as const
-          ).map(([id, name, note]) => (
-            <Button
-              key={id}
-              type="button"
-              size="sm"
-              title={note}
-              variant={draft.overflow.mode === id ? "default" : "outline"}
-              aria-pressed={draft.overflow.mode === id}
-              onClick={() => edit("overflow", (c) => ({ ...c, overflow: { ...c.overflow, mode: id } }))}
-            >
-              {name}
-            </Button>
-          ))}
-        </div>
+        <Segments
+          label="כשהתוכן לא נכנס"
+          value={draft.overflow.mode}
+          onChange={(id) => edit("overflow", (c) => ({ ...c, overflow: { ...c.overflow, mode: id } }))}
+          options={[
+            { id: "off", name: "בלי גלילה", hint: "כמו היום: חלון סביב המניין הבא, והשאר נחתך" },
+            { id: "pause", name: "גלילה עם עצירות", hint: "עומד למעלה, גולל לאט, עומד למטה וחוזר" },
+            { id: "loop", name: "וילון רציף", hint: "רץ בלי הפסקה; ההתחלה באה אחרי הסוף" },
+          ]}
+        />
         {draft.overflow.mode !== "off" && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="מהירות הגלילה">
-            <span className="text-muted-foreground">מהירות:</span>
-            {(
-              [
-                ["slow", "איטית"],
-                ["normal", "רגילה"],
-              ] as const
-            ).map(([id, name]) => (
-              <Button
-                key={id}
-                type="button"
-                size="sm"
-                variant={draft.overflow.speed === id ? "default" : "outline"}
-                aria-pressed={draft.overflow.speed === id}
-                onClick={() => edit("overflow-speed", (c) => ({ ...c, overflow: { ...c.overflow, speed: id } }))}
-              >
-                {name}
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground">מהירות הגלילה</span>
+            <Segments
+              label="מהירות הגלילה"
+              value={draft.overflow.speed}
+              onChange={(id) => edit("overflow-speed", (c) => ({ ...c, overflow: { ...c.overflow, speed: id } }))}
+              options={[
+                { id: "slow", name: "איטית" },
+                { id: "normal", name: "רגילה" },
+              ]}
+            />
           </div>
         )}
       </Section>
 
-      <Section title="לוגואים" hint="הלוגו של בית הכנסת, של תורמים - מספרייה משותפת לכל בתי הכנסת">
+      <Section id="layout-logos" title="5. לוגואים" hint="הלוגו של בית הכנסת, של תורמים - מספרייה משותפת לכל בתי הכנסת.">
         <LogoLibrary chosen={draft.logos} onChange={(logos) => edit("logos", (c) => ({ ...c, logos }))} />
       </Section>
 
-      <Section title="ראש המסך">
-        <label className="flex items-center gap-3">
-          <Switch
-            checked={scoped.header.logo}
-            onCheckedChange={(on) =>
-              edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))
-            }
-          />
-          לוגו קרובים ליד שם בית הכנסת
-        </label>
-        <label className="flex items-center gap-3">
-          <Switch
-            checked={scoped.header.parasha}
-            onCheckedChange={(on) =>
-              edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))
-            }
-          />
-          פרשת השבוע - תגית קטנה מתחת לשם
-        </label>
-        <label className="flex items-center gap-3">
-          <Switch
-            checked={scoped.header.dafYomi}
-            onCheckedChange={(on) =>
-              edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))
-            }
-          />
-          הדף היומי - תגית קטנה מתחת לשם
-        </label>
+      <Section id="layout-header" title="6. ראש המסך" hint="מה מופיע ליד שם בית הכנסת, בראש כל מסך.">
+        <SwitchRow
+          label="לוגו קרובים ליד שם בית הכנסת"
+          checked={scoped.header.logo}
+          onChange={(on) => edit("h-logo", (c) => ({ ...c, header: { ...c.header, logo: on } }))}
+        />
+        <SwitchRow
+          label="פרשת השבוע - תגית קטנה מתחת לשם"
+          checked={scoped.header.parasha}
+          onChange={(on) => edit("h-parasha", (c) => ({ ...c, header: { ...c.header, parasha: on } }))}
+        />
+        <SwitchRow
+          label="הדף היומי - תגית קטנה מתחת לשם"
+          checked={scoped.header.dafYomi}
+          onChange={(on) => edit("h-daf", (c) => ({ ...c, header: { ...c.header, dafYomi: on } }))}
+        />
       </Section>
 
       {/*
@@ -261,7 +212,8 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
         this list used to switch them on and off too, and the two disagreed.
       */}
       <Section
-        title="איך מוצג כל סוג תוכן"
+        id="layout-content"
+        title="7. איך מוצג כל סוג תוכן"
         hint='הפריסה של זמני התפילות, הלימוד, ההודעות והשיעורים בתוך התיבה שלהם. מה מופיע ובאיזה מסך - ב"מסכים ומה עליהם".'
       >
         <ul className="space-y-2" data-testid="content-layouts">
@@ -279,7 +231,7 @@ export function LayoutTab({ draft, scoped, view, edit, openPartsList, composerSc
                       slides: c.slides.map((x) => (x.kind === s.kind ? { ...x, layout: e.target.value } : x)),
                     }))
                   }
-                  className="h-8 rounded-md border bg-background px-2 text-sm"
+                  className={SELECT_CLASS}
                 >
                   {SLIDE_LAYOUTS[s.kind].map((l) => (
                     <option key={l.id} value={l.id}>

@@ -8,16 +8,14 @@ import {
   Eye,
   EyeOff,
   Globe,
-  Minus,
   Move,
   MousePointerClick,
-  Plus,
   RotateCcw,
   Trash2,
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -51,6 +49,7 @@ import { isSafeCssValue } from "@/tv/themes";
 import type { BoardData } from "@/tv/useBoardData";
 import { moveAnnouncement, withRecordEdit } from "./tvRecords";
 import { ColorPick } from "./ColorPick";
+import { Stepper } from "./editorParts";
 
 /**
  * The form for whatever the admin clicked on the board. Every change goes
@@ -195,15 +194,8 @@ function Selected({
           עריכה
         </span>
         <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">{describeKey(k, data)}</h3>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-7"
-          aria-label="סגירה"
-          onClick={onClose}
-        >
-          <X className="size-4" />
+        <Button type="button" variant="ghost" size="sm" className="h-7 px-2" onClick={onClose}>
+          <X className="size-4" /> סגירה
         </Button>
       </div>
       {CATEGORY_RE.test(k) ? (
@@ -379,66 +371,6 @@ export const TEXT_WEIGHTS: Array<{ value: number; label: string }> = [
   { value: 900, label: "שחור" },
 ];
 
-function NumStep({
-  label,
-  value,
-  min,
-  max,
-  step,
-  format,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  format: (v: number) => string;
-  onChange: (v: number) => void;
-}) {
-  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
-  return (
-    <div
-      className="inline-flex items-center rounded-md border bg-background"
-      role="group"
-      aria-label={label}
-    >
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        aria-label={`הקטנת ${label}`}
-        onClick={() => onChange(clamp(value - step))}
-        disabled={value <= min}
-      >
-        <Minus className="size-3.5" />
-      </Button>
-      <span
-        className="min-w-12 px-1 text-center text-xs tabular-nums"
-        role="spinbutton"
-        aria-label={label}
-        aria-valuenow={value}
-        aria-valuemin={min}
-        aria-valuemax={max}
-      >
-        {format(value)}
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        aria-label={`הגדלת ${label}`}
-        onClick={() => onChange(clamp(value + step))}
-        disabled={value >= max}
-      >
-        <Plus className="size-3.5" />
-      </Button>
-    </div>
-  );
-}
-
 /**
  * The look of the selected element on its own: text size, colour and a
  * nudge from its natural place. Stored per element in tv_config.styles and
@@ -600,7 +532,7 @@ export function ElementLook({
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
         <label className="flex items-center gap-2">
           גודל טקסט
-          <NumStep
+          <Stepper
             label="גודל טקסט של הרכיב"
             value={Math.round(scale * 100)}
             min={50}
@@ -665,7 +597,7 @@ export function ElementLook({
         </label>
         <label className="flex items-center gap-2">
           שקיפות
-          <NumStep
+          <Stepper
             label="אטימות הרכיב"
             value={Math.round((effective?.opacity ?? 1) * 100)}
             min={15}
@@ -682,7 +614,7 @@ export function ElementLook({
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             מיקום:
-            <span className="font-mono text-xs tabular-nums" aria-live="polite">
+            <span className="font-mono text-xs tabular-nums" aria-live="polite" dir="ltr">
               {effective?.x ?? 0}% , {effective?.y ?? 0}%
             </span>
           </div>
@@ -697,7 +629,7 @@ export function ElementLook({
                 className="h-7 px-2 text-xs"
                 onClick={() => setStep(s)}
               >
-                {s}%
+                <span dir="ltr">{s}%</span>
               </Button>
             ))}
           </div>
@@ -1030,12 +962,12 @@ function RecordElement({
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          variant="outline"
+          variant={hidden ? "default" : "outline"}
           size="sm"
           aria-pressed={hidden}
           onClick={() => onEdit(`hide:${elementKey}`, (c) => setHidden(c, elementKey, !hidden))}
         >
-          <EyeOff className="size-4" /> {hidden ? "החזרה ללוח" : "הסתרה מהלוח בלבד"}
+          {hidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />} {hidden ? "הצגה בלוח" : "הסתרה מהלוח"}
         </Button>
         {kind === "ann" && (
           <>
@@ -1076,14 +1008,13 @@ function RecordElement({
                   <AlertDialogTitle>למחוק את המודעה לגמרי?</AlertDialogTitle>
                   <AlertDialogDescription>
                     המודעה "{String(row.title ?? "")}" תימחק מהאתר ומכל המסכים בלחיצה על "שמור
-                    ושדר". עד אז אפשר לבטל (Ctrl+Z). אם רוצים רק להוריד אותה מהלוח - "הסתרה מהלוח
-                    בלבד".
+                    ושדר". עד אז אפשר לבטל (Ctrl+Z). אם רוצים רק להוריד אותה מהלוח - "הסתרה מהלוח".
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>ביטול</AlertDialogCancel>
                   <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    className={buttonVariants({ variant: "destructive" })}
                     onClick={() => {
                       onEdit(`del:${id}`, (c) =>
                         withRecordEdit(c, { table: "announcements", id, delete: true }),

@@ -33,10 +33,10 @@ test("a ready board frame is hidden and brought back; one set by hand is kept, r
   await frames.getByRole("button", { name: "עמודי זהב", exact: true }).click();
   const controls = page.getByTestId("board-frame-controls");
   await controls.getByLabel("רוחב העמודים", { exact: true }).fill("1.8");
-  await controls.getByRole("button", { name: "רק ימין" }).click();
+  await controls.getByRole("radio", { name: "רק ימין" }).click();
   await page.getByRole("button", { name: "שמירה כמסגרת שלי" }).click();
   await page.getByLabel("שם המסגרת").fill("עמוד ימני רחב");
-  await page.getByRole("button", { name: "שמירת המסגרת" }).click();
+  await page.locator("form", { has: page.getByLabel("שם המסגרת") }).getByRole("button", { name: "שמירה", exact: true }).click();
   const mine = page.getByTestId("my-board-frame");
   await expect(mine).toHaveCount(1);
   await expect(mine.getByRole("button", { name: "עמוד ימני רחב", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -50,9 +50,10 @@ test("a ready board frame is hidden and brought back; one set by hand is kept, r
   // Renamed, then deleted.
   await page.getByRole("button", { name: /שינוי שם ל/ }).click();
   await page.getByLabel("שם המסגרת").fill("עמוד ימין");
-  await page.getByRole("button", { name: "שינוי השם" }).click();
+  await page.locator("form", { has: page.getByLabel("שם המסגרת") }).getByRole("button", { name: "שמירה", exact: true }).click();
   await expect(mine.getByRole("button", { name: "עמוד ימין", exact: true })).toBeVisible();
   await mine.getByRole("button", { name: "מחיקת עמוד ימין" }).click();
+  await page.getByTestId("confirm-dialog").getByRole("button", { name: "מחיקה" }).click();
   await expect(page.getByTestId("my-board-frame")).toHaveCount(0);
   await expectNotFrozen(page, "own board frames");
 });

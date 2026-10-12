@@ -4,6 +4,7 @@
  */
 import type { ComponentProps, Dispatch } from "react";
 import { toast } from "sonner";
+import { confirmAction } from "@/components/ConfirmDialog";
 import type { TvConfig } from "@/tv/config";
 import { FigmaImport } from "./FigmaImport";
 import { TransferPanel } from "./GradientStudio";
@@ -38,10 +39,17 @@ export function ToolsTab({ draft, view, edit, dispatch, shownVersion, setShownVe
             setShownVersion(v);
             if (v) showPreview();
           }}
-          onRestore={(config, label) => {
+          onRestore={async (config, label) => {
+            const ok = await confirmAction({
+              title: `להחזיר את הגרסה מ-${label} כטיוטה?`,
+              description: 'היא תחליף את הטיוטה שעל המסך כאן. המסכים לא משתנים עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר.',
+              confirmLabel: "שחזור",
+              destructive: false,
+            });
+            if (!ok) return;
             setShownVersion(null);
             dispatch({ type: "edit", key: `restore-version:${label}`, update: () => config });
-            toast.success(`הגרסה מ-${label} הוחזרה כטיוטה. "שמור ושדר" מעלה אותה למסכים; "צעד אחורה" (Ctrl+Z) מחזיר.`);
+            toast.success(`הגרסה מ-${label} הוחזרה - בטיוטה עד "שמור ושדר"`);
           }}
         />
       </Section>
@@ -54,7 +62,7 @@ export function ToolsTab({ draft, view, edit, dispatch, shownVersion, setShownVe
 
       <Section
         title="ייבוא מפיגמה"
-        hint="קובץ המשתנים (Variables) של פיגמה הופך לצבעי הבסיס של הלוח. בלי טוקן ובלי חשבון - הקובץ נקרא כאן בדפדפן."
+        hint="קובץ המשתנים שמייצאים מפיגמה הופך לצבעי הבסיס של הלוח. בלי מפתח גישה ובלי חשבון - הקובץ נקרא כאן בדפדפן."
       >
         <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
       </Section>

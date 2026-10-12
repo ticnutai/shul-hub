@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAdminChavrutaRequests } from "@community/lib/data";
 import { communityId } from "@/community/lib/community";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 const labels = {
   level: { beginner: "מתחיל", intermediate: "בינוני", advanced: "מתקדם" },
@@ -100,9 +101,14 @@ export function ChavrutaRequestsAdmin() {
                 size="icon"
                 variant="ghost"
                 aria-label={`מחיקת הבקשה של ${request.name}`}
-                onClick={() =>
-                  window.confirm("למחוק את בקשת החברותא?") && remove.mutate(request.id)
-                }
+                onClick={async () => {
+                  const ok = await confirmAction({
+                    title: `למחוק את בקשת החברותא של „${request.name}”?`,
+                    description: "אי אפשר לבטל את זה.",
+                    confirmLabel: "מחיקה",
+                  });
+                  if (ok) remove.mutate(request.id);
+                }}
               >
                 <Trash2 className="size-4 text-destructive" />
               </Button>
@@ -113,8 +119,8 @@ export function ChavrutaRequestsAdmin() {
             <Detail title="מטרה" value={lookup(labels.intent, request.intent)} />
             <Detail title="מסגרת" value={lookup(labels.format, request.study_format)} />
             <Detail title="זמנים" value={request.availability} />
-            <Detail title="טלפון" value={request.phone} />
-            <Detail title="אימייל" value={request.email} />
+            <Detail title="טלפון" value={request.phone} ltr />
+            <Detail title="אימייל" value={request.email} ltr />
             {request.notes && (
               <div className="sm:col-span-2">
                 <dt className="text-muted-foreground">הערות</dt>
@@ -144,11 +150,12 @@ function invalidate(qc: ReturnType<typeof useQueryClient>) {
 function lookup(values: Record<string, string>, value: string) {
   return values[value] ?? value;
 }
-function Detail({ title, value }: { title: string; value: string }) {
+/** A phone or an email is written left to right, also inside a Hebrew line. */
+function Detail({ title, value, ltr }: { title: string; value: string; ltr?: boolean }) {
   return (
     <div>
       <dt className="text-muted-foreground">{title}</dt>
-      <dd className="break-words">{value || "—"}</dd>
+      <dd className="break-words">{value ? ltr ? <bdi dir="ltr">{value}</bdi> : value : "-"}</dd>
     </div>
   );
 }

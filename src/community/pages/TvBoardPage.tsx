@@ -36,7 +36,7 @@ export default function TvBoardPage() {
 
   useEffect(() => {
     const previous = document.title;
-    document.title = studio ? "עורך חי — לוח התצוגה" : "לוח תצוגה — בית הכנסת";
+    document.title = studio ? "עורך חי - לוח התצוגה" : "לוח תצוגה - בית הכנסת";
     return () => {
       document.title = previous;
     };

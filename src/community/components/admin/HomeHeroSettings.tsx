@@ -3,13 +3,14 @@
  * and what it shows - with the strip itself drawn underneath, today's date
  * and times in it, so what is chosen is seen before it is saved.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ImagePlus, Monitor, Smartphone, Trash2 } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { HomeHero } from "@community/components/HomeHero";
 import { useSaveRow } from "@community/lib/admin";
 import { useSettings } from "@community/lib/data";
@@ -20,6 +21,58 @@ import { zmanimFor } from "@community/lib/minyan-time";
 import { formatTime } from "@community/lib/zmanim";
 import { formatHebrewDate } from "@community/lib/hebrewDate";
 import { hebrewError } from "@community/lib/hebrewError";
+
+/**
+ * While a settings form has changes that were not saved, leaving the page
+ * (closing the tab, reloading) asks first. The three forms on the home-page
+ * tab - this strip, the header and the sections - all keep their changes
+ * until "שמירה", so all three guard them the same way.
+ */
+export function useUnsavedChangesGuard(dirty: boolean) {
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Older browsers show the box only when this is set.
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+}
+
+/**
+ * The save row of a settings form, the same in every one: "שמירה" first,
+ * "ביטול השינויים" beside it, and a line saying so while something is
+ * changed and not saved. Whatever else a form offers comes after.
+ */
+export function SettingsSaveBar({
+  changed,
+  pending,
+  onSubmit,
+  onReset,
+  children,
+}: {
+  changed: boolean;
+  pending: boolean;
+  /** For a button outside a form; inside one it simply submits. */
+  onSubmit?: () => void;
+  onReset: () => void;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Button type={onSubmit ? "button" : "submit"} disabled={!changed || pending} onClick={onSubmit}>
+        {pending ? "שומר…" : "שמירה"}
+      </Button>
+      <Button type="button" variant="outline" disabled={!changed || pending} onClick={onReset}>
+        ביטול השינויים
+      </Button>
+      {children}
+      {changed && <span className="text-xs text-amber-700">יש שינויים שלא נשמרו</span>}
+    </div>
+  );
+}
 
 const same = (a: Hero, b: Hero) => JSON.stringify(a) === JSON.stringify(b);
 /** A picture for the strip: big enough for a wide screen, small enough for a phone on the way. */
@@ -37,6 +90,8 @@ export function HomeHeroSettings() {
   const [device, setDevice] = useState<"computer" | "phone">("computer");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const changed = Boolean(settings) && !same(hero, stored);
+  useUnsavedChangesGuard(changed);
 
   if (!settings) return <p className="text-muted-foreground">טוען…</p>;
 
@@ -44,12 +99,11 @@ export function HomeHeroSettings() {
   const zmanim = zmanimFor(today, settings);
   const headerShowsName = settings.home_header_variant !== "karovim_logo";
   const set = (patch: Partial<Hero>) => setHero((h) => ({ ...h, ...patch }));
-  const changed = !same(hero, stored);
   /** Into the synagogue's own picture storage; the strip keeps only its address. */
   const upload = async (file: File | undefined) => {
     if (!file) return;
-    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return toast.error("בחרו תמונה (JPEG, PNG או WebP)");
-    if (file.size > MAX_IMAGE_BYTES) return toast.error("התמונה גדולה מדי (עד 4MB)");
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return toast.error("בחרו קובץ תמונה רגיל מהטלפון או מהמחשב");
+    if (file.size > MAX_IMAGE_BYTES) return toast.error("התמונה גדולה מדי (עד 4 מגה־בייט)");
     setUploading(true);
     try {
       const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
@@ -155,7 +209,7 @@ export function HomeHeroSettings() {
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm">
               {([["subtitle", "שורת הברכה (\"קהילה, תורה ותפילה\")"], ["date", "התאריך העברי והלועזי"], ["zmanim", "נץ ושקיעה"], ["next", "התפילה הבאה (\"מנחה 13:30 · בעוד 25 דקות\")"]] as const).map(([k, label]) => (
                 <label key={k} className="flex items-center gap-2">
-                  <input type="checkbox" checked={hero[k]} onChange={(e) => set({ [k]: e.target.checked })} className="size-4" />
+                  <Switch checked={hero[k]} onCheckedChange={(on) => set({ [k]: on })} aria-label={label} />
                   {label}
                 </label>
               ))}
@@ -205,12 +259,9 @@ export function HomeHeroSettings() {
         </div>
       </section>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Button type="submit" disabled={!changed || save.isPending}>{save.isPending ? "שומר…" : "שמירה"}</Button>
-        <Button type="button" variant="outline" disabled={!changed} onClick={() => setHero(stored)}>ביטול השינויים</Button>
+      <SettingsSaveBar changed={changed} pending={save.isPending} onReset={() => setHero(stored)}>
         <Button type="button" variant="ghost" disabled={same(hero, DEFAULT_HOME_HERO)} onClick={() => setHero(DEFAULT_HOME_HERO)}>חזרה לברירת המחדל</Button>
-        {changed && <span className="text-xs text-amber-700">יש שינויים שלא נשמרו</span>}
-      </div>
+      </SettingsSaveBar>
     </form>
   );
 }

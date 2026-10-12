@@ -9,11 +9,11 @@ import { ADMIN_BUTTONS, useAdminButtons } from "@community/lib/adminButtons";
 export function AdminButtonsSettings() {
   const { prefs, set } = useAdminButtons();
   return (
-    <section className="card-elev space-y-4 p-5" data-testid="admin-buttons-settings" aria-label="כפתורי מנהל">
+    <section className="card-elev space-y-4 p-5" data-testid="admin-buttons-settings" aria-label="כפתורי גבאי">
       <div>
-        <h3 className="text-base font-semibold">כפתורי מנהל</h3>
+        <h3 className="text-base font-semibold">כפתורי גבאי</h3>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          הכפתורים שרק אתם, כמנהלים, רואים. לכל כפתור: האם להציג אותו, והאם הוא צף מעל הדף (ואפשר לגרור אותו למקום שלא מפריע) או אייקון קטן בסרגל העליון ליד שם החשבון. ההגדרה שלכם בלבד, ונשמרת בנפרד בטלפון ובמחשב.
+          הכפתורים שרק הגבאים רואים. לכל כפתור: האם להציג אותו, והאם הוא צף מעל הדף (ואפשר לגרור אותו למקום שלא מפריע) או אייקון קטן בסרגל העליון ליד שם החשבון. ההגדרה שלכם בלבד, ונשמרת בנפרד בטלפון ובמחשב.
         </p>
       </div>
       <ul className="space-y-3">

@@ -26,7 +26,7 @@ export type DeviceClass = "tv" | "desktop" | "mobile";
 export const DEVICE_CLASSES: DeviceClass[] = ["tv", "desktop", "mobile"];
 
 export const DEVICE_CLASS_LABELS: Record<DeviceClass, string> = {
-  tv: "אנדרואיד TV",
+  tv: "טלוויזיית אנדרואיד",
   desktop: "מחשב",
   mobile: "מובייל",
 };

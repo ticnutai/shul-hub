@@ -30,6 +30,15 @@ function Watcher() {
   const navigate = useNavigate();
   const location = useLocation();
   const offline = (devices.data ?? []).filter((d) => d.approved && !deviceHealth(d, now).online);
+  /*
+   * The board itself (/admin/tv-board: the live editor window, or a computer
+   * used as a display) is shown on a wall or worked on full screen: no toasts
+   * over it, and nothing that navigates it away. The watching goes on, so
+   * leaving it toasts only what changes after.
+   */
+  const onBoard = location.pathname.startsWith("/admin/tv-board");
+  const onBoardRef = useRef(onBoard);
+  onBoardRef.current = onBoard;
   const offlineKey = offline.map((d) => d.id).sort().join(",");
   // "✕" holds until the set of offline screens changes - across visits too:
   // a test screen left off for weeks was back on every page of the admin.
@@ -67,12 +76,12 @@ function Watcher() {
   useEffect(() => {
     if (!devices.data) return;
     const current = new Set(offline.map((d) => d.id));
-    if (previous.current) {
+    if (previous.current && !onBoardRef.current) {
       for (const d of offline)
         if (!previous.current.has(d.id))
-          toast.warning(`המסך "${d.name}" התנתק`, {
+          toast.warning(`המסך "${d.name}" מנותק`, {
             description: "לא התקבל ממנו דיווח בשתי הדקות וחצי האחרונות.",
-            action: { label: "פתח יומן", onClick: () => navigate("/community/admin?tab=tv&tvTab=logs") },
+            action: { label: "פתיחת היומן", onClick: () => navigate("/community/admin?tab=tv&tvTab=logs") },
             duration: 15_000,
           });
       for (const id of previous.current)
@@ -95,7 +104,7 @@ function Watcher() {
       .channel(`tv-admin-alerts-${Date.now()}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "tv_events" }, (p) => {
         const e = p.new as TvEvent;
-        if (e.level !== "error") return;
+        if (e.level !== "error" || onBoardRef.current) return;
         // Only paired screens: anyone with the public key can register a
         // "screen", and its text must not reach admins as an alert.
         const device = devicesRef.current?.find((d) => d.id === e.device_id);
@@ -103,7 +112,7 @@ function Watcher() {
         const name = device.name;
         toast.error(`שגיאה ב"${name}"`, {
           description: e.message,
-          action: { label: "פתח יומן", onClick: () => navigate("/community/admin?tab=tv&tvTab=logs") },
+          action: { label: "פתיחת היומן", onClick: () => navigate("/community/admin?tab=tv&tvTab=logs") },
         });
       })
       .subscribe();
@@ -113,7 +122,7 @@ function Watcher() {
   }, [navigate]);
 
   const onTvAdmin = location.pathname === "/community/admin" && new URLSearchParams(location.search).get("tab") === "tv";
-  if (!offline.length || onTvAdmin || dismissedKey === offlineKey) return null;
+  if (!offline.length || onTvAdmin || onBoard || dismissedKey === offlineKey) return null;
 
   const first = offline[0];
   const silent = deviceHealth(first, now).silentMs;
@@ -128,7 +137,7 @@ function Watcher() {
         aria-label={what}
         title={what}
         onClick={() => setOpen(true)}
-        className="fixed bottom-4 left-4 z-[60] flex size-9 items-center justify-center rounded-full border border-red-300 bg-red-50 text-red-900 shadow-lg dark:border-red-900 dark:bg-red-950 dark:text-red-100"
+        className="fixed bottom-4 left-4 z-[60] flex size-9 items-center justify-center rounded-full border border-red-300 bg-red-50 text-red-900 shadow-lg dark:border-red-900 dark:bg-red-950/40 dark:text-red-100"
       >
         <MonitorX className="size-4" />
         {offline.length > 1 && (
@@ -145,7 +154,7 @@ function Watcher() {
       dir="rtl"
       className="fixed bottom-4 left-4 z-[60] flex max-w-xs items-center gap-2 rounded-full border border-red-300 bg-red-50 py-2 pe-2 ps-4 text-sm text-red-900 shadow-lg dark:border-red-900 dark:bg-red-950 dark:text-red-100"
     >
-      <button type="button" className="flex items-center gap-2 text-right" onClick={() => navigate("/community/admin?tab=tv&tvTab=logs")}>
+      <button type="button" className="flex items-center gap-2 text-right" title="פתיחת היומן" onClick={() => navigate("/community/admin?tab=tv&tvTab=logs")}>
         <MonitorX className="size-4 shrink-0" />
         <span>{what}</span>
       </button>

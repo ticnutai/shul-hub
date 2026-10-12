@@ -167,7 +167,7 @@ function MinyanimSteps({ root, sectionStep }: { root: Step; sectionStep: Step })
   if (cat === "overrides" || cat === "manage") {
     return (
       <div className="mt-5 space-y-5">
-        <Path steps={[root, sectionStep, { label: cat === "overrides" ? "שינויים ליום מסוים" : "ימים, תפילות ותצוגה" }]} />
+        <Path steps={[root, sectionStep, { label: cat === "overrides" ? "שינוי ליום אחד" : "ימים, תפילות ותצוגה" }]} />
         {cat === "overrides" ? <MinyanOverridesAdmin /> : <MinyanimAdmin />}
       </div>
     );
@@ -190,7 +190,7 @@ function MinyanimSteps({ root, sectionStep }: { root: Step; sectionStep: Step })
               onClick={() => go({ cat: c.id, prayer: null })}
             />
           ))}
-          <Tile icon={CalendarClock} label="שינויים ליום מסוים" hint="תאריך שבו הזמנים שונים מהרגיל" testId="minyan-tile-overrides" onClick={() => go({ cat: "overrides", prayer: null })} />
+          <Tile icon={CalendarClock} label="שינוי ליום אחד" hint="תאריך שבו הזמנים שונים מהרגיל" testId="minyan-tile-overrides" onClick={() => go({ cat: "overrides", prayer: null })} />
           <Tile icon={Settings2} label="ימים, תפילות ותצוגה" hint="הוספה, סידור ועריכה של הימים והתפילות, ואיך הזמנים מוצגים" testId="minyan-tile-manage" onClick={() => go({ cat: "manage", prayer: null })} />
         </TileGrid>
       </div>

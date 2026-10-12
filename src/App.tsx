@@ -1,4 +1,5 @@
 import { Toaster } from "@/components/ui/toaster";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { BrowserRouter, HashRouter, Navigate, Routes, Route } from "react-router-dom";
@@ -184,6 +185,7 @@ const App = () => {
                     <ContentProvider>
                       <TooltipProvider>
                       <Toaster />
+                      <ConfirmProvider />
                       <Sonner />
                       {/* The app carries its own files; a service worker is the website's. */}
                       {wantsServiceWorker() && <PWAReloadPrompt />}

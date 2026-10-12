@@ -12,6 +12,7 @@ import { boardFrameVars, dragTune, pieceEdges, readTuneFrom, type BoardFrameTune
 import { snapOffset, snapTune } from "@/tv/snap";
 import { DEVICE_ORDER, DEVICES, useDeviceChoice, type DeviceId, type DeviceMode, type DeviceView } from "./devices";
 import { useTvFonts } from "./tvFonts";
+import { ChipNumber, choiceChipClass } from "./Notice";
 
 /**
  * The real board component inside a 16:9 frame. Not a mock-up: TvBoard and
@@ -90,11 +91,9 @@ export function SlideStrip({
           role="tab"
           aria-selected={e.index === index}
           onClick={() => onPick(e.index)}
-          className={`rounded-full border px-2.5 py-1 text-xs transition ${
-            e.index === index ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background hover:bg-secondary"
-          }`}
+          className={choiceChipClass(e.index === index)}
         >
-          {n + 1}. {e.label}
+          <ChipNumber n={n + 1} /> {e.label}
         </button>
       ))}
     </div>

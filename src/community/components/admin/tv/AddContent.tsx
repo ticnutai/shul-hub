@@ -16,12 +16,14 @@ import { toast } from 'sonner';
 import { Trash2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { confirmAction } from '@/components/ConfirmDialog';
 import { DEFAULT_ELEMENT_DEFAULTS, type ElementDefaults } from '@/tv/config';
 import {
   BINDING_LABELS, ELEMENT_BINDINGS, ELEMENT_FONTS, MAX_ELEMENTS, addContent, withDefaults, addIntoFrame, boundsOf, elementId, importElementSet,
   exportElementSet, liveFrames, setContent, styleSources, type BoardElement, type ElementBinding, type ElementFont, type SavedElementSet,
 } from '@/tv/elements';
-import { ColorPick } from './ColorPick';
+import { Folded } from './Parts';
+import { ColourChoice, ResetButton, SELECT_CLASS } from './editorParts';
 
 type Where = 'new' | 'replace' | 'into';
 const SIDE_NAME = { right: 'ימין', center: 'אמצע', left: 'שמאל' } as const;
@@ -87,9 +89,8 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
 
   return (
     <div className="space-y-2 rounded-lg border border-primary/40 bg-primary/5 p-3" data-testid="add-content">
-      <p className="text-sm font-semibold">הוספת תוכן</p>
       <select aria-label="איזה תוכן להוסיף" value={what} onChange={e => setWhat(e.target.value)}
-        className="h-9 w-full rounded border bg-background px-2 text-sm">
+        className={`${SELECT_CLASS} w-full`}>
         <optgroup label="תוכן חי">
           {ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}{onBoard.has(b) ? ' (כבר על הלוח)' : ''}</option>)}
         </optgroup>
@@ -102,10 +103,17 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
       {box ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span className="flex-1">שמרתם אותה: נוספת כמו שנשמרה, באמצע הלוח.</span>
-          <button type="button" className="flex items-center gap-1 text-destructive" aria-label={`מחיקת התיבה ${box.name}`}
-            onClick={() => { if (window.confirm(`למחוק את "${box.name}" מהחלקים והתיבות שלי? מה שכבר על הלוח לא ישתנה.`)) { onLibrary(library.filter(l => l.id !== box.id)); setWhat('dafYomi'); } }}>
+          <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs text-destructive" aria-label={`מחיקת התיבה ${box.name}`}
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: `למחוק את „${box.name}” מהחלקים והתיבות שלי?`,
+                description: 'מה שכבר על הלוח לא ישתנה.',
+                confirmLabel: 'מחיקה',
+              });
+              if (ok) { onLibrary(library.filter(l => l.id !== box.id)); setWhat('dafYomi'); }
+            }}>
             <Trash2 className="size-3.5" aria-hidden /> מחיקה מהחלקים והתיבות שלי
-          </button>
+          </Button>
         </div>
       ) : (
         <>
@@ -124,7 +132,7 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
           {where === 'new' && styles.length > 0 && (
             <label className="flex flex-wrap items-center gap-2 text-sm">
               בסגנון של
-              <select aria-label="בסגנון של" value={like} onChange={e => setLike(e.target.value)} className="h-9 min-w-0 flex-1 rounded border bg-background px-2 text-sm">
+              <select aria-label="בסגנון של" value={like} onChange={e => setLike(e.target.value)} className={`${SELECT_CLASS} min-w-0 flex-1`}>
                 <option value="">הקשת הגדולה בלוח (אוטומטי)</option>
                 {styles.map(f => <option key={f.e.id} value={f.e.id}>המסגרת של {label(f)}</option>)}
               </select>
@@ -133,7 +141,7 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
           {where !== 'new' && (
             frames.length ? (
               <select aria-label="איזו מסגרת" value={chosen?.e.id ?? ''} onChange={e => setTarget(e.target.value)}
-                className="h-9 w-full rounded border bg-background px-2 text-sm">
+                className={`${SELECT_CLASS} w-full`}>
                 {frames.map(f => <option key={f.e.id} value={f.e.id}>{label(f)}</option>)}
               </select>
             ) : <p className="text-xs text-muted-foreground">אין עדיין מסגרות עם תוכן על הלוח.</p>
@@ -141,48 +149,41 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults, 
         </>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Button size="sm" onClick={add} disabled={!box && where !== 'new' && !frames.length}>הוספה</Button>
-        <span className="text-xs text-muted-foreground">בלי רקע מאחורי הטקסט. צבע, גופן ורקע - משנים אחר כך, או קובעים למטה לכל תוכן חדש.</span>
+        <Button size="sm" className="h-8" onClick={add} disabled={!box && where !== 'new' && !frames.length}>הוספה</Button>
+        <span className="text-[11px] text-muted-foreground">בלי רקע מאחורי הטקסט. צבע, גופן ורקע - משנים אחר כך, או קובעים למטה לכל תוכן חדש.</span>
       </div>
 
       {/* Once, for everything added from now on. */}
-      <details className="rounded-md border bg-background/60 p-2 text-sm" data-testid="element-defaults">
-        <summary className="cursor-pointer select-none font-medium">
-          ברירת מחדל לתוכן חדש{customised ? ' (נקבעה)' : ' (כמו בערכה)'}
-        </summary>
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <span className="flex items-center gap-1.5">
-            צבע
-            {defaults.color
-              ? <><ColorPick label="צבע לתוכן חדש" value={defaults.color} onChange={c => setDefault({ color: c })} />
-                  <button type="button" className="text-xs underline" onClick={() => setDefault({ color: null })}>כמו בערכה</button></>
-              : <button type="button" className="h-8 rounded border px-2 text-xs" onClick={() => setDefault({ color: '#3e2809' })}>כמו בערכה - לבחור צבע</button>}
-          </span>
-          <label className="flex items-center gap-1.5">
-            גופן
-            <select aria-label="גופן לתוכן חדש" value={defaults.font ?? ''} onChange={e => setDefault({ font: (e.target.value || null) as ElementFont | null })} className="h-8 rounded border bg-background px-1 text-sm">
-              <option value="">כמו בערכה</option>
-              {(Object.keys(ELEMENT_FONTS) as ElementFont[]).map(f => <option key={f} value={f}>{ELEMENT_FONTS[f].name}</option>)}
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5">
-            עובי
-            <select aria-label="עובי לתוכן חדש" value={defaults.weight ?? ''} onChange={e => setDefault({ weight: (e.target.value || null) as ElementDefaults['weight'] })} className="h-8 rounded border bg-background px-1 text-sm">
-              <option value="">כמו בערכה</option>
-              <option value="bold">מודגש</option>
-              <option value="normal">רגיל</option>
-            </select>
-          </label>
-          <label className="flex items-center gap-1.5">
-            גודל
-            <select aria-label="גודל לתוכן חדש" value={String(defaults.scale)} onChange={e => setDefault({ scale: Number(e.target.value) })} className="h-8 rounded border bg-background px-1 text-sm">
-              {SIZES.map(([v, n]) => <option key={v} value={String(v)}>{n}</option>)}
-            </select>
-          </label>
-          {customised && <button type="button" className="text-xs underline" onClick={() => onDefaults(DEFAULT_ELEMENT_DEFAULTS)}>הכול כמו בערכה</button>}
+      <Folded label={`ברירת מחדל לתוכן חדש${customised ? ' (נקבעה)' : ' (כמו בערכה)'}`} testId="element-defaults">
+        <div className="space-y-2 text-sm">
+          <ColourChoice label="צבע לתוכן חדש" value={defaults.color} fallback="#3e2809" unsetLabel="כמו בערכה" onChange={c => setDefault({ color: c })} />
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-1.5 text-xs">
+              גופן
+              <select aria-label="גופן לתוכן חדש" value={defaults.font ?? ''} onChange={e => setDefault({ font: (e.target.value || null) as ElementFont | null })} className={SELECT_CLASS}>
+                <option value="">כמו בערכה</option>
+                {(Object.keys(ELEMENT_FONTS) as ElementFont[]).map(f => <option key={f} value={f}>{ELEMENT_FONTS[f].name}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-xs">
+              עובי
+              <select aria-label="עובי לתוכן חדש" value={defaults.weight ?? ''} onChange={e => setDefault({ weight: (e.target.value || null) as ElementDefaults['weight'] })} className={SELECT_CLASS}>
+                <option value="">כמו בערכה</option>
+                <option value="bold">מודגש</option>
+                <option value="normal">רגיל</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-xs">
+              גודל
+              <select aria-label="גודל לתוכן חדש" value={String(defaults.scale)} onChange={e => setDefault({ scale: Number(e.target.value) })} className={SELECT_CLASS}>
+                {SIZES.map(([v, n]) => <option key={v} value={String(v)}>{n}</option>)}
+              </select>
+            </label>
+          </div>
+          {customised && <ResetButton onClick={() => onDefaults(DEFAULT_ELEMENT_DEFAULTS)}>חזרה להגדרות הערכה</ResetButton>}
+          <p className="text-[11px] text-muted-foreground">חל על כל תוכן שמוסיפים מעכשיו - במסגרת חדשה ובתוך מסגרת. מה שכבר על הלוח לא משתנה.</p>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">חל על כל תוכן שמוסיפים מעכשיו - במסגרת חדשה ובתוך מסגרת. מה שכבר על הלוח לא משתנה.</p>
-      </details>
+      </Folded>
     </div>
   );
 }

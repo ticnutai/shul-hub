@@ -59,3 +59,27 @@ test("one save button, and it stays in sight while the controls scroll", async (
   await expect(save).toHaveCount(1);
   await expect(save).toBeInViewport();
 });
+
+/**
+ * Ctrl+S is "שמור ושדר": from anywhere in the editor, a text field included,
+ * and on a Hebrew keyboard (where S types "ד") too.
+ */
+test("Ctrl+S saves and broadcasts", async ({ page, isMobile }) => {
+  test.skip(isMobile, "the editor is for a desktop screen");
+  await page.setViewportSize({ width: 1500, height: 800 });
+  const server = await serveEditor(page, structuredClone(PREMIUM_DESIGNS[0].values) as Record<string, unknown>);
+  const res = await page.goto("/e2e/harness/editor.html").catch(() => null);
+  test.skip(!res, "the dev server is not running (npm run dev)");
+  await expect(page.locator("[data-board-preview] .tv-frame").first()).toBeVisible({ timeout: 30_000 });
+  const save = page.getByRole("button", { name: "שמור ושדר למסכים" });
+  await expect(save).toBeDisabled();
+  await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
+  await expect(save).toBeEnabled();
+  // The key, not the letter: a Hebrew layout sends "ד" for KeyS.
+  await page.evaluate(() =>
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "ד", code: "KeyS", ctrlKey: true, bubbles: true, cancelable: true })),
+  );
+  await expect.poll(() => server.writes(), { timeout: 10_000 }).toBeGreaterThan(0);
+  await expect(save).toBeDisabled();
+  await expect(page.getByTestId("save-bar")).toContainText("הכול שמור");
+});

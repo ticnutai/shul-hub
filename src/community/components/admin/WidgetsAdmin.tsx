@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Columns2, GripVertical, Eye, EyeOff, PanelTop, Smartphone } from "lucide-react";
+import { Columns2, GripVertical, Eye, EyeOff, PanelTop } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -15,6 +14,7 @@ import { supabase } from "@community/integrations/supabase/client";
 import { useHomeWidgets, type HomeWidget } from "@community/lib/data";
 import { communityId } from "@/community/lib/community";
 import { hebrewError } from "@community/lib/hebrewError";
+import { SettingsSaveBar, useUnsavedChangesGuard } from "@community/components/admin/HomeHeroSettings";
 
 function reorder(list: HomeWidget[], from: number, to: number) {
   const next = [...list];
@@ -152,11 +152,23 @@ export function WidgetsAdmin() {
   const [zmanim, setZmanim] = useState<HomeWidget[]>([]);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const resetFromSaved = () => {
     if (!data) return;
     setSections(data.filter((w) => w.kind === "section"));
     setZmanim(data.filter((w) => w.kind === "zman"));
-  }, [data]);
+  };
+  useEffect(resetFromSaved, [data]);
+
+  // The list drags and switches like the lists that save at once, but this
+  // one waits for "שמירה" (it is a whole layout, saved together) - so it
+  // says when something is not saved yet, and leaving asks first.
+  const snapshot = (list: HomeWidget[]) =>
+    JSON.stringify(list.map((w) => [w.id, w.visible, w.layout_width === "half" ? "half" : "full"]));
+  const changed =
+    Boolean(data) &&
+    snapshot([...sections, ...zmanim]) !==
+      snapshot([...(data ?? []).filter((w) => w.kind === "section"), ...(data ?? []).filter((w) => w.kind === "zman")]);
+  useUnsavedChangesGuard(changed);
 
   async function save() {
     setSaving(true);
@@ -180,7 +192,7 @@ export function WidgetsAdmin() {
       return;
     }
     qc.invalidateQueries({ queryKey: ["home_widgets"] });
-    toast.success("סדר הווידג'טים נשמר לכל המשתמשים");
+    toast.success("נשמר");
   }
 
   if (isLoading) return <p className="text-muted-foreground">טוען…</p>;
@@ -199,9 +211,9 @@ export function WidgetsAdmin() {
         items={zmanim}
         onChange={setZmanim}
       />
-      <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
-        <Smartphone className="size-4" /> שמירת תצוגת דף הבית
-      </Button>
+      <div className="card-elev p-4" data-testid="widgets-save">
+        <SettingsSaveBar changed={changed} pending={saving} onSubmit={() => void save()} onReset={resetFromSaved} />
+      </div>
     </div>
   );
 }

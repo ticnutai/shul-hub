@@ -26,6 +26,9 @@ import { BookmarkPlus, CalendarDays, Plus, RotateCcw, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { confirmAction } from "@/components/ConfirmDialog";
+import { NameForm, SELECT_CLASS, Stepper } from "./editorParts";
+import { TileRemove } from "./ReadyShelf";
 import { Switch } from "@/components/ui/switch";
 import { BLOCKS, blockSpec } from "@/tv/blocks";
 import { addCustomBox, editCustomBox, removeCustomBox } from "@/tv/customBoxes";
@@ -78,11 +81,11 @@ function CustomBoxEditor({
     <div className="space-y-2 rounded-lg border-2 border-primary/40 p-2" data-testid="custom-box-editor">
       <label className="block text-xs">
         <span className="font-medium">כותרת התיבה</span>
-        <input
+        <Input
           value={box.title}
           maxLength={60}
           onChange={(e) => onChange({ title: e.target.value })}
-          className="mt-1 h-8 w-full rounded-md border bg-background px-2 text-sm"
+          className="mt-1 h-8 text-sm"
         />
       </label>
       <label className="block text-xs">
@@ -100,12 +103,12 @@ function CustomBoxEditor({
         את המראה שלה - צורה, רקע, מסגרת, צבע וגודל הטקסט - בוחרים בלשונית "עיצוב", כשבוחרים אותה למעלה ב"התיבות, המסגרות והטקסט של".
       </p>
       <div className="flex gap-2">
-        <button type="button" onClick={onClose} className="rounded-md border px-2 py-1 text-xs hover:border-primary/50">
+        <Button type="button" size="sm" variant="outline" className="h-8" onClick={onClose}>
           סגירה
-        </button>
-        <button type="button" onClick={onRemove} className="rounded-md border border-destructive/50 px-2 py-1 text-xs text-destructive">
+        </Button>
+        <Button type="button" size="sm" variant="ghost" className="h-8 text-destructive" onClick={onRemove}>
           מחיקת התיבה
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -257,7 +260,7 @@ export function ScreenComposer({
   const [kitName, setKitName] = useState<string | null>(null);
 
   /** The screen as it stands now, kept under a name. */
-  const saveKit = () => {
+  const saveKit = async () => {
     const name = (kitName ?? "").trim();
     if (!name) return;
     const kit: SavedLayout = {
@@ -265,6 +268,17 @@ export function ScreenComposer({
       name: name.slice(0, 40),
       grid: gridOf(rows),
     };
+    // The same name: asked, then replaced - as everywhere a thing is kept under a name.
+    if (
+      config.layouts.some((l) => l.name === kit.name) &&
+      !(await confirmAction({
+        title: `כבר יש סידור בשם „${kit.name}”`,
+        description: "להחליף אותו בסידור של המסך הזה?",
+        confirmLabel: "החלפה",
+        destructive: false,
+      }))
+    )
+      return;
     onLayouts([...config.layouts.filter((l) => l.name !== kit.name), kit].slice(-12));
     setKitName(null);
     setSketchMessage(
@@ -284,10 +298,24 @@ export function ScreenComposer({
     editScreen({ blocks: [...chrome, ...content], grid });
     setSketchMessage(`הוחל הסידור «${kit.name}» על "${screen.name}".`);
   };
-  const removeKit = (kit: SavedLayout) => {
-    if (!window.confirm(`למחוק את הסידור השמור «${kit.name}»? המסכים שכבר מסודרים לפיו לא ישתנו.`)) return;
+  const removeKit = async (kit: SavedLayout) => {
+    const ok = await confirmAction({
+      title: `למחוק את הסידור „${kit.name}”?`,
+      description: "המסכים שכבר מסודרים לפיו לא ישתנו.",
+      confirmLabel: "מחיקה",
+    });
+    if (!ok) return;
     onLayouts(config.layouts.filter((l) => l.id !== kit.id));
     setSketchMessage(`הסידור «${kit.name}» נמחק.`);
+  };
+
+  const removeScreen = async (i: number) => {
+    const ok = await confirmAction({
+      title: `למחוק את „${screens[i].name}”?`,
+      description: "המסך יורד מסבב הלוח. אפשר להחזיר בצעד אחורה, עד השמירה.",
+      confirmLabel: "מחיקת המסך",
+    });
+    if (ok) write(screens.filter((_, j) => j !== i), Math.max(0, i - 1));
   };
 
   const addScreen = () => {
@@ -328,48 +356,44 @@ export function ScreenComposer({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             {screens.map((s, i) => (
-              <button
-                key={s.id + i}
-                type="button"
-                aria-current={!occasion && i === index}
-                onClick={() => {
-                  if (occasion) {
-                    setOccasionId(null);
-                    onOccasion?.(null, null);
-                  }
-                  onSelect(i, s);
-                }}
-                className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
-                  !occasion && i === index
-                    ? "border-primary ring-2 ring-primary ring-offset-1"
-                    : "hover:border-primary/50"
-                }`}
-              >
-                <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
-                <span>{s.name}</span>
-                {empty(s) && (
-                  <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-900">
-                    לא יוצג
-                  </span>
-                )}
+              <div key={s.id + i} className="group relative">
+                <button
+                  type="button"
+                  aria-current={!occasion && i === index}
+                  onClick={() => {
+                    if (occasion) {
+                      setOccasionId(null);
+                      onOccasion?.(null, null);
+                    }
+                    onSelect(i, s);
+                  }}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition ${
+                    !occasion && i === index
+                      ? "border-primary ring-2 ring-primary ring-offset-1"
+                      : "hover:border-primary/50"
+                  }`}
+                >
+                  <span className="tabular-nums text-xs text-muted-foreground">{i + 1}</span>
+                  <span>{s.name}</span>
+                  {empty(s) && (
+                    <span className="rounded bg-amber-100 px-1 text-[10px] text-amber-900">
+                      לא יוצג
+                    </span>
+                  )}
+                </button>
+                {/* Its own button beside the tab (a button inside a button reached no one), shown on touch too. */}
                 {screens.length > 1 && (
-                  <span
-                    role="button"
-                    tabIndex={-1}
-                    aria-label={`הסר את ${s.name}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      write(
-                        screens.filter((_, j) => j !== i),
-                        Math.max(0, i - 1),
-                      );
-                    }}
-                    className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                  <button
+                    type="button"
+                    aria-label={`מחיקת המסך ${s.name}`}
+                    title="מחיקת המסך"
+                    onClick={() => void removeScreen(i)}
+                    className="absolute -end-1.5 -top-1.5 z-[1] flex size-5 items-center justify-center rounded-full border bg-background text-muted-foreground opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                   >
-                    <X className="size-3.5" />
-                  </span>
+                    <X className="size-3" aria-hidden />
+                  </button>
                 )}
-              </button>
+              </div>
             ))}
             <Button type="button" variant="outline" size="sm" onClick={addScreen}>
               <Plus className="size-4" /> מסך
@@ -426,7 +450,7 @@ export function ScreenComposer({
               }. מסדרים אותו כמו כל מסך - מה יופיע ואיפה; `}
               {`"כרטיס המועד" הוא השם, התאריך, הזמנים והתמונות, ומה שבתוכו נקבע בלשונית מועדים.`}
               {occasion.screen ? (
-                <button type="button" className="mr-1 underline underline-offset-2 hover:text-foreground" onClick={unarrange}>
+                <button type="button" className="ms-1 underline underline-offset-2 hover:text-foreground" onClick={unarrange}>
                   ביטול הסידור - חזרה לכרטיס על כל הלוח
                 </button>
               ) : (
@@ -436,15 +460,15 @@ export function ScreenComposer({
           ) : (
           <p className="mt-2 text-xs text-muted-foreground">
             {ordinary > 1
-              ? `${ordinary} מסכים — הלוח מתחלף ביניהם, וחץ בשלט מדלג.`
-              : "מסך אחד — הלוח עומד. אין סיבוב ואין מה לדלג."}
+              ? `${ordinary} מסכים - הלוח מתחלף ביניהם, וחץ בשלט מדלג.`
+              : "מסך אחד - הלוח עומד. אין סיבוב ואין מה לדלג."}
             {" מועדים של הימים הקרובים עומדים כאן ליד המסכים, כל אחד עם המסך שלו."}
             {shown < screens.length &&
               ` ${
                 screens.length - shown === 1
                   ? "מסך אחד ריק ולא יוצג"
                   : `${screens.length - shown} מסכים ריקים ולא יוצגו`
-              } — סמנו בו תוכן, או הסירו אותו.`}
+              } - סמנו בו תוכן, או מחקו אותו.`}
           </p>
           )}
         </div>
@@ -462,24 +486,21 @@ export function ScreenComposer({
             <Input
               id="composer-name"
               value={screen.name}
+              className="h-8 text-sm"
               onChange={(e) => editScreen({ name: e.target.value })}
             />
           </div>
           {screens.length > 1 && !empty(screen) && (
-            <div className="w-28">
-              <label
-                className="mb-1 block text-xs font-medium text-muted-foreground"
-                htmlFor="composer-seconds"
-              >
-                שניות
-              </label>
-              <Input
-                id="composer-seconds"
-                type="number"
+            <div>
+              <span className="mb-1 block text-xs font-medium text-muted-foreground">כמה זמן על המסך</span>
+              <Stepper
+                label="שניות"
+                value={screen.seconds}
                 min={3}
                 max={600}
-                value={screen.seconds}
-                onChange={(e) => editScreen({ seconds: Number(e.target.value) || 15 })}
+                step={1}
+                format={(v) => `${v} שניות`}
+                onChange={(v) => editScreen({ seconds: v })}
               />
             </div>
           )}
@@ -569,20 +590,20 @@ export function ScreenComposer({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-7 shrink-0 px-2 text-[11px]"
+                  className="h-8 shrink-0"
                   title="שומר את הסידור של המסך הזה בשם, כדי להחיל אותו שוב על כל מסך"
                   onClick={() =>
                     setKitName(kitName === null ? `סידור ${config.layouts.length + 1}` : null)
                   }
                 >
-                  <BookmarkPlus className="size-3" /> שמירת הסידור
+                  <BookmarkPlus className="size-4" /> שמירת הסידור
                 </Button>
                 {screen.grid && (
                   <Button
                     type="button"
                     size="sm"
-                    variant="outline"
-                    className="h-7 shrink-0 px-2 text-[11px]"
+                    variant="ghost"
+                    className="h-8 shrink-0"
                     title="מבטל את הסידור הידני של המסך הזה; התיבות יסודרו לפי ה'מיקום' שברשימה"
                     onClick={() => {
                       editScreen({ grid: undefined });
@@ -591,31 +612,18 @@ export function ScreenComposer({
                       );
                     }}
                   >
-                    <RotateCcw className="size-3" /> סידור אוטומטי
+                    <RotateCcw className="size-4" /> סידור אוטומטי
                   </Button>
                 )}
               </div>
               {kitName !== null && (
-                <div className="mt-1.5 flex items-center gap-2">
-                  <Input
-                    value={kitName}
-                    onChange={(e) => setKitName(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && saveKit()}
-                    aria-label="שם הסידור"
-                    className="h-8 text-sm"
-                    maxLength={40}
-                    autoFocus
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-8"
-                    onClick={saveKit}
-                    disabled={!kitName.trim()}
-                  >
-                    שמירה
-                  </Button>
-                </div>
+                <NameForm
+                  label="שם הסידור"
+                  value={kitName}
+                  onChange={setKitName}
+                  onSave={() => void saveKit()}
+                  onCancel={() => setKitName(null)}
+                />
               )}
               {config.layouts.length > 0 && (
                 <div className="mt-2" data-testid="layout-kits">
@@ -637,14 +645,7 @@ export function ScreenComposer({
                           <KitThumb kit={kit} />
                           {kit.name}
                         </button>
-                        <button
-                          type="button"
-                          aria-label={`מחיקת הסידור ${kit.name}`}
-                          onClick={() => removeKit(kit)}
-                          className="absolute -left-1.5 -top-1.5 hidden size-4 place-items-center rounded-full bg-destructive text-[10px] text-destructive-foreground group-hover:grid"
-                        >
-                          <X className="size-3" />
-                        </button>
+                        <TileRemove name={`הסידור ${kit.name}`} ready={false} onClick={() => void removeKit(kit)} />
                       </div>
                     ))}
                   </div>
@@ -697,7 +698,7 @@ export function ScreenComposer({
                           aria-label={`מיקום של ${blockOf.name}`}
                           value={areaOf(id)}
                           onChange={(e) => setArea(id, e.target.value)}
-                          className="rounded border bg-background px-1 py-0.5 text-[11px]"
+                          className={`${SELECT_CLASS} h-7 px-1 text-xs`}
                         >
                           {Object.entries(AREA_LABELS).map(([v, label]) => (
                             <option key={v} value={v}>
@@ -727,8 +728,13 @@ export function ScreenComposer({
             <CustomBoxEditor
               box={config.customBoxes.find((b) => b.id === editingBox)!}
               onChange={(patch) => onEdit(`custom-box:${editingBox}:${Object.keys(patch).join(",")}`, (c) => editCustomBox(c, editingBox, patch))}
-              onRemove={() => {
-                if (!window.confirm(`למחוק את התיבה «${spec(editingBox).name}»? היא תרד מכל המסכים.`)) return;
+              onRemove={async () => {
+                const ok = await confirmAction({
+                  title: `למחוק את התיבה „${spec(editingBox).name}”?`,
+                  description: "היא תרד מכל המסכים.",
+                  confirmLabel: "מחיקה",
+                });
+                if (!ok) return;
                 onEdit(`custom-box:${editingBox}:remove`, (c) => removeCustomBox(c, editingBox));
                 setEditingBox(null);
               }}
@@ -753,7 +759,7 @@ export function ScreenComposer({
           )}
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
-          בלי מיקום — הפריסה מסדרת לבד לפי מה שסומן. עם מיקום — נעוץ שם, והשאר מסתדרים סביבו.
+          בלי מיקום - הפריסה מסדרת לבד לפי מה שסומן. עם מיקום - נעוץ שם, והשאר מסתדרים סביבו.
           {screen.grid &&
             " המסך הזה מסודר ביד בשרטוט; בחירת מיקום כאן מחזירה אותו לסידור האוטומטי."}
         </p>

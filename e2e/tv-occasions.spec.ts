@@ -50,7 +50,7 @@ test.describe("TV editor, occasions", () => {
     // Moving Shabbat up puts it above the day that was over it.
     const before = await list(page).locator("li").evaluateAll((els) => els.map((e) => e.getAttribute("data-occasion")));
     const i = before.indexOf("shabbat");
-    await row(page, "shabbat").getByRole("button", { name: "שבת למעלה" }).click();
+    await row(page, "shabbat").getByRole("button", { name: "הקדמת שבת" }).click();
     const after = await list(page).locator("li").evaluateAll((els) => els.map((e) => e.getAttribute("data-occasion")));
     expect(after.indexOf("shabbat")).toBe(i - 1);
     await expectNotFrozen(page, "reordered");
@@ -62,7 +62,7 @@ test.describe("TV editor, occasions", () => {
     await expect(dialog).toBeVisible();
     await dialog.getByLabel("הכותרת על המסך").fill("שבת קודש לכולם");
     await dialog.getByRole("checkbox", { name: "כל זמני היום" }).check();
-    await dialog.getByRole("button", { name: "סגירה" }).click();
+    await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
     // An ordinary Shabbat (the next one, 3.10, is also Shmini Atzeret, which leads it).
     await list(page).getByLabel("תצוגה לתאריך").fill("2026-10-10");
     const card = page.locator('.tv-frame .tv-occasion[data-occasion="shabbat"]');
@@ -99,8 +99,8 @@ test.describe("TV editor, occasions", () => {
     const dialog = page.getByTestId("occasion-dialog");
     await dialog.getByLabel("עיצוב המועד").selectOption({ label: "לבנה בשמי לילה · ראש חודש" });
     await expect(dialog.getByLabel("עיצוב המועד")).toHaveValue("d_premium_rc_night-moon");
-    await dialog.getByRole("button", { name: "סגירה" }).click();
-    await expect(row(page, "cal:rosh_chodesh")).toContainText("עם עיצוב");
+    await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
+    await expect(row(page, "cal:rosh_chodesh")).toContainText("עם ערכה");
     await list(page).getByLabel("תצוגה לתאריך").fill("2026-10-11");
     const chips = page.getByRole("tablist", { name: "שקופיות" });
     await chips.getByRole("tab", { name: /ראש חודש/ }).first().click();
@@ -111,8 +111,8 @@ test.describe("TV editor, occasions", () => {
 
     // Its own screen hidden: no ראש חודש screen among the slides that day.
     await row(page, "cal:rosh_chodesh").getByRole("button", { name: "הגדרות" }).click();
-    await dialog.getByRole("switch", { name: "מסך המועד מוצג" }).click();
-    await dialog.getByRole("button", { name: "סגירה" }).click();
+    await dialog.getByRole("radio", { name: "בלי מסך משלו" }).check();
+    await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
     await expect(chips.getByRole("tab", { name: /ראש חודש/ })).toHaveCount(0);
     await expectNotFrozen(page, "rosh chodesh kit");
   });
@@ -151,7 +151,7 @@ test.describe("TV editor, occasions", () => {
     // Back to the board: the board itself never wore any of it.
     await page.getByTestId("occasion-design-banner").getByRole("button", { name: "חזרה לעיצוב הלוח" }).click();
     await page.getByRole("tab", { name: "מועדים" }).click();
-    await expect(rc).toContainText("עם עיצוב");
+    await expect(rc).toContainText("עם ערכה");
 
     // An occasion that has a kit: 🎨 again, and another kit put on it.
     await rc.getByTestId("occasion-design").click();
@@ -192,7 +192,7 @@ test.describe("TV editor, occasions", () => {
     await row(page, "cal:hoshana_raba").getByRole("button", { name: "הגדרות" }).click();
     const dialog = page.getByTestId("occasion-dialog");
     await dialog.getByLabel("עיצוב המועד").selectOption("d_wood");
-    await dialog.getByRole("button", { name: "סגירה" }).click();
+    await dialog.getByRole("button", { name: "סגירה", exact: true }).first().click();
     await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
     const bar = page.getByTestId("part-pages");
     const hr = bar.locator('[data-occasion-tab="cal:hoshana_raba"]');
@@ -209,7 +209,7 @@ test.describe("TV editor, occasions", () => {
     await expect(hr).toHaveCount(0);
     await expect(page.getByTestId("occasion-design-banner")).toHaveCount(0);
     await page.getByRole("tab", { name: "מועדים" }).click();
-    await expect(row(page, "cal:hoshana_raba")).toContainText("עם עיצוב");
+    await expect(row(page, "cal:hoshana_raba")).toContainText("עם ערכה");
     await expectNotFrozen(page, "pinned occasion");
   });
 
@@ -314,6 +314,9 @@ test.describe("TV editor, an occasion's pictures", () => {
     await expect(picture).toHaveAttribute("aria-pressed", "true");
 
     await gallery.getByRole("button", { name: /^מחיקת .* מהגלריה$/ }).click();
+    // Asked first: it is gone from the gallery too.
+    await page.getByTestId("confirm-dialog").getByRole("button", { name: "מחיקה" }).click();
+    await expect(page.getByTestId("confirm-dialog")).toBeHidden();
     await expect(gallery.locator(`img[src="${photo}"]`)).toHaveCount(0);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("occasion-dialog")).toBeHidden();

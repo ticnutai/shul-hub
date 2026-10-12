@@ -16,7 +16,8 @@ import {
   SkipForward,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,7 +78,7 @@ export function TvDevicesPanel() {
       <PairCard />
 
       {devices.isLoading && <p className="text-center text-muted-foreground">טוען מסכים…</p>}
-      {devices.error && <p className="text-center text-destructive">לא ניתן לטעון את רשימת המסכים.</p>}
+      {devices.error && <p className="text-center text-destructive">טעינת רשימת המסכים נכשלה.</p>}
 
       {!devices.isLoading && approved.length === 0 && (
         <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
@@ -102,6 +103,12 @@ export function TvDevicesPanel() {
             className="h-7 text-xs"
             title="מוחק רק מסכים שלא צומדו. מסך אמיתי שנמחק יקבל קוד חדש בהפעלה הבאה."
             onClick={async () => {
+              const ok = await confirmAction({
+                title: `לנקות ${pending.length === 1 ? "מסך אחד שלא צומד" : `${pending.length} מסכים שלא צומדו`}?`,
+                description: "נמחקים רק מסכים שלא צומדו. מסך אמיתי שנמחק יציג קוד צימוד חדש בהפעלה הבאה.",
+                confirmLabel: "ניקוי",
+              });
+              if (!ok) return;
               try {
                 for (const d of pending) await deleteDevice(d.id);
                 await queryClient.invalidateQueries({ queryKey: ["tv_devices"] });
@@ -159,7 +166,7 @@ function PairCard() {
         </div>
         <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="שם המסך, למשל: אולם ראשי" className="w-56" />
         <Button type="button" onClick={submit} disabled={code.length !== 6 || claim.isPending}>
-          {claim.isPending ? "מצמד…" : "צמד מסך"}
+          {claim.isPending ? "מצמד…" : "צימוד מסך"}
         </Button>
       </div>
     </section>
@@ -242,7 +249,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
     setBusy(label);
     try {
       await sendCommand(device.id, command, payload);
-      if (!health.online) toast.warning("המסך לא מחובר כרגע - הפקודה תבוצע רק אם יתחבר בדקה וחצי הקרובות.");
+      if (!health.online) toast.warning("המסך מנותק כרגע - הפקודה תבוצע רק אם יתחבר בדקה וחצי הקרובות.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "שליחת הפקודה נכשלה");
     } finally {
@@ -274,10 +281,10 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
           <Badge variant="secondary">מחובר</Badge>
         ) : (
           <Badge variant="destructive">
-            מנותק{health.silentMs ? ` · לא דיווח ${formatDuration(health.silentMs)}` : ""}
+            מנותק{health.silentMs ? ` כבר ${formatDuration(health.silentMs)}` : ""}
           </Badge>
         )}
-        {s.paused && <Badge variant="outline">⏸ מושהה</Badge>}
+        {s.paused && <Badge variant="outline"><Pause className="me-1 size-3" aria-hidden /> הסבב עצור</Badge>}
         {s.themeOverride && looks.some((l) => l.id === s.themeOverride) && (
           <Badge variant="outline">ערכה שנבחרה למסך: {looks.find((l) => l.id === s.themeOverride)?.name}</Badge>
         )}
@@ -289,8 +296,8 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
               s.app.silent
                 ? s.app.canInstall
                   ? "מתעדכנת לבד בלילה (02:00-05:00)"
-                  : "תתעדכן לבד אחרי אישור חד-פעמי של 'התקנת אפליקציות' במסך (OK בשלט)"
-                : "העדכון מוצע על המסך ומותקן בלחיצת OK"
+                  : "תתעדכן לבד אחרי אישור חד-פעמי של 'התקנת אפליקציות' במסך (בכפתור האישור שבאמצע השלט)"
+                : "העדכון מוצע על המסך ומותקן בלחיצה על כפתור האישור שבאמצע השלט"
             }
           >
             אפליקציה {s.app.version}
@@ -299,7 +306,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
           </Badge>
         ) : (
           published.data && (
-            <Badge variant="outline" title="התקנה חד-פעמית: Downloader בטלוויזיה, הכתובת shul-hub.lovable.app/tv.apk">
+            <Badge variant="outline" title="התקנה חד-פעמית: בטלוויזיה פותחים את אפליקציית ההורדות ומקלידים את הכתובת shul-hub.lovable.app/tv.apk">
               אפליקציה ישנה · לעדכון ידני פעם אחת
             </Badge>
           )
@@ -341,7 +348,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
           )}
           {!health.online && (
             <p className="text-xs text-destructive">
-              המסך לא מדווח. השיקוף מציג את המצב האחרון שדווח. פרטים ביומן.
+              המסך מנותק. השיקוף מציג את המצב האחרון שדווח. פרטים ביומן.
             </p>
           )}
           <SlideStrip
@@ -379,7 +386,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
                 </Button>
               ) : (
                 <Button type="button" variant="outline" size="sm" onClick={() => run("pause", "pause")} disabled={busy !== null}>
-                  <Pause className="size-4" /> עצירה
+                  <Pause className="size-4" /> עצירת הסבב
                 </Button>
               )}
               <Button type="button" variant="outline" size="sm" onClick={() => run("next", "next")} disabled={busy !== null}>
@@ -444,7 +451,7 @@ function DeviceCard({ device, now }: { device: TvDevice; now: number }) {
                   setMessage("");
                 }}
               >
-                <Megaphone className="size-4" /> הצג על המסך
+                <Megaphone className="size-4" /> הצגה על המסך
               </Button>
             </div>
           </div>
@@ -520,7 +527,7 @@ function RemoveDevice({ device }: { device: TvDevice }) {
           <Trash2 className="size-4" /> הסרה
         </Button>
       </AlertDialogTrigger>
-      <AlertDialogContent dir="rtl">
+      <AlertDialogContent dir="rtl" data-testid="confirm-dialog">
         <AlertDialogHeader>
           <AlertDialogTitle>להסיר את "{device.name}"?</AlertDialogTitle>
           <AlertDialogDescription>
@@ -530,6 +537,7 @@ function RemoveDevice({ device }: { device: TvDevice }) {
         <AlertDialogFooter>
           <AlertDialogCancel>ביטול</AlertDialogCancel>
           <AlertDialogAction
+            className={buttonVariants({ variant: "destructive" })}
             onClick={async () => {
               try {
                 await deleteDevice(device.id);
@@ -539,7 +547,7 @@ function RemoveDevice({ device }: { device: TvDevice }) {
               }
             }}
           >
-            הסר
+            הסרה
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

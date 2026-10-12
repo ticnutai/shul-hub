@@ -68,7 +68,7 @@ test.describe("TV editor", () => {
     await controls.getByLabel("גובה העמודים", { exact: true }).fill("0.5");
     await expect.poll(async () => (await column.boundingBox())!.width).toBeGreaterThan(before!.width * 1.5);
     await expect.poll(async () => (await column.boundingBox())!.height).toBeLessThan(before!.height * 0.7);
-    await controls.getByRole("button", { name: "רק שמאל" }).click();
+    await controls.getByRole("radio", { name: "רק שמאל" }).click();
     await expect(root(page).locator(".tv-bf-column")).toHaveCount(1);
     await expect(root(page).locator(".tv-bf-column.is-left")).toHaveCount(1);
     await controls.getByRole("button", { name: /חזרה לגודל/ }).click();
@@ -139,11 +139,13 @@ test.describe("TV editor", () => {
     await versions.getByRole("button", { name: "הצגה" }).click();
     await expect(page.getByTestId("preview-comparing")).toContainText("הגרסה מ-");
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
-    await versions.getByRole("button", { name: "חזרה לטיוטה" }).click();
+    // The one way back to the draft: on the note over the preview.
+    await page.getByTestId("preview-comparing").getByRole("button", { name: "חזרה לטיוטה" }).click();
     await expect(page.getByTestId("preview-comparing")).toHaveCount(0);
 
-    // Put back as a draft: the board is as it was, and there is something to save.
+    // Put back as a draft, after a question: the board is as it was, and there is something to save.
     await versions.getByRole("button", { name: "החזרה כטיוטה" }).click();
+    await page.getByTestId("confirm-dialog").getByRole("button", { name: "שחזור" }).click();
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
     await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
     await expectNotFrozen(page, "versions");
@@ -192,8 +194,9 @@ test.describe("TV editor", () => {
     await pickColour(now, "צבע ראשון", "#112233");
     await now.getByRole("button", { name: "החלה על רקע הלוח" }).click();
     const keep = page.getByTestId("background-keep");
-    await keep.getByLabel("שם לרקע בגלריה").fill("בדיקה");
     await keep.getByRole("button", { name: "שמירה כרקע חדש" }).click();
+    await keep.getByLabel("שם לרקע בגלריה").fill("בדיקה");
+    await keep.getByRole("button", { name: "שמירה", exact: true }).click();
     await expect(gallery.getByRole("button", { name: "בדיקה", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expectNotFrozen(page, "gradient saved");
   });
@@ -253,7 +256,7 @@ test.describe("TV editor", () => {
     const before = await bgImage();
 
     // Pictures are one kind of background among colour and gradient, in the same gallery.
-    await gallery.getByRole("button", { name: "תמונות", exact: true }).click();
+    await gallery.getByRole("radio", { name: "תמונות", exact: true }).click();
     await gallery.getByRole("button", { name: "ליל כוכבים", exact: true }).click();
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-image");
     await expect.poll(bgImage).not.toBe(before);
@@ -287,7 +290,7 @@ test.describe("TV editor", () => {
     await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
 
     await page.getByRole("button", { name: "ביטול שינויים" }).click();
-    await page.getByRole("button", { name: "לבטל הכל?" }).click();
+    await page.getByRole("button", { name: "לבטל הכול?" }).click();
     // Back to what the database holds, and the page still answers.
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
     await expectNotFrozen(page, "discard");
@@ -324,7 +327,8 @@ test.describe("TV editor", () => {
     await library.getByRole("checkbox", { name: "טקסט" }).uncheck();
     await library.getByRole("button", { name: "שמירת הערכה" }).click();
     await expect(library.getByRole("button", { name: /^החלת ערכה רקע ירוק/ })).toBeVisible();
-    await expect(library.getByText("רקע", { exact: true })).toBeVisible();
+    // The kit says what it fills, as every kit tile does: "ממלא: רקע" (a background only).
+    await expect(library.getByText("ממלא: רקע", { exact: true })).toBeVisible();
     await expectNotFrozen(page, "design saved");
 
     // Another background - a picture - and the design brings its own back.
@@ -401,7 +405,9 @@ test.describe("TV editor", () => {
     await page.getByRole("button", { name: /חזרה לזמן אמת/ }).click();
     await expectNotFrozen(page, "back from shabbat");
 
-    await page.getByRole("button", { name: "דוגמת התראת זמנים" }).click();
+    await page.getByRole("tab", { name: "תוכן" }).click();
+    // One example button, beside the reminders' own settings.
+    await page.getByRole("button", { name: "דוגמת תזכורת על הלוח" }).click();
     await expectNotFrozen(page, "alert demo");
 
     // The bar at the top; the same button also stands under the preview while
@@ -673,7 +679,7 @@ test.describe("TV editor", () => {
     await expect(banner).toHaveAttribute("data-scope", "desktop");
     expect(await frameOf()).toBe(shared);
 
-    await look("Android TV");
+    await look("טלוויזיית אנדרואיד");
     await expect(banner).toHaveAttribute("data-scope", "tv");
     expect(await frameOf()).toBe(shared);
 

@@ -50,8 +50,8 @@ test("a box added by hand: written, on the board, dressed like any box, and remo
   // Taken off: from the list and from the board.
   await page.getByRole("tab", { name: "פריסה" }).click();
   await page.getByRole("button", { name: "עריכת חוגים" }).click();
-  page.once("dialog", (d) => void d.accept());
   await page.getByTestId("custom-box-editor").getByRole("button", { name: "מחיקת התיבה" }).click();
+  await page.getByTestId("confirm-dialog").getByRole("button", { name: "מחיקה" }).click();
   await expect(page.getByRole("switch", { name: "חוגים" })).toHaveCount(0);
   await expect(root.locator(".tv-custom-text")).toHaveCount(0);
   await expectNotFrozen(page, "custom box");

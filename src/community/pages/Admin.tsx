@@ -183,7 +183,9 @@ export function AdminPage() {
               </Button>
             )}
             <CommunitySwitcher />
-            {/* Two ways into the same screens (adminLayout.ts): the tabs, or tiles step by step. */}
+            {/* Two ways into the same screens (adminLayout.ts): the tabs, or tiles step by step.
+                Only for a gabbai - to anyone else there are no screens to lay out. */}
+            {isAdmin && (
             <div role="radiogroup" aria-label="פריסת מסך הניהול" className="flex rounded-lg border p-0.5" data-testid="admin-layout-switch">
               {([["tabs", "לשוניות", Rows3], ["tiles", "אריחים", LayoutGrid]] as const).map(([value, label, Icon]) => (
                 <button
@@ -198,6 +200,7 @@ export function AdminPage() {
                 </button>
               ))}
             </div>
+            )}
             <Button variant="outline" onClick={signOut}>
               <LogOut className="size-4" /> יציאה
             </Button>

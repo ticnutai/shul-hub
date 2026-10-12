@@ -1,21 +1,21 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  BellRing,
+  ArrowLeftRight,
   Check,
   ExternalLink,
   Expand,
   Columns2,
   Rows2,
-  ArrowLeftRight,
+  Palette,
   Pencil,
   Pause,
   Play,
   Redo2,
   Save,
   Undo2,
-  Maximize,
+  Scaling,
   PanelTopClose,
-  Square,
+  Tv,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useLocation } from 'react-router-dom';
@@ -75,7 +75,8 @@ import { ElementEditingProvider } from "./ElementEditingProvider";
 import { ElementTextTools } from "./ElementTextTools";
 import { type LayerProps } from "./LayerEditors";
 import { LayoutTab } from "./LayoutTab";
-import { OccasionsEditor } from "./OccasionsEditor";
+import { Notice } from "./Notice";
+import { OccasionsEditor, occasionOffNote } from "./OccasionsEditor";
 import { PartPagesBar, type OccasionTab } from "./PartPagesBar";
 import { ReadabilityNote } from "./ReadabilityNote";
 import { SplitHandle } from "./SplitHandle";
@@ -568,7 +569,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     else
       void previewColumn.current
         ?.requestFullscreen?.()
-        .catch(() => toast.error("הדפדפן לא אפשר מסך מלא"));
+        .catch(() => toast.error("המעבר למסך מלא נכשל - הדפדפן לא אפשר אותו"));
   };
   useEffect(() => {
     if (!editing) return;
@@ -644,7 +645,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     previewAt(day ? new Date(Date.parse(`${jerusalemDateKey(day)}T11:00:00+03:00`)) : null);
     setPreviewScreen(`occasion:${id}`);
     setOccasionScope(id);
-    if (!o.enabled) toast.warning(`"${o.name}" כבוי - הוא לא יופיע עד שתפעילו אותו בלשונית "מועדים".`);
+    if (!o.enabled) toast.warning(occasionOffNote(o.name));
   };
   /** Brings the board's preview into sight, from a control further down the page. */
   const showPreview = () =>
@@ -659,7 +660,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       return;
     }
     const candle = nextCandleLighting(new Date(), board.data.settings);
-    if (!candle) return toast.error("לא ניתן לחשב את זמן הדלקת הנרות");
+    if (!candle) return toast.error("חישוב זמן הדלקת הנרות נכשל");
     previewAt(new Date(candle.getTime() + 20 * 60_000));
   };
 
@@ -721,8 +722,48 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     }
   };
 
+  /**
+   * "תצוגה למעלה": the save bar stops under the pinned board, measured - the
+   * board's band is its height plus the handle under it, and a guess at that
+   * left the bar either under the board or with a gap above it.
+   */
+  const [topPinned, setTopPinned] = useState(0);
+  const topMeasured = layout === "top" && isLarge && !fullscreen;
+  useEffect(() => {
+    const el = previewColumn.current;
+    if (!topMeasured || !el || typeof ResizeObserver === "undefined") {
+      setTopPinned(0);
+      return;
+    }
+    const measure = () => setTopPinned(Math.round(el.getBoundingClientRect().height));
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [topMeasured, saved.isLoading, studio]);
+
+  /**
+   * Ctrl+S (Cmd+S on a Mac) is "שמור ושדר", wherever the focus is - in a text
+   * field too, where the browser would otherwise offer to save the page. On a
+   * Hebrew keyboard S types "ד": the key is read, not the letter.
+   */
+  const saveRef = useRef<() => void>(() => undefined);
+  saveRef.current = () => {
+    if (dirty && !saving) void save();
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      if (e.code !== "KeyS" && e.key.toLowerCase() !== "s") return;
+      e.preventDefault();
+      saveRef.current();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   // What is being edited: the board, one screen's, or one occasion's design.
-  const theme = getTheme(scoped.theme, draft.customThemes);
+  const theme =getTheme(scoped.theme, draft.customThemes);
   elementEditing.api.current = {
     elements: view.elements,
     commit: (next, key = `elements:${crypto.randomUUID()}`) => edit(key, c => ({ ...c, elements: normalizeElements(next) })),
@@ -804,7 +845,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       illustrations,
     );
     const count = payload.themes.length + payload.gradients.length + illustrations.length;
-    if (!count && !payload.board) return toast.error("אין עדיין צבעי בסיס או גרדיאנטים משלכם לייצוא");
+    if (!count && !payload.board) return toast.error("אין עדיין צבעי בסיס או מעברי צבע משלכם לייצוא");
     const what_ = `${count} פריטים${payload.board ? " ומבנה הלוח" : ""}${
       missing ? ` · ${missing} תבניות לא יוצאו כי התמונה שלהן לא נטענה` : ""
     }`;
@@ -850,7 +891,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       });
       const parts = [
         incoming.themes.length ? `${incoming.themes.length} סטים של צבעי בסיס` : "",
-        incoming.gradients.length ? `${incoming.gradients.length} גרדיאנטים` : "",
+        incoming.gradients.length ? `${incoming.gradients.length} מעברי צבע` : "",
         uploaded.length ? `${uploaded.length} תבניות מאוירות` : "",
       ].filter(Boolean);
       toast.success(
@@ -862,7 +903,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           incoming.skipped ? `${incoming.skipped} פריטים לא תקינים דולגו` : "",
         ]
           .filter(Boolean)
-          .join(" · ") + '. לחצו "שמור ושדר" כדי להחיל.',
+          .join(" · ") + ' - בטיוטה עד "שמור ושדר"',
       );
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "הייבוא נכשל");
@@ -896,7 +937,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   if (saved.error)
     return (
       <p className="p-6 text-center text-destructive">
-        לא ניתן לטעון את הגדרות הלוח. ייתכן שהמיגרציה של מרכז הבקרה לא הורצה.
+        טעינת הגדרות הלוח נכשלה. ייתכן שעדכון מסד הנתונים של מרכז הבקרה לא הורץ.
       </p>
     );
 
@@ -929,20 +970,18 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           setBeforeAfter((v) => !v);
         }}
       >
-        <ArrowLeftRight className="size-4" /> {beforeAfter ? "חזרה לטיוטה" : "לפני / אחרי"}
-      </Button>
-      <Button type="button" variant="outline" size="sm" onClick={() => setAutoplay((a) => !a)}>
-        {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
-        {autoplay ? "עצירת הסבב" : "הפעלת סבב"}
+        {/* A toggle: the way back to the draft is offered once, on the note over the preview. */}
+        <ArrowLeftRight className="size-4" /> לפני / אחרי
       </Button>
       <Button
         type="button"
-        variant="outline"
+        variant={autoplay ? "default" : "outline"}
         size="sm"
-        onClick={() => showAlertExample("board")}
-        disabled={!draft.alerts.enabled}
+        aria-pressed={autoplay}
+        onClick={() => setAutoplay((a) => !a)}
       >
-        <BellRing className="size-4" /> דוגמת התראת זמנים
+        {autoplay ? <Pause className="size-4" /> : <Play className="size-4" />}
+        {autoplay ? "עצירת הסבב" : "הפעלת סבב"}
       </Button>
       <Button
         type="button"
@@ -955,16 +994,30 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       </Button>
       {simulatedNow && (
         <span className="text-xs text-muted-foreground">
-          מדמה {shabbatPreview ? `${simulatedNow.toLocaleDateString("he-IL")}, ` : "את השעה "}
-          {simulatedNow.toTimeString().slice(0, 5)}
+          מדמה {shabbatPreview ? <><span dir="ltr">{simulatedNow.toLocaleDateString("he-IL")}</span>, </> : "את השעה "}
+          <span dir="ltr">{simulatedNow.toTimeString().slice(0, 5)}</span>
         </span>
       )}
       {dayLookNow && (
-        <div
-          className="flex w-full flex-wrap items-center gap-2 rounded-md border border-amber-400/60 bg-amber-50 px-2 py-1.5 text-xs text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"
+        <Notice
+          variant="info"
+          icon={Palette}
+          className="w-full"
           data-testid="day-look-note"
+          actions={
+            dayLookNow.on === "board" && (
+              <Button
+                type="button"
+                size="sm"
+                variant={dayLook ? "default" : "outline"}
+                aria-pressed={dayLook}
+                onClick={() => setDayLookShown((v) => !v)}
+              >
+                {dayLook ? "הצגת העיצוב הרגיל" : "הצגה כמו במסכים"}
+              </Button>
+            )
+          }
         >
-          <span className="min-w-0 flex-1">
             {dayLookNow.on === "screen"
               ? `${simulatedNow ? "ביום הזה" : "עכשיו"} המסך של ${dayLookNow.occasion} בעיצוב «${dayLookNow.design}», והמסכים הרגילים בעיצוב שלהם. את עיצוב המועד בוחרים בהגדרות המועד (לשונית מועדים).`
               : `${simulatedNow ? "ביום הזה" : "עכשיו"} כל המסכים לובשים את העיצוב «${dayLookNow.design}» של ${dayLookNow.occasion}. ${
@@ -972,20 +1025,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                     ? "כך הם נראים עכשיו. שינויים בעיצוב כאן חלים על הלוח הרגיל."
                     : "כאן מוצג העיצוב הרגיל שאתם עורכים."
                 }`}
-          </span>
-          {dayLookNow.on === "board" && (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-xs"
-            aria-pressed={dayLook}
-            onClick={() => setDayLookShown((v) => !v)}
-          >
-            {dayLook ? "הצגת העיצוב הרגיל" : "הצגה כמו במסכים"}
-          </Button>
-          )}
-        </div>
+        </Notice>
       )}
     </>
   );
@@ -996,7 +1036,11 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
    * There were two bars - this one, which scrolled up under the header, and a
    * second at the foot of the preview - and both were on the screen at once.
    */
-  const saveBarTop = fullscreen ? 0 : layout === "top" && isLarge ? headerOffset + topHeight + 16 : headerOffset;
+  const saveBarTop = fullscreen
+    ? 0
+    : topMeasured
+      ? headerOffset + (topPinned || topHeight + 16) + 8
+      : headerOffset;
 
   // Every design control, shared by the admin page and the live window's panel.
   // "ביטול שינויים" asks first, inline (see below).
@@ -1007,17 +1051,11 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         style={{ top: saveBarTop }}
         data-testid="save-bar"
       >
-        <Button type="button" variant="outline" size="sm" onClick={() => {
-          setTab('tools');
-          requestAnimationFrame(() => requestAnimationFrame(() => {
-            document.querySelector('[data-testid="board-transfer-section"]')?.scrollIntoView({ block: 'start' });
-            document.querySelector<HTMLElement>('[data-testid="board-transfer-section"] h2')?.focus();
-          }));
-        }}>ייבוא / ייצוא</Button>
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="sm"
+          className="px-2"
           aria-label="צעד אחורה (Ctrl+Z)"
           title="צעד אחורה (Ctrl+Z)"
           disabled={!state.past.length}
@@ -1028,7 +1066,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         <Button
           type="button"
           variant="ghost"
-          size="icon"
+          size="sm"
+          className="px-2"
           aria-label="צעד קדימה (Ctrl+Y)"
           title="צעד קדימה (Ctrl+Y)"
           disabled={!state.future.length}
@@ -1047,10 +1086,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                 if (saved.data) dispatch({ type: "load", config: saved.data.config });
               }}
             >
-              לבטל הכל?
+              לבטל הכול?
             </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmDiscard(false)}>
-              המשך לערוך
+            <Button type="button" variant="outline" size="sm" onClick={() => setConfirmDiscard(false)}>
+              ביטול
             </Button>
           </span>
         ) : (
@@ -1065,9 +1104,9 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           </Button>
         )}
         <span className="ms-auto text-xs text-muted-foreground">
-          {dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}
+          {dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}
         </span>
-        <Button type="button" onClick={save} disabled={!dirty || saving}>
+        <Button type="button" size="sm" onClick={save} disabled={!dirty || saving} title="שמירה ושידור לכל המסכים (Ctrl+S)">
           {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
           {saving ? "שומר…" : "שמור ושדר למסכים"}
         </Button>
@@ -1079,28 +1118,29 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {/* The live window puts the bar first in its panel, above the preview's buttons. */}
       {!studio && saveBar}
       {occasionScope ? (
-        <div
+        <Notice
+          variant="info"
+          icon={Palette}
           role="status"
           data-testid="occasion-design-banner"
-          className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/50 bg-primary/5 p-3 text-sm"
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setOccasionScope(null);
+                previewAt(null);
+                setPreviewScreen(null);
+              }}
+            >
+              חזרה לעיצוב הלוח
+            </Button>
+          }
         >
-          <span>
-            🎨 עורכים עכשיו את העיצוב של <b>{readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? "המועד"}</b> - כל
-            שינוי כאן (רקע ותמונות, צבעים, מסגרות, גופן) נשמר לעיצוב שלו בלבד. הלוח הרגיל לא משתנה.
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setOccasionScope(null);
-              previewAt(null);
-              setPreviewScreen(null);
-            }}
-          >
-            חזרה לעיצוב הלוח
-          </Button>
-        </div>
+          עורכים עכשיו את המסך של <b>{readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? "המועד"}</b> - כל
+          שינוי כאן (רקע ותמונות, צבעים, מסגרות, גופן) נשמר לערכה שלו בלבד. הלוח הרגיל לא משתנה.
+        </Notice>
       ) : (
         <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
       )}
@@ -1153,6 +1193,28 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           <TabsTrigger value="occasions">מועדים</TabsTrigger>
           <TabsTrigger value="tools">כלים</TabsTrigger>
         </TabsList>
+        {/* Moving the board in a file lives in "כלים"; the way there stays in sight from every tab. */}
+        {tab !== "tools" && (
+          <div className="mt-1 flex justify-end">
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-7 px-1 text-xs"
+              onClick={() => {
+                setTab("tools");
+                requestAnimationFrame(() =>
+                  requestAnimationFrame(() => {
+                    document.querySelector('[data-testid="board-transfer-section"]')?.scrollIntoView({ block: "start" });
+                    document.querySelector<HTMLElement>('[data-testid="board-transfer-section"] h2')?.focus();
+                  }),
+                );
+              }}
+            >
+              ייבוא וייצוא בקובץ
+            </Button>
+          </div>
+        )}
         <TabsContent value="occasions" className="mt-3">
           <Section
             title="שבת, חגים ומועדים"
@@ -1225,13 +1287,19 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           onSelect={setSelected}
           onEdit={edit}
         />
-        <StudioPanel title="עורך חי" status={dirty ? "יש שינויים שלא נשמרו" : "הכל שמור"}>
+        <StudioPanel
+          title="עורך חי"
+          status={dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}
+          onSave={save}
+          canSave={dirty && !saving}
+          saving={saving}
+        >
           <div className="space-y-3">
             {saveBar}
             {/* One line only: the click-to-edit guidance lives in the inspector below. */}
             <p className="text-[11px] leading-tight text-muted-foreground">
-              <b>Alt + לחיצה</b> = לחיצה רגילה על הלוח · <b>Esc</b> = ביטול הבחירה · הכל טיוטה עד
-              "שמור ושדר", ומתעדכן גם בעורך שבעמוד הניהול.
+              <b>Alt + לחיצה</b> = לחיצה רגילה על הלוח · <b>Esc</b> = ביטול הבחירה · <b>Ctrl+S</b> = שמירה · הכול
+              בטיוטה עד "שמור ושדר", ומתעדכן גם בעורך שבעמוד הניהול.
             </p>
             <div className="flex flex-wrap items-center gap-2">{previewActions}</div>
             {/* A board of parts turns its pages (above the tabs), not these. */}
@@ -1293,8 +1361,9 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       </div>
       <Button
         type="button"
-        variant="outline"
+        variant={fullscreen ? "default" : "outline"}
         size="sm"
+        aria-pressed={fullscreen}
         onClick={toggleFullscreen}
         title="התצוגה והעורך על כל המסך (Esc ליציאה)"
       >
@@ -1318,7 +1387,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         onClick={toggleMax}
         title="הלוח בגודל הגדול ביותר שנכנס; לחיצה נוספת מחזירה לגודל הקודם"
       >
-        <Maximize className="size-4" /> {beforeMax ? "גודל קודם" : "מקסימום"}
+        <Scaling className="size-4" /> {beforeMax ? "חזרה לגודל הקודם" : "הגדלה למקסימום"}
       </Button>
       <Button
         type="button"
@@ -1328,7 +1397,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         onClick={() => setBare(!bare)}
         title="מסתיר את הטלוויזיה המצוירת (השוליים והמעמד), והמקום שלה הולך ללוח"
       >
-        <Square className="size-4" /> בלי מסגרת טלוויזיה
+        <Tv className="size-4" /> בלי מסגרת טלוויזיה
       </Button>
     </>
   );
@@ -1376,25 +1445,26 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const studioView = (
     <div className="w-full" data-board-preview>
       {comparing && (
-        <div
-          className="mb-2 flex flex-wrap items-center gap-2 rounded-lg border-2 border-amber-500/60 bg-amber-500/10 p-2 text-sm"
+        <Notice
+          variant="warning"
+          className="mb-2"
           data-testid="preview-comparing"
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setBeforeAfter(false);
+                setShownVersion(null);
+              }}
+            >
+              חזרה לטיוטה
+            </Button>
+          }
         >
-          <span className="flex-1">
-            מוצג עכשיו: <b>{comparing.id === "saved" ? "מה שעל המסכים - לפני השינויים" : `הגרסה מ-${comparing.label}`}</b>. אי אפשר לערוך אותו.
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => {
-              setBeforeAfter(false);
-              setShownVersion(null);
-            }}
-          >
-            חזרה לטיוטה
-          </Button>
-        </div>
+          מוצג עכשיו: <b>{comparing.id === "saved" ? "מה שעל המסכים - לפני השינויים" : `הגרסה מ-${comparing.label}`}</b>. אי אפשר לערוך אותו.
+        </Notice>
       )}
       <TvDeviceStudio
         onDeviceChange={onDeviceChange}

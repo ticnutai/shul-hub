@@ -6,6 +6,7 @@ import {
   PanelLeft,
   PanelRight,
   PencilRuler,
+  Save,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -156,10 +157,21 @@ const HANDLES: Array<{
 export function StudioPanel({
   title,
   status,
+  onSave,
+  canSave = false,
+  saving = false,
   children,
 }: {
   title: string;
+  /** "יש שינויים שלא נשמרו": said in the header only while the panel is folded - open, the save bar says it. */
   status?: ReactNode;
+  /**
+   * The editor's save. Folded or hidden, the save bar inside is out of reach,
+   * so a small save button stands in the header and beside "פתיחת העורך".
+   */
+  onSave?: () => void;
+  canSave?: boolean;
+  saving?: boolean;
   children: ReactNode;
 }) {
   const [box, setBox] = useState<Box>(load);
@@ -233,17 +245,35 @@ export function StudioPanel({
       }),
     );
 
-  if (box.hidden) {
-    return (
+  /** The compact save, for when the save bar is folded away with the panel. */
+  const compactSave = (className = "") =>
+    onSave && (
       <Button
         type="button"
-        data-design-mode-ui
-        onClick={() => setBox((b) => ({ ...b, hidden: false }))}
-        className="fixed bottom-4 right-4 z-[80] flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-2xl ring-4 ring-primary/30"
-        aria-label="פתיחת העורך"
+        size="sm"
+        className={className}
+        disabled={!canSave}
+        onClick={onSave}
+        title="שמירה ושידור לכל המסכים (Ctrl+S)"
+        data-testid="studio-compact-save"
       >
-        <PencilRuler className="size-5" /> פתיחת העורך
+        <Save className="size-4" /> {saving ? "שומר…" : canSave ? "שמירה" : "הכול שמור"}
       </Button>
+    );
+
+  if (box.hidden) {
+    return (
+      <div data-design-mode-ui dir="rtl" className="fixed bottom-4 right-4 z-[80] flex items-center gap-2">
+        <Button
+          type="button"
+          onClick={() => setBox((b) => ({ ...b, hidden: false }))}
+          className="flex items-center gap-2 rounded-full bg-primary px-4 py-3 text-sm font-medium text-primary-foreground shadow-2xl ring-4 ring-primary/30"
+          aria-label="פתיחת העורך"
+        >
+          <PencilRuler className="size-5" /> פתיחת העורך
+        </Button>
+        {canSave && compactSave("rounded-full shadow-2xl")}
+      </div>
     );
   }
 
@@ -267,8 +297,11 @@ export function StudioPanel({
       >
         <GripHorizontal className="size-4 text-muted-foreground" />
         <span className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</span>
-        <span className="order-last w-full truncate text-xs text-muted-foreground sm:order-none sm:ms-2 sm:w-auto">{status}</span>
-        <span className="ms-auto flex shrink-0 items-center">
+        {box.collapsed && status && (
+          <span className="order-last w-full truncate text-xs text-muted-foreground sm:order-none sm:ms-2 sm:w-auto">{status}</span>
+        )}
+        <span className="ms-auto flex shrink-0 items-center gap-1">
+          {box.collapsed && compactSave("h-7 px-2 text-xs")}
           <Button
             type="button"
             variant="ghost"
@@ -307,8 +340,8 @@ export function StudioPanel({
             variant="ghost"
             size="icon"
             className="size-11 sm:size-7"
-            aria-label="הסתרת העורך"
-            title="הסתרה - לראות את הלוח במלואו"
+            aria-label="סגירת העורך"
+            title="סגירה - לראות את הלוח במלואו (הכפתור 'פתיחת העורך' מחזיר אותו)"
             onClick={() => setBox((b) => ({ ...b, hidden: true }))}
           >
             <X className="size-4" />

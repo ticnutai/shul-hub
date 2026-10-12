@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { createUser, listUsers, updateUserRole } from "@community/lib/user-admin.functions";
 import { hebrewError } from "@community/lib/hebrewError";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 type UserRole = "admin" | "user";
 
@@ -111,7 +112,7 @@ export function UsersAdmin() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="user">משתמש רגיל</SelectItem>
-                <SelectItem value="admin">מנהל</SelectItem>
+                <SelectItem value="admin">גבאי</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -146,7 +147,7 @@ export function UsersAdmin() {
                 <p className="flex flex-wrap items-center gap-2 break-words font-medium">
                   {user.name || "ללא שם"}
                   {user.role === "admin" && (
-                    <ShieldCheck className="size-4 text-gold" aria-label="מנהל" />
+                    <ShieldCheck className="size-4 text-gold" aria-label="גבאי" />
                   )}
                   {user.isCurrentUser && (
                     <span className="text-xs text-muted-foreground">(החשבון שלך)</span>
@@ -163,16 +164,31 @@ export function UsersAdmin() {
                 <Select
                   value={user.role}
                   disabled={changeRole.isPending}
-                  onValueChange={(nextRole: UserRole) =>
-                    changeRole.mutate({ userId: user.id, nextRole })
-                  }
+                  onValueChange={async (nextRole: UserRole) => {
+                    // Taking a gabbai's access away locks them out of here at
+                    // once (and, for one's own account, oneself) - asked first.
+                    if (user.role === "admin" && nextRole !== "admin") {
+                      const who = user.name || user.email;
+                      const ok = await confirmAction({
+                        title: user.isCurrentUser
+                          ? "להסיר את הרשאת הגבאי מהחשבון שלך?"
+                          : `להסיר את הרשאת הגבאי מ„${who}”?`,
+                        description: user.isCurrentUser
+                          ? "לא תוכלו להיכנס לניהול יותר, עד שגבאי אחר יחזיר את ההרשאה."
+                          : "לא יוכל להיכנס לניהול יותר, עד שתחזירו את ההרשאה.",
+                        confirmLabel: "הסרת ההרשאה",
+                      });
+                      if (!ok) return;
+                    }
+                    changeRole.mutate({ userId: user.id, nextRole });
+                  }}
                 >
                   <SelectTrigger id={`role-${user.id}`} className="w-36">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">משתמש רגיל</SelectItem>
-                    <SelectItem value="admin">מנהל</SelectItem>
+                    <SelectItem value="admin">גבאי</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

@@ -2,7 +2,7 @@
  * The countdown reminders, in one place: when they come (which times, and in
  * which steps), how they look (colours, shape, size, where on the board), and
  * the count to the next minyan beside them. A picture of the card stands at
- * the side and changes with every choice; "דוגמה על הלוח" shows it on the
+ * the side and changes with every choice; "דוגמת תזכורת על הלוח" shows it on the
  * board's preview, at the step chosen.
  */
 import { useState, type CSSProperties } from "react";
@@ -16,6 +16,7 @@ import { ALERT_EVENT_LABELS, DEFAULT_ALERT_LOOK, type AlertEvent, type AlertLook
 import { themeStyle } from "@/tv/themes";
 import { ALERT_ICONS, ALERT_PRESETS, alertLookVars, formatCountdown } from "@/tv/zmanAlerts";
 import { ColorPick } from "./ColorPick";
+import { Stepper } from "./editorParts";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 export type AlertExample = "board" | "panel" | "chip";
@@ -47,12 +48,11 @@ function Choice<T extends string>({ label, value, options, onChange }: { label: 
 
 function Minutes({ label, value, onChange, hint }: { label: string; value: number; onChange: (v: number) => void; hint: string }) {
   return (
-    <label className="flex flex-wrap items-center gap-2 text-sm">
+    <div className="flex flex-wrap items-center gap-2 text-sm">
       <span className="min-w-[9rem]">{label}</span>
-      <Input type="number" min={0} max={120} value={value} aria-label={label} className="h-8 w-20"
-        onChange={(e) => e.target.value !== "" && onChange(Math.max(0, Math.min(120, Math.round(Number(e.target.value)))))} />
-      <span className="text-xs text-muted-foreground">{value ? hint : "כבוי"}</span>
-    </label>
+      <Stepper label={label} value={value} min={0} max={120} step={1} format={(v) => (v ? `${v} דקות` : "כבוי")} onChange={onChange} />
+      <span className="text-xs text-muted-foreground">{value ? hint : "השלב כבוי"}</span>
+    </div>
   );
 }
 
@@ -69,13 +69,13 @@ function LeadMinutes({ value, onChange }: { value: number[]; onChange: (v: numbe
       הכרטיס קופץ לפני:
       {value.map((m) => (
         <span key={m} className="inline-flex items-center gap-1 rounded-full border bg-secondary px-2.5 py-0.5">
-          {m} דק׳
-          <button type="button" aria-label={`הסרת התראה של ${m} דקות`} onClick={() => onChange(value.filter((x) => x !== m))} className="text-muted-foreground hover:text-foreground">×</button>
+          {m} דקות
+          <button type="button" aria-label={`הסרת התזכורת של ${m} דקות`} onClick={() => onChange(value.filter((x) => x !== m))} className="text-muted-foreground hover:text-foreground">×</button>
         </span>
       ))}
       {value.length < 5 && (
         <span className="inline-flex items-center gap-1">
-          <Input type="number" min={1} max={180} value={adding} onChange={(e) => setAdding(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} className="h-8 w-20" aria-label="דקות להתראה נוספת" />
+          <Input type="number" min={1} max={180} value={adding} onChange={(e) => setAdding(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} className="h-8 w-20" aria-label="דקות לתזכורת נוספת" />
           <Button type="button" variant="outline" size="sm" onClick={add}>הוספה</Button>
         </span>
       )}
@@ -139,12 +139,12 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
         ) : (
           <div className="space-y-2 rounded-lg border p-3">
             <LeadMinutes value={a.leadMinutes} onChange={(leads) => setAlerts("leads", { leadMinutes: leads })} />
-            <label className="flex flex-wrap items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2 text-sm">
               הכרטיס נשאר על המסך
-              <Input type="number" min={10} max={180} step={5} value={a.popupSeconds} aria-label="משך הצגת הכרטיס בשניות" className="h-8 w-20"
-                onChange={(e) => e.target.value && setAlerts("sec", { popupSeconds: Math.max(10, Math.min(180, Number(e.target.value))) })} />
-              שניות. בין הכרטיסים - פס קטן עם ספירה בתחתית הלוח.
-            </label>
+              <Stepper label="משך הצגת הכרטיס בשניות" value={a.popupSeconds} min={10} max={180} step={5} format={(v) => `${v} שניות`}
+                onChange={(v) => setAlerts("sec", { popupSeconds: v })} />
+              בין הכרטיסים - פס קטן עם ספירה בתחתית הלוח.
+            </div>
           </div>
         )}
       </section>
@@ -168,7 +168,7 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
             <Choice label="הלוח מאחורי הכרטיס" value={look.dim} options={DIMS} onChange={(v) => setLook({ dim: v })} />
             <Choice label="סמל" value={look.icon} options={ICONS} onChange={(v) => setLook({ icon: v })} />
             {JSON.stringify(look) !== JSON.stringify(DEFAULT_ALERT_LOOK) && (
-              <button type="button" className="text-xs underline" onClick={() => setLook(DEFAULT_ALERT_LOOK)}>חזרה למראה הרגיל</button>
+              <Button type="button" variant="link" size="sm" className="h-7 px-0 text-xs" onClick={() => setLook(DEFAULT_ALERT_LOOK)}>חזרה למראה הרגיל</Button>
             )}
           </div>
           {/* The card itself, small, in the board's letters and the look chosen. */}
@@ -189,7 +189,7 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
             {colours && <p className="text-[11px] text-muted-foreground">גם הספירה במקום התפילות והפס הקטן מקבלים את אותם צבעים.</p>}
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="sm" disabled={!a.enabled} onClick={() => onExample("board")}>
-                <BellRing className="size-4" aria-hidden /> דוגמה על הלוח
+                <BellRing className="size-4" aria-hidden /> דוגמת תזכורת על הלוח
               </Button>
               {staged && a.stages.panel > 0 && (
                 <Button type="button" variant="outline" size="sm" disabled={!a.enabled} onClick={() => onExample("panel")}>דוגמה: במקום התפילות</Button>

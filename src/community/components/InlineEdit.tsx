@@ -43,7 +43,7 @@ export function InlineEdit({
   queryKey,
   as = "text",
   display,
-  placeholder = "לחץ להוספה",
+  placeholder = "לחצו להוספה",
   className,
   inputClassName,
   alwaysEditable = false,
@@ -125,6 +125,8 @@ export function InlineEdit({
       <input
         ref={ref as React.RefObject<HTMLInputElement>}
         type={as === "time" ? "time" : as === "number" ? "number" : "text"}
+        // A time or a number reads left to right, also on a Hebrew page.
+        dir={as === "time" || as === "number" ? "ltr" : undefined}
         aria-label={ariaLabel}
         {...shared}
       />
@@ -137,7 +139,7 @@ export function InlineEdit({
       onClick={begin}
       disabled={saving}
       aria-label={ariaLabel}
-      title="לחץ לעריכה"
+      title="לחצו לעריכה"
       className={cn(
         "group/inline inline-flex max-w-full items-center gap-1 rounded-md -mx-1 px-1 text-start align-baseline ring-1 ring-dashed ring-primary/40 transition-colors hover:bg-primary/5 hover:ring-primary",
         className,

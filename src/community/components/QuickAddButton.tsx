@@ -26,7 +26,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import "@community/components/admin/adminMobile.css";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAuth } from "@community/lib/use-auth";
-import { DAYS_HE, PRAYERS } from "@community/lib/data";
+import { DAYS_HE, minyanSubcategories, useMinyanCategories } from "@community/lib/data";
+import { hebrewError } from "@community/lib/hebrewError";
 import { ANNOUNCEMENT_KINDS } from "@community/lib/announcement-kinds";
 import { communityId } from "@/community/lib/community";
 import { useAdminButtons } from "@community/lib/adminButtons";
@@ -155,7 +156,7 @@ function QuickAnnouncement({ onDone }: { onDone: () => void }) {
     });
     setSaving(false);
     if (error) {
-      toast.error("שמירת המודעה נכשלה");
+      toast.error(hebrewError(error, "שמירת המודעה נכשלה"));
       return;
     }
     await qc.invalidateQueries({ queryKey: ["announcements"] });
@@ -219,7 +220,7 @@ function QuickShiur({ onDone }: { onDone: () => void }) {
     });
     setSaving(false);
     if (error) {
-      toast.error("שמירת השיעור נכשלה");
+      toast.error(hebrewError(error, "שמירת השיעור נכשלה"));
       return;
     }
     await qc.invalidateQueries({ queryKey: ["shiurim"] });
@@ -256,7 +257,7 @@ function QuickShiur({ onDone }: { onDone: () => void }) {
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>שעה</Label>
+          <Label>שעה (טקסט חופשי)</Label>
           <Input
             value={time}
             onChange={(e) => setTime(e.target.value)}
@@ -300,7 +301,7 @@ function QuickChavruta({ onDone }: { onDone: () => void }) {
     });
     setSaving(false);
     if (error) {
-      toast.error("שמירת החברותא נכשלה");
+      toast.error(hebrewError(error, "שמירת החברותא נכשלה"));
       return;
     }
     await qc.invalidateQueries({ queryKey: ["chavrutot"] });
@@ -311,16 +312,16 @@ function QuickChavruta({ onDone }: { onDone: () => void }) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>נושא</Label>
+        <Label>נושא הלימוד</Label>
         <Input value={topic} onChange={(e) => setTopic(e.target.value)} />
       </div>
       <div className="space-y-2">
-        <Label>שותפים קיימים</Label>
+        <Label>שמות הלומדים</Label>
         <Input value={partners} onChange={(e) => setPartners(e.target.value)} />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>שעה</Label>
+          <Label>זמן הלימוד</Label>
           <Input value={time} onChange={(e) => setTime(e.target.value)} />
         </div>
         <div className="space-y-2">
@@ -330,7 +331,7 @@ function QuickChavruta({ onDone }: { onDone: () => void }) {
       </div>
       <div className="flex items-center gap-3">
         <Switch id="quick-looking" checked={looking} onCheckedChange={setLooking} />
-        <Label htmlFor="quick-looking">מחפש שותף</Label>
+        <Label htmlFor="quick-looking">מחפשים חברותא</Label>
       </div>
       <Button onClick={save} disabled={saving || !topic.trim()}>
         שמירה
@@ -339,17 +340,31 @@ function QuickChavruta({ onDone }: { onDone: () => void }) {
   );
 }
 
+/**
+ * A minyan, into the same tabs and sub-categories as the full minyan form.
+ *
+ * It used to write only the old day type ("weekday"/"friday") with a fixed
+ * list of prayers - no tab at all - so a minyan added here could land in no
+ * tab, or under a prayer the synagogue's tab does not have. Now it is put in
+ * a tab (category_id) and, when the tab has them, a sub-category, exactly as
+ * the full form does.
+ */
 function QuickMinyan({ onDone }: { onDone: () => void }) {
   const qc = useQueryClient();
+  const { data: categories = [] } = useMinyanCategories();
   const [label, setLabel] = useState("");
-  const [prayer, setPrayer] = useState("shacharit");
+  const [categoryId, setCategoryId] = useState("");
+  const [prayer, setPrayer] = useState("");
   const [time, setTime] = useState("");
   const [room, setRoom] = useState("");
-  const [dayType, setDayType] = useState("weekday");
   const [saving, setSaving] = useState(false);
 
+  const category = categories.find((c) => c.id === categoryId) ?? categories[0];
+  const subcategories = minyanSubcategories(category);
+  const chosenPrayer = subcategories.some((item) => item.id === prayer) ? prayer : subcategories[0]?.id ?? "other";
+
   async function save() {
-    if (!label.trim() || !time.trim()) return;
+    if (!label.trim() || !time.trim() || !category) return;
     const [hours = NaN, minutes = NaN] = time.split(":").map(Number);
     if (
       !/^\d{2}:\d{2}$/.test(time) ||
@@ -366,8 +381,10 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
     const { error } = await supabase.from("minyanim").insert({
       community_id: communityId(),
       label: label.trim(),
-      prayer: prayer,
-      day_type: dayType,
+      category_id: category.id,
+      // As the full form sets it: the tab's own key, or "custom" for a tab the synagogue made.
+      day_type: category.system_key ?? "custom",
+      prayer: chosenPrayer,
       time_mode: "fixed",
       fixed_time: fixedTime,
       room: room.trim(),
@@ -378,7 +395,7 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
     });
     setSaving(false);
     if (error) {
-      toast.error("שמירת המניין נכשלה");
+      toast.error(hebrewError(error, "שמירת המניין נכשלה"));
       return;
     }
     await qc.invalidateQueries({ queryKey: ["minyanim"] });
@@ -389,46 +406,60 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label>שם המניין</Label>
+        <Label htmlFor="quick-minyan-label">שם המניין</Label>
         <Input
+          id="quick-minyan-label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="למשל: מניין ראשון"
+          placeholder="שחרית א׳"
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>תפילה</Label>
-          <Select value={prayer} onValueChange={setPrayer}>
-            <SelectTrigger>
-              <SelectValue />
+          <Label>לשונית</Label>
+          <Select
+            value={category?.id ?? ""}
+            onValueChange={(value) => {
+              setCategoryId(value);
+              setPrayer("");
+            }}
+            disabled={categories.length === 0}
+          >
+            <SelectTrigger aria-label="לשונית">
+              <SelectValue placeholder={categories.length === 0 ? "טוען…" : "בחירת לשונית"} />
             </SelectTrigger>
             <SelectContent>
-              {PRAYERS.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.label}
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label>יום</Label>
-          <Select value={dayType} onValueChange={setDayType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="weekday">ימות החול</SelectItem>
-              <SelectItem value="friday">יום שישי</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {subcategories.length > 0 && (
+          <div className="space-y-2">
+            <Label>תת־קטגוריה</Label>
+            <Select value={chosenPrayer} onValueChange={setPrayer}>
+              <SelectTrigger aria-label="תת־קטגוריה">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {subcategories.map((item) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
-          <Label>שעה (HH:MM)</Label>
+          <Label htmlFor="quick-minyan-time">שעה</Label>
           <Input
+            id="quick-minyan-time"
             type="time"
             value={time}
             onChange={(e) => setTime(e.target.value)}
@@ -437,12 +468,12 @@ function QuickMinyan({ onDone }: { onDone: () => void }) {
           />
         </div>
         <div className="space-y-2">
-          <Label>חדר/מקום</Label>
-          <Input value={room} onChange={(e) => setRoom(e.target.value)} />
+          <Label htmlFor="quick-minyan-room">אולם / מיקום</Label>
+          <Input id="quick-minyan-room" value={room} onChange={(e) => setRoom(e.target.value)} placeholder="אולם מרכזי" />
         </div>
       </div>
-      <Button onClick={save} disabled={saving || !label.trim() || !time.trim()}>
-        שמירה
+      <Button onClick={save} disabled={saving || !label.trim() || !time.trim() || !category}>
+        {saving ? "שומר…" : "שמירה"}
       </Button>
     </div>
   );

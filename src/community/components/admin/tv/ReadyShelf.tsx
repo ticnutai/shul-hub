@@ -48,7 +48,7 @@ export function TileRemove({ name, ready, onClick }: { name: string; ready: bool
         e.stopPropagation();
         onClick();
       }}
-      className="absolute -left-1 -top-1 z-10 flex size-5 items-center justify-center rounded-full border bg-background text-[11px] opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
+      className="absolute -end-1 -top-1 z-[1] flex size-5 items-center justify-center rounded-full border bg-background text-[11px] opacity-0 shadow transition hover:bg-destructive hover:text-destructive-foreground focus:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
     >
       ✕
     </button>

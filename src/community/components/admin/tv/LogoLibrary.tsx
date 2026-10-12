@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { ArrowUp, Trash2, Upload } from "lucide-react";
+import { ArrowUp, ImagePlus, Trash2, Upload } from "lucide-react";
+import { confirmAction } from "@/components/ConfirmDialog";
 import { supabase } from "@community/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,7 +39,7 @@ const asBoardLogo = (l: LibraryLogo): BoardLogo => ({
 
 async function upload(file: File): Promise<{ url: string; path: string }> {
   if (!file.type.startsWith("image/")) throw new Error(`"${file.name}" אינו קובץ תמונה`);
-  if (file.size > MAX_BYTES) throw new Error(`"${file.name}" גדול מדי (עד 3MB)`);
+  if (file.size > MAX_BYTES) throw new Error(`"${file.name}" גדול מדי (עד 3 מגה)`);
   const ext = file.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "png";
   const path = `logo-library/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from("community-media").upload(path, file, { cacheControl: "3600", upsert: false });
@@ -60,6 +61,9 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
   const [busy, setBusy] = useState(false);
   const lightFile = useRef<HTMLInputElement>(null);
   const darkFile = useRef<HTMLInputElement>(null);
+  // The names of the files chosen, shown on their buttons.
+  const [lightName, setLightName] = useState("");
+  const [darkName, setDarkName] = useState("");
 
   const isOn = (id: string) => chosen.some((l) => l.id === id);
   const toggle = (l: LibraryLogo) =>
@@ -95,6 +99,8 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
       setName("");
       if (lightFile.current) lightFile.current.value = "";
       if (darkFile.current) darkFile.current.value = "";
+      setLightName("");
+      setDarkName("");
       toast.success("הלוגו נוסף לספרייה ולוח הזה. לשמירה - \"שמור ושדר\".");
     } catch (e) {
       if (uploaded.length) void supabase.storage.from("community-media").remove(uploaded);
@@ -105,7 +111,12 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
   }
 
   async function remove(l: LibraryLogo) {
-    if (!window.confirm(`למחוק את "${l.name}" מהספרייה? לוחות של בתי כנסת אחרים שבחרו בו יפסיקו להציג אותו.`)) return;
+    const ok = await confirmAction({
+      title: `למחוק את „${l.name}” מהספרייה?`,
+      description: "לוחות של בתי כנסת אחרים שבחרו בו יפסיקו להציג אותו.",
+      confirmLabel: "מחיקה",
+    });
+    if (!ok) return;
     const { data, error } = await table().delete().eq("id", l.id).select("id");
     if (error || !data?.length) {
       // The table lets only whoever uploaded a logo, or a platform admin, remove it.
@@ -120,7 +131,7 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
   const logos = library.data ?? [];
   return (
     <div className="space-y-3" data-testid="logo-library">
-      <p className="text-xs text-muted-foreground">
+      <p className="text-[11px] text-muted-foreground">
         ספרייה אחת לכל בתי הכנסת. סמנו אילו לוגואים יופיעו בלוח הזה; בכל מסך מדליקים או מכבים אותם במתג "לוגואים" (בפריסה).
       </p>
       {library.isLoading && <p className="text-sm text-muted-foreground">טוען…</p>}
@@ -165,16 +176,22 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
 
       <div className="space-y-2 rounded-md border border-dashed p-3">
         <div className="text-sm font-medium">הוספת לוגו לספרייה</div>
-        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="שם הלוגו (למשל: בית הכנסת, שם התורם)" aria-label="שם הלוגו" maxLength={60} />
-        <label className="block text-xs">
-          הלוגו
-          <input ref={lightFile} type="file" accept="image/*" className="mt-1 block w-full text-xs" aria-label="קובץ הלוגו" />
-        </label>
-        <label className="block text-xs">
-          גרסה לרקע כהה (לא חובה)
-          <input ref={darkFile} type="file" accept="image/*" className="mt-1 block w-full text-xs" aria-label="קובץ לרקע כהה" />
-        </label>
-        <Button type="button" size="sm" onClick={() => void add()} disabled={busy}>
+        <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="שם הלוגו (למשל: בית הכנסת, שם התורם)" aria-label="שם הלוגו" maxLength={60} className="h-8 text-sm" />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="button" size="sm" variant="outline" className="h-8 cursor-pointer" asChild>
+            <label>
+              <ImagePlus className="size-4" aria-hidden /> {lightName ? `הלוגו: ${lightName}` : "בחירת תמונת הלוגו"}
+              <input ref={lightFile} type="file" accept="image/*" className="sr-only" aria-label="קובץ הלוגו" onChange={(e) => setLightName(e.target.files?.[0]?.name ?? "")} />
+            </label>
+          </Button>
+          <Button type="button" size="sm" variant="outline" className="h-8 cursor-pointer" asChild>
+            <label>
+              <ImagePlus className="size-4" aria-hidden /> {darkName ? `לרקע כהה: ${darkName}` : "גרסה לרקע כהה (לא חובה)"}
+              <input ref={darkFile} type="file" accept="image/*" className="sr-only" aria-label="קובץ לרקע כהה" onChange={(e) => setDarkName(e.target.files?.[0]?.name ?? "")} />
+            </label>
+          </Button>
+        </div>
+        <Button type="button" size="sm" className="h-8" onClick={() => void add()} disabled={busy}>
           <Upload className="size-4" />
           {busy ? "מעלה…" : "הוספה לספרייה ולוח הזה"}
         </Button>

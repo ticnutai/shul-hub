@@ -40,10 +40,10 @@ test.describe("TV editor, the preview's room", () => {
   test("מקסימום makes the board as big as it goes, and gives back the size it had", async ({ page }) => {
     await page.getByRole("button", { name: "זה לצד זה" }).click();
     const before = await boardBox(page);
-    await page.getByRole("button", { name: "מקסימום" }).click();
+    await page.getByRole("button", { name: "הגדלה למקסימום" }).click();
     const max = await boardBox(page);
     expect(max.width).toBeGreaterThan(before.width + 50);
-    await page.getByRole("button", { name: "גודל קודם" }).click();
+    await page.getByRole("button", { name: "חזרה לגודל הקודם" }).click();
     const back = await boardBox(page);
     expect(Math.abs(back.width - before.width)).toBeLessThan(4);
   });

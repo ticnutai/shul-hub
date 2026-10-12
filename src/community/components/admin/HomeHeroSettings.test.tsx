@@ -17,6 +17,13 @@ vi.mock("@/integrations/supabase/client", () => ({
   supabase: { storage: { from: () => ({ upload, getPublicUrl: () => ({ data: { publicUrl: STORED } }) }) } },
 }));
 
+// The on/off choices are switches, which measure themselves; the test page cannot.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof ResizeObserver;
+
 import { HomeHeroSettings } from "./HomeHeroSettings";
 import { DEFAULT_HOME_HERO } from "@community/lib/homeHero";
 
@@ -46,7 +53,7 @@ describe("the admin's screen for the strip", () => {
     render(<HomeHeroSettings />);
     fireEvent.click(screen.getByRole("radio", { name: /שני טורים/ }));
     fireEvent.click(screen.getByRole("radio", { name: /ירוק אמרלד/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: /התפילה הבאה/ }));
+    fireEvent.click(screen.getByRole("switch", { name: /התפילה הבאה/ }));
     fireEvent.change(screen.getByRole("combobox", { name: "שם בית הכנסת ברצועה" }), { target: { value: "show" } });
     fireEvent.change(screen.getByRole("combobox", { name: "פריסה בטלפון" }), { target: { value: "compact" } });
     expect(strip()?.getAttribute("data-hero-layout")).toBe("split");

@@ -36,13 +36,14 @@ for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library']){
   await expect(board.locator('[data-element-id]')).toHaveCount(d.values.elements.length);
   await expect.poll(()=>board.locator('img').evaluateAll(imgs=>imgs.every(i=>(i as HTMLImageElement).complete&&(i as HTMLImageElement).naturalWidth>0))).toBe(true);
   await board.screenshot({path:'../outputs/'+id+'-board.png'});
-  const layers=page.getByLabel('שכבות האלמנטים',{exact:true});
+  const layers=page.getByLabel('שכבות החלקים',{exact:true});
   await layers.getByRole('button',{name:'ברכת ראש חודש',exact:true}).click();
   await page.getByLabel('מיקום אופקי',{exact:true}).fill('32');
   await page.getByLabel('מה כתוב בטקסט',{exact:true}).fill('חודש טוב ומבורך');
-  await page.getByRole('button',{name:'שכפול אלמנט',exact:true}).click();
+  await page.getByRole('button',{name:'שכפול החלק',exact:true}).click();
   await expect(board.locator('[data-element-id]')).toHaveCount(d.values.elements.length+1);
   await page.getByRole('button',{name:'מחיקת הבחירה',exact:true}).click();
+  await page.getByTestId('confirm-dialog').getByRole('button',{name:'מחיקה'}).click();
   await expect(board.locator('[data-element-id]')).toHaveCount(d.values.elements.length);
   await page.getByRole('button',{name:/שמור ושדר/}).first().click();
   await expect.poll(()=>server.writes()).toBeGreaterThan(0);
@@ -86,7 +87,7 @@ test('central editor shares categorized themes and parts without changing a boar
  await card.getByRole('button',{name:'החלת ערכה ראש חודש · שערי הלבנה',exact:true}).click();
  await expect(page.locator('.tv-frame [data-element-id]')).toHaveCount(26);
  const parts=page.getByTestId('shared-catalog-parts');
- await parts.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
+ await parts.getByLabel('נושא החלקים',{exact:true}).selectOption('ראש חודש');
  await parts.getByLabel('חלקים מאיזו ערכה').selectOption('d_rc_antique');
  await expect(parts.getByTestId('shared-count')).toHaveText('26 חלקים זמינים');
  const addedPart=raw.parts.filter(p=>p.designId==='d_rc_antique')[21];

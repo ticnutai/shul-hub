@@ -15,9 +15,10 @@
  */
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Eye, EyeOff, Move, PanelLeft, PanelRight, PanelsLeftRight, RotateCcw, Save, X } from 'lucide-react';
+import { Eye, EyeOff, Move, RotateCcw, Save, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { confirmAction } from '@/components/ConfirmDialog';
 import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
 import { setSymbol, symbolChoices } from '@/tv/artSymbols';
 import { kitOf, resetToKit } from '@/tv/kitReset';
@@ -31,15 +32,10 @@ import { announcePlace } from './announcePlace';
 import { AddContent } from './AddContent';
 import { MAX_ELEMENT_SETS, elementId, swapContent } from '@/tv/elements';
 import { DESIGN_PARTS, MAX_DESIGNS, captureDesign } from '@/tv/designs';
+import { Folded, SubPart } from './Parts';
+import { FIT_CHOICES, NameForm, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
-/** When the content is longer than its frame. A notice shrinks, a list turns its pages - or either moves. */
-const FIT_LABELS = (binding: ElementBinding) => [
-  ['', binding === 'announcements' || binding === 'footer' ? 'הקטנה כדי שייכנס' : 'דפדוף בין עמודים'],
-  ['pause', 'גלילה עם עצירות'],
-  ['loop', 'וילון רציף'],
-] as const;
-const SIDES = [['right', 'ימין', PanelRight], ['center', 'אמצע', PanelsLeftRight], ['left', 'שמאל', PanelLeft]] as const;
-const SELECT = 'h-8 rounded border bg-background px-1 text-sm text-foreground';
+const SELECT = `${SELECT_CLASS} text-foreground`;
 
 export function PartsContent({ config, onEdit, onManual }: {
   config: TvConfig;
@@ -75,13 +71,18 @@ export function PartsContent({ config, onEdit, onManual }: {
     <input type="checkbox" aria-label={`בחירת ${f.title}`} checked={picked.includes(f.e.id)} onChange={ev => toggle(f, ev.target.checked)} className="size-4 shrink-0" />
   );
 
-  const reset = () => {
+  const reset = async () => {
     if (!kit) return;
-    if (!window.confirm(`להחזיר את הלוח לברירת המחדל של «${kit.name}»? כל החלקים יחזרו למקום ולתוכן המקוריים. אפשר לבטל עם Ctrl+Z.`)) return;
+    const ok = await confirmAction({
+      title: `להחזיר את הלוח לברירת המחדל של „${kit.name}”?`,
+      description: 'כל החלקים יחזרו למקום ולתוכן המקוריים. אפשר לבטל בצעד אחורה.',
+      confirmLabel: 'חזרה לברירת המחדל',
+    });
+    if (!ok) return;
     onEdit(`parts-content:reset:${kit.id}`, c => resetToKit(c, kit));
     setPicked([]);
     editing?.select([]);
-    toast.success(`הלוח חזר לברירת המחדל של «${kit.name}».`);
+    toast.success(`הלוח חזר לברירת המחדל של „${kit.name}”.`);
   };
   /** "Replace" from the message of a frame sent over another: the one below is hidden. */
   const hideParts = (ids: string[]) =>
@@ -95,13 +96,13 @@ export function PartsContent({ config, onEdit, onManual }: {
     toast.success(`"${f.title}" ו"${other.title}" החליפו תוכן: כל אחד מקבל את הצורה של המסגרת שאליה עבר.`);
   };
   /** A frame kept as "my box": its picture, heading and content, to be added again from the list. */
-  const [boxName, setBoxName] = useState<Record<string, string>>({});
-  const saveBox = (f: Frame) => {
+  const [boxName, setBoxName] = useState<Record<string, string | undefined>>({});
+  const saveBox = async (f: Frame) => {
     const name = (boxName[f.e.id] ?? f.title).trim().slice(0, 80);
     if (!name) return;
     const kept = elements.filter(e => f.ids.includes(e.id)).map(e => structuredClone(e));
     const existing = config.elementLibrary.find(l => l.name === name);
-    if (existing && !window.confirm(`כבר יש תיבה בשם «${name}». להחליף אותה?`)) return;
+    if (existing && !(await confirmAction({ title: `כבר יש חלק בשם „${name}”`, description: 'להחליף אותו בתיבה הזו?', confirmLabel: 'החלפה', destructive: false }))) return;
     if (!existing && config.elementLibrary.length >= MAX_ELEMENT_SETS) { toast.error(`הגעתם למספר התיבות המרבי (${MAX_ELEMENT_SETS}).`); return; }
     onEdit(`element-library:save:${name}`, c => ({
       ...c,
@@ -109,7 +110,7 @@ export function PartsContent({ config, onEdit, onManual }: {
         ? c.elementLibrary.map(l => (l.id === existing.id ? { ...l, elements: kept } : l))
         : [...c.elementLibrary, { id: `box_${elementId().slice(3, 15)}`, name, elements: kept }],
     }));
-    setBoxName(b => ({ ...b, [f.e.id]: '' }));
+    setBoxName(b => ({ ...b, [f.e.id]: undefined }));
     toast.success(`"${name}" נשמרה ב"החלקים והתיבות שלי" - היא ברשימת "הוספת תוכן".`);
   };
 
@@ -136,46 +137,45 @@ export function PartsContent({ config, onEdit, onManual }: {
    * too - without it a kit of parts came back as an ordinary board.
    */
   const [kitName, setKitName] = useState<string | null>(null);
-  const saveKit = () => {
+  const saveKit = async () => {
     const name = (kitName ?? '').trim().slice(0, 40);
     if (!name) { toast.error('צריך לתת שם לערכה'); return; }
     const existing = config.designs.find(d => d.name === name);
-    if (existing && !window.confirm(`כבר יש ערכה בשם «${name}». להחליף אותה במה שעל הלוח עכשיו?`)) return;
+    if (existing && !(await confirmAction({ title: `כבר יש ערכה בשם „${name}”`, description: 'להחליף אותה במה שעל הלוח עכשיו?', confirmLabel: 'החלפה', destructive: false }))) return;
     if (!existing && config.designs.length >= MAX_DESIGNS) { toast.error(`הגעתם למספר הערכות המרבי (${MAX_DESIGNS}). מחקו ערכה ב"הערכות שלי".`); return; }
     onEdit(`parts-content:save-kit:${name}`, c => {
       const kit = captureDesign(c, name, [...DESIGN_PARTS], existing?.id);
       return { ...c, designs: existing ? c.designs.map(d => (d.id === existing.id ? kit : d)) : [...c.designs, kit] };
     });
     setKitName(null);
-    toast.success(`הערכה «${name}» נשמרה. היא ב"הערכות שלי" בלשונית "עיצוב", ותגיע למסכים ב"שמור ושדר".`);
+    toast.success(`הערכה „${name}” נשמרה. היא ב"הערכות שלי" בלשונית "עיצוב", ותגיע למסכים ב"שמור ושדר".`);
   };
 
   return (
-    <div className="space-y-4" data-testid="parts-content">
-      <div className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm font-semibold">המסגרות שעל הלוח</p>
+    <div className="space-y-5" data-testid="parts-content">
+      <SubPart title="המסגרות שעל הלוח" hint="בכל מסגרת בוחרים מה היא מציגה - המסגרת והסגנון נשארים, והכותרת מתחלפת. ימין, אמצע או שמאל מזיזים אותה, ואם בצד הזה כבר עומדת מסגרת אחרת, השתיים מתחלפות.">
+        <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setKitName(kitName === null ? '' : null)} data-testid="parts-save-kit"
             title="שומר את הלוח כמו שהוא עכשיו כערכה משלכם - תופיע ב'הערכות שלי'">
             <Save className="size-4" aria-hidden /> שמירה כערכה
           </Button>
           {kit && (
-            <Button type="button" size="sm" variant="outline" className="h-8" onClick={reset} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של «${kit.name}»`} data-testid="parts-reset">
-              <RotateCcw className="size-4" aria-hidden /> איפוס הכול לברירת המחדל
+            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => void reset()} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של „${kit.name}”`} data-testid="parts-reset">
+              <RotateCcw className="size-4" aria-hidden /> חזרה לברירת המחדל של הערכה
             </Button>
           )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          בכל מסגרת בוחרים מה היא מציגה - המסגרת והסגנון נשארים, והכותרת מתחלפת. ימין, אמצע או שמאל מזיזים אותה, ואם בצד הזה כבר עומדת מסגרת אחרת, השתיים מתחלפות.
-        </p>
         {kitName !== null && (
-          <form className="flex flex-wrap items-center gap-2 rounded-md border p-2" onSubmit={e => { e.preventDefault(); saveKit(); }} data-testid="parts-kit-form">
-            <input autoFocus aria-label="שם הערכה החדשה" value={kitName} maxLength={40} placeholder="למשל: אבן ירושלים - ארבע קשתות"
-              onChange={e => setKitName(e.target.value)} className="h-8 min-w-0 flex-1 basis-48 rounded border bg-background px-2 text-sm" />
-            <Button type="submit" size="sm" className="h-8">שמירת הערכה</Button>
-            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => setKitName(null)}>ביטול</Button>
-            <p className="w-full text-[11px] text-muted-foreground">נשמר הכול: המסגרות, מה שהן מציגות, המיקום, הצבעים והרקע. עם אותו שם - מחליף את הערכה הקודמת.</p>
-          </form>
+          <NameForm
+            testId="parts-kit-form"
+            label="שם הערכה החדשה"
+            value={kitName}
+            placeholder="למשל: אבן ירושלים - ארבע קשתות"
+            onChange={setKitName}
+            onSave={() => void saveKit()}
+            onCancel={() => setKitName(null)}
+            hint="נשמר הכול: המסגרות, מה שהן מציגות, המיקום, הצבעים והרקע. עם אותו שם - שואלים, ואז מחליפים את הערכה הקודמת."
+          />
         )}
         {/* Several at once: tick, then show or hide them all. */}
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="בחירה מרובה" data-testid="parts-bulk">
@@ -194,7 +194,7 @@ export function PartsContent({ config, onEdit, onManual }: {
               <Button type="button" size="sm" variant="outline" className="h-7" onClick={() => setManyHidden(pickedFrames, false)}>
                 <Eye className="size-3.5" aria-hidden /> הצגת הנבחרות
               </Button>
-              <button type="button" className="underline underline-offset-2" onClick={() => setPicked([])}>ניקוי הבחירה</button>
+              <Button type="button" size="sm" variant="ghost" className="h-7" onClick={() => setPicked([])}>ניקוי הבחירה</Button>
             </>
           )}
         </div>
@@ -203,35 +203,38 @@ export function PartsContent({ config, onEdit, onManual }: {
           {!shown.length && <p className="p-3 text-sm text-muted-foreground">אין על הלוח מסגרות עם תוכן. הוסיפו אחת למטה.</p>}
         </div>
         {anyScrolls && (
-          <div className="flex flex-wrap items-center gap-2 text-sm" role="group" aria-label="מהירות הגלילה">
-            <span className="text-muted-foreground">מהירות הגלילה:</span>
-            {([['slow', 'איטית'], ['normal', 'רגילה']] as const).map(([id, name]) => (
-              <Button key={id} type="button" size="sm" className="h-7" variant={config.overflow.speed === id ? 'default' : 'outline'} aria-pressed={config.overflow.speed === id}
-                onClick={() => onEdit('overflow-speed', c => ({ ...c, overflow: { ...c.overflow, speed: id } }))}>
-                {name}
-              </Button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="text-muted-foreground">מהירות הגלילה</span>
+            <Segments
+              label="מהירות הגלילה"
+              value={config.overflow.speed}
+              onChange={(id) => onEdit('overflow-speed', c => ({ ...c, overflow: { ...c.overflow, speed: id } }))}
+              options={[{ id: 'slow', name: 'איטית' }, { id: 'normal', name: 'רגילה' }]}
+            />
           </div>
         )}
-      </div>
+      </SubPart>
 
-      <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); editing?.select(ids); }}
-      library={config.elementLibrary}
-      defaults={config.elementDefaults}
-      onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))}
-      onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />
+      <SubPart title="הוספת תוכן" hint="תוכן חי - פרשת השבוע, הדף היומי, זמני היום ועוד - במסגרת חדשה, במקום תוכן של מסגרת, או בתוכה.">
+        <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); editing?.select(ids); }}
+          library={config.elementLibrary}
+          defaults={config.elementDefaults}
+          onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))}
+          onLibrary={(next) => onEdit('element-library', (c) => ({ ...c, elementLibrary: next }))} />
+      </SubPart>
 
       {hidden.length > 0 && (
-        <div className="space-y-1" data-testid="parts-hidden">
-          <p className="text-sm font-semibold">מוסתרות</p>
-          {hidden.map(f => (
-            <div key={f.e.id} className="flex items-center gap-2 rounded border px-2 py-1 text-sm">
-              {pickBox(f)}
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">{f.title}</span>
-              <Button size="sm" variant="outline" className="h-7" aria-label={`הצגת ${f.title}`} onClick={() => setHidden(f, false)}>הצגה</Button>
-            </div>
-          ))}
-        </div>
+        <SubPart title="מסגרות מוסתרות" testId="parts-hidden" hint="לא נמחקו: הצגה מחזירה אותן למקום שבו היו.">
+          <div className="space-y-1">
+            {hidden.map(f => (
+              <div key={f.e.id} className="flex items-center gap-2 rounded-md border px-2 py-1 text-sm">
+                {pickBox(f)}
+                <span className="min-w-0 flex-1 truncate text-muted-foreground">{f.title}</span>
+                <Button size="sm" variant="outline" className="h-7" aria-label={`הצגת ${f.title}`} onClick={() => setHidden(f, false)}>הצגה</Button>
+              </div>
+            ))}
+          </div>
+        </SubPart>
       )}
     </div>
   );
@@ -251,21 +254,21 @@ export function PartsContent({ config, onEdit, onManual }: {
           {pickBox(f)}
           <span className="min-w-0 flex-1 truncate text-sm font-medium">{f.title}</span>
           <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label={`מיקום של ${f.title}`}>
-            {SIDES.map(([s, name, Icon]) => (
+            {SIDE_CHOICES.map(([s, name, Icon]) => (
               <button key={s} type="button" aria-label={`${f.title} ל${name}`} aria-pressed={f.side === s} title={`להעביר ל${name}`}
                 onClick={() => place(f, s)}
-                className={`grid size-8 place-items-center rounded border sm:size-7 ${f.side === s ? 'border-primary bg-primary/10 text-primary' : 'border-transparent text-muted-foreground'} hover:border-primary hover:text-foreground`}>
+                className={sideButtonClass(f.side === s)}>
                 <Icon className="size-4" aria-hidden />
               </button>
             ))}
             <button type="button" aria-label={`הזזה ידנית של ${f.title}`} title="הזזה ידנית: פותח את רשימת החלקים כשהמסגרת הזו בחורה, ואז גוררים אותה על הלוח"
               onClick={() => { editing?.select(f.ids); onManual(); }}
-              className="grid size-8 place-items-center rounded border border-transparent text-muted-foreground hover:border-primary hover:text-foreground sm:size-7">
+              className={SIDE_BUTTON}>
               <Move className="size-4" aria-hidden />
             </button>
             <button type="button" aria-label={`הסתרת ${f.title}`} title="הסתרה - לא נמחק, אפשר להחזיר"
               onClick={() => setHidden(f, true)}
-              className="grid size-8 place-items-center rounded border border-transparent text-muted-foreground hover:border-destructive hover:text-destructive sm:size-7">
+              className={`${SIDE_BUTTON} hover:!border-destructive hover:!text-destructive`}>
               <EyeOff className="size-4" aria-hidden />
             </button>
           </div>
@@ -289,19 +292,16 @@ export function PartsContent({ config, onEdit, onManual }: {
           )}
           {SCROLLABLE.includes(f.binding) && (
             <label className="flex items-center gap-1 text-xs text-muted-foreground" title="מה קורה כשהתוכן ארוך מהמסגרת. תוכן שנכנס לא זז.">
-              כשלא נכנס
+              כשהתוכן לא נכנס
               <select aria-label={`כשלא נכנס - ${f.title}`} value={f.e.scroll ?? ''}
                 onChange={ev => patch(f, { scroll: (ev.target.value || undefined) as ElementScroll | undefined }, 'scroll')} className={SELECT}>
-                {FIT_LABELS(f.binding).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                {FIT_CHOICES(f.binding).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </label>
           )}
         </div>
-        <details className="group text-xs" data-testid="frame-more">
-          <summary className="cursor-pointer select-none text-muted-foreground hover:text-foreground">
-            עוד אפשרויות{more ? ` (${more})` : ''}
-          </summary>
-          <div className="mt-2 space-y-3 rounded-md bg-muted/40 p-2">
+        <Folded label={`עוד אפשרויות${more ? ` (${more})` : ''}`} testId="frame-more">
+          <div className="space-y-3 text-xs">
             {/* Taking turns: the notices, then the shiurim, in one frame. */}
             <div className="space-y-1">
               <p className="font-medium">מתחלפת עם תוכן נוסף</p>
@@ -324,13 +324,12 @@ export function PartsContent({ config, onEdit, onManual }: {
                 )}
               </div>
               {turns.length > 0 && (
-                <label className="flex items-center gap-1 text-muted-foreground">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   כל תוכן מוצג
-                  <input type="number" min={5} max={300} aria-label={`שניות לכל תוכן ב${f.title}`} value={f.e.alternateSeconds ?? 20}
-                    onChange={ev => ev.target.value && commit(setAlternates(elements, f.e.id, turns, Number(ev.target.value)), `parts-content:${f.e.id}:turn-seconds`)}
-                    className="h-7 w-16 rounded border bg-background px-1 text-foreground" />
-                  שניות
-                </label>
+                  <Stepper label={`שניות לכל תוכן ב${f.title}`} value={f.e.alternateSeconds ?? 20} min={5} max={300} step={5}
+                    format={(v) => `${v} שניות`}
+                    onChange={(v) => commit(setAlternates(elements, f.e.id, turns, v), `parts-content:${f.e.id}:turn-seconds`)} />
+                </div>
               )}
             </div>
             {zmanim && (
@@ -357,18 +356,32 @@ export function PartsContent({ config, onEdit, onManual }: {
                 </select>
               </label>
             )}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="font-medium">שמירה בחלקים והתיבות שלי</span>
-              <input aria-label={`שם לתיבה של ${f.title}`} value={boxName[f.e.id] ?? f.title} maxLength={80}
-                onChange={ev => setBoxName(b => ({ ...b, [f.e.id]: ev.target.value }))} className="h-7 min-w-0 flex-1 basis-32 rounded border bg-background px-1 text-foreground" />
-              <Button type="button" size="sm" variant="outline" className="h-7" aria-label={`שמירת ${f.title} בחלקים והתיבות שלי`} onClick={() => saveBox(f)}>שמירה</Button>
+            <div className="space-y-1">
+              <p className="font-medium">שמירה בחלקים והתיבות שלי</p>
+              {boxName[f.e.id] === undefined ? (
+                <Button type="button" size="sm" variant="outline" className="h-8" aria-label={`שמירת ${f.title} בחלקים והתיבות שלי`} onClick={() => setBoxName(b => ({ ...b, [f.e.id]: f.title }))}>
+                  <Save className="size-4" aria-hidden /> שמירה בשם…
+                </Button>
+              ) : (
+                <NameForm
+                  label={`שם לתיבה של ${f.title}`}
+                  value={boxName[f.e.id] ?? ''}
+                  maxLength={80}
+                  onChange={(v) => setBoxName(b => ({ ...b, [f.e.id]: v }))}
+                  onSave={() => void saveBox(f)}
+                  onCancel={() => setBoxName(b => ({ ...b, [f.e.id]: undefined }))}
+                />
+              )}
             </div>
-            <label className="flex items-center gap-1.5" title="משטח חלק מאחורי התוכן, כדי שהקווים המצוירים במסגרת לא יעברו בתוך הטקסט">
-              <input type="checkbox" aria-label={`רקע חלק מאחורי ${f.title}`} checked={Boolean(f.e.backdrop)} onChange={ev => patch(f, { backdrop: ev.target.checked || undefined }, 'backdrop')} />
-              רקע חלק מאחורי התוכן (מסתיר את הקווים המצוירים במסגרת)
-            </label>
+            <SwitchRow
+              label="רקע חלק מאחורי התוכן (מסתיר את הקווים המצוירים במסגרת)"
+              ariaLabel={`רקע חלק מאחורי ${f.title}`}
+              hint="משטח חלק מאחורי התוכן, כדי שהקווים המצוירים במסגרת לא יעברו בתוך הטקסט"
+              checked={Boolean(f.e.backdrop)}
+              onChange={(on) => patch(f, { backdrop: on || undefined }, 'backdrop')}
+            />
           </div>
-        </details>
+        </Folded>
       </div>
     );
   }

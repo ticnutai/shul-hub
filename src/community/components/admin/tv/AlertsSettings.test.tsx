@@ -23,19 +23,27 @@ const staged = (): TvConfig => ({ ...structuredClone(DEFAULT_TV_CONFIG), alerts:
 describe("the reminders' settings", () => {
   it("keeps the steps in order when one is set past another, and 0 leaves a step out", () => {
     render(<Harness start={staged()} />);
-    fireEvent.change(screen.getByRole("spinbutton", { name: "2. ספירה במקום התפילות" }), { target: { value: "40" } });
+    // The one stepper of the editor: arrows on the number, a minute at a time.
+    const stepTo = (name: string, target: number) => {
+      const box = screen.getByRole("spinbutton", { name });
+      for (let i = 0; i < 200 && Number(box.getAttribute("aria-valuenow")) !== target; i++)
+        fireEvent.keyDown(box, { key: Number(box.getAttribute("aria-valuenow")) < target ? "ArrowUp" : "ArrowDown" });
+    };
+    stepTo("2. ספירה במקום התפילות", 40);
     expect(latest.alerts.stages).toEqual({ highlight: 40, panel: 40, board: 10 });
-    fireEvent.change(screen.getByRole("spinbutton", { name: "3. ספירה על כל הלוח" }), { target: { value: "0" } });
+    stepTo("3. ספירה על כל הלוח", 0);
     expect(latest.alerts.stages.board).toBe(0);
-    expect(screen.getAllByText("כבוי")).toHaveLength(1);
+    // The step left out reads "כבוי" in its own box (a box one can also type into), and only there.
+    const boxes = screen.getAllByRole("spinbutton") as HTMLInputElement[];
+    expect(boxes.filter((b) => b.value === "כבוי")).toHaveLength(1);
   });
 
   it("shows the pulsing card's minutes only in that mode", () => {
     render(<Harness start={staged()} />);
-    expect(screen.queryByLabelText("דקות להתראה נוספת")).toBeNull();
+    expect(screen.queryByLabelText("דקות לתזכורת נוספת")).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /כרטיס שקופץ לרגע/ }));
     expect(latest.alerts.mode).toBe("pulse");
-    expect(screen.getByLabelText("דקות להתראה נוספת")).toBeTruthy();
+    expect(screen.getByLabelText("דקות לתזכורת נוספת")).toBeTruthy();
     expect(screen.queryByTestId("alert-stages")).toBeNull();
   });
 
@@ -59,7 +67,7 @@ describe("the reminders' settings", () => {
 
   it("shows examples on the board, of the step chosen", () => {
     render(<Harness start={staged()} />);
-    fireEvent.click(screen.getByRole("button", { name: /דוגמה על הלוח/ }));
+    fireEvent.click(screen.getByRole("button", { name: /דוגמת תזכורת על הלוח/ }));
     fireEvent.click(screen.getByRole("button", { name: "דוגמה: במקום התפילות" }));
     expect(example.mock.calls.map((c) => c[0])).toEqual(["board", "panel"]);
   });

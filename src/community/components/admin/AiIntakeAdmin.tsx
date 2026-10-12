@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Check, KeyRound, Loader2, Mic, MicOff, Sparkles, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@community/integrations/supabase/client";
 import { communityId } from "@/community/lib/community";
 import { useMinyanCategories, useMinyanim, DAYS_HE, PRAYERS } from "@community/lib/data";
@@ -116,7 +117,8 @@ function newRecognition(): Recognition | null {
 }
 
 const on = <T,>(list: T[]): Picked<T>[] => list.map((x) => ({ ...x, _on: true }));
-const input = "h-8 rounded-md border bg-background px-2 text-sm";
+// One look for every plain field and list here, the same as the other admin forms.
+const input = "h-9 rounded-md border bg-background px-2 text-sm";
 
 export function AiIntakeAdmin() {
   const qc = useQueryClient();
@@ -279,7 +281,7 @@ export function AiIntakeAdmin() {
         if (error) {
           const ctx = (error as { context?: Response }).context;
           const detail = ctx ? await ctx.json().catch(() => null) : null;
-          throw new Error(detail?.error ?? "העוזר עוד לא הופעל בשרת. אפשר להכניס מפתח Claude אישי בהגדרות העוזר.");
+          throw new Error(detail?.error ?? "העוזר עוד לא הופעל בשרת. אפשר להכניס מפתח אישי בהגדרות העוזר.");
         }
         p = (data as { proposal: Proposal }).proposal;
       }
@@ -444,7 +446,7 @@ export function AiIntakeAdmin() {
 
         <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm" data-testid="ai-personal-key">
           <KeyRound className="size-4" />
-          <span className="font-medium">מפתח Claude</span>
+          <span className="font-medium">המפתח של העוזר</span>
           <span className="text-xs text-muted-foreground">
             {accountKey
               ? `שמור בחשבון · ${maskKey(accountKey)}`
@@ -560,12 +562,13 @@ export function AiIntakeAdmin() {
                       <option value="relative">יחסית לזמן</option>
                     </select>
                     {m.time_mode === "fixed" ? (
-                      <input aria-label="שעה" type="time" value={m.fixed_time ?? ""} onChange={(e) => set({ fixed_time: e.target.value })} className={input} />
+                      <input aria-label="שעה" type="time" dir="ltr" value={m.fixed_time ?? ""} onChange={(e) => set({ fixed_time: e.target.value })} className={input} />
                     ) : (
                       <>
                         <input
                           aria-label="דקות"
                           type="number"
+                          dir="ltr"
                           value={Math.abs(m.offset_minutes)}
                           onChange={(e) => set({ offset_minutes: Math.sign(m.offset_minutes || -1) * Math.abs(Number(e.target.value)) })}
                           className={`${input} w-16`}
@@ -602,12 +605,12 @@ export function AiIntakeAdmin() {
                 return (
                   <Row key={i} on={o._on} onToggle={(v) => set({ _on: v })} reason={o.reason}>
                     <span className="text-sm">{minyanName(o.minyan_id)}</span>
-                    <input aria-label="תאריך" type="date" value={o.on_date} onChange={(e) => set({ on_date: e.target.value })} className={input} />
-                    <label className="flex items-center gap-1 text-sm">
-                      <input type="checkbox" checked={o.cancelled} onChange={(e) => set({ cancelled: e.target.checked })} /> מבוטל
+                    <input aria-label="תאריך" type="date" dir="ltr" value={o.on_date} onChange={(e) => set({ on_date: e.target.value })} className={input} />
+                    <label className="flex items-center gap-1.5 text-sm">
+                      <Switch checked={o.cancelled} onCheckedChange={(cancelled) => set({ cancelled })} aria-label="אין מניין ביום הזה" /> מבוטל
                     </label>
                     {!o.cancelled && (
-                      <input aria-label="שעה" type="time" value={o.at_time ?? ""} onChange={(e) => set({ at_time: e.target.value })} className={input} />
+                      <input aria-label="שעה" type="time" dir="ltr" value={o.at_time ?? ""} onChange={(e) => set({ at_time: e.target.value })} className={input} />
                     )}
                   </Row>
                 );
@@ -633,7 +636,7 @@ export function AiIntakeAdmin() {
                     <textarea aria-label="תוכן" value={a.body} onChange={(e) => set({ body: e.target.value })} rows={2} className="w-full rounded-md border bg-background p-2 text-sm" />
                     <label className="flex items-center gap-1 text-xs">
                       עד
-                      <input type="date" value={a.expires_at ?? ""} onChange={(e) => set({ expires_at: e.target.value || null })} className={input} />
+                      <input type="date" dir="ltr" value={a.expires_at ?? ""} onChange={(e) => set({ expires_at: e.target.value || null })} className={input} />
                     </label>
                   </Row>
                 );
@@ -722,7 +725,7 @@ function Row({
         {children}
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        {low ? "⚠️ לא בטוח — כדאי לבדוק. " : ""}
+        {low ? "⚠️ לא בטוח - כדאי לבדוק. " : ""}
         {reason}
       </p>
     </div>

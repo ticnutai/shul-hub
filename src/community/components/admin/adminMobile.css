@@ -13,8 +13,10 @@
     font-size: 16px;
   }
 
-  .gabbai-admin button:not([role="switch"]),
-  .gabbai-quick-add button:not([role="switch"]) {
+  /* Not a switch or a checkbox: a Radix checkbox is a <button> too, and
+     stretched to 44px it turned into a tall empty box. */
+  .gabbai-admin button:not([role="switch"]):not([role="checkbox"]),
+  .gabbai-quick-add button:not([role="switch"]):not([role="checkbox"]) {
     min-height: 44px;
   }
 

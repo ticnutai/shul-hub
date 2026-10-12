@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useLiveDesign } from "@/lib/live-design";
 import { useSaveRow } from "@community/lib/admin";
+import { SettingsSaveBar, useUnsavedChangesGuard } from "@community/components/admin/HomeHeroSettings";
 import { useSettings, type Settings } from "@community/lib/data";
 import { readLogos } from "@community/lib/logos";
 import type { SettingsWithLogos } from "./SynagogueDetails";
@@ -119,7 +120,7 @@ function KarovimHeaderPreview({
         <img
           data-testid="karovim-logo-size-preview"
           src={logoSrc}
-          alt="תצוגה מקדימה של הלוגו — ניתן לגרירה"
+          alt="תצוגה מקדימה של הלוגו - אפשר לגרור"
           className="absolute z-10 touch-none select-none object-contain active:cursor-grabbing"
           draggable={false}
           onPointerDown={startDrag}
@@ -168,6 +169,15 @@ export function SiteHeaderSettings() {
     if (data) setForm(data as unknown as SettingsWithLogos);
   }, [data]);
 
+  // Only what this section owns: the header. The synagogue's own details are
+  // saved from its window under "בתי כנסת".
+  const ownKeys = Object.keys(form).filter(
+    (k) => k === "id" || k === "home_header_variant" || k === "header_logo" || k.startsWith("karovim_logo_"),
+  );
+  const stored = (data ?? {}) as Record<string, unknown>;
+  const changed = Boolean(data) && ownKeys.some((k) => form[k as keyof typeof form] !== stored[k]);
+  useUnsavedChangesGuard(changed);
+
   if (!data) return <p className="text-muted-foreground">טוען…</p>;
 
   const logos = readLogos((data as unknown as SettingsWithLogos).logos);
@@ -212,12 +222,7 @@ export function SiteHeaderSettings() {
       data-testid="site-header-settings"
       onSubmit={(e) => {
         e.preventDefault();
-        // Only what this section owns: the header. The synagogue's own
-        // details are saved from its window under "בתי כנסת".
-        const keys = Object.keys(form).filter(
-          (k) => k === "id" || k === "home_header_variant" || k === "header_logo" || k.startsWith("karovim_logo_"),
-        );
-        save.mutate(Object.fromEntries(keys.map((k) => [k, form[k as keyof typeof form]])));
+        save.mutate(Object.fromEntries(ownKeys.map((k) => [k, form[k as keyof typeof form]])));
       }}
     >
       <div>
@@ -310,9 +315,11 @@ export function SiteHeaderSettings() {
           <KarovimHeaderPreview form={form as never} setForm={setForm as never} logoSrc={logoSrc} />
         </section>
       )}
-      <Button type="submit" disabled={save.isPending}>
-        שמירת הכותרת
-      </Button>
+      <SettingsSaveBar
+        changed={changed}
+        pending={save.isPending}
+        onReset={() => setForm(data as unknown as SettingsWithLogos)}
+      />
     </form>
   );
 }

@@ -74,7 +74,7 @@ export function FigmaImport({
       apply(guessed, themeName);
       toast.success(`נמצאו ${found.length} צבעים בקובץ`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "לא הצלחנו לקרוא את הקובץ");
+      toast.error(e instanceof Error ? e.message : "קריאת הקובץ נכשלה");
     }
   };
 
@@ -137,7 +137,7 @@ export function FigmaImport({
           }`}
         >
           <Upload className="size-5 text-muted-foreground" />
-          <span className="text-sm font-medium">גררו לכאן קובץ JSON מפיגמה</span>
+          <span className="text-sm font-medium">גררו לכאן את קובץ הצבעים שייצאתם מפיגמה</span>
           <span className="text-xs text-muted-foreground">או לחצו לבחירת קובץ</span>
         </button>
         <input
@@ -153,9 +153,9 @@ export function FigmaImport({
           }}
         />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          בפיגמה: לפתוח את לוח המשתנים (Variables) ← <span dir="ltr">Export</span> ל-JSON, או
-          להשתמש בתוסף חינמי כמו <span dir="ltr">Design Tokens</span>. אין צורך בחשבון, בטוקן או
-          בחיבור לאינטרנט — הקובץ נקרא כאן בדפדפן.
+          בפיגמה: פותחים את לוח המשתנים (בתפריט של פיגמה הוא נקרא <span dir="ltr">Variables</span>) ובוחרים
+          ייצוא לקובץ נתונים (סיומת json), או משתמשים בתוסף חינמי לייצוא צבעים. אין צורך בחשבון, במפתח
+          גישה או בחיבור לאינטרנט - הקובץ נקרא כאן בדפדפן.
         </p>
       </div>
     );
@@ -174,7 +174,7 @@ export function FigmaImport({
           aria-label="שם הצבעים"
           className="h-8"
         />
-        <Button type="button" variant="ghost" size="icon" className="size-8" aria-label="ביטול הייבוא" onClick={cancel}>
+        <Button type="button" variant="ghost" size="icon" className="size-8" aria-label="ביטול הייבוא" title="ביטול הייבוא - חזרה לצבעים הקודמים" onClick={cancel}>
           <X className="size-4" />
         </Button>
       </div>
@@ -208,7 +208,7 @@ export function FigmaImport({
               onChange={(e) => setRole(role, e.target.value || null)}
               className="h-8 min-w-0 flex-1 rounded-md border bg-background px-2"
             >
-              <option value="">— כברירת המחדל —</option>
+              <option value="">כברירת המחדל</option>
               {colours.map((c) => (
                 <option key={c.name} value={c.value}>
                   {c.name}

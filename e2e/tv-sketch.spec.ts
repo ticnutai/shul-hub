@@ -100,7 +100,7 @@ test("the keyboard moves and sizes a block; an arrangement is kept as a kit and 
   await expect(status).toContainText("הסידור נשמר בשם «שלוש בשורה»");
   await page.getByRole("button", { name: "סידור אוטומטי" }).click();
   expect(await rowOf("shiurim")).toBe(2);
-  await page.getByTestId("layout-kits").getByRole("button", { name: /שלוש בשורה/ }).click();
+  await page.getByTestId("layout-kits").getByRole("button", { name: /^שלוש בשורה/ }).click();
   expect(await rowOf("shiurim")).toBe(1);
   await expect(status).toContainText("הוחל הסידור «שלוש בשורה»");
 

@@ -5,10 +5,12 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Minus, Plus, RotateCcw } from "lucide-react";
+import { Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, RotateCcw } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TvConfig } from "@/tv/config";
+import type { ElementBinding } from "@/tv/elements";
 import { isSafeCssValue } from "@/tv/themes";
 import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
 import { ColorPick } from "./ColorPick";
@@ -46,7 +48,7 @@ export const LAYOUT_CHOICES: Array<{
   {
     id: "dashboard",
     name: "לוח מלא",
-    hint: "הכל בבת אחת, בלי החלפות: תפילות, שעון, זמנים, הודעות ושיעורים",
+    hint: "הכול בבת אחת, בלי החלפות: תפילות, שעון, זמנים, הודעות ושיעורים",
     sketch: (
       <>
         <i className="col-span-3 h-2 rounded-sm bg-current opacity-60" />
@@ -75,7 +77,12 @@ export const LAYOUT_CHOICES: Array<{
       </>
     ),
   },
-  { id: 'composition', name: 'ערכה מחלקים', hint: 'גרפיקה מפורטת, טקסט ושעונים כשכבות עצמאיות. בחרו ערכה מקורית בלשונית עיצוב.', sketch: <i className="col-span-3 row-span-3 rounded border-2 border-current" /> },
+  {
+    id: "composition",
+    name: "ערכה מחלקים",
+    hint: "גרפיקה מפורטת, טקסט ושעונים כחלקים עצמאיים. בוחרים ערכה בלשונית עיצוב.",
+    sketch: <i className="col-span-3 row-span-3 rounded border-2 border-current" />,
+  },
   // No painted template: a look is built from parts (backgrounds, boxes and
   // frames, text), and a painted board that arrives is rebuilt from them
   // (config.normalizeTvConfig). The medallion is its arrangement in frames.
@@ -93,7 +100,7 @@ export function Section({ title, hint, children, id }: { title: string; hint?: s
   return (
     <section id={id} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
       <h3 className="text-base font-semibold">{title}</h3>
-      {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
+      {hint && <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p>}
       <div className="mt-3 space-y-3">{children}</div>
     </section>
   );
@@ -125,7 +132,7 @@ export function CopyBoxLook({
         aria-label="העתקה אל"
         value={to}
         onChange={(e) => setTo(e.target.value)}
-        className="h-8 rounded-md border bg-background px-2 text-xs"
+        className={SELECT_CLASS}
       >
         <option value="all">כל שאר התיבות</option>
         {others.map((id) => (
@@ -226,7 +233,9 @@ export function Stepper({
   label: string;
   format?: (v: number) => string;
 }) {
-  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v / step) * step));
+  // Kept to a thousandth (no float dust), not snapped to the step: a size of 2.3 grows to 2.55, not 2.5.
+  const clamp = (v: number) => Math.min(max, Math.max(min, Math.round(v * 1000) / 1000));
+  const [draft, setDraft] = useState<string | null>(null);
   return (
     <div
       className="inline-flex items-center rounded-md border bg-background"
@@ -244,26 +253,47 @@ export function Stepper({
       >
         <Minus className="size-3.5" />
       </Button>
-      <span
-        className="min-w-14 px-1 text-center text-sm tabular-nums"
-        tabIndex={0}
+      {/* Typed into as well as stepped: a page of an hour was 360 clicks of +10. While
+          typing, the number alone; otherwise as it is read ("30 שניות"). An empty or
+          wrong entry leaves the value as it was; one out of range is brought into it. */}
+      <input
+        type="text"
+        inputMode="decimal"
+        dir="ltr"
+        className="w-16 bg-transparent px-1 text-center text-sm tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-primary"
         role="spinbutton"
         aria-label={label}
         aria-valuenow={value}
         aria-valuemin={min}
         aria-valuemax={max}
+        value={draft ?? format(value)}
+        onFocus={(e) => {
+          setDraft(String(value));
+          requestAnimationFrame(() => e.target.select());
+        }}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          const n = Number((draft ?? "").replace(",", "."));
+          if (draft !== null && draft.trim() !== "" && Number.isFinite(n) && n !== value) onChange(clamp(n));
+          setDraft(null);
+        }}
         onKeyDown={(e) => {
-          if (e.key === "ArrowUp") {
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          } else if (e.key === "Escape") {
+            setDraft(null);
+            requestAnimationFrame(() => (e.target as HTMLInputElement).blur());
+          } else if (e.key === "ArrowUp") {
             e.preventDefault();
+            setDraft(null);
             onChange(clamp(value + step));
           } else if (e.key === "ArrowDown") {
             e.preventDefault();
+            setDraft(null);
             onChange(clamp(value - step));
           }
         }}
-      >
-        {format(value)}
-      </span>
+      />
       <Button
         type="button"
         variant="ghost"
@@ -298,39 +328,338 @@ export function ColorField({
   useEffect(() => setText(value), [value]);
   const isHex = /^#[0-9a-f]{6}$/i.test(value);
   const valid = isSafeCssValue(text);
+  // The one colour row: its name, its swatch (and here its code, for a colour with transparency), and the way back.
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="min-w-0 flex-1">{label}</span>
       {isHex ? (
         <ColorPick label={label} value={value} onChange={onChange} />
       ) : (
-        <span title="ערך עם שקיפות - עריכה בטקסט" className="size-9 shrink-0 rounded border opacity-40" style={{ background: value }} aria-hidden />
+        <span title="ערך עם שקיפות - עריכה בקוד" className="h-8 w-11 shrink-0 rounded border-2 opacity-60" style={{ background: value }} aria-hidden />
       )}
-      <div className="min-w-0 flex-1">
-        <div className="text-sm">{label}</div>
-        <Input
-          dir="ltr"
-          value={text}
-          aria-label={`${label} (ערך)`}
-          aria-invalid={!valid}
-          className={`h-7 font-mono text-xs ${valid ? "" : "border-destructive"}`}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (isSafeCssValue(e.target.value)) onChange(e.target.value.trim());
-          }}
-        />
-      </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-8 shrink-0"
-        aria-label={`החזרת ${label} לצבע הבסיס`}
+      <Input
+        dir="ltr"
+        value={text}
+        aria-label={`${label} (ערך)`}
+        aria-invalid={!valid}
+        className={`h-8 w-28 font-mono text-xs ${valid ? "" : "border-destructive"}`}
+        onChange={(e) => {
+          setText(e.target.value);
+          if (isSafeCssValue(e.target.value)) onChange(e.target.value.trim());
+        }}
+      />
+      <ResetLink
+        label="כמו הבסיס"
+        ariaLabel={`החזרת ${label} לצבע הבסיס`}
         title={`צבע הבסיס: ${themeValue}`}
         disabled={!overridden}
         onClick={onReset}
-      >
-        <RotateCcw className="size-3.5" />
-      </Button>
+      />
     </div>
   );
 }
+
+/* ------------------------------------------------- one look per control -- */
+
+/** Every select in the editor: one height, one border, one size of letters. */
+export const SELECT_CLASS = "h-8 rounded-md border bg-background px-2 text-sm";
+
+/** The small "כמו …" link beside a colour or a value: back to what it follows. */
+function ResetLink({
+  label,
+  onClick,
+  disabled,
+  title,
+  ariaLabel,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  title?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      aria-label={ariaLabel}
+      className="shrink-0 text-xs text-primary underline-offset-2 hover:underline disabled:pointer-events-none disabled:text-muted-foreground disabled:opacity-50"
+    >
+      {label}
+    </button>
+  );
+}
+
+/**
+ * A colour, the one way it is shown everywhere: its name, its swatch, and
+ * when it follows something else, a "כמו …" link back to that.
+ */
+export function ColourRow({
+  label,
+  value,
+  onChange,
+  reset,
+}: {
+  label: string;
+  value: string;
+  onChange: (hex: string) => void;
+  reset?: { label: string; onClick: () => void; disabled?: boolean };
+}) {
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="min-w-0">{label}</span>
+      <span className="flex items-center gap-2">
+        <ColorPick label={label} value={value} onChange={onChange} />
+        {reset && <ResetLink label={reset.label} onClick={reset.onClick} disabled={reset.disabled} />}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A colour that may be unset - it follows something else until chosen. Unset,
+ * its swatch is an empty dashed box that puts a suggested colour on: a colour
+ * box already showing a colour cannot report that same colour being picked,
+ * so a first choice made on it was silently lost.
+ */
+export function ColourChoice({
+  label,
+  value,
+  fallback,
+  unsetLabel,
+  onChange,
+}: {
+  label: string;
+  value: string | null | undefined;
+  fallback: string;
+  /** The way back, as a "כמו …" ("כמו כל הלוח", "בלי קו"). */
+  unsetLabel: string;
+  onChange: (v: string | null) => void;
+}) {
+  const hex = value && /^#[0-9a-f]{6}$/i.test(value) ? value : null;
+  if (value)
+    return <ColourRow label={label} value={hex ?? fallback} onChange={(v) => onChange(v)} reset={{ label: unsetLabel, onClick: () => onChange(null) }} />;
+  return (
+    <div className="flex items-center justify-between gap-2 text-xs">
+      <span className="min-w-0">{label}</span>
+      <span className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={`הוספת ${label}`}
+          title={`הוספת ${label}`}
+          onClick={() => onChange(fallback)}
+          className="grid h-8 w-11 shrink-0 place-items-center rounded border-2 border-dashed text-muted-foreground hover:border-primary hover:text-primary"
+        >
+          <Plus className="size-3.5" aria-hidden />
+        </button>
+        <span className="text-xs text-muted-foreground">{unsetLabel}</span>
+      </span>
+    </div>
+  );
+}
+
+/**
+ * A number on a slider, the one way: its name and its value above, the slider
+ * under them. With `auto`, the value can also be left to the board ("רגיל"):
+ * the slider rests until "רגיל" is let go.
+ */
+export function Range({
+  label,
+  value,
+  min,
+  max,
+  step,
+  show = (v) => String(v),
+  onChange,
+  hint,
+  auto,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  show?: (v: number) => string;
+  onChange: (v: number) => void;
+  hint?: string;
+  auto?: { isDefault: boolean; onToggle: () => void };
+}) {
+  const resting = Boolean(auto?.isDefault);
+  return (
+    <div className="space-y-1 text-xs" title={hint}>
+      <div className="flex items-center justify-between gap-2">
+        <span>{label}</span>
+        <span className="flex items-center gap-2">
+          <span className="tabular-nums text-muted-foreground">{resting ? "רגיל" : show(value)}</span>
+          {auto && (
+            <button
+              type="button"
+              aria-pressed={resting}
+              title={resting ? "כרגע לפי הלוח - לחיצה מאפשרת לכוונן" : "חזרה למה שהלוח קובע"}
+              onClick={auto.onToggle}
+              className={`h-6 rounded-md border px-2 text-[11px] ${resting ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
+            >
+              רגיל
+            </button>
+          )}
+        </span>
+      </div>
+      <input
+        type="range"
+        aria-label={label}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={resting}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-primary disabled:opacity-40"
+      />
+    </div>
+  );
+}
+
+/** A choice of a few, side by side - the one way, wherever there is one. */
+export function Segments<T extends string>({
+  value,
+  onChange,
+  options,
+  label,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: ReadonlyArray<{ id: T; name: string; hint?: string }>;
+  label: string;
+}) {
+  return (
+    <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="radio"
+          aria-checked={value === o.id}
+          title={o.hint}
+          onClick={() => onChange(o.id)}
+          className={`h-8 rounded-md border px-3 text-xs ${
+            value === o.id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"
+          }`}
+        >
+          {o.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** On or off, the one way: a switch and what it does. */
+export function SwitchRow({
+  label,
+  checked,
+  onChange,
+  hint,
+  ariaLabel,
+}: {
+  label: ReactNode;
+  checked: boolean;
+  onChange: (on: boolean) => void;
+  hint?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-center gap-2 text-sm" title={hint}>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={ariaLabel} />
+      <span>{label}</span>
+    </label>
+  );
+}
+
+/** "חזרה ל…": every way back to the default looks the same. */
+export function ResetButton({ children, onClick, title }: { children: ReactNode; onClick: () => void; title?: string }) {
+  return (
+    <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" title={title} onClick={onClick}>
+      <RotateCcw className="size-3.5" aria-hidden /> {children}
+    </Button>
+  );
+}
+
+/**
+ * Keeping something under a name, the one way: the name, "שמירה", "ביטול".
+ * A name already taken is asked about by the caller (confirmAction), then replaced.
+ */
+export function NameForm({
+  label,
+  value,
+  onChange,
+  onSave,
+  onCancel,
+  placeholder,
+  maxLength = 40,
+  hint,
+  testId,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+  placeholder?: string;
+  maxLength?: number;
+  hint?: ReactNode;
+  testId?: string;
+}) {
+  return (
+    <form
+      className="flex flex-wrap items-center gap-2"
+      data-testid={testId}
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSave();
+      }}
+    >
+      <Input
+        autoFocus
+        aria-label={label}
+        value={value}
+        maxLength={maxLength}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-8 min-w-0 flex-1 basis-40 text-sm"
+      />
+      <Button type="submit" size="sm" className="h-8" disabled={!value.trim()}>
+        שמירה
+      </Button>
+      <Button type="button" size="sm" variant="ghost" className="h-8" onClick={onCancel}>
+        ביטול
+      </Button>
+      {hint && <p className="w-full text-[11px] text-muted-foreground">{hint}</p>}
+    </form>
+  );
+}
+
+/* ------------------------------------------------ the parts of a board -- */
+
+/** Right, middle, left: the one group of side buttons, in the list of parts and in the layout tab. */
+export const SIDE_CHOICES = [
+  ["right", "ימין", PanelRight],
+  ["center", "אמצע", PanelsLeftRight],
+  ["left", "שמאל", PanelLeft],
+] as const;
+export const SIDE_BUTTON =
+  "grid size-8 place-items-center rounded-md border border-transparent text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40";
+export const sideButtonClass = (on: boolean) =>
+  `grid size-8 place-items-center rounded-md border ${on ? "border-primary bg-primary/10 text-primary" : "border-transparent text-muted-foreground"} hover:border-primary hover:text-foreground disabled:opacity-40`;
+
+/**
+ * "כשהתוכן לא נכנס", in the same words wherever it is asked: a notice
+ * shrinks, a list turns its pages - or either moves, as the board's own
+ * boxes do (the layout tab's "גלילה עם עצירות", "וילון רציף").
+ */
+export const FIT_CHOICES = (binding: ElementBinding) =>
+  [
+    ["", binding === "announcements" || binding === "footer" ? "הקטנה כדי שייכנס" : "דפדוף בין עמודים"],
+    ["pause", "גלילה עם עצירות"],
+    ["loop", "וילון רציף"],
+  ] as const;

@@ -135,7 +135,7 @@ export function BlankBoardStarter({
         >
           יצירת לוח ריק עם מה שבחרתי
         </Button>
-        <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
           ביטול
         </Button>
       </div>

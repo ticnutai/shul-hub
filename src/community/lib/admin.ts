@@ -30,7 +30,7 @@ export function useSaveRow(table: TableName, queryKey: string) {
     },
     onSuccess: async () => {
       await qc.invalidateQueries({ queryKey: [queryKey] });
-      toast.success("נשמר בהצלחה");
+      toast.success("נשמר");
     },
     onError: (e: Error) => toast.error(hebrewError(e, "השמירה נכשלה")),
   });

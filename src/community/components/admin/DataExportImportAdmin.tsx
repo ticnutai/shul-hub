@@ -96,14 +96,14 @@ export function DataExportImportAdmin() {
         <div>
           <h2 className="font-semibold">ייצוא נתונים</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            הורדת כל תוכן האתר — הגדרות, מניינים, מודעות, שיעורים, חברותות, בקשות חברותא והודעות —
+            הורדת כל תוכן האתר - הגדרות, מניינים, מודעות, שיעורים, חברותות, בקשות חברותא והודעות -
             לקובץ אחד. ניתן להשתמש כגיבוי או לעריכה חיצונית לפני ייבוא חוזר.
           </p>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => handleExport("excel")} disabled={exporting !== null}>
             <FileSpreadsheet className="size-4" />
-            {exporting === "excel" ? "מייצא…" : "ייצוא ל-Excel"}
+            {exporting === "excel" ? "מייצא…" : "ייצוא לגיליון אלקטרוני"}
           </Button>
           <Button
             variant="outline"
@@ -111,7 +111,7 @@ export function DataExportImportAdmin() {
             disabled={exporting !== null}
           >
             <FileJson className="size-4" />
-            {exporting === "json" ? "מייצא…" : "ייצוא ל-JSON"}
+            {exporting === "json" ? "מייצא…" : "ייצוא לקובץ גיבוי"}
           </Button>
         </div>
       </div>
@@ -120,10 +120,9 @@ export function DataExportImportAdmin() {
         <div>
           <h2 className="font-semibold">ייבוא נתונים</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            העלאת קובץ Excel או JSON שיוצא מהאתר (או שנערך לפי אותו מבנה). רשומות עם{" "}
-            <code className="rounded bg-muted px-1">id</code> קיים יעודכנו; רשומות חדשות ללא{" "}
-            <code className="rounded bg-muted px-1">id</code> ידלגו. אין מחיקה או יצירה של רשומות
-            חדשות — הייבוא מעדכן וממזג רשומות מזוהות בלבד.
+            העלאת גיליון אלקטרוני או קובץ גיבוי שיוצאו מהאתר (או שנערכו לפי אותו מבנה). רשומות
+            שיש להן מזהה קיים יעודכנו; רשומות חדשות בלי מזהה ידלגו. אין מחיקה או יצירה של רשומות
+            חדשות - הייבוא מעדכן וממזג רשומות מזוהות בלבד.
           </p>
         </div>
         <div>
@@ -149,7 +148,7 @@ export function DataExportImportAdmin() {
           <DialogHeader>
             <DialogTitle>אישור ייבוא נתונים</DialogTitle>
             <DialogDescription>
-              בחר אילו טבלאות לייבא. הפעולה תעדכן ותמזג רשומות קיימות לפי מזהה בטבלאות הנבחרות בלבד.
+              בחרו אילו טבלאות לייבא. הפעולה תעדכן ותמזג רשומות קיימות לפי מזהה בטבלאות הנבחרות בלבד.
             </DialogDescription>
           </DialogHeader>
 

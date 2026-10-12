@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ImagePlus, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { confirmAction } from "@/components/ConfirmDialog";
 import type { TvConfig } from "@/tv/config";
 import { frameLabel, setFrameLook, type BoxShape, type FrameId } from "@/tv/frameLooks";
 import { DEFAULT_BACKGROUND_TUNE, DEFAULT_FRAME_STYLE, type BackgroundTune, type FrameStyle } from "@/tv/layers";
 import { isPictureFill } from "@/tv/layerCss";
 import { backdropUrl } from "@/tv/backdrops";
 import { FRAME_PICTURES, framePictureRef } from "@/tv/framePictures";
+import { FRAME_CHOICES } from "./tvChoices";
 import { THEME_VAR_LAYERS, TV_FONTS, isSafeGradient, type ThemeVar } from "@/tv/themes";
 import { HiddenShelf, TileRemove } from "./ReadyShelf";
 import { Folded, InnerCard, SubPart } from "./Parts";
@@ -26,13 +27,14 @@ import {
   type BackgroundKind,
   type SavedBackground,
 } from "@/tv/backgrounds";
-import { BoardFramePicker, FrameCorners, TitleStylePicker, shownShapes } from "./BoardLook";
+import { BoardFramePicker, FrameCorners, ShapePreview, TitleStylePicker, shownShapes } from "./BoardLook";
+import { GalleryGrid, GalleryTile, NoneTilePreview, TilePicture, UploadTile } from "./GalleryTile";
+import { ColourChoice, ColourRow, NameForm, Range, ResetButton, SELECT_CLASS, Segments } from "./editorParts";
 import { BOARD_FRAME_KNOBS, BOARD_FRAME_LIMITS, DEFAULT_BOARD_FRAME_TUNE, type BoardFrameTune } from "@/tv/boardFrame";
 import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
 import { uploadImages } from "./uploadImages";
-import { ColorPick } from "./ColorPick";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -59,118 +61,6 @@ export type LayerProps = {
 
 const frameOf = (target: string): FrameId | null =>
   target.startsWith("frame:") ? (target.slice(6) as FrameId) : null;
-
-function Range({
-  label,
-  value,
-  min,
-  max,
-  step,
-  show,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  step: number;
-  show: (v: number) => string;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="block text-xs">
-      <span className="flex justify-between">
-        <span>{label}</span>
-        <span className="tabular-nums text-muted-foreground">{show(value)}</span>
-      </span>
-      <input
-        type="range"
-        aria-label={label}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full"
-      />
-    </label>
-  );
-}
-
-/**
- * A colour that may be unset. Unset shows a one-tap "הוספה" with a suggested
- * colour: a colour box already showing a colour cannot report that same
- * colour being picked, so a first choice made on it was silently lost.
- */
-function ColourChoice({
-  label,
-  value,
-  fallback,
-  unsetLabel,
-  onChange,
-}: {
-  label: string;
-  value: string | null | undefined;
-  fallback: string;
-  unsetLabel: string;
-  onChange: (v: string | null) => void;
-}) {
-  const hex = value && /^#[0-9a-f]{6}$/i.test(value) ? value : null;
-  return (
-    <div className="flex items-center justify-between gap-2 text-xs">
-      <span>{label}</span>
-      {value ? (
-        <span className="flex items-center gap-1.5">
-          <ColorPick label={label} value={hex ?? fallback} onChange={(v) => onChange(v)} />
-          <button type="button" className="underline" onClick={() => onChange(null)}>
-            {unsetLabel}
-          </button>
-        </span>
-      ) : (
-        <button
-          type="button"
-          aria-label={`הוספת ${label}`}
-          className="inline-flex items-center gap-1 text-primary underline"
-          onClick={() => onChange(fallback)}
-        >
-          <span className="inline-block size-3.5 rounded-sm border" style={{ background: fallback }} />
-          הוספה
-        </button>
-      )}
-    </div>
-  );
-}
-
-function Segments<T extends string>({
-  value,
-  onChange,
-  options,
-  label,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: Array<{ id: T; name: string }>;
-  label: string;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={label}>
-      {options.map((o) => (
-        <button
-          key={o.id}
-          type="button"
-          role="radio"
-          aria-checked={value === o.id}
-          onClick={() => onChange(o.id)}
-          className={`h-8 rounded-md border px-3 text-xs ${
-            value === o.id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"
-          }`}
-        >
-          {o.name}
-        </button>
-      ))}
-    </div>
-  );
-}
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 const FLAT = /^linear-gradient\(180deg, (#[0-9a-f]{6}), \1\)$/i;
@@ -251,8 +141,8 @@ export function BackgroundLayer({
   );
 
   const [uploading, setUploading] = useState(false);
-  const upload = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const upload = async (files: File[]) => {
+    if (!files.length) return;
     setUploading(true);
     try {
       const urls = await uploadImages(files);
@@ -273,7 +163,7 @@ export function BackgroundLayer({
       });
       setSource("picture");
       apply(urls[0]!);
-      toast.success(urls.length > 1 ? `${urls.length} תמונות הועלו ונשמרו בגלריה` : "התמונה הועלתה ונשמרה בגלריה");
+      toast.success(urls.length > 1 ? `${urls.length} תמונות נשמרו בגלריה` : "התמונה נשמרה בגלריה");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
     } finally {
@@ -323,10 +213,7 @@ export function BackgroundLayer({
         <Segments label={onBoard ? "סוג הרקע של הלוח" : "סוג הרקע של התיבות"} value={source} onChange={(v) => setSource(v as Source)} options={sources} />
 
         {source === "colour" && (
-          <div className="flex flex-wrap items-center gap-2 text-xs">
-            <ColorPick label="צבע הרקע" value={flatNow ?? "#0b1628"} onChange={(v) => apply(onBoard ? flat(v) : v)} />
-            <span className="text-muted-foreground">צבע אחיד. לחיצה פותחת בוחר צבעים.</span>
-          </div>
+          <ColourRow label="צבע הרקע" value={flatNow ?? "#0b1628"} onChange={(v) => apply(onBoard ? flat(v) : v)} />
         )}
         {source === "gradient" && (
           <GradientStudio
@@ -363,9 +250,7 @@ export function BackgroundLayer({
           {tune.tint && (
             <Range label="עוצמת הצבע" value={tune.tintStrength} min={0.05} max={1} step={0.05} show={pct} onChange={(v) => setTune({ tintStrength: v })} />
           )}
-          <button type="button" className="text-xs underline" onClick={() => setTune(DEFAULT_BACKGROUND_TUNE)}>
-            איפוס הכוונון
-          </button>
+          <ResetButton onClick={() => setTune(DEFAULT_BACKGROUND_TUNE)}>חזרה לכוונון הרגיל</ResetButton>
         </InnerCard>
         </SubPart>
       ) : !picture ? (
@@ -389,10 +274,9 @@ export function BackgroundLayer({
       ) : null}
 
       {current && (
-        <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => apply(null)}>
-          <RotateCcw className="size-3.5" />
-          {onBoard ? "רקע הלוח לפי צבעי הבסיס" : frame ? `${frameLabel(frame, saved.customBoxes)}: רקע כמו כל התיבות` : "התיבות: הרקע הרגיל"}
-        </Button>
+        <ResetButton onClick={() => apply(null)}>
+          {onBoard ? "חזרה לצבעי הבסיס של הלוח" : frame ? `חזרה לרקע של כל התיבות (${frameLabel(frame, saved.customBoxes)})` : "חזרה לרקע הרגיל של התיבות"}
+        </ResetButton>
       )}
 
       {onBoard && (
@@ -421,7 +305,7 @@ const KIND_NAMES: Record<BackgroundKind, string> = { colour: "צבע שלי", gr
 function BackgroundTile({ b }: { b: Look }) {
   const t = tileOf(b);
   return (
-    <span className="relative block aspect-video w-full overflow-hidden bg-[#0b1628]" style={{ backgroundImage: t.fill ?? undefined }}>
+    <span className="absolute inset-0" style={{ backgroundImage: t.fill ?? undefined }}>
       {t.thumb && <img src={t.thumb} alt="" loading="lazy" decoding="async" className="absolute inset-0 size-full object-cover" />}
       {t.picture && t.overlay && <span className="absolute inset-0" style={{ background: t.overlay, opacity: t.strength }} />}
     </span>
@@ -452,13 +336,14 @@ function BackgroundGallery({
   look: Look;
   isOn: (b: SavedBackground) => boolean;
   onPick: (b: SavedBackground) => void;
-  onUpload: (files: FileList | null) => void;
+  onUpload: (files: File[]) => void;
   uploading: boolean;
 }) {
   const [filter, setFilter] = useState<GalleryFilter>("all");
   const [from, setFrom] = useState<string | null>(null);
-  const [name, setName] = useState("");
-  const all = galleryOf(saved);
+  const [name, setName] = useState<string | null>(null);
+  // The one worn stays in sight even when hidden: what is on the board is always marked.
+  const all = [...galleryOf(saved), ...hiddenBackgrounds(saved).filter(isOn)];
   const shown = all.filter((b) =>
     filter === "all" ? true : filter === "mine" ? saved.backgrounds.includes(b) : kindOf(b) === filter,
   );
@@ -470,104 +355,117 @@ function BackgroundGallery({
   const kept = all.some((b) => isOn(b) && (!b.id.startsWith("b_") || sameLook(b)));
   const changed = Boolean(mine && !sameLook(mine));
 
-  const keep = () => {
-    const clean = name.trim().slice(0, 40) || KIND_NAMES[kindOf(look)];
-    const id = newBackgroundId();
-    onEdit("bg-gallery:keep", (c) => ({ ...c, backgrounds: [{ id, name: clean, ...look }, ...c.backgrounds].slice(0, MAX_BACKGROUNDS) }));
-    setFrom(id);
-    setName("");
+  /** A name not yet taken, to start from: "צבע שלי 3". */
+  const freeName = () => {
+    const base = KIND_NAMES[kindOf(look)];
+    let i = saved.backgrounds.length + 1;
+    while (saved.backgrounds.some((b) => b.name === `${base} ${i}`)) i++;
+    return `${base} ${i}`;
+  };
+  const keep = async () => {
+    const clean = (name ?? "").trim().slice(0, 40) || KIND_NAMES[kindOf(look)];
+    // The same name: asked, then replaced - as everywhere a thing is kept under a name.
+    const same = saved.backgrounds.find((b) => b.name === clean);
+    if (same) {
+      const ok = await confirmAction({
+        title: `כבר יש רקע בשם „${clean}”`,
+        description: "להחליף אותו ברקע שעל הלוח עכשיו?",
+        confirmLabel: "החלפה",
+        destructive: false,
+      });
+      if (!ok) return;
+      onEdit("bg-gallery:update", (c) => ({ ...c, backgrounds: c.backgrounds.map((x) => (x.id === same.id ? { ...x, ...look } : x)) }));
+      setFrom(same.id);
+    } else {
+      const id = newBackgroundId();
+      onEdit("bg-gallery:keep", (c) => ({ ...c, backgrounds: [{ id, name: clean, ...look }, ...c.backgrounds].slice(0, MAX_BACKGROUNDS) }));
+      setFrom(id);
+    }
+    setName(null);
     toast.success(`"${clean}" נשמר בגלריה`);
+  };
+
+  const remove = async (b: SavedBackground, own: boolean) => {
+    if (own) {
+      const ok = await confirmAction({
+        title: `למחוק את „${b.name}” מהגלריה?`,
+        description: "לוח שמשתמש בו עכשיו לא ישתנה.",
+        confirmLabel: "מחיקה",
+      });
+      if (!ok) return;
+      onEdit("bg-gallery:delete", (c) => ({ ...c, backgrounds: c.backgrounds.filter((x) => x.id !== b.id) }));
+    } else onEdit("bg-gallery:hide", (c) => hideReady(c, "bg", b.id));
+    if (from === b.id) setFrom(null);
   };
 
   return (
     <div className="space-y-2" data-testid={`${testIds}background-gallery`}>
-      <div className="flex flex-wrap items-center gap-1.5">
-        {GALLERY_FILTERS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            aria-pressed={filter === f.id}
-            onClick={() => setFilter(f.id)}
-            className={`h-7 rounded-full border px-3 text-xs ${filter === f.id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
-          >
-            {f.name}
-            {f.id === "mine" && saved.backgrounds.length ? ` (${saved.backgrounds.length})` : ""}
-          </button>
-        ))}
-      </div>
-      <div className="grid max-h-80 grid-cols-3 gap-1.5 overflow-y-auto p-0.5 sm:grid-cols-5">
-        <label
-          className={`flex aspect-video cursor-pointer flex-col items-center justify-center gap-0.5 self-start rounded-md border border-dashed text-[11px] hover:border-primary ${uploading ? "opacity-60" : ""}`}
-          title="העלאת תמונה משלכם - נשמרת בגלריה"
-        >
-          <ImagePlus className="size-4" />
-          {uploading ? "מעלה…" : "העלאת תמונה"}
-          <input type="file" accept="image/*" multiple className="sr-only" disabled={uploading} onChange={(e) => onUpload(e.target.files)} />
-        </label>
+      <Segments
+        label="אילו רקעים להראות"
+        value={filter}
+        onChange={(v) => setFilter(v as GalleryFilter)}
+        options={GALLERY_FILTERS.map((f) => ({
+          id: f.id,
+          name: f.id === "mine" && saved.backgrounds.length ? `${f.name} (${saved.backgrounds.length})` : f.name,
+        }))}
+      />
+      <GalleryGrid scroll>
+        <UploadTile label="העלאת תמונה" multiple uploading={uploading} onFiles={onUpload} hint="העלאת תמונה משלכם - נשמרת בגלריה" />
         {shown.map((b) => {
-          const on = isOn(b);
           const own = b.id.startsWith("b_");
           return (
-            <div key={b.id} className="group relative">
-              <button
-                type="button"
-                aria-pressed={on}
-                aria-label={b.name}
-                title={b.name}
-                onClick={() => {
-                  onPick(b);
-                  setFrom(own ? b.id : null);
-                }}
-                className={`block w-full overflow-hidden rounded-md border text-start transition hover:ring-2 hover:ring-primary ${on ? "ring-2 ring-primary ring-offset-1" : ""}`}
-              >
-                <BackgroundTile b={b} />
-                <span className="block truncate bg-background/95 px-1.5 py-0.5 text-[11px]">{b.name}</span>
-              </button>
-              <TileRemove
-                name={b.name}
-                ready={!own}
-                onClick={() => {
-                  if (own) onEdit("bg-gallery:delete", (c) => ({ ...c, backgrounds: c.backgrounds.filter((x) => x.id !== b.id) }));
-                  else onEdit("bg-gallery:hide", (c) => hideReady(c, "bg", b.id));
-                  if (from === b.id) setFrom(null);
-                }}
-              />
-            </div>
+            <GalleryTile
+              key={b.id}
+              name={b.name}
+              on={isOn(b)}
+              onPick={() => {
+                onPick(b);
+                setFrom(own ? b.id : null);
+              }}
+              preview={<BackgroundTile b={b} />}
+              remove={{ ready: !own, onClick: () => void remove(b, own) }}
+            />
           );
         })}
-      </div>
+      </GalleryGrid>
       <HiddenShelf
         testId={`${testIds}background-hidden`}
         items={hiddenBackgrounds(saved).map((b) => ({ key: b.id, name: b.name }))}
         onRestore={(id) => onEdit("bg-gallery:show", (c) => showReady(c, "bg", id))}
       />
       {(!kept || changed) && Boolean(look.fill || look.picture) && (
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/50 p-2 text-xs" data-testid={`${testIds}background-keep`}>
-          <span>הרקע שעל הלוח עכשיו {changed && mine ? `שונה מ"${mine.name}"` : "לא שמור בגלריה"}:</span>
-          {changed && mine && (
-            <Button
-              type="button"
-              size="sm"
-              className="h-7"
-              onClick={() => {
-                onEdit("bg-gallery:update", (c) => ({ ...c, backgrounds: c.backgrounds.map((x) => (x.id === mine.id ? { ...x, ...look } : x)) }));
-                toast.success(`"${mine.name}" עודכן`);
-              }}
-            >
-              עדכון "{mine.name}"
-            </Button>
+        <div className="space-y-2 rounded-md bg-muted/50 p-2 text-xs" data-testid={`${testIds}background-keep`}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span>הרקע שעל הלוח עכשיו {changed && mine ? `שונה מ"${mine.name}"` : "לא שמור בגלריה"}:</span>
+            {changed && mine && (
+              <Button
+                type="button"
+                size="sm"
+                className="h-8"
+                onClick={() => {
+                  onEdit("bg-gallery:update", (c) => ({ ...c, backgrounds: c.backgrounds.map((x) => (x.id === mine.id ? { ...x, ...look } : x)) }));
+                  toast.success(`"${mine.name}" עודכן`);
+                }}
+              >
+                עדכון "{mine.name}"
+              </Button>
+            )}
+            {name === null && (
+              <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setName(freeName())}>
+                שמירה כרקע חדש
+              </Button>
+            )}
+          </div>
+          {name !== null && (
+            <NameForm
+              label="שם לרקע בגלריה"
+              value={name}
+              placeholder={KIND_NAMES[kindOf(look)]}
+              onChange={setName}
+              onSave={() => void keep()}
+              onCancel={() => setName(null)}
+            />
           )}
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder={KIND_NAMES[kindOf(look)]}
-            maxLength={40}
-            aria-label="שם לרקע בגלריה"
-            className="h-7 w-36 rounded-md border bg-background px-2"
-          />
-          <Button type="button" size="sm" variant="outline" className="h-7" onClick={keep}>
-            שמירה כרקע חדש
-          </Button>
         </div>
       )}
     </div>
@@ -602,26 +500,12 @@ function PictureLayer({ saved, onEdit }: { saved: TvConfig; onEdit: Edit }) {
           { id: "gradient", name: "מעבר צבעים" },
         ]}
       />
-      {mode === "colour" && (
-        <label className="flex items-center gap-2 text-xs">
-          צבע השכבה
-          <ColorPick label="צבע השכבה" value={hex} onChange={set} />
-        </label>
-      )}
+      {mode === "colour" && <ColourRow label="צבע השכבה" value={hex} onChange={set} />}
       {mode === "gradient" && (
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <label className="flex items-center gap-1">
-            מ־
-            <ColorPick label="צבע ראשון של השכבה" value={a} onChange={(v) => set(gradient(angle, v, b))} />
-          </label>
-          <label className="flex items-center gap-1">
-            אל
-            <ColorPick label="צבע שני של השכבה" value={b} onChange={(v) => set(gradient(angle, a, v))} />
-          </label>
-          <label className="flex items-center gap-1">
-            כיוון
-            <input type="range" aria-label="כיוון השכבה" min={0} max={360} step={5} value={angle} onChange={(e) => set(gradient(Number(e.target.value), a, b))} className="w-24" />
-          </label>
+        <div className="space-y-2">
+          <ColourRow label="צבע ראשון של השכבה" value={a} onChange={(v) => set(gradient(angle, v, b))} />
+          <ColourRow label="צבע שני של השכבה" value={b} onChange={(v) => set(gradient(angle, a, v))} />
+          <Range label="כיוון השכבה" value={angle} min={0} max={360} step={5} show={(v) => `${v}°`} onChange={(v) => set(gradient(v, a, b))} />
         </div>
       )}
       <Range
@@ -654,28 +538,20 @@ function BoardFrameControls({ config, onEdit }: { config: TvConfig; onEdit: Laye
   const L = BOARD_FRAME_LIMITS;
   const u = (v: number) => `${v}`;
   return (
-    <div className="space-y-2 rounded-md border p-2" data-testid="board-frame-controls">
-      <div className="text-xs font-medium">מיקום וגודל</div>
+    <InnerCard label="מיקום וגודל" testId="board-frame-controls">
       {knobs.sides && (
-        <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label="באיזה צד">
-          <span>באיזה צד:</span>
-          {(
-            [
-              ["both", "שני הצדדים"],
-              ["right", "רק ימין"],
-              ["left", "רק שמאל"],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={t.sides === id}
-              onClick={() => set("sides", { sides: id })}
-              className={`h-7 rounded-md border px-2 ${t.sides === id ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
-            >
-              {label}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span>באיזה צד</span>
+          <Segments
+            label="באיזה צד"
+            value={t.sides}
+            onChange={(id) => set("sides", { sides: id })}
+            options={[
+              { id: "both", name: "שני הצדדים" },
+              { id: "right", name: "רק ימין" },
+              { id: "left", name: "רק שמאל" },
+            ]}
+          />
         </div>
       )}
       <Range label={knobs.size} value={t.size} min={L.size[0]} max={L.size[1]} step={0.05} show={pct} onChange={(v) => set("size", { size: v })} />
@@ -684,10 +560,8 @@ function BoardFrameControls({ config, onEdit }: { config: TvConfig; onEdit: Laye
       )}
       {knobs.x && <Range label={knobs.x} value={t.x} min={L.x[0]} max={L.x[1]} step={0.5} show={u} onChange={(v) => set("x", { x: v })} />}
       {knobs.y && <Range label={knobs.y} value={t.y} min={L.y[0]} max={L.y[1]} step={0.5} show={u} onChange={(v) => set("y", { y: v })} />}
-      <button type="button" className="text-xs underline" onClick={() => set("reset", { ...DEFAULT_BOARD_FRAME_TUNE })}>
-        חזרה לגודל ולמקום הרגילים
-      </button>
-    </div>
+      <ResetButton onClick={() => set("reset", { ...DEFAULT_BOARD_FRAME_TUNE })}>חזרה לגודל ולמקום הרגילים</ResetButton>
+    </InnerCard>
   );
 }
 
@@ -730,8 +604,8 @@ export function FramesLayer(
   const wearing = frame ? own?.image ?? null : fs.image;
 
   const [uploading, setUploading] = useState(false);
-  const uploadFrame = async (files: FileList | null) => {
-    if (!files?.length) return;
+  const uploadFrame = async (files: File[]) => {
+    if (!files.length) return;
     setUploading(true);
     try {
       const urls = await uploadImages(files);
@@ -739,7 +613,7 @@ export function FramesLayer(
       // Kept in the gallery of frames, whether a box wears it or not.
       onEdit("frame-uploads", (c) => ({ ...c, frameUploads: [...new Set([...urls, ...c.frameUploads])].slice(0, 40) }));
       wearPicture(urls[0]!);
-      toast.success("המסגרת הועלתה ונשמרה בגלריה");
+      toast.success("המסגרת נשמרה בגלריה");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "ההעלאה נכשלה");
     } finally {
@@ -748,7 +622,8 @@ export function FramesLayer(
   };
 
   const pictures = [
-    ...FRAME_PICTURES.filter((f) => !isHiddenReady(saved, "frame", framePictureRef(f.id))).map((f) => ({
+    // The worn one stays in sight even when hidden: what is on the board is always marked.
+    ...FRAME_PICTURES.filter((f) => framePictureRef(f.id) === wearing || !isHiddenReady(saved, "frame", framePictureRef(f.id))).map((f) => ({
       ref: framePictureRef(f.id),
       name: f.name,
       url: f.url,
@@ -764,26 +639,32 @@ export function FramesLayer(
       <Part title="צורה ופינות" testId="box-shape">
         {frame ? (
           // The same tiles, names and order as for every box (FRAME_CHOICES); "רגיל" is the plain round corner.
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6" data-testid="box-shapes">
-            {[
-              { id: null as BoxShape | null, name: "כמו כולן", hint: "הצורה של כל התיבות", css: { borderStyle: "dashed", borderRadius: 6 } as CSSProperties },
-              ...shownShapes(saved, own?.shape === "round" ? "auto" : own?.shape).map((c) => ({ id: (c.id === "auto" ? "round" : c.id) as BoxShape | null, name: c.name, hint: c.hint, css: c.css })),
-            ].map((choice) => {
-              const on = (own?.shape ?? null) === choice.id;
-              return (
-                <button
-                  key={choice.id ?? "all"}
-                  type="button"
-                  aria-pressed={on}
-                  title={choice.hint}
-                  onClick={() => setOwn("shape", { shape: choice.id })}
-                  className={`rounded-lg border p-1.5 text-center transition ${on ? "ring-2 ring-primary ring-offset-2" : "hover:border-primary/50"}`}
-                >
-                  <span className="mx-auto mb-1 block h-10 w-14 border-2 border-[#c9a227] bg-[#12243f]" style={choice.css} aria-hidden />
-                  <span className="block text-[11px] font-medium leading-tight">{choice.name}</span>
-                </button>
-              );
-            })}
+          <div className="space-y-2">
+            <GalleryGrid testId="box-shapes">
+              {[
+                { id: null as BoxShape | null, name: "כמו כולן", hint: "הצורה של כל התיבות", css: null as CSSProperties | null },
+                ...shownShapes(saved, own?.shape === "round" ? "auto" : own?.shape).map((c) => ({ id: (c.id === "auto" ? "round" : c.id) as BoxShape | null, name: c.name, hint: c.hint, css: c.css as CSSProperties | null })),
+              ].map((choice) => {
+                const on = (own?.shape ?? null) === choice.id;
+                const ready = choice.id && choice.id !== "round" ? choice.id : null;
+                return (
+                  <GalleryTile
+                    key={choice.id ?? "all"}
+                    name={choice.name}
+                    hint={choice.hint}
+                    on={on}
+                    onPick={() => setOwn("shape", { shape: choice.id })}
+                    preview={choice.css ? <ShapePreview css={choice.css} /> : <NoneTilePreview />}
+                    remove={ready ? { ready: true, onClick: () => onEdit("frame.shape:hide", (c) => hideReady(c, "shape", ready)) } : undefined}
+                  />
+                );
+              })}
+            </GalleryGrid>
+            <HiddenShelf
+              testId="box-shapes-hidden"
+              items={FRAME_CHOICES.filter((f) => isHiddenReady(saved, "shape", f.id)).map((f) => ({ key: f.id, name: f.name }))}
+              onRestore={(id) => onEdit("frame.shape:show", (c) => showReady(c, "shape", id))}
+            />
           </div>
         ) : (
           <FrameCorners config={config} onEdit={onEdit} />
@@ -841,13 +722,9 @@ export function FramesLayer(
                 show={(v) => (v === 0 ? "רגיל" : pct(v))}
                 onChange={(v) => setFs({ depth: v })}
               />
-              <button
-                type="button"
-                className="text-xs underline"
-                onClick={() => setFs({ line: DEFAULT_FRAME_STYLE.line, lineWidth: DEFAULT_FRAME_STYLE.lineWidth, depth: DEFAULT_FRAME_STYLE.depth })}
-              >
-                איפוס הקו והבליטה
-              </button>
+              <ResetButton onClick={() => setFs({ line: DEFAULT_FRAME_STYLE.line, lineWidth: DEFAULT_FRAME_STYLE.lineWidth, depth: DEFAULT_FRAME_STYLE.depth })}>
+                חזרה לקו ולבליטה הרגילים
+              </ResetButton>
             </>
           )}
         </Part>
@@ -857,45 +734,41 @@ export function FramesLayer(
       <Part
         title="מסגרת לתיבות"
         testId="frame-pictures"
-        hint="הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה או מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה. בתיבה בצורה חתוכה (משושה, מתומן, כיפה...) המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה."
+        hint="הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה, ו&quot;בלי&quot; מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה. בתיבה בצורה חתוכה (משושה, מתומן, כיפה...) המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה."
       >
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-          <label
-            className={`flex aspect-square cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-dashed text-[11px] hover:border-primary ${uploading ? "opacity-60" : ""}`}
-          >
-            <ImagePlus className="size-4" />
-            {uploading ? "מעלה…" : "העלאת מסגרת"}
-            <input type="file" accept="image/*" className="sr-only" disabled={uploading} onChange={(e) => void uploadFrame(e.target.files)} />
-          </label>
-          {pictures.map((f) => {
-            const on = wearing === f.ref;
-            return (
-              <div key={f.ref} className="group relative">
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={f.name}
-                  onClick={() => wearPicture(on ? null : f.ref)}
-                  className={`block w-full overflow-hidden rounded-md border text-center text-[11px] ${on ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
-                >
-                  <span className="block aspect-square w-full bg-[#16304f] p-1">
-                    <img src={f.url} alt="" className="size-full object-contain" loading="lazy" />
-                  </span>
-                  <span className="block truncate py-0.5">{f.name}</span>
-                </button>
-                <TileRemove
-                  name={f.name}
-                  ready={!f.uploaded}
-                  onClick={() =>
-                    f.uploaded
-                      ? onEdit("frame-uploads:delete", (c) => ({ ...c, frameUploads: c.frameUploads.filter((u) => u !== f.ref) }))
-                      : onEdit("frame-pictures:hide", (c) => hideReady(c, "frame", f.ref))
-                  }
-                />
-              </div>
-            );
-          })}
-        </div>
+        <GalleryGrid>
+          <UploadTile label="העלאת מסגרת" uploading={uploading} onFiles={(files) => void uploadFrame(files)} hint="העלאת מסגרת משלכם - נשמרת בגלריה" />
+          {/* Taking it off is a tile of its own: a second click on the worn one never takes it off. */}
+          <GalleryTile
+            name={frame ? "כמו כל התיבות" : "בלי מסגרת"}
+            hint={frame ? "המסגרת של כל התיבות" : "התיבות בלי מסגרת מתמונה"}
+            on={wearing === null}
+            onPick={() => wearPicture(null)}
+            preview={<NoneTilePreview />}
+          />
+          {pictures.map((f) => (
+            <GalleryTile
+              key={f.ref}
+              name={f.name}
+              on={wearing === f.ref}
+              onPick={() => wearPicture(f.ref)}
+              padded
+              preview={<TilePicture src={f.url} />}
+              remove={{
+                ready: !f.uploaded,
+                onClick: async () => {
+                  if (!f.uploaded) return onEdit("frame-pictures:hide", (c) => hideReady(c, "frame", f.ref));
+                  const ok = await confirmAction({
+                    title: `למחוק את „${f.name}” מהגלריה?`,
+                    description: "תיבה שמשתמשת בה עכשיו לא תשתנה.",
+                    confirmLabel: "מחיקה",
+                  });
+                  if (ok) onEdit("frame-uploads:delete", (c) => ({ ...c, frameUploads: c.frameUploads.filter((u) => u !== f.ref) }));
+                },
+              }}
+            />
+          ))}
+        </GalleryGrid>
         <HiddenShelf
           testId="frame-hidden"
           items={FRAME_PICTURES.filter((f) => isHiddenReady(saved, "frame", framePictureRef(f.id))).map((f) => ({
@@ -943,7 +816,7 @@ export function TextLayer({
             aria-label="חלק מסוים בטקסט"
             value={element}
             onChange={(e) => setElement(e.target.value)}
-            className="h-9 w-full rounded-md border bg-background px-2 text-sm"
+            className={`${SELECT_CLASS} w-full`}
           >
             <option value="">כל הטקסט בלוח</option>
             {TEXT_AREAS.map((a) => (
@@ -975,7 +848,7 @@ export function TextLayer({
                     frameLooks: setFrameLook(c.frameLooks, frame, { font: (e.target.value || null) as TvConfig["font"] | null }),
                   }))
                 }
-                className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+                className={`${SELECT_CLASS} flex-1`}
               >
                 <option value="">כמו כל הלוח</option>
                 {TV_FONTS.map((f) => (
@@ -1026,7 +899,7 @@ export function TextLayer({
                 aria-label="גופן"
                 value={saved.font}
                 onChange={(e) => onEdit("font", (c) => ({ ...c, font: e.target.value as TvConfig["font"] }))}
-                className="h-8 flex-1 rounded-md border bg-background px-2 text-sm"
+                className={`${SELECT_CLASS} flex-1`}
               >
                 {TV_FONTS.map((f) => (
                   <option key={f.id} value={f.id}>
@@ -1055,9 +928,7 @@ export function TextLayer({
                 onChange={(v) => onEdit("track", (c) => ({ ...c, tracking: v }))}
               />
               {saved.tracking !== null && (
-                <button type="button" className="text-xs underline" onClick={() => onEdit("track", (c) => ({ ...c, tracking: null }))}>
-                  מרווח רגיל
-                </button>
+                <ResetButton onClick={() => onEdit("track", (c) => ({ ...c, tracking: null }))}>חזרה למרווח הרגיל</ResetButton>
               )}
             </div>
           </SubPart>

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@community/integrations/supabase/client";
 import { useAdminMessages } from "@community/lib/data";
 import { communityId } from "@/community/lib/community";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 export function MessagesAdmin() {
-  const { data = [] } = useAdminMessages();
+  const { data = [], isLoading } = useAdminMessages();
   const qc = useQueryClient();
 
   const markRead = useMutation({
@@ -34,7 +35,8 @@ export function MessagesAdmin() {
 
   return (
     <div className="card-elev divide-y divide-border">
-      {data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין הודעות.</p>}
+      {isLoading && <p className="p-6 text-center text-muted-foreground">טוען…</p>}
+      {!isLoading && data.length === 0 && <p className="p-6 text-center text-muted-foreground">אין הודעות.</p>}
       {data.map((m) => (
         <div key={m.id} className="flex items-start gap-3 px-4 py-4">
           <div className="min-w-0 flex-1">
@@ -49,7 +51,13 @@ export function MessagesAdmin() {
             <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">{m.body}</p>
             <p className="mt-2 text-xs text-muted-foreground">
               {m.sender_name || "אנונימי"}
-              {m.phone ? ` · ${m.phone}` : ""} ·{" "}
+              {m.phone && (
+                <>
+                  {" · "}
+                  <bdi dir="ltr">{m.phone}</bdi>
+                </>
+              )}{" "}
+              ·{" "}
               {new Intl.DateTimeFormat("he-IL", {
                 dateStyle: "short",
                 timeStyle: "short",
@@ -61,7 +69,7 @@ export function MessagesAdmin() {
             <Button
               size="icon"
               variant="ghost"
-              aria-label="סימון כנקרא"
+              aria-label={`סימון כנקרא: ${m.subject || "ללא נושא"}`}
               onClick={() => markRead.mutate(m.id)}
             >
               <Check className="size-4" />
@@ -70,8 +78,15 @@ export function MessagesAdmin() {
           <Button
             size="icon"
             variant="ghost"
-            aria-label="מחיקה"
-            onClick={() => remove.mutate(m.id)}
+            aria-label={`מחיקת ${m.subject || "ההודעה"}`}
+            onClick={async () => {
+              const ok = await confirmAction({
+                title: `למחוק את ההודעה „${m.subject || "ללא נושא"}”?`,
+                description: "אי אפשר לבטל את זה.",
+                confirmLabel: "מחיקה",
+              });
+              if (ok) remove.mutate(m.id);
+            }}
           >
             <Trash2 className="size-4 text-destructive" />
           </Button>

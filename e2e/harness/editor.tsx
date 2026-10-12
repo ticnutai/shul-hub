@@ -14,6 +14,7 @@ import { BrowserRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DirectionProvider } from "@radix-ui/react-direction";
 import { Toaster } from "sonner";
+import { ConfirmProvider } from "@/components/ConfirmDialog";
 import { TvDesignPanel } from "@/community/components/admin/tv/TvDesignPanel";
 import { CommunityProvider } from "@/community/components/CommunityProvider";
 import "@/index.css";
@@ -37,6 +38,7 @@ createRoot(document.getElementById("root")!).render(
       <TvDesignPanel />
     </div>
     <Toaster position="top-center" />
+    <ConfirmProvider />
     </CommunityProvider>
     </DirectionProvider>
   </QueryClientProvider>

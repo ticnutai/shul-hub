@@ -89,7 +89,7 @@ export function ColorPick({ value, onChange, label, className = '' }: {
         title={`${label}: ${hex}`}
         onClick={toggle}
         data-colorpick={hex}
-        className={`h-8 w-11 shrink-0 cursor-pointer rounded border-2 shadow-inner ${open ? 'border-sky-500 ring-2 ring-sky-300' : 'border-border'} ${className}`}
+        className={`h-8 w-11 shrink-0 cursor-pointer rounded border-2 shadow-inner ${open ? 'border-primary ring-2 ring-primary/40' : 'border-border'} ${className}`}
         style={{ background: hex }}
       />
       {open && createPortal(<Panel label={label} value={hex} onChange={onChange} onClose={() => { keepRecent(hex); setOpen(false); }} />, document.body)}
@@ -229,7 +229,7 @@ function Panel({ label, value, onChange, onClose }: { label: string; value: stri
             <div className="flex flex-wrap gap-1">
               {(list as string[]).map((c) => (
                 <button key={c} type="button" aria-label={`צבע ${c}`} title={c} onClick={() => pick(c)}
-                  className={`size-6 rounded border ${c === value ? 'ring-2 ring-sky-500 ring-offset-1' : ''}`} style={{ background: c }} />
+                  className={`size-6 rounded border ${c === value ? 'ring-2 ring-primary ring-offset-1' : ''}`} style={{ background: c }} />
               ))}
             </div>
           </div>

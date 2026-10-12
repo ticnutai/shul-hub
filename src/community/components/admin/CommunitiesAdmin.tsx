@@ -42,6 +42,7 @@ import {
 } from "@/community/lib/community";
 import { SynagogueDetailsDialog } from "./SynagogueDetails";
 import { hebrewError } from "@community/lib/hebrewError";
+import { confirmAction } from "@/components/ConfirmDialog";
 
 interface Overview {
   id: string;
@@ -198,7 +199,16 @@ export function CommunitiesAdmin() {
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => (c.active ? setActive.mutate({ id: c.id, active: false }) : setAbout(c))}
+                      onClick={async () => {
+                        if (!c.active) return setAbout(c);
+                        // Closing is asked as opening is: visitors stop seeing it at once.
+                        const ok = await confirmAction({
+                          title: `לסגור את ${c.name} לציבור?`,
+                          description: "מבקרים לא יראו אותו באתר ובאפליקציה עד שיפתח שוב. שום דבר לא נמחק, ואפשר לפתוח אותו שוב בכל רגע.",
+                          confirmLabel: "סגירה לציבור",
+                        });
+                        if (ok) setActive.mutate({ id: c.id, active: false });
+                      }}
                     >
                       {c.active ? "לסגור" : "לפתוח לציבור"}
                     </Button>

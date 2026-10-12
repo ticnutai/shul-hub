@@ -36,6 +36,9 @@ const KIND_LABELS: Record<string, string> = {
   // Something on the wall did not fit its frame (screenHealth.ts).
   clipped: "לא נכנס במסך",
 };
+/** A kind of event this version does not know yet (a newer box): said in words, not by its code name. */
+const kindLabel = (kind: string) => KIND_LABELS[kind] ?? "אירוע אחר";
+const LEVEL_LABELS: Record<string, string> = { info: "מידע", warn: "אזהרה", error: "שגיאה" };
 
 interface Outage {
   deviceId: string;
@@ -119,7 +122,7 @@ export function TvLogsPanel() {
   const exportCsv = () => {
     const rows = [["זמן", "מסך", "רמה", "סוג", "הודעה", "פרטים"]];
     for (const e of visible)
-      rows.push([new Date(e.occurred_at).toLocaleString("he-IL"), nameOf(e.device_id), e.level, e.kind, e.message, JSON.stringify(e.details)]);
+      rows.push([new Date(e.occurred_at).toLocaleString("he-IL"), nameOf(e.device_id), LEVEL_LABELS[e.level] ?? e.level, kindLabel(e.kind), e.message, JSON.stringify(e.details)]);
     // Byte-order mark so Excel opens the Hebrew as UTF-8.
     // Messages come from the screens: a cell starting with = + - @ would run as
     // a formula when opened in Excel, so it is prefixed with an apostrophe.
@@ -130,7 +133,7 @@ export function TvLogsPanel() {
     const csv = String.fromCharCode(0xfeff) + rows.map((r) => r.map(cell).join(",")).join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    a.download = `tv-log-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `יומן-המסכים-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(a.href);
   };
@@ -146,7 +149,7 @@ export function TvLogsPanel() {
         ))}
       </div>
 
-      {events.error && <p className="text-destructive">לא ניתן לטעון את היומן.</p>}
+      {events.error && <p className="text-destructive">טעינת היומן נכשלה.</p>}
 
       <div className="grid gap-3 md:grid-cols-2">
         {perDevice.map(({ device, outages, downtime, uptime, errors }) => {
@@ -154,9 +157,9 @@ export function TvLogsPanel() {
           return (
             <section key={device.id} className="rounded-xl border bg-card p-4 shadow-sm">
               <div className="flex items-center gap-2">
-                {health.online ? <CheckCircle2 className="size-5 text-emerald-500" /> : <WifiOff className="size-5 text-red-500" />}
+                {health.online ? <CheckCircle2 className="size-5 text-emerald-500" aria-label="מחובר" /> : <WifiOff className="size-5 text-red-600" aria-label="מנותק" />}
                 <h3 className="font-semibold">{device.name}</h3>
-                <span className="ms-auto text-2xl font-bold tabular-nums">{(uptime * 100).toFixed(uptime > 0.999 ? 1 : 2)}%</span>
+                <span className="ms-auto text-2xl font-bold tabular-nums" dir="ltr">{(uptime * 100).toFixed(uptime > 0.999 ? 1 : 2)}%</span>
               </div>
               <p className="text-xs text-muted-foreground">
                 זמינות ב{PERIODS.find((p) => p.days === days)?.label} · {outages.length} ניתוקים · סה״כ {formatDuration(downtime)} ·{" "}
@@ -190,8 +193,13 @@ export function TvLogsPanel() {
                     <tr key={i} className={o.ongoing ? "bg-red-50 dark:bg-red-950/30" : ""}>
                       <td className="px-4 py-2">{nameOf(o.deviceId)}</td>
                       <td className="px-4 py-2 tabular-nums">
-                        {o.from.toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}
-                        {o.to ? ` – ${o.to.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}` : ""}
+                        <span dir="ltr">{o.from.toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        {o.to && (
+                          <>
+                            {" עד "}
+                            <span dir="ltr">{o.to.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" })}</span>
+                          </>
+                        )}
                       </td>
                       <td className="px-4 py-2 tabular-nums">
                         {formatDuration(o.durationMs)}
@@ -199,9 +207,9 @@ export function TvLogsPanel() {
                       </td>
                       <td className="px-4 py-2">
                         {o.ongoing
-                          ? "המסך לא מדווח. הסיבה תיקבע כשיחזור (הוא שומר יומן בזמן הניתוק)."
+                          ? "המסך מנותק. הסיבה תיקבע כשיחזור (הוא שומר יומן בזמן הניתוק)."
                           : o.reasons.length
-                            ? o.reasons.map((r) => OUTAGE_REASON_LABELS[r] ?? r).join(" ← ")
+                            ? o.reasons.map((r) => OUTAGE_REASON_LABELS[r] ?? "סיבה אחרת").join(" ← ")
                             : "לא ידוע"}
                         {o.attempts ? <span className="text-xs text-muted-foreground"> · {o.attempts} ניסיונות התחברות</span> : null}
                       </td>
@@ -235,12 +243,12 @@ export function TvLogsPanel() {
             onChange={(e) => setLevelFilter(e.target.value as typeof levelFilter)}
             className="h-8 rounded-md border bg-background px-2 text-sm"
           >
-            <option value="all">הכל</option>
+            <option value="all">הכול</option>
             <option value="warn">אזהרות ושגיאות</option>
             <option value="error">שגיאות בלבד</option>
           </select>
           <Button type="button" variant="outline" size="sm" onClick={exportCsv} disabled={!visible.length}>
-            <Download className="size-4" /> ייצוא CSV
+            <Download className="size-4" /> הורדת היומן לגיליון
           </Button>
         </div>
         {events.isLoading ? (
@@ -251,7 +259,7 @@ export function TvLogsPanel() {
           <ul className="max-h-[32rem] divide-y overflow-y-auto">
             {visible.slice(0, 500).map((e) => (
               <li key={e.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2 text-sm">
-                <span className="w-32 shrink-0 tabular-nums text-muted-foreground">
+                <span className="w-32 shrink-0 text-right tabular-nums text-muted-foreground" dir="ltr">
                   {new Date(e.occurred_at).toLocaleString("he-IL", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" })}
                 </span>
                 {e.level === "error" ? (
@@ -262,7 +270,7 @@ export function TvLogsPanel() {
                     אזהרה
                   </Badge>
                 ) : (
-                  <Badge variant="secondary">{KIND_LABELS[e.kind] ?? e.kind}</Badge>
+                  <Badge variant="secondary">{kindLabel(e.kind)}</Badge>
                 )}
                 <span className="text-muted-foreground">{nameOf(e.device_id)}</span>
                 <span className="min-w-0 flex-1">{e.message}</span>

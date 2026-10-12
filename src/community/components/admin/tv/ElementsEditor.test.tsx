@@ -3,7 +3,7 @@
  * frame, and every kind of live content can be added - not only the three
  * that once had buttons of their own.
  */
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -166,7 +166,7 @@ describe("a long notice: shrunk, or the moving curtain", () => {
     const notice = latest.elements.find((e) => e.binding === "announcements")!;
     expect(notice.scroll).toBe("loop");
     expect(normalizeElements(latest.elements).find((e) => e.id === notice.id)!.scroll).toBe("loop");
-    expect(screen.getByRole("group", { name: "מהירות הגלילה" })).toBeTruthy();
+    expect(screen.getByRole("radiogroup", { name: "מהירות הגלילה" })).toBeTruthy();
     // A list pages by default; a clock has nothing to move.
     expect((screen.getByRole("combobox", { name: "כשלא נכנס - שיעורי תורה" }) as HTMLSelectElement).options[0].textContent).toBe("דפדוף בין עמודים");
     expect(screen.queryByRole("combobox", { name: "כשלא נכנס - שעון מחוגים" })).toBeNull();
@@ -182,8 +182,8 @@ describe("PartsContent - more options of a frame", () => {
     const prayers = latest.elements.find((e) => e.binding === "prayers")!;
     expect(prayers.alternates).toEqual(["announcements"]);
     expect(screen.getByText(/מתחלפת עם 1/)).toBeTruthy();
-    fireEvent.change(screen.getByRole("spinbutton", { name: "שניות לכל תוכן בזמני תפילות" }), { target: { value: "45" } });
-    expect(latest.elements.find((e) => e.binding === "prayers")!.alternateSeconds).toBe(45);
+    fireEvent.click(screen.getByRole("button", { name: "הגדלת שניות לכל תוכן בזמני תפילות" }));
+    expect(latest.elements.find((e) => e.binding === "prayers")!.alternateSeconds).toBe(25);
     fireEvent.click(screen.getByRole("button", { name: "בלי הודעות בזמני תפילות" }));
     expect(latest.elements.find((e) => e.binding === "prayers")!.alternates).toBeUndefined();
   });
@@ -196,8 +196,8 @@ describe("PartsContent - more options of a frame", () => {
     fireEvent.click(box);
     expect(latest.elements.find((e) => e.binding === "zmanim")!.zmanKeys).not.toContain("alot");
     // No panel behind it unless asked: the kit's own look. Switched on, and off again.
-    const panel = screen.getByRole("checkbox", { name: "רקע חלק מאחורי זמני היום" }) as HTMLInputElement;
-    expect(panel.checked).toBe(false);
+    const panel = screen.getByRole("switch", { name: "רקע חלק מאחורי זמני היום" });
+    expect(panel.getAttribute("aria-checked")).toBe("false");
     fireEvent.click(panel);
     expect(latest.elements.find((e) => e.binding === "zmanim")!.backdrop).toBe(true);
     fireEvent.click(panel);
@@ -235,17 +235,18 @@ describe("several at once, and back to the kit", () => {
     for (const n of ["תפילות היום", "מסגרת תפילות", "שיעורי היום", "מסגרת שיעורים"]) expect(named(n).hidden).toBe(false);
   });
 
-  it("puts the board back as the kit made it, after asking", () => {
+  it("puts the board back as the kit made it, after asking", async () => {
     const start = { ...structuredClone(DEFAULT_TV_CONFIG), ...structuredClone(PREMIUM_DESIGNS[0].values) } as TvConfig;
     render(<PartsHarness start={start} />);
     fireEvent.change(screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }), { target: { value: "zmanim" } });
     fireEvent.click(screen.getByRole("button", { name: "הסתרת שיעורי תורה" }));
     const ask = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
     fireEvent.click(screen.getByTestId("parts-reset"));
+    await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
     expect(latest.elements.some((e) => e.binding === "zmanim")).toBe(true);
     fireEvent.click(screen.getByTestId("parts-reset"));
+    await waitFor(() => expect(latest.elements).toEqual(PREMIUM_DESIGNS[0].values.elements));
     expect(ask).toHaveBeenCalledTimes(2);
-    expect(latest.elements).toEqual(PREMIUM_DESIGNS[0].values.elements);
     ask.mockRestore();
   });
 
@@ -271,7 +272,7 @@ describe("the letters, from one bar", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "בחירת כותרת תפילות" }));
     const tools = screen.getByTestId("element-text-tools");
     const size = named("כותרת תפילות").fontSize;
-    fireEvent.click(screen.getByRole("button", { name: "הגדלת הטקסט" }));
+    fireEvent.click(screen.getByRole("button", { name: "הגדלת גודל הטקסט" }));
     expect(named("כותרת תפילות").fontSize).toBeCloseTo(size + 0.25);
     fireEvent.change(screen.getByRole("combobox", { name: "גופן" }), { target: { value: "david" } });
     fireEvent.click(screen.getByRole("button", { name: "מודגש" }));
@@ -350,14 +351,14 @@ describe("adding content: where it goes, in the kit's look", () => {
 });
 
 describe("the board kept as a kit of one's own", () => {
-  it("is saved whole - its layout too - and shows among one's kits; the same name replaces it", () => {
+  it("is saved whole - its layout too - and shows among one's kits; the same name replaces it", async () => {
     const start = { ...structuredClone(DEFAULT_TV_CONFIG), ...structuredClone(PREMIUM_DESIGNS[0].values) } as TvConfig;
     render(<PartsHarness start={start} />);
     fireEvent.change(screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }), { target: { value: "zmanim" } });
     fireEvent.click(screen.getByTestId("parts-save-kit"));
     fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה החדשה" }), { target: { value: "ארבע קשתות" } });
-    fireEvent.click(screen.getByRole("button", { name: "שמירת הערכה" }));
-    expect(latest.designs).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: /^שמירה$/ }));
+    await waitFor(() => expect(latest.designs).toHaveLength(1));
     const kit = latest.designs[0];
     expect(kit.name).toBe("ארבע קשתות");
     expect(kit.parts).toContain("layout");
@@ -370,8 +371,9 @@ describe("the board kept as a kit of one's own", () => {
     fireEvent.click(screen.getByRole("button", { name: "הסתרת שיעורי תורה" }));
     fireEvent.click(screen.getByTestId("parts-save-kit"));
     fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה החדשה" }), { target: { value: "ארבע קשתות" } });
-    fireEvent.click(screen.getByRole("button", { name: "שמירת הערכה" }));
-    expect(ask).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: /^שמירה$/ }));
+    await waitFor(() => expect(ask).toHaveBeenCalled());
+    await waitFor(() => expect(latest.designs[0].values.elements!.some((e) => e.hidden)).toBe(true));
     expect(latest.designs).toHaveLength(1);
     expect(latest.designs[0].id).toBe(kit.id);
     expect(latest.designs[0].values.elements!.some((e) => e.hidden)).toBe(true);
@@ -400,12 +402,13 @@ describe("content changing frames, a frame like the middle's, one's own boxes, a
     expect(frame.crop).toEqual(latest.elements.find((e) => e.name === "מסגרת מרכזית ופמוטים")!.crop);
   });
 
-  it("keeps a frame in one's parts and boxes, and adds it again from the list", () => {
+  it("keeps a frame in one's parts and boxes, and adds it again from the list", async () => {
     render(<PartsHarness start={board()} />);
     const row = screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }).closest("[data-frame-of]") as HTMLElement;
-    fireEvent.change(within(row).getByRole("textbox", { name: "שם לתיבה של זמני תפילות" }), { target: { value: "תפילות בזהב" } });
     fireEvent.click(within(row).getByRole("button", { name: "שמירת זמני תפילות בחלקים והתיבות שלי" }));
-    expect(latest.elementLibrary.map((l) => l.name)).toEqual(["תפילות בזהב"]);
+    fireEvent.change(within(row).getByRole("textbox", { name: "שם לתיבה של זמני תפילות" }), { target: { value: "תפילות בזהב" } });
+    fireEvent.click(within(row).getByRole("button", { name: /^שמירה$/ }));
+    await waitFor(() => expect(latest.elementLibrary.map((l) => l.name)).toEqual(["תפילות בזהב"]));
     const before = latest.elements.length;
     const picker = screen.getByRole("combobox", { name: "איזה תוכן להוסיף" }) as HTMLSelectElement;
     const mine = [...picker.options].find((o) => o.textContent === "תפילות בזהב")!;

@@ -89,7 +89,7 @@ test.describe("TV editor, by layer", () => {
       .toContain("brightness(1.3)");
     await layer.getByRole("button", { name: "הוספת צבע מעל הרקע" }).click();
     await expect(root(page).locator(".tv-bg-tint")).toHaveCount(1);
-    await layer.getByRole("button", { name: "איפוס הכוונון" }).click();
+    await layer.getByRole("button", { name: "חזרה לכוונון הרגיל" }).click();
     await expect.poll(() => root(page).getAttribute("class")).not.toContain("has-bg-tune");
     await expectNotFrozen(page, "background sliders");
   });
@@ -158,17 +158,19 @@ test.describe("TV editor, by layer", () => {
 
     // One box apart: the zmanim an ellipse, the others stay hexagons.
     await page.getByLabel("התיבות, המסגרות והטקסט של").selectOption("frame:zmanim");
-    await page.getByTestId("box-shapes").getByRole("button", { name: "אליפסה" }).click();
+    await page.getByTestId("box-shapes").getByRole("button", { name: "אליפסה", exact: true }).click();
     const zmanim = root(page).locator('[data-frame="zmanim"]').first();
     await expect(zmanim).toHaveAttribute("data-shape", "ellipse");
     await expect.poll(() => zmanim.evaluate((e) => getComputedStyle(e).clipPath)).toBe("none");
     await expect.poll(() => prayers.evaluate((e) => getComputedStyle(e).clipPath)).toContain("polygon");
 
-    // And a frame of its own from the gallery; a second click takes it off.
+    // And a frame of its own from the gallery; its own tile takes it off (a second click on the worn one never does).
     const pictures = page.getByTestId("frame-pictures");
     await pictures.getByRole("button", { name: "קו כפול זהב", exact: true }).click();
     await expect(zmanim).toHaveAttribute("data-own-image", "");
     await pictures.getByRole("button", { name: "קו כפול זהב", exact: true }).click();
+    await expect(zmanim).toHaveAttribute("data-own-image", "");
+    await pictures.getByRole("button", { name: "כמו כל התיבות", exact: true }).click();
     await expect(zmanim).not.toHaveAttribute("data-own-image", "");
     await expectNotFrozen(page, "boxes");
   });

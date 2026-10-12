@@ -21,7 +21,8 @@ test.describe("the gabbai's area, as tiles", () => {
     const path = page.getByTestId("admin-path");
     await expect(path).toContainText("מניינים");
     // A day (when there are several) - and the two tiles beside the days.
-    const day = page.locator('[data-testid^="minyan-tile-"]').filter({ hasNotText: "שינויים ליום מסוים" }).filter({ hasNotText: "ימים, תפילות ותצוגה" }).first();
+    // By their marks, not their words: the two tiles beside the days are worded in Hebrew that may change.
+    const day = page.locator('[data-testid^="minyan-tile-"]:not([data-testid="minyan-tile-overrides"]):not([data-testid="minyan-tile-manage"])').first();
     await expect(day).toBeVisible();
     const dayName = (await day.locator("span.font-semibold").first().textContent())!.trim();
     await day.click();
@@ -67,5 +68,41 @@ test.describe("the gabbai's area, as tiles", () => {
     await expect(tabs).toHaveCount(0);
     await sw.getByRole("radio", { name: "לשוניות" }).click();
     await expect(page.getByRole("tablist", { name: "מדורי ניהול" })).toBeVisible();
+  });
+
+  test("deleting an announcement asks first, and \"ביטול\" leaves it", async ({ page }) => {
+    await page.setViewportSize({ width: 1400, height: 900 });
+    await fakeGabbai(page);
+    const deletes: string[] = [];
+    page.on("request", (req) => {
+      if (req.method() === "DELETE") deletes.push(req.url());
+    });
+    // One announcement of our own, whatever the synagogue has: the list is
+    // read here, so there is always a row to try deleting.
+    const announcement = {
+      id: "00000000-0000-4000-8000-0000000000a1", community_id: null, kind: "general", title: "מודעה לבדיקה",
+      body: "", pinned: false, notification_enabled: false, show_on_home: false, home_width: "half",
+      image_url: null, image_path: null, expires_at: null, sort_order: 10, style: null,
+      created_at: new Date().toISOString(),
+    };
+    await page.route("**/rest/v1/announcements**", (route) =>
+      route.request().method() === "GET"
+        ? route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([announcement]) })
+        : route.fallback(),
+    );
+    await page.goto("/community/admin?tab=announcements");
+    const list = page.getByTestId("announcements-sort-list");
+    await expect(list).toBeVisible({ timeout: 30_000 });
+    const row = list.getByTestId(`announcement-row-${announcement.id}`);
+    await expect(row).toBeVisible({ timeout: 30_000 });
+    const remove = row.getByRole("button", { name: "מחיקת מודעה לבדיקה" });
+    await remove.click();
+    const dialog = page.getByTestId("confirm-dialog");
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText("למחוק את המודעה „מודעה לבדיקה”?");
+    await dialog.getByRole("button", { name: "ביטול", exact: true }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(row).toBeVisible();
+    expect(deletes).toEqual([]);
   });
 });

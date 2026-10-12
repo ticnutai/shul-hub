@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Notice } from "./Notice";
 import { frameLabel, type FrameId } from "@/tv/frameLooks";
 import type { CustomBox } from "@/tv/config";
 import { readabilityIssues, type ReadabilityIssue } from "@/tv/readability";
@@ -31,9 +34,12 @@ export function ReadabilityNote({
 
   if (!issues.length) return null;
   return (
-    <div className="mt-2 rounded-lg border border-amber-500/60 bg-amber-500/10 p-2 text-sm" data-testid="readability">
-      <button type="button" className="w-full text-right font-medium" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        ⚠️ בדיקת קריאוּת: {issues.length === 1 ? "מקום אחד" : `${issues.length} מקומות`} שקשה לקרוא מרחוק {open ? "▲" : "▼"}
+    <Notice variant="warning" className="mt-2" data-testid="readability">
+      <button type="button" className="flex w-full items-center gap-1 text-right font-medium" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <span className="flex-1">
+          בדיקת קריאוּת: {issues.length === 1 ? "מקום אחד" : `${issues.length} מקומות`} שקשה לקרוא מרחוק
+        </span>
+        <ChevronDown className={`size-4 shrink-0 transition ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {open && (
         <ul className="mt-1.5 space-y-1">
@@ -42,13 +48,13 @@ export function ReadabilityNote({
               <span className="flex-1">
                 {i.where} - הטקסט כמעט באותו גוון כמו הרקע (ניגוד {i.ratio} מתוך 21; צריך לפחות 3)
               </span>
-              <button type="button" className="underline" onClick={() => onFix(i.frame)}>
+              <Button type="button" variant="link" size="sm" className="h-6 px-0 text-xs" onClick={() => onFix(i.frame)}>
                 לתיקון
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </Notice>
   );
 }

@@ -46,9 +46,9 @@ export function InnerCard({ label, children, testId }: { label?: string; childre
 }
 
 /** Something rarely needed, folded away the same way everywhere (the base colours). */
-export function Folded({ label, children }: { label: string; children: ReactNode }) {
+export function Folded({ label, children, testId }: { label: string; children: ReactNode; testId?: string }) {
   return (
-    <details className="rounded-lg border p-3">
+    <details className="rounded-lg border p-3" data-testid={testId}>
       <summary className="cursor-pointer text-xs font-medium text-muted-foreground">{label}</summary>
       <div className="mt-2">{children}</div>
     </details>

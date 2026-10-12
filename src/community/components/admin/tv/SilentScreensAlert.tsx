@@ -22,6 +22,7 @@ import { MonitorX } from "lucide-react";
 import { useNow } from "@community/lib/realtime";
 import { formatDuration } from "@/tv/device";
 import { silentScreens, useTvDevices } from "./tvAdminData";
+import { noticeClass } from "./Notice";
 
 export function SilentScreensAlert() {
   const { data: devices = [] } = useTvDevices();
@@ -35,22 +36,22 @@ export function SilentScreensAlert() {
       dir="rtl"
       role="status"
       data-testid="silent-screens-alert"
-      className="mt-4 rounded-lg border border-amber-400/50 bg-amber-50 p-3 text-right dark:bg-amber-950/40 sm:p-4"
+      className={`mt-4 p-3 text-right ${noticeClass("error")}`}
     >
       <div className="flex items-start gap-2.5">
-        <MonitorX className="mt-0.5 size-5 shrink-0 text-amber-700 dark:text-amber-400" />
+        <MonitorX className="mt-0.5 size-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
-            {silent.length === 1 ? "מסך אחד לא מדווח" : `${silent.length} מסכים לא מדווחים`}
+          <h2 className="text-sm font-semibold">
+            {silent.length === 1 ? "מסך אחד מנותק" : `${silent.length} מסכים מנותקים`}
           </h2>
-          <ul className="mt-1 space-y-0.5 text-sm text-amber-900/90 dark:text-amber-200/90">
+          <ul className="mt-1 space-y-0.5 text-sm">
             {silent.map(({ device, silentMs, lastSeen }) => (
               <li key={device.id}>
                 <span className="font-medium">{device.name || "מסך ללא שם"}</span>
                 {" · "}
-                שקט {formatDuration(silentMs ?? 0)}
+                מנותק כבר {formatDuration(silentMs ?? 0)}
                 {lastSeen && (
-                  <span className="text-amber-900/70 dark:text-amber-200/70">
+                  <span className="opacity-75">
                     {" · "}
                     דיווח אחרון{" "}
                     {lastSeen.toLocaleString("he-IL", {
@@ -64,9 +65,9 @@ export function SilentScreensAlert() {
               </li>
             ))}
           </ul>
-          <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900/75 dark:text-amber-200/75">
-            הלוח ממשיך להציג את מה שיש לו גם בלי רשת, אז מסך שקט לא בהכרח מסך ריק. כדאי לבדוק
-            שהקופסה דולקת ושיש לה אינטרנט; אם היא דולקת ועדיין שקט, כיבוי והדלקה מחזירים אותה.{" "}
+          <p className="mt-1.5 text-xs leading-relaxed opacity-80">
+            הלוח ממשיך להציג את מה שיש לו גם בלי רשת, אז מסך מנותק לא בהכרח מסך ריק. כדאי לבדוק
+            שהקופסה דולקת ושיש לה אינטרנט; אם היא דולקת ועדיין מנותקת, כיבוי והדלקה מחזירים אותה.{" "}
             <Link to="/community/admin?tab=tv&tvTab=screens" className="underline">
               רשימת המסכים
             </Link>
