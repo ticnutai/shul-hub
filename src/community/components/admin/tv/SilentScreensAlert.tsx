@@ -67,7 +67,7 @@ export function SilentScreensAlert() {
           <p className="mt-1.5 text-[11px] leading-relaxed text-amber-900/75 dark:text-amber-200/75">
             הלוח ממשיך להציג את מה שיש לו גם בלי רשת, אז מסך שקט לא בהכרח מסך ריק. כדאי לבדוק
             שהקופסה דולקת ושיש לה אינטרנט; אם היא דולקת ועדיין שקט, כיבוי והדלקה מחזירים אותה.{" "}
-            <Link to="/community/admin?tab=tv&tvTab=devices" className="underline">
+            <Link to="/community/admin?tab=tv&tvTab=screens" className="underline">
               רשימת המסכים
             </Link>
           </p>

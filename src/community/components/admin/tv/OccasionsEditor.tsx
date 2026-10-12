@@ -213,7 +213,7 @@ export function OccasionsEditor({
                 </div>
               </button>
               {o.when.type === "calendar" && specialDayByKey(o.when.key) && <TimetableButton def={specialDayByKey(o.when.key)!} />}
-              <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => preview(o)} title="תצוגה בתאריך הקרוב">
+              <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={() => preview(o)} title="תצוגה בתאריך הקרוב" aria-label={`תצוגה של ${o.name} בתאריך הקרוב`}>
                 <Eye className="size-4" />
               </Button>
               {onDesign && (
@@ -228,6 +228,7 @@ export function OccasionsEditor({
                     onDesign(o.id);
                   }}
                   title="עיצוב המסך של המועד, בעורך העיצוב הרגיל"
+                  aria-label={`עיצוב המסך של ${o.name}`}
                   data-testid="occasion-design"
                 >
                   <Palette className="size-4" />
@@ -739,6 +740,9 @@ function OccasionDialog({
                 </optgroup>
               )}
             </select>
+            <p className="text-[11px] text-muted-foreground">
+              ערכות מ"אוסף New Shul" המשותף: פותחים את המסך של המועד (🎨, או הלשונית שלו ליד "עמוד 1") ובוחרים שם - עותק נשמר למועד.
+            </p>
             {o.design && (
               <div className="space-y-1 text-sm" role="radiogroup" aria-label="איפה העיצוב חל" data-testid="occasion-design-on">
                 <label className="flex items-start gap-2">

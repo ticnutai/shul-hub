@@ -20,6 +20,8 @@ export interface DisplaySettings {
   chumashExpanded: boolean;
   /** The admin's own buttons, shown or not, floating or in the top bar (src/community/lib/adminButtons.ts). */
   adminButtons?: unknown;
+  /** The gabbai's area laid out as tabs or as tiles, step by step (src/community/lib/adminLayout.ts). */
+  adminLayout?: unknown;
 }
 
 interface DisplayModeContextType {
@@ -109,6 +111,7 @@ export const DisplayModeProvider = ({ children }: { children: ReactNode }) => {
     chumashExpanded: displaySettings?.chumashExpanded !== false,
     // Checked where it is read (normalizeAdminButtons); kept here, or it is dropped on every read.
     adminButtons: displaySettings?.adminButtons,
+    adminLayout: displaySettings?.adminLayout,
   }), [displaySettings]);
 
   const value = useMemo(() => ({ displaySettings: safeDisplaySettings, updateDisplaySettings, syncStatus: status }), [safeDisplaySettings, updateDisplaySettings, status]);

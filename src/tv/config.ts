@@ -1481,8 +1481,9 @@ function normalizeStored(stored: unknown): TvConfig {
       enabled: bool(alerts.enabled, d.alerts.enabled),
       // A board saved before staged alerts keeps exactly the alerts it had.
       mode: alerts.mode === 'staged' ? 'staged' : 'pulse',
+      // Each time once: a list saved with one twice counted down to it twice.
       events: Array.isArray(alerts.events)
-        ? alerts.events.filter((e): e is AlertEvent => ALERT_EVENTS.includes(e as AlertEvent))
+        ? [...new Set(alerts.events.filter((e): e is AlertEvent => ALERT_EVENTS.includes(e as AlertEvent)))]
         : d.alerts.events,
       leadMinutes: leads.length ? leads : d.alerts.leadMinutes,
       popupSeconds: num(alerts.popupSeconds, d.alerts.popupSeconds, 10, 300),

@@ -89,7 +89,8 @@ test("a colour chosen while the board is in sight: the page scrolls, the board c
   const at = (await tools.boundingBox())!;
   await page.mouse.move(at.x + at.width / 2, at.y - 40);
   await page.mouse.wheel(0, -500);
-  await expect.poll(top).toBeGreaterThan(before + 100);
+  // (by as much as there is to scroll: the board pinned at the top of the column leaves less of it)
+  await expect.poll(top).toBeGreaterThan(before + 50);
   await expect(panel).toBeInViewport();
   // "לראות את הלוח": the board in sight, the panel still open.
   await panel.getByRole("button", { name: "לראות את הלוח" }).click();

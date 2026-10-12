@@ -77,7 +77,12 @@ const emptyDraft = (category: MinyanCategory): Draft => ({
   reminder_minutes: 15,
 });
 
-export function MinyanimAdmin() {
+/**
+ * `chosen`: opened from the tiles (AdminTiles.tsx), which already chose the
+ * category and the prayer - its own rows of tabs are not drawn then, the
+ * tiles stand in their place. Without it, the tabs as always.
+ */
+export function MinyanimAdmin({ chosen }: { chosen?: { categoryId: string; prayer?: string } } = {}) {
   const { data: minyanim = [] } = useMinyanim();
   const { data: categories = [] } = useMinyanCategories();
   const { data: settings } = useSettings();
@@ -86,7 +91,8 @@ export function MinyanimAdmin() {
   const remove = useDeleteRow("minyanim", "minyanim");
   const saveCategory = useSaveRow("minyan_categories", "minyan_categories");
   const removeCategory = useDeleteRow("minyan_categories", "minyan_categories");
-  const [categoryId, setCategoryId] = useState<string | null>(() => new URLSearchParams(window.location.search).get("cat"));
+  const [ownCategoryId, setCategoryId] = useState<string | null>(() => new URLSearchParams(window.location.search).get("cat"));
+  const categoryId = chosen?.categoryId ?? ownCategoryId;
   // A special day's own timetable is opened from the board editor's "מועדים"
   // with ?cat=<its tab>; "back" returns there.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -98,7 +104,8 @@ export function MinyanimAdmin() {
     next.delete("cat");
     setSearchParams(next);
   };
-  const [prayer, setPrayer] = useState<string>("shacharit");
+  const [ownPrayer, setPrayer] = useState<string>("shacharit");
+  const prayer = chosen?.prayer ?? ownPrayer;
   const [draft, setDraft] = useState<Draft | null>(null);
   const [categoryDraft, setCategoryDraft] = useState<CategoryDraft | null>(null);
   const [newSubcategoryName, setNewSubcategoryName] = useState("");
@@ -450,8 +457,10 @@ export function MinyanimAdmin() {
 
   return (
     <div dir="rtl" className="space-y-4 text-right">
-      <PrayerDisplaySettings settings={settings} categories={categories} />
+      {/* From the tiles, the list comes first: these are under "ימים, תפילות ותצוגה" there. */}
+      {!chosen && <PrayerDisplaySettings settings={settings} categories={categories} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
+        {!chosen && (
         <div
           role="group"
           dir="rtl"
@@ -537,6 +546,7 @@ export function MinyanimAdmin() {
             </button>
           )}
         </div>
+        )}
         <div className="flex gap-2">
           {selectedCategory && (
             <Button
@@ -728,11 +738,12 @@ export function MinyanimAdmin() {
               <Button type="button" variant="ghost" onClick={() => setCategoryDraft(null)}>
                 ביטול
               </Button>
-              {categoryDraft.id && selectedCategory && (
+              {categoryDraft.id && categories.some((c) => c.id === categoryDraft.id) && (
                 <Button
                   type="button"
                   variant="destructive"
-                  onClick={() => void deleteCategory(selectedCategory)}
+                  // The category open in this form - not the tab clicked while it stood open.
+                  onClick={() => void deleteCategory(categories.find((c) => c.id === categoryDraft.id)!)}
                   disabled={removeCategory.isPending}
                 >
                   <Trash2 className="size-4" /> מחיקת הקטגוריה
@@ -743,7 +754,7 @@ export function MinyanimAdmin() {
         </form>
       )}
 
-      {hasSubcategories && (
+      {hasSubcategories && !chosen && (
         <div
           role="group"
           dir="rtl"
