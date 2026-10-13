@@ -67,6 +67,7 @@ import { type AlertExample } from "./AlertsSettings";
 import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { ContentTab } from "./ContentTab";
 import { DesignTab } from "./DesignTab";
+import { isDesignTopic, showDesignTopic } from "./designTopics";
 import { SaveKitButton } from "./DesignLibrary";
 import type { DeviceMode } from "./devices";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
@@ -215,8 +216,9 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const goToStep = (step: BuildStep) => {
     setGuide((g) => (g && !g.includes(step) ? [...g, step] : g));
     setTab(step === "arrange" ? "layout" : "design");
+    if (isDesignTopic(step)) showDesignTopic(step);
     // Once the tab is drawn; instant, as a smooth scroll stops in a background window.
-    window.setTimeout(() => document.getElementById(step === "arrange" ? "layout-screens" : step)?.scrollIntoView({ block: "start" }), 80);
+    else window.setTimeout(() => document.getElementById("layout-screens")?.scrollIntoView({ block: "start" }), 80);
   };
 
   // The device strip over the preview is the only switcher; choosing a
@@ -542,7 +544,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   /** The list of a board's parts, in the design tab. */
   const openPartsList = () => {
     setTab("design");
-    window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80);
+    showDesignTopic("design-elements");
   };
 
   // A link with ?panel= (or the old ?tvTab=events) opens its tab, also on a page already open.
@@ -1123,7 +1125,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {guide && <BuildGuide done={guide} onStep={goToStep} onClose={() => setGuide(null)} />}
 
       {/* The pages of a board of parts: above the tabs, since every tab edits the page chosen here. */}
-      {(state.present.screenLayout === "composition" || readPages(state.present).length > 1 || occasionTabs.length > 0) && (
+      {(state.present.screenLayout === "composition" || readPages(state.present).length > 1 || occasionTabs.length > 0 || addableOccasions.length > 0) && (
         <PartPagesBar
           config={state.present}
           current={pageIndex}
@@ -1469,7 +1471,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           onFix={(frame) => {
             if (frame) setPartTarget(`frame:${frame}`);
             setTab("design");
-            window.setTimeout(() => document.getElementById("design-text")?.scrollIntoView({ block: "start" }), 80);
+            showDesignTopic("design-text");
           }}
         />
       )}

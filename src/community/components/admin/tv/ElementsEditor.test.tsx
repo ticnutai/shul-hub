@@ -79,12 +79,14 @@ describe("ElementsEditor - sides and live content", () => {
   });
 });
 
-function PartsHarness({ start }: { start: TvConfig }) {
+function PartsHarness({ start, layoutOnly = false }: { start: TvConfig; layoutOnly?: boolean }) {
   const [config, setConfig] = useState(start);
   latest = config;
   return (
+    // Both tabs of a board of parts: its layout, and the parts, where content is added.
     <ElementEditingProvider>
       <PartsContent config={config} onEdit={(_key, update) => setConfig((c) => update(c))} onManual={() => {}} />
+      {!layoutOnly && <ElementsEditor config={config} onEdit={(_key, update) => setConfig((c) => update(c))} />}
     </ElementEditingProvider>
   );
 }
@@ -133,7 +135,7 @@ describe("PartsContent - the layout tab of a board of parts", () => {
   });
 
   it("hides a frame whole and brings it back; a shared frame keeps standing", () => {
-    render(<PartsHarness start={board()} />);
+    render(<PartsHarness start={board()} layoutOnly />);
     fireEvent.click(screen.getByRole("button", { name: "הסתרת זמני תפילות" }));
     for (const n of ["תפילות היום", "כותרת תפילות", "מסגרת תפילות"]) expect(named(n).hidden).toBe(true);
     expect(named("שיעורי היום").hidden).toBe(false);
@@ -342,9 +344,10 @@ describe("adding content: where it goes, in the kit's look", () => {
     expect(sectionOf(latest.elements, parasha.id)).toContain(daf.id);
   });
 
-  it("is in one place: on a board of parts in the layout tab, on an ordinary board in the list of parts", () => {
-    render(<Harness start={board()} />);
-    expect(screen.queryByTestId("add-content")).toBeNull();
+  it("is in one place, with the parts, on every board; the layout tab of a board of parts points there", () => {
+    render(<PartsHarness start={board()} />);
+    expect(screen.getAllByTestId("add-content")).toHaveLength(1);
+    expect(screen.getByTestId("elements-editor").contains(screen.getByTestId("add-content"))).toBe(true);
     expect(screen.getByTestId("add-content-elsewhere")).toBeTruthy();
     cleanup();
     render(<Harness start={{ ...board(), screenLayout: "rotate" }} />);

@@ -29,11 +29,10 @@ import {
   setAlternates, setContent, type BoardElement, type ElementBinding, type ElementScroll, type ElementSide,
 } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
-import { AddContent } from './AddContent';
 import { swapContent } from '@/tv/elements';
 import { DESIGN_PARTS } from '@/tv/designs';
 import { Folded, SubPart } from './Parts';
-import { itemChipClass } from './Notice';
+import { Notice, itemChipClass } from './Notice';
 import { ChipRemove, HiddenShelf } from './ReadyShelf';
 import { FIT_CHOICES, HideToggle, NameForm, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, SPEED_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 import { saveToLibrary } from './ElementLibrary';
@@ -198,12 +197,15 @@ export function PartsContent({ config, onEdit, onManual }: {
         )}
       </SubPart>
 
-      <SubPart title="הוספת תוכן" hint="תוכן חי - פרשת השבוע, הדף היומי, זמני היום ועוד - במסגרת חדשה, במקום תוכן של מסגרת, או בתוכה.">
-        <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); editing?.select(ids); }}
-          library={config.elementLibrary}
-          defaults={config.elementDefaults}
-          onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))} />
-      </SubPart>
+      {/* Content is added with the parts, in one place: from here, a way there. */}
+      <Notice variant="neutral" data-testid="add-content-elsewhere">
+        הוספת תוכן חדש (פרשת השבוע, הדף היומי, זמני היום ועוד) - בלשונית <b>עיצוב</b>, בנושא <b>חלקים</b>, ליד הוספת חלק.{' '}
+        <button type="button" className="font-medium text-primary underline underline-offset-2" onClick={() => {
+          onManual();
+          // Past the parts' opening tools, to the adding itself - once the design tab has drawn.
+          window.setTimeout(() => document.querySelector('[data-testid="elements-editor"] [data-testid="add-content"]')?.scrollIntoView({ block: "center" }), 200);
+        }}>להוספת תוכן</button>
+      </Notice>
 
       {/* Hidden, not deleted: the one shelf every list of the editor keeps its hidden ones on. */}
       <HiddenShelf

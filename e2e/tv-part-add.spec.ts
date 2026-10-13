@@ -20,8 +20,13 @@ test("content added where it is wanted, and the board kept as a kit", async ({ p
   test.skip(!res, "the dev server is not running (npm run dev)");
   await expect(page.locator(".tv-frame .tv-root").first()).toBeVisible({ timeout: 30_000 });
   const board = page.locator(".tv-frame").first();
+  // Content is added with the parts; the layout tab leads there.
   await page.getByRole("tab", { name: "פריסה" }).click();
-  const add = page.getByTestId("parts-content").getByTestId("add-content");
+  await expect(page.getByTestId("parts-content").getByTestId("add-content")).toHaveCount(0);
+  await page.getByTestId("add-content-elsewhere").getByRole("button", { name: "להוספת תוכן" }).click();
+  const add = page.getByTestId("elements-editor").getByTestId("add-content");
+  await expect(add).toBeVisible();
+  await expect(add).toBeInViewport();
 
   // The daf yomi into the parasha's frame, under it.
   await add.getByLabel("איזה תוכן להוסיף").selectOption("dafYomi");
@@ -38,6 +43,7 @@ test("content added where it is wanted, and the board kept as a kit", async ({ p
   const behind = await amud.evaluate((el) => getComputedStyle(el.closest("[data-element-id]")!).backgroundColor);
   expect(behind).toBe("rgba(0, 0, 0, 0)");
   // Swapped with the parasha: the amud in the middle's wide frame, the parasha in the arch.
+  await page.getByRole("tab", { name: "פריסה" }).click();
   const parts = page.getByTestId("parts-content");
   await parts.getByLabel("להחליף תוכן של עמוד יומי עם").selectOption({ label: "פרשת השבוע" });
   const middle = (await board.locator('[data-content-binding="amudYomi"]').boundingBox())!;

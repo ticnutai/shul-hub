@@ -13,6 +13,7 @@ import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./Laye
 import { SubPart } from "./Parts";
 import type { DraftAction } from "./draftState";
 import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section } from "./editorParts";
+import { useDesignTopics } from "./designTopics";
 
 export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere }: {
   draft: TvConfig;
@@ -28,11 +29,14 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   layerProps: LayerProps;
   textToolsElsewhere: boolean;
 }) {
+  const { view: topicsView, topic } = useDesignTopics();
+  /** One topic at a time: the others stay drawn (what was typed in them stays), only hidden. */
+  const away = (id: string) => topicsView === "switch" && topic !== id;
   return (
     <>
       {/*
-        The topics side by side, always in sight: a click jumps to its
-        section. With them, which box the boxes, frames and text are for -
+        The topics side by side, always in sight: a click shows its
+        section (or jumps to it, with all of them down the page). With them, which box the boxes, frames and text are for -
         chosen once here rather than in three pickers of their own.
       */}
       <div
@@ -82,6 +86,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
 
       <Section
         id="design-sets"
+        hidden={away("design-sets")}
         title="1. ערכות"
         hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
       >
@@ -109,6 +114,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
 
       <Section
         id="design-background"
+        hidden={away("design-background")}
         title="2. רקע"
         hint="מה שמאחורי הלוח: צבע, מעבר צבעים או תמונה (מוכנה או שלכם, עם צבע או מעבר מעליה), מחוונים לכל אחד, ושמירה בגלריה."
       >
@@ -117,6 +123,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
 
       <Section
         id="design-boxes"
+        hidden={away("design-boxes")}
         title="3. תיבות"
         hint="הצורה של התיבה והרקע שלה - לכל התיבות או לתיבה שנבחרה למעלה."
       >
@@ -126,6 +133,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
 
       <Section
         id="design-frames"
+        hidden={away("design-frames")}
         title="4. מסגרות"
         hint="מסגרת ללוח כולו (עמודים, פרוכת...), קו מסביב לתיבה וכמה היא בולטת, ומסגרת מיוחדת לתיבה מהגלריה (או מסגרת משלכם)."
       >
@@ -134,6 +142,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
 
       <Section
         id="design-text"
+        hidden={away("design-text")}
         title="5. טקסט"
         hint="גופן, גודל, צבעים וסגנון הכותרת - לכל הלוח או לתיבה שנבחרה למעלה, ואם רוצים - לחלק מסוים בה (השעה, כותרת...)."
       >
@@ -142,6 +151,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
 
       <Section
         id="design-elements"
+        hidden={away("design-elements")}
         title="6. חלקים חופשיים"
         hint="עמודים, עיטורים, מסגרות, תיבות, טקסט ותמונות - כל אחד שכבה משלו מעל הלוח: גרירה, שינוי גודל, קיבוץ, נעילה, סדר שכבות וספרייה של חלקים שמורים. בערכה מחלקים - זו הפריסה שלה."
       >

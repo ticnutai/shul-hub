@@ -113,7 +113,24 @@ const SHIURIM = [
 ];
 
 /** Answers every request the editor makes, and remembers what it saved. */
-export async function serveEditor(page: Page, config: Record<string, unknown> = {}): Promise<EditorServer> {
+export async function serveEditor(
+  page: Page,
+  config: Record<string, unknown> = {},
+  { designView = "scroll" }: { designView?: "switch" | "scroll" } = {},
+): Promise<EditorServer> {
+  /*
+   * The design tab's topics: the specs of each topic's tools read them all
+   * down the page ("scroll"); one at a time, the gabbai's default, is
+   * tv-design-topics.spec.ts's. Set on the first load only - a choice made
+   * on the page then stays through a reload, as it does for the gabbai.
+   */
+  await page.addInitScript((view) => {
+    try {
+      if (localStorage.getItem("tv-design-view") === null) localStorage.setItem("tv-design-view", view);
+    } catch {
+      /* no storage: the page's own default */
+    }
+  }, designView);
   let saved: Record<string, unknown> = config;
   let writes = 0;
   // As the database does (tv_config_versions): each save keeps the board it replaced.

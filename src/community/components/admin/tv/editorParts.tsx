@@ -13,6 +13,7 @@ import type { TvConfig } from "@/tv/config";
 import type { ElementBinding } from "@/tv/elements";
 import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
 import { ColorPick } from "./ColorPick";
+import { DESIGN_TOPICS, useDesignTopics, type DesignView } from "./designTopics";
 
 /** The screen layouts, with a small sketch of each for the picker. */
 export const LAYOUT_CHOICES: Array<{
@@ -95,9 +96,10 @@ export const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> 
 
 /* --------------------------------------------------------- small inputs -- */
 
-export function Section({ title, hint, children, id }: { title: string; hint?: string; children: ReactNode; id?: string }) {
+export function Section({ title, hint, children, id, hidden }: { title: string; hint?: string; children: ReactNode; id?: string; hidden?: boolean }) {
   return (
-    <section id={id} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
+    // Hidden, not removed: what was typed in a topic stays when another is shown.
+    <section id={id} hidden={hidden} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
       <h3 className="text-base font-semibold">{title}</h3>
       {hint && <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p>}
       <div className="mt-3 space-y-3">{children}</div>
@@ -161,27 +163,20 @@ export function CopyBoxLook({
 }
 
 /**
- * The design tab's topics, side by side at the top: a click jumps to its
- * section. Which one is on screen is marked as the page scrolls.
+ * The design tab's topics, side by side at the top. One at a time (the
+ * default): a click swaps the topic shown. Or all down the page: a click
+ * jumps to its section, and the one on screen is marked as the page scrolls.
  */
-const DESIGN_TOPICS = [
-  { id: "design-sets", label: "ערכות" },
-  { id: "design-background", label: "רקע" },
-  { id: "design-boxes", label: "תיבות" },
-  { id: "design-frames", label: "מסגרות" },
-  { id: "design-text", label: "טקסט" },
-  { id: "design-elements", label: "חלקים" },
-] as const;
-
 export function DesignTopics() {
-  const [current, setCurrent] = useState<string>(DESIGN_TOPICS[0].id);
+  const { view, topic, setTopic, setView } = useDesignTopics();
   useEffect(() => {
+    if (view !== "scroll") return;
     const seen = new Map<string, boolean>();
     const observer = new IntersectionObserver(
       (entries) => {
         for (const e of entries) seen.set(e.target.id, e.isIntersecting);
         const first = DESIGN_TOPICS.find((t) => seen.get(t.id));
-        if (first) setCurrent(first.id);
+        if (first) setTopic(first.id);
       },
       { rootMargin: "-180px 0px -45% 0px" },
     );
@@ -190,27 +185,47 @@ export function DesignTopics() {
       if (el) observer.observe(el);
     }
     return () => observer.disconnect();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view]);
   return (
-    <nav aria-label="נושאי העיצוב" className="flex flex-wrap gap-1.5" data-testid="design-topics">
-      {DESIGN_TOPICS.map((t) => (
-        <button
-          key={t.id}
-          type="button"
-          aria-current={current === t.id ? "true" : undefined}
-          onClick={() => {
-            setCurrent(t.id);
-            // Instant: a smooth scroll does not run while the window is in the background.
-            document.getElementById(t.id)?.scrollIntoView({ block: "start" });
-          }}
-          className={`h-9 flex-1 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition ${
-            current === t.id ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/50"
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </nav>
+    <div className="space-y-1.5">
+      <nav aria-label="נושאי העיצוב" className="flex flex-wrap gap-1.5" data-testid="design-topics">
+        {DESIGN_TOPICS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            aria-current={topic === t.id ? "true" : undefined}
+            onClick={() => {
+              setTopic(t.id);
+              const el = document.getElementById(t.id);
+              // One at a time: the new topic stands where the old one did - back to its top only when scrolled past it.
+              if (view === "scroll") el?.scrollIntoView({ block: "start" });
+              else window.requestAnimationFrame(() => {
+                const top = document.getElementById(t.id)?.getBoundingClientRect().top ?? 0;
+                if (top < 0) document.getElementById(t.id)?.scrollIntoView({ block: "start" });
+              });
+            }}
+            className={`h-9 flex-1 whitespace-nowrap rounded-lg border px-3 text-sm font-medium transition ${
+              topic === t.id ? "border-primary bg-primary text-primary-foreground" : "bg-background hover:border-primary/50"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <span>הצגת הנושאים:</span>
+        <Segments
+          label="הצגת הנושאים"
+          value={view}
+          onChange={(v: DesignView) => setView(v)}
+          options={[
+            { id: "switch", name: "נושא אחד בכל פעם", hint: "לחיצה על נושא מחליפה את מה שמוצג, בלי לגלול" },
+            { id: "scroll", name: "הכול ברצף", hint: "כל הנושאים זה מתחת לזה, ולחיצה גוללת אל הנושא" },
+          ]}
+        />
+      </div>
+    </div>
   );
 }
 

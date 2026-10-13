@@ -208,12 +208,12 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       </fieldset>
     </SubPart>}
 
-    {/* Adding content: a new frame, instead of a frame's content, or into a frame. On a board of parts - in the layout tab. */}
-    <SubPart title="הוספת תוכן" hint={parts ? undefined : 'תוכן חי - פרשת השבוע, הדף היומי, זמני היום ועוד - במסגרת חדשה, במקום תוכן של מסגרת, או בתוכה.'}>
-      {parts ? <Notice variant="neutral" data-testid="add-content-elsewhere">הוספת תוכן (פרשת השבוע, הדף היומי, זמני היום ועוד), והצד של כל תוכן - בלשונית <b>פריסה</b>, תחת "מה יופיע על הלוח, ובאיזה צד".</Notice> : <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
+    {/* Adding content: a new frame, instead of a frame's content, or into a frame - beside adding a part, on every board. */}
+    <SubPart title="הוספת תוכן" hint={parts ? 'תוכן חי - פרשת השבוע, הדף היומי, זמני היום ועוד - במסגרת חדשה, במקום תוכן של מסגרת, או בתוכה. הצד של כל תוכן ומה כל מסגרת מציגה - בלשונית פריסה.' : 'תוכן חי - פרשת השבוע, הדף היומי, זמני היום ועוד - במסגרת חדשה, במקום תוכן של מסגרת, או בתוכה.'}>
+      <AddContent elements={elements} onCommit={(next, key, ids) => { commit(next, key); select(ids); }}
         library={config.elementLibrary}
         defaults={config.elementDefaults}
-        onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))} />}
+        onDefaults={(next) => onEdit('element-defaults', (c) => ({ ...c, elementDefaults: next }))} />
     </SubPart>
 
     <SubPart title="רשימת החלקים" hint={`${parts ? 'לחלקים שאינם תוכן (עיטורים, עמודים, תמונות): ' : ''}בכל שורה: ימין, אמצע או שמאל מזיזים את החלק יחד עם המסגרת שלו. אם בצד הזה כבר עומד חלק אחר, השניים מתחלפים. הסמל האחרון בוחר את החלק לגרירה ידנית על הלוח.`}>

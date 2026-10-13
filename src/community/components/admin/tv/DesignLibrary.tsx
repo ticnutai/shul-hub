@@ -17,6 +17,7 @@ import { findBackdrop } from "@/tv/backdrops";
 import { framePictureUrl } from "@/tv/framePictures";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { HiddenShelf, TileRemove } from "./ReadyShelf";
+import { showDesignTopic } from "./designTopics";
 import {
   BUILTIN_DESIGNS,
   DESIGN_GROUPS,
@@ -178,8 +179,8 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
   /** A kit of parts, put on and opened part by part: the list of free parts, where each is chosen, moved and changed. */
   const editInParts = (d: SavedDesign) => {
     onEdit("design-apply", (cfg) => applyDesign(cfg, d));
-    // Once the board has its parts; instant, as a smooth scroll stops in a background window.
-    window.setTimeout(() => document.getElementById("design-elements")?.scrollIntoView({ block: "start" }), 80);
+    // Once the board has its parts.
+    showDesignTopic("design-elements");
   };
 
   const update = (d: SavedDesign) => {
