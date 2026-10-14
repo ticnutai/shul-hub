@@ -67,3 +67,51 @@ test("all the texts chosen at once, and coloured together", async ({ page, isMob
   for (const e of saved.filter((x) => x.kind !== "text")) expect(e.color).not.toBe("#c0392b");
   expect(errors).toEqual([]);
 });
+
+test("under the preview too: all the texts of the board edited directly, some taken off", async ({ page, isMobile }) => {
+  // Asked for where the board is edited directly - not only down in the list of parts.
+  test.skip(isMobile, "the editor is for a desktop screen");
+  test.setTimeout(90_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_premium_jerusalem-stone")!;
+  const start = JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit)));
+  const server = await serveEditor(page, start);
+  await page.goto("/e2e/harness/editor.html");
+  await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+  await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+
+  const tools = page.getByTestId("preview-kind-tools");
+  const textsAll = (start.elements as { id: string; kind: string; name: string; hidden?: boolean }[]).filter((e) => e.kind === "text");
+  await tools.getByRole("button", { name: /^כל הטקסטים/ }).click();
+  const list = tools.getByTestId("kind-checklist");
+  await expect(list.getByRole("checkbox")).toHaveCount(textsAll.length);
+  await expect(list.getByRole("checkbox", { checked: true })).toHaveCount(textsAll.filter((e) => !e.hidden).length);
+  // The text bar under the preview speaks for all of them.
+  await expect(page.getByTestId("preview-text-tools")).toBeVisible();
+
+  // Clear, all again, one taken off.
+  await list.getByRole("button", { name: "ניקוי הבחירה", exact: true }).click();
+  await expect(list.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  await list.getByRole("button", { name: "בחירת כל הטקסטים", exact: true }).click();
+  await expect(list.getByRole("checkbox", { checked: true })).toHaveCount(textsAll.length);
+  const left = textsAll.at(-1)!;
+  await list.getByRole("checkbox", { name: `סימון ${left.name}`, exact: true }).uncheck();
+
+  await page.getByTestId("preview-text-tools").getByRole("button", { name: "צבע הטקסט", exact: true }).click();
+  await page.getByTestId("color-panel").getByLabel("קוד הצבע", { exact: true }).fill("#1d6f42");
+  await page.getByLabel("סגירת בחירת הצבע", { exact: true }).click();
+
+  await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
+  await expect.poll(() => server.writes()).toBeGreaterThan(0);
+  const saved = normalizeTvConfig(server.saved()).elements;
+  for (const t of textsAll.filter((e) => e.id !== left.id)) expect(saved.find((e) => e.id === t.id)!.color).toBe("#1d6f42");
+  expect(saved.find((e) => e.id === left.id)!.color).not.toBe("#1d6f42");
+  for (const e of saved.filter((x) => x.kind !== "text")) expect(e.color).not.toBe("#1d6f42");
+
+  // Closing the list leaves the kinds' buttons.
+  await list.getByRole("button", { name: "סגירת הרשימה", exact: true }).click();
+  await expect(tools.getByTestId("kind-checklist")).toHaveCount(0);
+  expect(errors).toEqual([]);
+});

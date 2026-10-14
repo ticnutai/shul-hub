@@ -16,7 +16,8 @@ import { exportElementSet, importElementSet } from '@/tv/elements';
 import { downloadFile } from '@/tv/workspaceTransfer';
 import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
 import { SubPart } from './Parts';
-import { Notice, choiceChipClass } from './Notice';
+import { Notice } from './Notice';
+import { KindPicker, kindName, ofKind } from './KindPicker';
 import { FileButton, useFileTask, useUpload } from './Upload';
 import { ColourRow, FIT_CHOICES, HideToggle, INPUT_CLASS, LockToggle, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
@@ -27,14 +28,6 @@ const PLACE = [['x', 'מיקום אופקי', 0, 100, 0.5], ['y', 'מיקום א
 /** Alignment, right to left as the page reads. */
 const ALIGNMENTS = [['right', 'לימין'], ['center-x', 'מרכוז אופקי'], ['left', 'לשמאל'], ['top', 'למעלה'], ['center-y', 'מרכוז אנכי'], ['bottom', 'למטה']] as const;
 
-/** The kinds the parts are chosen by, all of one at a time. */
-const KIND_GROUPS: ReadonlyArray<readonly [string, ReadonlyArray<BoardElement['kind']>]> = [
-  ['כל הטקסטים', ['text']],
-  ['כל המסגרות', ['frame']],
-  ['כל התיבות', ['box']],
-  ['כל התמונות', ['image']],
-  ['כל העיטורים והעמודים', ['ornament', 'column']],
-];
 
 type Props = {
   config: TvConfig;
@@ -48,11 +41,9 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
   const first = elements.find(e => e.id === selected[0]);
   /** A picture (or a frame drawn from one): its colours are tuned, not painted. */
   const pictured = !!first && (first.kind === 'image' || (first.kind === 'frame' && !!first.image));
-  /** A part drawn from a picture: a colour or a fill is not painted on it. */
-  const paintless = (id: string) => { const e = elements.find(x => x.id === id); return !!e && (e.kind === 'image' || (e.kind === 'frame' && !!e.image)); };
   /** The list of parts shows one kind (an index of KIND_GROUPS) or all of them. */
   const [listKind, setListKind] = useState<number | null>(null);
-  const listed = listKind === null ? elements : elements.filter(x => KIND_GROUPS[listKind][1].includes(x.kind));
+  const listed = ofKind(elements, listKind);
   const lockedInSelection = elements.some(e => selected.includes(e.id) && e.locked);
   const commit = (next: BoardElement[], key = `elements:${crypto.randomUUID()}`) => onEdit(key, c => ({ ...c, elements: normalizeElements(next) }));
   const patch = (p: Partial<BoardElement>) => {
@@ -242,7 +233,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
             checked={listed.length > 0 && listed.every(x => selected.includes(x.id))}
             ref={el => { if (el) el.indeterminate = listed.some(x => selected.includes(x.id)) && !listed.every(x => selected.includes(x.id)); }}
             onChange={ev => { const ids = listed.map(x => x.id); select(s => ev.target.checked ? [...new Set([...s, ...ids])] : s.filter(id => !ids.includes(id))); }} />
-          {selected.length ? `נבחרו ${selected.length}` : listKind === null ? 'בחירת הכול' : `בחירת כל ה${KIND_GROUPS[listKind][0].replace('כל ה', '')}`}
+          {selected.length ? `נבחרו ${selected.length}` : listKind === null ? 'בחירת הכול' : `בחירת כל ה${kindName(listKind)}`}
         </label>
         {selected.length > 0 && <Button type="button" size="sm" variant="ghost" className="h-7" onClick={() => select([])}>ניקוי הבחירה</Button>}
         {selected.length > 0 && ([['הסתרה', { hidden: true }], ['הצגה', { hidden: false }], ['נעילה', { locked: true }], ['שחרור', { locked: false }]] as const).map(([label, p]) => (
@@ -252,37 +243,10 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
           </Button>
         ))}
       </div>
-      {/* All of one kind at once - every text, every frame... - to change them together (a colour, a font). */}
-      <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label="בחירה לפי סוג" data-testid="elements-by-kind">
-        <span className="text-muted-foreground">בחירה לפי סוג:</span>
-        {KIND_GROUPS.map(([label, kinds]) => {
-          const ids = elements.filter(x => kinds.includes(x.kind) && !x.hidden).map(x => x.id);
-          const all = ids.length > 0 && ids.every(id => selected.includes(id));
-          return (
-            <button key={label} type="button" disabled={!ids.length} aria-pressed={all}
-              title="לחיצה בוחרת את כולם. Shift + לחיצה - מוסיף אותם למה שכבר נבחר."
-              onClick={ev => {
-                // The first one able to take a colour leads, so the panel offers the colour.
-                const lead = [...ids].sort((a, b) => Number(paintless(a)) - Number(paintless(b)));
-                select(ev.shiftKey ? [...new Set([...selected, ...lead])] : lead);
-                // The list then shows that kind alone, to take some of them off (or with Shift, all kinds).
-                setListKind(ev.shiftKey ? null : KIND_GROUPS.findIndex(([l]) => l === label));
-              }}
-              className={choiceChipClass(all, 'text-xs disabled:opacity-40')}>
-              {label} ({ids.length})
-            </button>
-          );
-        })}
-      </div>
-      {selected.length > 1 && (() => {
-        const picture = selected.filter(paintless).length, locked = elements.filter(x => selected.includes(x.id) && x.locked).length;
-        return (picture > 0 || locked > 0) && <p className="text-[11px] text-muted-foreground" data-testid="elements-by-kind-note">
-          {picture > 0 && `${picture} מהנבחרים עשויים מתמונה: צבע ומילוי לא חלים עליהם - את הגוונים שלהם מכוונים בכלי התמונה. `}
-          {locked > 0 && `${locked} נעולים, ולא ישתנו עד שישוחררו.`}
-        </p>;
-      })()}
+      {/* All of one kind at once; the list then shows that kind alone, to take some of them off. */}
+      <KindPicker elements={elements} selected={selected} select={select} onKind={setListKind} />
       {listKind !== null && <p className="flex flex-wrap items-center gap-2 text-xs" data-testid="elements-list-kind">
-        <span>ברשימה: {KIND_GROUPS[listKind][0].replace('כל ה', '')} בלבד ({listed.length}). מסמנים או מורידים סימון מכל אחד.</span>
+        <span>ברשימה: {kindName(listKind)} בלבד ({listed.length}). מסמנים או מורידים סימון מכל אחד.</span>
         <button type="button" className="font-medium text-primary underline underline-offset-2" onClick={() => setListKind(null)}>הצגת כל החלקים</button>
       </p>}
       <div className="space-y-1" aria-label="שכבות החלקים">{[...listed].reverse().map(e => {

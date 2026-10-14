@@ -68,6 +68,7 @@ import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { ContentTab } from "./ContentTab";
 import { DesignTab } from "./DesignTab";
 import { isDesignTopic, showDesignTopic } from "./designTopics";
+import { KindChecklist, KindPicker } from "./KindPicker";
 import { SaveKitButton } from "./DesignLibrary";
 import type { DeviceMode } from "./devices";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
@@ -781,6 +782,21 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
    * The text of the part clicked on the board: the same bar as in the list of
    * parts. A double click on a text of the gabbai's writes into it there.
    */
+  /** The kind whose parts are listed under the preview, to take some of them off. */
+  const [previewKind, setPreviewKind] = useState<number | null>(null);
+  /**
+   * Under the preview, while the board is edited directly: every part of a kind
+   * chosen at once (all the texts, all the frames...) - the same piece as in the
+   * list of parts - and then the text bar for all of them.
+   */
+  const partKinds = view.elements.length > 0 ? (
+    <div className="space-y-2" data-testid="preview-kind-tools">
+      <KindPicker elements={view.elements} selected={elementEditing.selected} select={selectElements} onKind={setPreviewKind} testId="preview-by-kind" />
+      {previewKind !== null && (
+        <KindChecklist elements={view.elements} kind={previewKind} selected={elementEditing.selected} select={selectElements} onClose={() => setPreviewKind(null)} />
+      )}
+    </div>
+  ) : null;
   const partText = elementEditing.selected.some((id) => view.elements.some((e) => e.id === id && e.kind === "text")) ? (
     <div className="space-y-1" data-testid="preview-text-tools">
       <ElementTextTools
@@ -1300,6 +1316,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                 onSelect={setSelected}
               />
             )}
+            {editing && partKinds}
             {editing && partText}
             {controls}
           </div>
@@ -1492,6 +1509,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           />
         </div>
       )}
+      {editing && partKinds && <div className="mt-3">{partKinds}</div>}
       {editing && partText && <div className="mt-3">{partText}</div>}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {previewActions}
