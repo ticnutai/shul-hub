@@ -16,7 +16,7 @@ import { exportElementSet, importElementSet } from '@/tv/elements';
 import { downloadFile } from '@/tv/workspaceTransfer';
 import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
 import { SubPart } from './Parts';
-import { Notice } from './Notice';
+import { Notice, choiceChipClass } from './Notice';
 import { FileButton, useFileTask, useUpload } from './Upload';
 import { ColourRow, FIT_CHOICES, HideToggle, INPUT_CLASS, LockToggle, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
@@ -26,6 +26,15 @@ const FIELD = `mt-1 block w-full ${INPUT_CLASS}`;
 const PLACE = [['x', 'מיקום אופקי', 0, 100, 0.5], ['y', 'מיקום אנכי', 0, 100, 0.5], ['width', 'רוחב החלק', 1, 100, 0.5], ['height', 'גובה החלק', 1, 100, 0.5], ['rotation', 'סיבוב', -180, 180, 1]] as const;
 /** Alignment, right to left as the page reads. */
 const ALIGNMENTS = [['right', 'לימין'], ['center-x', 'מרכוז אופקי'], ['left', 'לשמאל'], ['top', 'למעלה'], ['center-y', 'מרכוז אנכי'], ['bottom', 'למטה']] as const;
+
+/** The kinds the parts are chosen by, all of one at a time. */
+const KIND_GROUPS: ReadonlyArray<readonly [string, ReadonlyArray<BoardElement['kind']>]> = [
+  ['כל הטקסטים', ['text']],
+  ['כל המסגרות', ['frame']],
+  ['כל התיבות', ['box']],
+  ['כל התמונות', ['image']],
+  ['כל העיטורים והעמודים', ['ornament', 'column']],
+];
 
 type Props = {
   config: TvConfig;
@@ -39,6 +48,8 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
   const first = elements.find(e => e.id === selected[0]);
   /** A picture (or a frame drawn from one): its colours are tuned, not painted. */
   const pictured = !!first && (first.kind === 'image' || (first.kind === 'frame' && !!first.image));
+  /** A part drawn from a picture: a colour or a fill is not painted on it. */
+  const paintless = (id: string) => { const e = elements.find(x => x.id === id); return !!e && (e.kind === 'image' || (e.kind === 'frame' && !!e.image)); };
   const lockedInSelection = elements.some(e => selected.includes(e.id) && e.locked);
   const commit = (next: BoardElement[], key = `elements:${crypto.randomUUID()}`) => onEdit(key, c => ({ ...c, elements: normalizeElements(next) }));
   const patch = (p: Partial<BoardElement>) => {
@@ -235,6 +246,33 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
           </Button>
         ))}
       </div>
+      {/* All of one kind at once - every text, every frame... - to change them together (a colour, a font). */}
+      <div className="flex flex-wrap items-center gap-1.5 text-xs" role="group" aria-label="בחירה לפי סוג" data-testid="elements-by-kind">
+        <span className="text-muted-foreground">בחירה לפי סוג:</span>
+        {KIND_GROUPS.map(([label, kinds]) => {
+          const ids = elements.filter(x => kinds.includes(x.kind) && !x.hidden).map(x => x.id);
+          const all = ids.length > 0 && ids.every(id => selected.includes(id));
+          return (
+            <button key={label} type="button" disabled={!ids.length} aria-pressed={all}
+              title="לחיצה בוחרת את כולם. Shift + לחיצה - מוסיף אותם למה שכבר נבחר."
+              onClick={ev => {
+                // The first one able to take a colour leads, so the panel offers the colour.
+                const lead = [...ids].sort((a, b) => Number(paintless(a)) - Number(paintless(b)));
+                select(ev.shiftKey ? [...new Set([...selected, ...lead])] : lead);
+              }}
+              className={choiceChipClass(all, 'text-xs disabled:opacity-40')}>
+              {label} ({ids.length})
+            </button>
+          );
+        })}
+      </div>
+      {selected.length > 1 && (() => {
+        const picture = selected.filter(paintless).length, locked = elements.filter(x => selected.includes(x.id) && x.locked).length;
+        return (picture > 0 || locked > 0) && <p className="text-[11px] text-muted-foreground" data-testid="elements-by-kind-note">
+          {picture > 0 && `${picture} מהנבחרים עשויים מתמונה: צבע ומילוי לא חלים עליהם - את הגוונים שלהם מכוונים בכלי התמונה. `}
+          {locked > 0 && `${locked} נעולים, ולא ישתנו עד שישוחררו.`}
+        </p>;
+      })()}
       <div className="space-y-1" aria-label="שכבות החלקים">{[...elements].reverse().map(e => {
         const sec = sections.get(e.id);
         const mates = sec ? elements.filter(x => sec.ids.includes(x.id) && x.id !== e.id).map(x => x.name) : [];
