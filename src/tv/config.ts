@@ -1,3 +1,4 @@
+import { normalizeContainers, type PartContainer } from "./containers";
 import { ELEMENT_FONTS, safeImage, normalizeElements, normalizeElementLibrary, type SavedElementSet, type BoardElement, type ElementFont } from "./elements";
 import { normalizeFrameLooks, TITLE_STYLES, type FrameLooks, type TitleStyle } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
@@ -482,7 +483,7 @@ export interface PartPage {
  */
 export const PAGE_LOOK_KEYS: Array<keyof TvConfig> = [
   "backgroundGradient", "backgroundImage", "backgroundOverlay", "backgroundDim", "backgroundTune",
-  "elements", "boardFrame", "boardFrameTune", "boardFrameImage", "frame",
+  "elements", "containers", "boardFrame", "boardFrameTune", "boardFrameImage", "frame",
   "font", "textScale", "tracking", "styles", "titleStyle",
   "screenLayout", "illustration", "spacing", "clockStyle",
   "theme", "themeOverrides", "frameStyle", "frameLooks", "illustratedStyle",
@@ -505,6 +506,12 @@ export interface TvConfig {
   elementLibrary: SavedElementSet[];
   elementDefaults: ElementDefaults;
   elements: BoardElement[];
+  /**
+   * What the parts are gathered in (containers.ts): a name, the container each
+   * stands in, a shape. The board is drawn from `elements` alone; this is the
+   * editor's, and travels with the parts wherever they go (a page, a kit).
+   */
+  containers: PartContainer[];
   /** The pages of a board of parts; none (or one) - the board is one page. */
   partPages: PartPage[];
   screenLayout: ScreenLayout;
@@ -832,6 +839,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
   elementLibrary: [],
   elementDefaults: DEFAULT_ELEMENT_DEFAULTS,
   elements: [],
+  containers: [],
   partPages: [],
   perDevice: {},
   theme: "navy",
@@ -1453,6 +1461,7 @@ function normalizeStored(stored: unknown): TvConfig {
     elementLibrary: normalizeElementLibrary(raw.elementLibrary),
     elementDefaults: normalizeElementDefaults(raw.elementDefaults),
     elements: normalizeElements(raw.elements),
+    containers: normalizeContainers(raw.containers),
     partPages: normalizePartPages(raw.partPages),
     theme,
     font,

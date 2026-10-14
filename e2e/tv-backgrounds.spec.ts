@@ -86,13 +86,15 @@ test("whatever can be added can be removed: a ready background and a ready desig
 
   // A ready design: hidden and brought back, and copied into one's own to edit.
   const designs = page.getByTestId("builtin-designs");
+  // Of the older kits (not of parts), kept folded in the library.
+  await page.getByTestId("older-designs").locator("summary").click();
   await designs.getByRole("button", { name: "הסתרת לוחות הברית מאבן" }).click();
   await expect(designs.getByText("לוחות הברית מאבן")).toHaveCount(0);
   const designShelf = page.getByTestId("designs-hidden");
   await designShelf.locator("summary").click();
   await designShelf.getByRole("button", { name: "החזרת לוחות הברית מאבן" }).click();
   await expect(designs.getByText("לוחות הברית מאבן")).toBeVisible();
-  await designs.locator("div", { hasText: "וילון כחול וזהב" }).getByRole("button", { name: "שכפול לעריכה" }).first().click();
+  await designs.locator('[data-design-id="d_curtain"]').getByRole("button", { name: "שכפול לעריכה" }).click();
   await expect(page.getByTestId("design-library").getByText("וילון כחול וזהב (שלי)")).toBeVisible();
   await expectNotFrozen(page, "ready items");
 });

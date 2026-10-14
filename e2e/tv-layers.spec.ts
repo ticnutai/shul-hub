@@ -212,6 +212,8 @@ test.describe("TV editor, by layer", () => {
   });
 
   test("a ready design puts a whole look on the board, built from parts", async ({ page }) => {
+    // An older kit (not of parts): kept, folded in the library.
+    await page.getByTestId("older-designs").locator("summary").click();
     await page.getByTestId("builtin-designs").getByRole("button", { name: /^החלת ערכה וילון כחול וזהב/ }).click();
     const med = root(page).locator(".tv-med");
     await expect(med).toBeVisible();

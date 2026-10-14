@@ -197,6 +197,8 @@ test.describe("TV editor, occasions", () => {
   test("beside the pages: the occasion on today by itself; any other only when added by hand, and ✕ takes it off", async ({ page }) => {
     // הושענא רבה had a design of its own and stood in the bar all year (אושר של יהודי, 11.10.2026).
     await row(page, "cal:hoshana_raba").getByTestId("occasion-design").click();
+    // The wood kit is of the older ones (not of parts): kept folded in the library.
+    await page.getByTestId("older-designs").locator("summary").click();
     await page.getByTestId("builtin-designs").locator('[data-design-id="d_wood"] button[title^="ממלא"]').click();
     await page.getByTestId("occasion-design-banner").getByRole("button", { name: "חזרה לעיצוב הלוח" }).click();
     const bar = page.getByTestId("part-pages");

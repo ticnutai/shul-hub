@@ -35,7 +35,7 @@ export const DESIGN_PART_LABELS: Record<DesignPart, string> = {
 /** Which settings each part is made of - the same split as the editor's layers. */
 const PART_KEYS: Record<DesignPart, Array<keyof TvConfig>> = {
   background: ["backgroundGradient", "backgroundImage", "backgroundOverlay", "backgroundDim", "backgroundTune"],
-  frames: ["elements", "boardFrame", "boardFrameTune", "boardFrameImage", "frame"],
+  frames: ["elements", "containers", "boardFrame", "boardFrameTune", "boardFrameImage", "frame"],
   text: ["font", "textScale", "tracking", "styles", "titleStyle"],
   layout: ["screenLayout", "illustration", "spacing", "clockStyle"],
 };
@@ -166,6 +166,8 @@ export function applyDesign(c: TvConfig, d: SavedDesign): TvConfig {
   next.themeOverrides = overrides;
 
   for (const part of d.parts) for (const k of PART_KEYS[part]) if (k in d.values) (next as unknown as Record<string, unknown>)[k] = structuredClone(d.values[k]);
+  // New parts bring their own containers - or none, for a kit made before there were any (read off its parts).
+  if (d.parts.includes("frames") && "elements" in d.values && !("containers" in d.values)) next.containers = [];
   if (d.values.frameStyle) {
     next.frameStyle = {
       ...c.frameStyle,

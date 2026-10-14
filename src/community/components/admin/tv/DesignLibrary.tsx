@@ -2,7 +2,7 @@ import { CatalogPreview } from './CatalogPreview';
 import { useSharedCatalog } from '@/tv/sharedCatalog';
 import {CATALOG_CATEGORIES,catalogCategory,type CatalogCategory} from '@/tv/catalogCategories';
 import { useState, type ReactNode } from "react";
-import { SubPart } from "./Parts";
+import { Folded, SubPart } from "./Parts";
 import { BookmarkPlus, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
@@ -191,35 +191,13 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
     toast.success(`הערכה "${d.name}" עודכנה למה שעל הלוח עכשיו.`);
   };
 
-  return (
-    <div className="space-y-5" data-testid="design-library">
-      <SubPart
-        title="ערכות מוכנות"
-        hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
-      >
-      <label className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium">נושא הערכות:</span>
-        <select aria-label="נושא הערכות" className={SELECT_CLASS} value={category} onChange={(e) => setCategory(e.target.value as CatalogCategory)}>
-          {CATALOG_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-        </select>
-      </label>
-      <p className="text-[11px] text-muted-foreground">הנושא מסנן את הספרייה בלבד ואינו מגביל את יום השימוש. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
-      {catalogError && <CatalogNotice onRetry={retry} />}
-      <div className="space-y-4" data-testid="builtin-designs">
-      {groups.map((group) => {
-        const shown = available.filter((d) => group.ids.includes(d.id) && !isHiddenReady(config, "design", d.id) && (category==='הכול'||catalogCategory(d)===category));
-        if (!shown.length) return null;
-        return (
-      <section key={group.id} data-design-group={group.id} className="space-y-1.5">
-        <h4 className="text-sm font-semibold">{group.title}</h4>
-        <p className="text-[11px] leading-snug text-muted-foreground">{group.hint}</p>
-      <div className={PART_GRID}>
-        {shown.map((d) => (
+  /** A ready kit's tile: put on, copied to one's own, opened part by part. */
+  const readyTile = (d: SavedDesign, group: string) => (
           <KitTile
             key={d.id}
             design={d}
             config={config}
-            thumb={group.id === "classic" || group.id === "shared" ? undefined : `/new-shul-assets/thumbs/${d.id}.webp`}
+            thumb={group === "classic" || group === "shared" || group === "older" ? undefined : `/new-shul-assets/thumbs/${d.id}.webp`}
             onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
             onRemove={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))}
             removeReady
@@ -240,11 +218,45 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             </TileAction>
             {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
           </KitTile>
-        ))}
+  );
+  // The kits not built of parts: kept, and offered folded - a board is built of parts now.
+  const older = available.filter((d) => !ofParts(d) && !isHiddenReady(config, "design", d.id) && (category === "הכול" || catalogCategory(d) === category));
+
+  return (
+    <div className="space-y-5" data-testid="design-library">
+      <SubPart
+        title="ערכות מוכנות"
+        hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
+      >
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="font-medium">נושא הערכות:</span>
+        <select aria-label="נושא הערכות" className={SELECT_CLASS} value={category} onChange={(e) => setCategory(e.target.value as CatalogCategory)}>
+          {CATALOG_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+        </select>
+      </label>
+      <p className="text-[11px] text-muted-foreground">הנושא מסנן את הספרייה בלבד ואינו מגביל את יום השימוש. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
+      {catalogError && <CatalogNotice onRetry={retry} />}
+      <div className="space-y-4" data-testid="builtin-designs">
+      {groups.map((group) => {
+        // Kits of parts only: a board is built of parts. The older kits are kept, folded below.
+        const shown = available.filter((d) => group.ids.includes(d.id) && ofParts(d) && !isHiddenReady(config, "design", d.id) && (category==='הכול'||catalogCategory(d)===category));
+        if (!shown.length) return null;
+        return (
+      <section key={group.id} data-design-group={group.id} className="space-y-1.5">
+        <h4 className="text-sm font-semibold">{group.title}</h4>
+        <p className="text-[11px] leading-snug text-muted-foreground">{group.hint}</p>
+      <div className={PART_GRID}>
+        {shown.map((d) => readyTile(d, group.id))}
       </div>
       </section>
         );
       })}
+      {older.length > 0 && (
+        <Folded label={`ערכות ישנות, שלא בנויות מחלקים (${older.length})`} testId="older-designs">
+          <p className="mb-2 text-[11px] text-muted-foreground">נשמרות לבתי כנסת שכבר משתמשים בהן. לוח חדש בונים מערכה של חלקים, שכל חלק בה משתנה לבד.</p>
+          <div className={PART_GRID}>{older.map((d) => readyTile(d, "older"))}</div>
+        </Folded>
+      )}
       </div>
       <HiddenShelf
         testId="designs-hidden"

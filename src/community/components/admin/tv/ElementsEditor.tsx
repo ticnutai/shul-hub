@@ -18,6 +18,7 @@ import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
 import { SubPart } from './Parts';
 import { Notice } from './Notice';
 import { KindPicker, kindName, ofKind } from './KindPicker';
+import { ContainerLayers, type Board } from './ContainerLayers';
 import { FileButton, useFileTask, useUpload } from './Upload';
 import { ColourRow, FIT_CHOICES, HideToggle, INPUT_CLASS, LockToggle, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
@@ -113,6 +114,29 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     select([...ids]);
     toast(ids.length > 1 ? `"${e.name}" נבחר יחד עם ${ids.length - 1} החלקים שזזים איתו. גררו אותו על הלוח, או הזיזו בחצים של המקלדת.` : `"${e.name}" נבחר. גררו אותו על הלוח, או הזיזו בחצים של המקלדת.`);
   };
+
+  /** A part's row of the list: the same in the flat list and inside a container. */
+  const partRow = (e: BoardElement, inContainer = false) => {
+        const sec = sections.get(e.id);
+        const mates = sec ? elements.filter(x => sec.ids.includes(x.id) && x.id !== e.id).map(x => x.name) : [];
+        const tip = mates.length ? ` - זז יחד עם: ${mates.join(', ')}` : '';
+        return <div key={e.id} className={`flex items-center gap-2 rounded-md border px-2 py-1 ${selected.includes(e.id) ? 'border-primary bg-primary/10' : ''}`}>
+          <input type="checkbox" aria-label={`בחירת ${e.name}`} className="size-4 shrink-0" checked={selected.includes(e.id)}
+            onChange={ev => select(s => ev.target.checked ? [...new Set([...s, e.id])] : s.filter(id => id !== e.id))} />
+          <button type="button" className={`min-w-0 flex-1 truncate text-right text-sm ${e.hidden ? 'text-muted-foreground line-through' : ''}`} onClick={ev => choose(e, ev.shiftKey)}>{e.name}{e.group && !inContainer ? ' · קבוצה' : ''}</button>
+          <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label={`מיקום של ${e.name}`} data-testid="element-side">
+            {!inLayoutTab.has(e.id) && SIDE_CHOICES.map(([side, label, Icon]) => <button key={side} type="button" aria-label={`${e.name} ל${label}`} aria-pressed={sec?.side === side} title={`להעביר ל${label}${tip}`} disabled={e.locked} onClick={() => place(e, side)} className={sideButtonClass(sec?.side === side)}><Icon className="size-4" aria-hidden /></button>)}
+            <button type="button" aria-label={`הזזה ידנית של ${e.name}`} title={`הזזה ידנית: בוחר את החלק${mates.length ? ' ואת מה שזז איתו' : ''}, ואז גוררים על הלוח`} disabled={e.locked} onClick={() => manual(e)} className={SIDE_BUTTON}><Move className="size-4" aria-hidden /></button>
+          </div>
+          <span className="flex shrink-0 items-center gap-0.5">
+            <HideToggle hidden={e.hidden} name={e.name} onToggle={() => commit(elements.map(x => x.id === e.id ? { ...x, hidden: !x.hidden } : x))} />
+            <LockToggle locked={e.locked} name={e.name} onToggle={() => commit(elements.map(x => x.id === e.id ? { ...x, locked: !x.locked } : x))} />
+          </span>
+        </div>;
+  };
+  /** A change to the parts and the containers together, as one step of the history. */
+  const editBoard = (key: string, change: (b: Board) => Board) =>
+    onEdit(key, c => { const b = change({ elements: c.elements, containers: c.containers ?? [] }); return { ...c, elements: normalizeElements(b.elements), containers: b.containers }; });
 
   return <div className="space-y-5" data-testid="elements-editor">
     {elements.some(e => e.sourceMask)
@@ -249,24 +273,12 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         <span>ברשימה: {kindName(listKind)} בלבד ({listed.length}). מסמנים או מורידים סימון מכל אחד.</span>
         <button type="button" className="font-medium text-primary underline underline-offset-2" onClick={() => setListKind(null)}>הצגת כל החלקים</button>
       </p>}
-      <div className="space-y-1" aria-label="שכבות החלקים">{[...listed].reverse().map(e => {
-        const sec = sections.get(e.id);
-        const mates = sec ? elements.filter(x => sec.ids.includes(x.id) && x.id !== e.id).map(x => x.name) : [];
-        const tip = mates.length ? ` - זז יחד עם: ${mates.join(', ')}` : '';
-        return <div key={e.id} className={`flex items-center gap-2 rounded-md border px-2 py-1 ${selected.includes(e.id) ? 'border-primary bg-primary/10' : ''}`}>
-          <input type="checkbox" aria-label={`בחירת ${e.name}`} className="size-4 shrink-0" checked={selected.includes(e.id)}
-            onChange={ev => select(s => ev.target.checked ? [...new Set([...s, e.id])] : s.filter(id => id !== e.id))} />
-          <button type="button" className={`min-w-0 flex-1 truncate text-right text-sm ${e.hidden ? 'text-muted-foreground line-through' : ''}`} onClick={ev => choose(e, ev.shiftKey)}>{e.name}{e.group ? ' · קבוצה' : ''}</button>
-          <div className="flex shrink-0 items-center gap-0.5" role="group" aria-label={`מיקום של ${e.name}`} data-testid="element-side">
-            {!inLayoutTab.has(e.id) && SIDE_CHOICES.map(([side, label, Icon]) => <button key={side} type="button" aria-label={`${e.name} ל${label}`} aria-pressed={sec?.side === side} title={`להעביר ל${label}${tip}`} disabled={e.locked} onClick={() => place(e, side)} className={sideButtonClass(sec?.side === side)}><Icon className="size-4" aria-hidden /></button>)}
-            <button type="button" aria-label={`הזזה ידנית של ${e.name}`} title={`הזזה ידנית: בוחר את החלק${mates.length ? ' ואת מה שזז איתו' : ''}, ואז גוררים על הלוח`} disabled={e.locked} onClick={() => manual(e)} className={SIDE_BUTTON}><Move className="size-4" aria-hidden /></button>
-          </div>
-          <span className="flex shrink-0 items-center gap-0.5">
-            <HideToggle hidden={e.hidden} name={e.name} onToggle={() => commit(elements.map(x => x.id === e.id ? { ...x, hidden: !x.hidden } : x))} />
-            <LockToggle locked={e.locked} name={e.name} onToggle={() => commit(elements.map(x => x.id === e.id ? { ...x, locked: !x.locked } : x))} />
-          </span>
-        </div>;
-      })}</div>
+      <div className="space-y-1" aria-label="שכבות החלקים">
+        {/* A board of parts, all of it shown: its containers, as a tree. One kind chosen above: those parts, in a flat list. */}
+        {parts && listKind === null
+          ? <ContainerLayers elements={elements} containers={config.containers ?? []} selected={selected} select={select} edit={editBoard} row={partRow} />
+          : [...listed].reverse().map(e => partRow(e))}
+      </div>
     </SubPart>
 
     <ElementLibrary config={config} selected={selected} onEdit={onEdit} onSelect={select} />
