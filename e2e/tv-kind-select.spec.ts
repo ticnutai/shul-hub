@@ -36,6 +36,20 @@ test("all the texts chosen at once, and coloured together", async ({ page, isMob
   await expect(page.getByTestId("elements-by-kind-note")).toContainText("עשויים מתמונה");
   await all.click();
   await expect(layers.getByRole("checkbox", { checked: true })).toHaveCount(texts.length);
+  // The list now shows the texts alone - each with its box - and what each shows is not offered for all of them.
+  await expect(page.getByTestId("elements-list-kind")).toContainText("טקסטים בלבד");
+  const allTexts = (start.elements as { kind: string }[]).filter((e) => e.kind === "text").length;
+  await expect(layers.getByRole("checkbox")).toHaveCount(allTexts);
+  await expect(page.getByLabel("מקור התוכן של החלק", { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId("content-source-one")).toBeVisible();
+  // Clear, choose all again, then take one off.
+  await page.getByRole("button", { name: "ניקוי הבחירה", exact: true }).click();
+  await expect(layers.getByRole("checkbox", { checked: true })).toHaveCount(0);
+  await page.getByLabel("בחירת כל החלקים", { exact: true }).check();
+  await expect(layers.getByRole("checkbox", { checked: true })).toHaveCount(allTexts);
+  const left = (start.elements as { id: string; kind: string; name: string }[]).filter((e) => e.kind === "text").at(-1)!;
+  await layers.getByRole("checkbox", { name: `בחירת ${left.name}`, exact: true }).uncheck();
+  await expect(layers.getByRole("checkbox", { checked: true })).toHaveCount(allTexts - 1);
 
   // One colour for them all.
   await page.getByRole("button", { name: "צבע החלק", exact: true }).click();
@@ -45,8 +59,11 @@ test("all the texts chosen at once, and coloured together", async ({ page, isMob
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect.poll(() => server.writes()).toBeGreaterThan(0);
   const saved = normalizeTvConfig(server.saved()).elements;
-  for (const t of texts) expect(saved.find((e) => e.id === t.id)!.color).toBe("#c0392b");
-  // Nothing else took the colour.
+  for (const t of (start.elements as { id: string; kind: string }[]).filter((e) => e.kind === "text" && e.id !== left.id))
+    expect(saved.find((e) => e.id === t.id)!.color).toBe("#c0392b");
+  // The one taken off kept its colour.
+  expect(saved.find((e) => e.id === left.id)!.color).not.toBe("#c0392b");
+  // Nothing but texts took the colour.
   for (const e of saved.filter((x) => x.kind !== "text")) expect(e.color).not.toBe("#c0392b");
   expect(errors).toEqual([]);
 });

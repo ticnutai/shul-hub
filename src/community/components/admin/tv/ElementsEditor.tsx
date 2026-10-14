@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Move } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,6 +50,9 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
   const pictured = !!first && (first.kind === 'image' || (first.kind === 'frame' && !!first.image));
   /** A part drawn from a picture: a colour or a fill is not painted on it. */
   const paintless = (id: string) => { const e = elements.find(x => x.id === id); return !!e && (e.kind === 'image' || (e.kind === 'frame' && !!e.image)); };
+  /** The list of parts shows one kind (an index of KIND_GROUPS) or all of them. */
+  const [listKind, setListKind] = useState<number | null>(null);
+  const listed = listKind === null ? elements : elements.filter(x => KIND_GROUPS[listKind][1].includes(x.kind));
   const lockedInSelection = elements.some(e => selected.includes(e.id) && e.locked);
   const commit = (next: BoardElement[], key = `elements:${crypto.randomUUID()}`) => onEdit(key, c => ({ ...c, elements: normalizeElements(next) }));
   const patch = (p: Partial<BoardElement>) => {
@@ -213,7 +216,9 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
             <ResetButton onClick={() => patch({ imageTune: undefined })}>חזרה לצבעוניות המקורית</ResetButton>
           </div>
         )}
-        {first.kind === 'text' && <label className="text-xs">מקור התוכן<select className={`${SELECT_CLASS} mt-1 block w-full`} aria-label="מקור התוכן של החלק" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label>}
+        {/* What a text shows is each text's own: not offered for several at once, where one choice would make them all show it. */}
+        {first.kind === 'text' && selected.length > 1 && <p className="text-[11px] text-muted-foreground" data-testid="content-source-one">מקור התוכן (מה הטקסט מציג) נבחר לכל טקסט לבד - בחרו טקסט אחד כדי לשנות אותו.</p>}
+        {first.kind === 'text' && selected.length === 1 && <label className="text-xs">מקור התוכן<select className={`${SELECT_CLASS} mt-1 block w-full`} aria-label="מקור התוכן של החלק" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label>}
         {/* The letters - size, font, bold, wrapping, the words - in the same bar as under the board's preview. */}
         {first.kind === 'text' && <div className="col-span-full">{textToolsElsewhere
           ? <Notice variant="neutral" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות) נמצא מתחת לתצוגה המקדימה של הלוח.</Notice>
@@ -234,11 +239,12 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="פעולות על כמה חלקים" data-testid="elements-bulk">
         <label className="flex items-center gap-1.5">
           <input type="checkbox" aria-label="בחירת כל החלקים" className="size-4"
-            checked={elements.length > 0 && selected.length === elements.length}
-            ref={el => { if (el) el.indeterminate = selected.length > 0 && selected.length < elements.length; }}
-            onChange={ev => select(ev.target.checked ? elements.map(x => x.id) : [])} />
-          {selected.length ? `נבחרו ${selected.length}` : 'בחירת הכול'}
+            checked={listed.length > 0 && listed.every(x => selected.includes(x.id))}
+            ref={el => { if (el) el.indeterminate = listed.some(x => selected.includes(x.id)) && !listed.every(x => selected.includes(x.id)); }}
+            onChange={ev => { const ids = listed.map(x => x.id); select(s => ev.target.checked ? [...new Set([...s, ...ids])] : s.filter(id => !ids.includes(id))); }} />
+          {selected.length ? `נבחרו ${selected.length}` : listKind === null ? 'בחירת הכול' : `בחירת כל ה${KIND_GROUPS[listKind][0].replace('כל ה', '')}`}
         </label>
+        {selected.length > 0 && <Button type="button" size="sm" variant="ghost" className="h-7" onClick={() => select([])}>ניקוי הבחירה</Button>}
         {selected.length > 0 && ([['הסתרה', { hidden: true }], ['הצגה', { hidden: false }], ['נעילה', { locked: true }], ['שחרור', { locked: false }]] as const).map(([label, p]) => (
           <Button key={label} type="button" size="sm" variant="outline" className="h-7"
             onClick={() => commit(elements.map(x => selected.includes(x.id) ? { ...x, ...p } : x), `elements-bulk:${label}:${selected.join(',')}`)}>
@@ -259,6 +265,8 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
                 // The first one able to take a colour leads, so the panel offers the colour.
                 const lead = [...ids].sort((a, b) => Number(paintless(a)) - Number(paintless(b)));
                 select(ev.shiftKey ? [...new Set([...selected, ...lead])] : lead);
+                // The list then shows that kind alone, to take some of them off (or with Shift, all kinds).
+                setListKind(ev.shiftKey ? null : KIND_GROUPS.findIndex(([l]) => l === label));
               }}
               className={choiceChipClass(all, 'text-xs disabled:opacity-40')}>
               {label} ({ids.length})
@@ -273,7 +281,11 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
           {locked > 0 && `${locked} נעולים, ולא ישתנו עד שישוחררו.`}
         </p>;
       })()}
-      <div className="space-y-1" aria-label="שכבות החלקים">{[...elements].reverse().map(e => {
+      {listKind !== null && <p className="flex flex-wrap items-center gap-2 text-xs" data-testid="elements-list-kind">
+        <span>ברשימה: {KIND_GROUPS[listKind][0].replace('כל ה', '')} בלבד ({listed.length}). מסמנים או מורידים סימון מכל אחד.</span>
+        <button type="button" className="font-medium text-primary underline underline-offset-2" onClick={() => setListKind(null)}>הצגת כל החלקים</button>
+      </p>}
+      <div className="space-y-1" aria-label="שכבות החלקים">{[...listed].reverse().map(e => {
         const sec = sections.get(e.id);
         const mates = sec ? elements.filter(x => sec.ids.includes(x.id) && x.id !== e.id).map(x => x.name) : [];
         const tip = mates.length ? ` - זז יחד עם: ${mates.join(', ')}` : '';
