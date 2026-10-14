@@ -35,7 +35,7 @@ type Props = {
 };
 export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: Props) {
   const elements = config.elements;
-  const { selected, select, snap, setSnap, gridStep, setGridStep, showGrid, setShowGrid, linkSection, setLinkSection } = useElementEditing()!;
+  const { selected, select, alone, snap, setSnap, gridStep, setGridStep, showGrid, setShowGrid, linkSection, setLinkSection } = useElementEditing()!;
   const first = elements.find(e => e.id === selected[0]);
   /** A picture (or a frame drawn from one): its colours are tuned, not painted. */
   const pictured = !!first && (first.kind === 'image' || (first.kind === 'frame' && !!first.image));
@@ -43,8 +43,10 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
   const commit = (next: BoardElement[], key = `elements:${crypto.randomUUID()}`) => onEdit(key, c => ({ ...c, elements: normalizeElements(next) }));
   const patch = (p: Partial<BoardElement>) => {
     // A frame, its box and its text, linked: a size or a turn is the whole section's, kept fitting together.
-    if (first && linkSection) { for (const key of ['width', 'height', 'rotation'] as const) if (key in p) { commit(sectionGeometry(elements, first.id, key, p[key]!)); return; } }
-    if (first && ('x' in p || 'y' in p)) { commit(moveElements(elements, linkSection ? linkedSection(elements, first.id) : selected, (p.x ?? first.x) - first.x, (p.y ?? first.y) - first.y)); return; }
+    // A part chosen alone (one of a section) changes alone; the section chosen whole changes together.
+    const together = linkSection && !alone;
+    if (first && together) { for (const key of ['width', 'height', 'rotation'] as const) if (key in p) { commit(sectionGeometry(elements, first.id, key, p[key]!)); return; } }
+    if (first && ('x' in p || 'y' in p)) { commit(moveElements(elements, together ? linkedSection(elements, first.id) : selected, (p.x ?? first.x) - first.x, (p.y ?? first.y) - first.y)); return; }
     commit(elements.map(e => selected.includes(e.id) && !e.locked ? { ...e, ...p } : e), `element-property:${selected.join(',')}:${Object.keys(p).join(',')}`);
   };
   const choose = (e: BoardElement, multi: boolean) => {

@@ -11,6 +11,13 @@ export interface ElementEditingState {
   setEnabled: Dispatch<SetStateAction<boolean>>;
   selected: string[];
   select: Dispatch<SetStateAction<string[]>>;
+  /**
+   * The part chosen alone - from the right click's list, with Alt, a double click or
+   * a press again - while it is still the one chosen: the mouse and the panel move
+   * it without its frame and box. Any other choice (select) ends it.
+   */
+  alone: string | null;
+  selectAlone: (id: string) => void;
   snap: boolean;
   setSnap: Dispatch<SetStateAction<boolean>>;
   gridStep: number;

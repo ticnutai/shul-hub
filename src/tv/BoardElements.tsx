@@ -63,7 +63,7 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
   const editor = useElementEditing();
   const api = editor?.api.current;
   const enabled = !!editor && !!api && api.elements === elements && (surface || editor.enabled);
-  const drag = useRef<{ x: number; y: number; all: BoardElement[]; ids: string[]; width: number; height: number; resize: ResizeHandle | null; last: BoardElement[] | null; pointer: number } | null>(null);
+  const drag = useRef<{ x: number; y: number; all: BoardElement[]; ids: string[]; width: number; height: number; resize: ResizeHandle | null; last: BoardElement[] | null; pointer: number; click?: string[] } | null>(null);
   const setDraft = editor?.setDraft;
   useEffect(() => {
     // A changed scope, history step or editing mode invalidates an in-flight gesture.
@@ -97,7 +97,7 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
   };
   /** Takes one part alone - not the section it moves with - and holds it for dragging. */
   const takeAlone = (ev: ReactPointerEvent<HTMLDivElement>, id: string) => {
-    editor!.select([id]);
+    editor!.selectAlone(id);
     if (elements.find(x => x.id === id)?.locked) return;
     const box = ev.currentTarget.getBoundingClientRect();
     ev.currentTarget.setPointerCapture(ev.pointerId);
@@ -149,7 +149,10 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       const d = drag.current; if (!d) return; ev.stopPropagation();
       // A part carried away: the next press there is a press of its own, not one part down.
       if (d.last) lastPress.current = null;
-      if (d.last && d.all === editor.api.current?.elements) api.commit(d.last); stop();
+      if (d.last && d.all === editor.api.current?.elements) api.commit(d.last);
+      // A part alone, clicked without being carried: its section is chosen again.
+      else if (!d.last && d.click) editor.select(d.click);
+      stop();
     } : undefined}
     onContextMenu={enabled ? ev => {
       // A right click: every part at that place, to choose one - also one covered by others.
@@ -206,6 +209,21 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
         takeAlone(ev, id); return;
       }
       lastPress.current = { ...here, id: e.id };
+      // A part chosen alone (from the list, Alt, a double click) stays alone under the mouse - also
+      // under other parts: dragging moves it by itself. A click on it without dragging takes its
+      // section again (or, with the section off, the part pressed); Esc lets it go.
+      const alone = ev.shiftKey ? null : editor.alone;
+      if (alone && pile.includes(alone)) {
+        const again = editor.linkSection && linkedSection(elements, alone).length > 1
+          ? pressSelection(alone, linkedSection(elements, alone), [], false)
+          : pressSelection(e.id, editor.linkSection ? linkedSection(elements, e.id) : [e.id], [], false);
+        lastPress.current = { ...here, id: alone };
+        if (elements.find(x => x.id === alone)?.locked) return;
+        const box = ev.currentTarget.getBoundingClientRect();
+        ev.currentTarget.setPointerCapture(ev.pointerId);
+        drag.current = { x: ev.clientX, y: ev.clientY, all: elements, ids: [alone], width: box.width, height: box.height, pointer: ev.pointerId, last: null, resize: null, click: again };
+        return;
+      }
       // With the section on, the frame, box and text move together - the part pressed first,
       // so the panel of the chosen part shows it and not its frame.
       const ids = pressSelection(e.id, editor.linkSection ? linkedSection(elements, e.id) : [e.id], editor.selected, ev.shiftKey);
@@ -232,7 +250,7 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       onClose={() => { setPickMenu(null); boardRef.current?.focus({ preventScroll: true }); }}
       onPick={id => {
         // Chosen from the list: that part alone, to move or change by itself.
-        setPickMenu(null); editor.select([id]); lastPress.current = null;
+        setPickMenu(null); editor.selectAlone(id); lastPress.current = null;
         boardRef.current?.focus({ preventScroll: true });
       }} />}
   </div></ElementDataProvider>;
