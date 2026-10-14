@@ -10,10 +10,14 @@ import { BlankBoardStarter, type BuildStep } from "./BlankBoardStarter";
 import { DesignLibrary } from "./DesignLibrary";
 import { ElementsEditor } from "./ElementsEditor";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
-import { SubPart } from "./Parts";
+import { Folded, SubPart } from "./Parts";
 import type { DraftAction } from "./draftState";
 import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section } from "./editorParts";
-import { useDesignTopics } from "./designTopics";
+import { showDesignTopic, useDesignTopics } from "./designTopics";
+import { useElementEditing } from "@/tv/elementEditing";
+import { KindPicker } from "./KindPicker";
+import { Notice } from "./Notice";
+import { isPartsBoard } from "./PartLooks";
 
 export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere }: {
   draft: TvConfig;
@@ -30,6 +34,10 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   textToolsElsewhere: boolean;
 }) {
   const { view: topicsView, topic } = useDesignTopics();
+  // A board of parts: the topics dress the parts chosen on it, not the boxes of an ordinary board.
+  const parts = isPartsBoard(view);
+  const editing = useElementEditing();
+  const selected = editing?.selected ?? [];
   /** One topic at a time: the others stay drawn (what was typed in them stays), only hidden. */
   const away = (id: string) => topicsView === "switch" && topic !== id;
   return (
@@ -44,6 +52,14 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         data-testid="parts-scope"
       >
         <DesignTopics />
+        {parts ? (
+          <div className="space-y-1" data-testid="parts-scope-kinds">
+            <p className="text-xs">
+              <span className="font-semibold">הלוח בנוי מחלקים:</span> התיבות, המסגרות והטקסט כאן חלים על החלקים שבוחרים בלוח, או על כל החלקים מסוג אחד:
+            </p>
+            <KindPicker elements={view.elements} selected={selected} select={(ids) => editing?.select(ids)} onKind={() => {}} testId="scope-by-kind" />
+          </div>
+        ) : (<>
         <label className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-semibold">התיבות, המסגרות והטקסט של:</span>
           <select
@@ -64,7 +80,8 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
           </select>
         </label>
         <p className="text-[11px] text-muted-foreground">"•" - לתיבה יש עיצוב משלה.</p>
-        {partTarget.startsWith("frame:") && (
+        </>)}
+        {!parts && partTarget.startsWith("frame:") && (
           <CopyBoxLook
             from={partTarget.slice(6) as FrameId}
             looks={scoped.frameLooks}
@@ -146,7 +163,22 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         title="5. טקסט"
         hint="גופן, גודל, צבעים וסגנון הכותרת - לכל הלוח או לתיבה שנבחרה למעלה, ואם רוצים - לחלק מסוים בה (השעה, כותרת...)."
       >
-        <TextLayer {...layerProps} target={partTarget} />
+        {parts ? (
+          <div className="space-y-3">
+            {/* The text bar is one, by the part chosen (and under the preview while editing on the board): a way there, not a second one. */}
+            <Notice variant="neutral" data-testid="parts-text-note">
+              הלוח בנוי מחלקים: צבע, גופן וגודל של טקסט משנים בחלונית של הטקסט שבחרתם. לכמה יחד - "כל הטקסטים" למעלה.{" "}
+              <button type="button" className="font-medium text-primary underline underline-offset-2" onClick={() => showDesignTopic("design-elements")}>
+                לכלי הטקסט
+              </button>
+            </Notice>
+            <Folded label="הגופן של הלוח כולו (לטקסטים שאין להם גופן משלהם)" testId="parts-board-text">
+              <TextLayer {...layerProps} target="frames" />
+            </Folded>
+          </div>
+        ) : (
+          <TextLayer {...layerProps} target={partTarget} />
+        )}
       </Section>
 
       <Section

@@ -1,3 +1,5 @@
+import { partShapePath } from './partShapes';
+import { FRAME_PICTURES, FRAME_PICTURE_PREFIX, framePictureUrl } from './framePictures';
 import { useEffect, useRef, useId, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useElementEditing } from './elementEditing';
 import {gridDelta,linkedSection} from './sectionGeometry';
@@ -31,10 +33,10 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
   // Before any early return: a hook is called on every render, in the same order.
   const maskId=useId().replace(/:/g,'');
   if((e.kind==='box'||e.kind==='frame')&&e.shape){
-    const paths={diamond:'M50 2L98 50L50 98L2 50Z',hexagon:'M25 2H75L98 50L75 98H25L2 50Z',arch:'M2 98V38C2 -10 98 -10 98 38V98Z'};
-    return <svg data-geometric-shape={e.shape} viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden><g fill={e.kind==='frame'?'none':e.fill} stroke={e.color} strokeWidth={e.kind==='frame'?1.2:.15}>
-      {e.shape==='circle'||e.shape==='ellipse'?<ellipse cx="50" cy="50" rx="48" ry="48"/>:e.shape in paths?<path d={paths[e.shape as keyof typeof paths]}/>:<rect x="2" y="2" width="96" height="96" rx={e.shape==='rounded'?10:0}/>}
-    </g></svg>;
+    // One path per shape (partShapes.ts), the same the editor's tile draws.
+    return <svg data-geometric-shape={e.shape} viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden>
+      <path d={partShapePath(e.shape)} fill={e.kind==='frame'?'none':e.fill} stroke={e.color} strokeWidth={e.kind==='frame'?1.2:.15} />
+    </svg>;
   }
   if(e.kind==='image' && e.image && e.sourceMask){
     const m=e.sourceMask,c=e.crop??{x:0,y:0,width:100,height:100};
@@ -46,7 +48,12 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
     </svg>;
   }
   if (e.kind === 'text' && e.binding) return <BoundElement element={e} />;
-  if (e.kind === 'frame' && e.image) return <div data-art-frame style={{ width: '100%', height: '100%', boxSizing: 'border-box', border: '2.6cqh solid transparent', borderImage: `url("${e.image}") 20% / 2.6cqh stretch`, background: 'transparent' }} />;
+  if (e.kind === 'frame' && e.image) {
+    // A ready frame of the gallery ("frame:<id>", as the boxes of an ordinary board wear it): its own edge and thickness.
+    const ready = e.image.startsWith(FRAME_PICTURE_PREFIX) ? FRAME_PICTURES.find(f => FRAME_PICTURE_PREFIX + f.id === e.image) : undefined;
+    const src = framePictureUrl(e.image), thick = ready ? `${(ready.width * .87).toFixed(2)}cqh` : '2.6cqh';
+    return src ? <div data-art-frame style={{ width: '100%', height: '100%', boxSizing: 'border-box', border: `${thick} solid transparent`, borderImage: `url("${src}") ${ready?.slice ?? 20}% / ${thick} stretch`, background: 'transparent' }} /> : null;
+  }
   // A symbol laid over an arch (artSymbols.ts) fades into the drawing at its edges.
   if (e.kind === 'image' && e.image && e.crop) return <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...(e.symbol ? { maskImage: 'radial-gradient(closest-side, #000 72%, transparent 100%)', WebkitMaskImage: 'radial-gradient(closest-side, #000 72%, transparent 100%)' } : {}) }}><img src={e.image} alt={e.name} draggable={false} style={{ position: 'absolute', maxWidth: 'none', width: `${10000 / e.crop.width}%`, height: `${10000 / e.crop.height}%`, left: `${-100 * e.crop.x / e.crop.width}%`, top: `${-100 * e.crop.y / e.crop.height}%` }} /></div>;
   if (e.kind === 'image') return e.image ? <img src={e.image} alt={e.name} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : null;

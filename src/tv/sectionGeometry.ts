@@ -1,5 +1,7 @@
 import {boundsOf,normalizeElements,resizeElements,sectionOf,type BoardElement} from './elements';
-export const SECTION_SHAPES={rectangle:'מלבן',rounded:'מלבן מעוגל',ellipse:'אליפסה',circle:'עיגול',arch:'קשת',hexagon:'משושה',diamond:'מעוין'} as const;
+import {PART_SHAPES} from './partShapes';
+/** The shapes of a box and its frame, by name - the board's one list (partShapes.ts). */
+export const SECTION_SHAPES=Object.fromEntries(PART_SHAPES.map(s=>[s.id,s.name])) as Record<(typeof PART_SHAPES)[number]['id'],string>;
 /** Imported artwork often stores the smaller fill immediately before its larger frame. */
 export function linkedSection(all:BoardElement[],id:string){
  const ids=new Set(sectionOf(all,id));
@@ -19,8 +21,8 @@ export function setSectionShape(all:BoardElement[],id:string,shape:NonNullable<B
  if(shape==='circle'){const width=Math.min(b.width,b.height*9/16);b.width=width;b.height=width*16/9;}
  const texts=own.filter(e=>e.kind==='text');
  const tb=texts.length?boundsOf(all,texts.map(e=>e.id)):b;
- const inset=shape==='diamond'?.29:shape==='circle'||shape==='ellipse'?.22:shape==='hexagon'?.17:.12;
- const top=shape==='arch'?.27:inset;
+ const inset=shape==='diamond'?.29:shape==='circle'||shape==='ellipse'?.22:shape==='hexagon'||shape==='octagon'?.17:shape==='pill'?.15:.12;
+ const top=shape==='arch'||shape==='onion'||shape==='lancet'?.27:shape==='dome'?.22:inset;
  return normalizeElements(all.map(e=>{
   if(!ids.includes(e.id))return e;
   if(e.kind==='text'){

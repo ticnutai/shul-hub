@@ -35,6 +35,7 @@ import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
 import { useUpload } from "./Upload";
+import { PartColour, PartShapeGallery, PartsBoardNote, isPartsBoard, usePartFramePictures } from "./PartLooks";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
@@ -592,20 +593,24 @@ export function FramesLayer(
   const setOwn = (key: string, patch: Parameters<typeof setFrameLook>[2]) =>
     frame && onEdit(`layer-frames:${frame}:${key}`, (c) => ({ ...c, frameLooks: setFrameLook(c.frameLooks, frame, patch) }));
 
+  // On a board of parts the same galleries dress the parts chosen on it (PartLooks.tsx).
+  const parts = isPartsBoard(config);
+  const partFrames = usePartFramePictures(config, onEdit);
   /** The frame picture on every box, or on this one; null takes it off. */
-  const wearPicture = (ref: string | null) => {
+  const wearPicture = (ref: string | null, name = "") => {
+    if (parts) return partFrames.wear(ref, name);
     if (frame) return setOwn("image", { image: ref });
     const ready = FRAME_PICTURES.find((f) => framePictureRef(f.id) === ref);
     setFs(ready ? { image: ref, imageSlice: ready.slice, imageWidth: ready.width } : { image: ref });
   };
-  const wearing = frame ? own?.image ?? null : fs.image;
+  const wearing = parts ? partFrames.wearing : frame ? own?.image ?? null : fs.image;
 
   const { uploading, upload } = useUpload();
   const uploadFrame = (files: File[]) =>
     upload(files, (urls) => {
       // Kept in the gallery of frames, whether a box wears it or not.
       onEdit("frame-uploads", (c) => ({ ...c, frameUploads: [...new Set([...urls, ...c.frameUploads])].slice(0, 40) }));
-      wearPicture(urls[0]!);
+      wearPicture(urls[0]!, "שהעליתם");
       toast.success("המסגרת נשמרה בגלריה");
     });
 
@@ -625,7 +630,9 @@ export function FramesLayer(
 
       {show("shape") && (
       <Part title="צורה ופינות" testId="box-shape">
-        {frame ? (
+        {parts ? (
+          <PartShapeGallery config={config} onEdit={onEdit} />
+        ) : frame ? (
           // The same tiles, names and order as for every box (FRAME_CHOICES); "רגיל" is the plain round corner.
           <div className="space-y-2">
             <GalleryGrid testId="box-shapes">
@@ -667,8 +674,14 @@ export function FramesLayer(
         testId="box-background"
         hint='צבע, מעבר צבעים או תמונה מאותה גלריה של הרקעים - ו"אטימות": 100% חוסם, פחות - רואים את רקע הלוח דרך התיבה.'
       >
-        <BackgroundLayer key={target} {...props} fixedTarget={target} />
-        {!frame && <Folded label="צבע הבסיס של התיבות (כשאין להן רקע משלהן)">{colourFields(THEME_VAR_LAYERS.frames)}</Folded>}
+        {parts ? (
+          <PartColour config={config} onEdit={onEdit} what="fill" />
+        ) : (
+          <>
+            <BackgroundLayer key={target} {...props} fixedTarget={target} />
+            {!frame && <Folded label="צבע הבסיס של התיבות (כשאין להן רקע משלהן)">{colourFields(THEME_VAR_LAYERS.frames)}</Folded>}
+          </>
+        )}
       </Part>
       )}
 
@@ -681,8 +694,10 @@ export function FramesLayer(
       )}
 
       {show("frames") && (
-        <Part title="קו ובליטה של התיבות" testId="frame-style" hint={frame ? "הבליטה ועובי מסגרת התמונה - משותפים לכל התיבות (בחרו \"הכול\" למעלה)." : undefined}>
-          {frame ? (
+        <Part title={parts ? "הקו של התיבות והמסגרות" : "קו ובליטה של התיבות"} testId="frame-style" hint={frame ? "הבליטה ועובי מסגרת התמונה - משותפים לכל התיבות (בחרו \"הכול\" למעלה)." : undefined}>
+          {parts ? (
+            <PartColour config={config} onEdit={onEdit} what="line" />
+          ) : frame ? (
             <>
               <ColourChoice
                 label="קו מסביב"
@@ -720,15 +735,16 @@ export function FramesLayer(
 
       {show("frames") && (
       <Part
-        title="מסגרת לתיבות"
+        title={parts ? "מסגרת למסגרות שבחרתם" : "מסגרת לתיבות"}
         testId="frame-pictures"
         hint="הפינות נשמרות והצלעות נמתחות לאורך התיבה. לחיצה מלבישה, ו&quot;בלי&quot; מסירה; מסגרת שהעליתם נשמרת כאן, ו-✕ מוחק אותה מהגלריה. בתיבה בצורה חתוכה (משושה, מתומן, כיפה...) המסגרת לא מוצגת - הקו מסביב עוקב אחרי הצורה במקומה."
       >
+        {parts && <PartsBoardNote count={partFrames.count} kind="frame" />}
         <GalleryGrid>
           <UploadTile label="העלאת מסגרת" uploading={uploading} onFiles={(files) => void uploadFrame(files)} hint="העלאת מסגרת משלכם - נשמרת בגלריה" />
           {/* Taking it off is a tile of its own: a second click on the worn one never takes it off. */}
           <GalleryTile
-            name={frame ? "כמו כל התיבות" : "בלי מסגרת"}
+            name={frame ? "כמו כל התיבות" : parts ? "קו מצויר" : "בלי מסגרת"}
             hint={frame ? "המסגרת של כל התיבות" : "התיבות בלי מסגרת מתמונה"}
             on={wearing === null}
             onPick={() => wearPicture(null)}
@@ -739,7 +755,7 @@ export function FramesLayer(
               key={f.ref}
               name={f.name}
               on={wearing === f.ref}
-              onPick={() => wearPicture(f.ref)}
+              onPick={() => wearPicture(f.ref, f.name)}
               padded
               preview={<TilePicture src={f.url} />}
               remove={{
@@ -765,7 +781,7 @@ export function FramesLayer(
           }))}
           onRestore={(ref) => onEdit("frame-pictures:show", (c) => showReady(c, "frame", ref))}
         />
-        {!frame && fs.image && (
+        {!frame && !parts && fs.image && (
           <>
             <Range label="עובי המסגרת" value={fs.imageWidth} min={0.5} max={6} step={0.25} show={(v) => String(v)} onChange={(v) => setFs({ imageWidth: v })} />
             <Range label="כמה מהתמונה היא המסגרת" value={fs.imageSlice} min={10} max={45} step={1} show={(v) => `${v}%`} onChange={(v) => setFs({ imageSlice: v })} />

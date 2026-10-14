@@ -1,3 +1,4 @@
+import { isPartShape, type PartShape } from './partShapes';
 import type { CSSProperties } from 'react';
 import type { ElementDefaults } from './config';
 import { ZMAN_DISPLAY_KEYS } from '@/community/lib/zmanim';
@@ -18,7 +19,8 @@ export interface BoardElement {
   imageTune?: { hue: number; saturation: number; brightness: number };
   /** A colour-editable arched fill beneath an independent arched picture frame. */
   archFill?: boolean;
-  shape?: 'rectangle'|'rounded'|'ellipse'|'circle'|'arch'|'hexagon'|'diamond';
+  /** A drawn box or frame: one of the board's shapes (partShapes.ts). */
+  shape?: PartShape;
   binding?: ElementBinding;
   rowsPerPage?: number;
   zmanKeys?: (typeof ZMAN_DISPLAY_KEYS)[number][];
@@ -126,7 +128,7 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...(v.crop && typeof v.crop === 'object' ? { crop: { x: n(v.crop.x, 0, 0, 100 - cropWidth), y: n(v.crop.y, 0, 0, 100 - cropHeight), width: cropWidth, height: cropHeight } } : {}),
       ...(normalizeMask(v.sourceMask) ? {sourceMask:normalizeMask(v.sourceMask)} : {}),
       ...(v.kind==='box' && v.archFill===true ? {archFill:true} : {}),
-      ...(['box','frame'].includes(v.kind)&&['rectangle','rounded','ellipse','circle','arch','hexagon','diamond'].includes(v.shape)?{shape:v.shape}:{}),
+      ...(['box','frame'].includes(v.kind)&&isPartShape(v.shape)?{shape:v.shape}:{}),
       ...((v.kind === 'image' || v.kind === 'frame') && v.imageTune && typeof v.imageTune === 'object' ? {imageTune:{hue:n(v.imageTune.hue,0,-180,180),saturation:n(v.imageTune.saturation,1,0,2),brightness:n(v.imageTune.brightness,1,.2,2)}} : {}),
       ...(ELEMENT_BINDINGS.includes(v.binding) ? { binding: v.binding } : {}),
       ...(typeof v.rowsPerPage === 'number' ? { rowsPerPage: Math.round(n(v.rowsPerPage, 3, 1, 30)) } : {}),
@@ -145,7 +147,7 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...(typeof v.wrap === 'boolean' ? { wrap: v.wrap } : {}),
       ...(Array.isArray(v.zmanKeys) ? {zmanKeys:[...new Set(v.zmanKeys.filter((k:unknown)=>ZMAN_DISPLAY_KEYS.includes(k as typeof ZMAN_DISPLAY_KEYS[number])))] as BoardElement['zmanKeys']} : {}),
       name: typeof v.name === 'string' ? v.name.slice(0, 80) : d.name, text: typeof v.text === 'string' ? v.text.slice(0, 2000) : '',
-      color: colour(v.color, d.color), fill: colour(v.fill, d.fill), image: safeImage(v.image) ? v.image : '',
+      color: colour(v.color, d.color), fill: colour(v.fill, d.fill), image: safeImage(v.image) || (v.kind === 'frame' && typeof v.image === 'string' && /^frame:[a-z0-9-]{1,40}$/.test(v.image)) ? v.image : '',
       fontSize: n(v.fontSize, 4, .5, 20), opacity: n(v.opacity, 1, 0, 1), rotation: n(v.rotation, 0, -180, 180),
       locked: v.locked === true, hidden: v.hidden === true, group: typeof v.group === 'string' && /^[\w-]{1,80}$/.test(v.group) ? v.group : null }];
   });
