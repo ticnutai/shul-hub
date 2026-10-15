@@ -91,7 +91,7 @@ const woodDay = (today: string, designOn: "screen" | "board") => ({
   items: [],
   pictures: [],
   pictureSeconds: 30,
-  design: "d_wood",
+  design: "d_premium_jerusalem-stone",
   designOn,
   screen: null,
 });
@@ -105,17 +105,18 @@ test("an occasion's design on its screen only: the ordinary screen keeps its loo
   await expect(root).toBeVisible({ timeout: 20_000 });
 
   const note = page.getByTestId("day-look-note");
-  await expect(note).toContainText("המסך של יום העץ בעיצוב «מסגרת עץ מגולפת»");
+  await expect(note).toContainText("המסך של יום העץ בעיצוב «אבן ירושלים»");
   await expect(note).toContainText("המסכים הרגילים בעיצוב שלהם");
   await expect(note.getByRole("button")).toHaveCount(0);
 
   // The board's own screen: its own look.
   await page.getByRole("tab", { name: "פריסה" }).click();
   await page.getByRole("button", { name: /הלוח/ }).filter({ hasNotText: "חלון נפרד" }).first().click();
-  await expect(root).not.toHaveClass(/has-frame-image/);
-  // The occasion's screen: in its wood.
+  const kitParts = root.locator('[data-element-id^="premium_jerusalem-stone_"]');
+  await expect(kitParts).toHaveCount(0);
+  // The occasion's screen: in its kit, part by part.
   await page.getByTestId("occasion-screen-tab").and(page.locator('[data-occasion="o_testday2"]')).click();
-  await expect(root).toHaveClass(/has-frame-image/);
+  await expect(kitParts.first()).toBeVisible({ timeout: 10_000 });
 });
 
 test("an occasion's design on the whole board: the editor says so, and shows it as the screens do", async ({ page }) => {
@@ -127,14 +128,14 @@ test("an occasion's design on the whole board: the editor says so, and shows it 
   await expect(root).toBeVisible({ timeout: 20_000 });
 
   const note = page.getByTestId("day-look-note");
-  await expect(note).toContainText("כל המסכים לובשים את העיצוב «מסגרת עץ מגולפת» של יום העץ");
+  await expect(note).toContainText("כל המסכים לובשים את העיצוב «אבן ירושלים» של יום העץ");
   // On the board's own screen, the board being edited - until asked to show it as the screens do.
   await page.getByRole("tab", { name: "פריסה" }).click();
   await page.getByRole("button", { name: /הלוח/ }).filter({ hasNotText: "חלון נפרד" }).first().click();
-  await expect(root).not.toHaveClass(/has-frame-image/);
+  const kitParts = root.locator('[data-element-id^="premium_jerusalem-stone_"]');
+  await expect(kitParts).toHaveCount(0);
   await note.getByRole("button", { name: "הצגה כמו במסכים" }).click();
-  await expect(root).toHaveClass(/has-frame-image/);
-  await expect(root).toHaveClass(/has-bg-image/);
+  await expect(kitParts.first()).toBeVisible({ timeout: 10_000 });
   await note.getByRole("button", { name: "הצגת העיצוב הרגיל" }).click();
-  await expect(root).not.toHaveClass(/has-frame-image/);
+  await expect(kitParts).toHaveCount(0);
 });

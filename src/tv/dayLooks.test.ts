@@ -14,14 +14,15 @@ describe("the design of the occasion that is on", () => {
   const base = normalizeTvConfig({ theme: "navy", screenLayout: "dashboard" });
   const mine = captureDesign(normalizeTvConfig({ theme: "forest", font: "bold" }), "שלי", ["text"], "d_mine01");
   const occasions = fromLegacy(base).map((o) =>
-    o.id === "shabbat" ? { ...o, design: "d_curtain" } : o.id === "cal:chol_hamoed_sukkot" ? { ...o, design: "d_mine01" } : o,
+    o.id === "shabbat" ? { ...o, design: "d_premium_jerusalem-stone" } : o.id === "cal:chol_hamoed_sukkot" ? { ...o, design: "d_mine01" } : o,
   );
   const config = normalizeTvConfig({ ...base, designs: [mine], occasions });
 
   it("is worn while the occasion is on, and only then", () => {
     const shabbat = applyDayLook(config, il("2026-10-10", 12), null);
-    expect(shabbat.screenLayout).toBe("medallion");
-    expect(shabbat.backgroundImage).toBe("backdrop:royal");
+    // A kit of parts: its parts and its layout, while it is on.
+    expect(shabbat.screenLayout).toBe("composition");
+    expect(shabbat.elements.length).toBeGreaterThan(0);
     expect(applyDayLook(config, il("2026-10-14", 12), null)).toBe(config);
   });
 
@@ -33,7 +34,7 @@ describe("the design of the occasion that is on", () => {
   });
 
   it("a look per day set before occasions is read as the occasion's design", () => {
-    const old = normalizeTvConfig({ ...base, dayLooks: { shabbat: { design: "d_stone" } } });
-    expect(applyDayLook(old, il("2026-10-10", 12), null).backgroundImage).toBe("backdrop:wall");
+    const old = normalizeTvConfig({ ...base, dayLooks: { shabbat: { design: "d_premium_jerusalem-stone" } } });
+    expect(applyDayLook(old, il("2026-10-10", 12), null).screenLayout).toBe("composition");
   });
 });

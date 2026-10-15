@@ -3,6 +3,7 @@
  * frame, and every kind of live content can be added - not only the three
  * that once had buttons of their own.
  */
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -17,15 +18,17 @@ import { kitOf } from "@/tv/kitReset";
 import { Toaster } from "sonner";
 
 afterEach(cleanup);
+// The shared library is read through the editor's query client; here it answers nothing (no network in a test).
+const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false, enabled: false } } });
 
 let latest: TvConfig;
 function Harness({ start }: { start: TvConfig }) {
   const [config, setConfig] = useState(start);
   latest = config;
   return (
-    <ElementEditingProvider>
+    <QueryClientProvider client={queryClient}><ElementEditingProvider>
       <ElementsEditor config={config} onEdit={(_key, update) => setConfig((c) => update(c))} />
-    </ElementEditingProvider>
+    </ElementEditingProvider></QueryClientProvider>
   );
 }
 const board = (): TvConfig => ({ ...structuredClone(DEFAULT_TV_CONFIG), ...structuredClone(PREMIUM_DESIGNS[1].values) } as TvConfig);
@@ -84,10 +87,10 @@ function PartsHarness({ start, layoutOnly = false }: { start: TvConfig; layoutOn
   latest = config;
   return (
     // Both tabs of a board of parts: its layout, and the parts, where content is added.
-    <ElementEditingProvider>
+    <QueryClientProvider client={queryClient}><ElementEditingProvider>
       <PartsContent config={config} onEdit={(_key, update) => setConfig((c) => update(c))} onManual={() => {}} />
       {!layoutOnly && <ElementsEditor config={config} onEdit={(_key, update) => setConfig((c) => update(c))} />}
-    </ElementEditingProvider>
+    </ElementEditingProvider></QueryClientProvider>
   );
 }
 const named = (name: string) => latest.elements.find((e) => e.name === name)!;

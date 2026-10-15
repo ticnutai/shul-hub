@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeTvConfig } from "./config";
-import { applyDesign, captureDesign, coloursOnScreen, findDesign } from "./designs";
+import { applyDesign, BUILTIN_DESIGNS, captureDesign, coloursOnScreen, findDesign, PAINTED_BOARD_LOOKS } from "./designs";
 import { getTheme } from "./themes";
-import { MODULAR_DESIGNS } from './modularDesigns';
 
 const board = () =>
   normalizeTvConfig({
@@ -18,17 +17,15 @@ const board = () =>
   });
 
 describe("saved designs", () => {
-  it('replaces old decoration without changing content in the modular sapphire design',()=>{
+  it('replaces old decoration without changing content, in a kit of parts',()=>{
     const original=normalizeTvConfig({...board(),texts:{'header.title':'תוכן קיים'},styles:{'header.title':{x:20,scale:2}},titleStyle:'ribbon'});
-    const changed=applyDesign(original,MODULAR_DESIGNS[0]);
+    const changed=applyDesign(original,findDesign(original,'d_sapphirelayers')!);
     expect(changed.styles).toEqual({});
     expect(changed.frameLooks).toEqual({});
     expect(changed.titleStyle).toBe('plain');
     expect(changed.texts).toEqual(original.texts);
     expect(changed.screens).toEqual(original.screens);
     expect(changed.logos).toEqual(original.logos);
-    expect(changed.backgroundImage).not.toBe(changed.boardFrameImage);
-    expect(changed.frameStyle.image).not.toBe(changed.boardFrameImage);
   });
   it("carry only the parts they were saved with", () => {
     const d = captureDesign(board(), "רקע לילה", ["background"]);
@@ -100,14 +97,22 @@ describe("saved designs", () => {
 
 describe("a ready-made design laid over a board", () => {
   it("brings its whole ground: a colour it does not name comes from its own theme, not the board under it", () => {
-    // The navy board of אושר של יהודי, dressed for הושענא רבה in carved wood.
+    // A navy board dressed in a stone kit.
     const navy = normalizeTvConfig({ theme: "navy", themeOverrides: { "--tv-text": "#f3f5f8" } });
-    const wood = findDesign(navy, "d_wood")!;
-    const dressed = applyDesign(navy, wood);
+    const stone = findDesign(navy, "d_premium_jerusalem-stone")!;
+    const dressed = applyDesign(navy, stone);
     const ground = coloursOnScreen(dressed)["--tv-bg-a"];
     expect(ground).toBe(getTheme("stone", []).vars["--tv-bg-a"]);
     expect(ground).not.toBe(getTheme("navy", []).vars["--tv-bg-a"]);
     // What it does name, it keeps.
-    expect(coloursOnScreen(dressed)["--tv-panel"]).toBe("#f3e4c4");
+    expect(coloursOnScreen(dressed)["--tv-text"]).toBe(stone.colours["--tv-text"]);
+  });
+});
+
+describe("the kits on offer", () => {
+  it("are all of parts: the old ones not built of parts are gone (an old painted board is still moved onto its look)", () => {
+    for (const id of ["d_curtain", "d_stone", "d_wood", "d_modern", "d_sapphireparts"]) expect(BUILTIN_DESIGNS.some((d) => d.id === id)).toBe(false);
+    expect(BUILTIN_DESIGNS.every((d) => d.values.screenLayout === "composition" || (d.values.elements?.length ?? 0) > 0)).toBe(true);
+    expect(PAINTED_BOARD_LOOKS.map((d) => d.id)).toEqual(["d_curtain", "d_stone", "d_wood", "d_modern"]);
   });
 });

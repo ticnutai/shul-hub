@@ -1237,7 +1237,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} />
+          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} todayOccasions={occasionTabs.filter((t) => t.on).map((t) => t.name)} />
         </TabsContent>
         <TabsContent
           value="layout"

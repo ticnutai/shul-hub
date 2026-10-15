@@ -1,5 +1,4 @@
 import { PREMIUM_DESIGNS } from './premiumDesigns';
-import { MODULAR_DESIGNS } from './modularDesigns';
 import { EMERALD_COMPOSITION } from './emeraldComposition';
 import { ORIGINAL_LAYER_DESIGNS } from './originalLayerDesigns';
 import { INDEPENDENT_DESIGNS } from './independentDesigns';
@@ -291,7 +290,7 @@ const tidyName = (d: SavedDesign): SavedDesign => ({
  * paintings separated by masks lead (the strongest separation), then the
  * pieces drawn apart, then the boards built from the system's own elements.
  */
-const PARTS_DESIGNS: SavedDesign[] = [...ORIGINAL_LAYER_DESIGNS, EMERALD_COMPOSITION, ...MODULAR_DESIGNS, ...INDEPENDENT_DESIGNS].map(tidyName);
+const PARTS_DESIGNS: SavedDesign[] = [...ORIGINAL_LAYER_DESIGNS, EMERALD_COMPOSITION, ...INDEPENDENT_DESIGNS].map(tidyName);
 /**
  * Whole paintings, cut into rectangles that move; the background stays inside
  * each. The ivory and sapphire paintings are offered as layers above instead -
@@ -301,9 +300,15 @@ const PAINTED_DESIGNS: SavedDesign[] = PREMIUM_DESIGNS.filter(
   (d) => d.id !== 'd_premium_luminous-ivory' && d.id !== 'd_premium_royal-sapphire',
 ).map(tidyName);
 
-export const BUILTIN_DESIGNS: SavedDesign[] = [
-  ...PARTS_DESIGNS,
-  ...PAINTED_DESIGNS,
+export const BUILTIN_DESIGNS: SavedDesign[] = [...PARTS_DESIGNS, ...PAINTED_DESIGNS];
+
+/**
+ * The four looks the painted boards of old were rebuilt as (curtain, stone,
+ * wood, modern - an ordinary board in the medallion layout). Not offered any
+ * more - a board is built of parts - but an old board, or an old file of one,
+ * that shows a painting is still moved onto its look (paintedMigration.ts).
+ */
+export const PAINTED_BOARD_LOOKS: SavedDesign[] = [
   {
     id: "d_curtain",
     name: "וילון כחול וזהב",
@@ -364,7 +369,7 @@ export const BUILTIN_DESIGNS: SavedDesign[] = [
 ];
 
 /** The gallery of ready designs, in groups, each with a word on how it is built. */
-export const DESIGN_GROUPS: { id: 'parts' | 'paintings' | 'classic'; title: string; hint: string; ids: string[] }[] = [
+export const DESIGN_GROUPS: { id: 'parts' | 'paintings'; title: string; hint: string; ids: string[] }[] = [
   {
     id: 'parts',
     title: 'בנויות מחלקים',
@@ -377,13 +382,5 @@ export const DESIGN_GROUPS: { id: 'parts' | 'paintings' | 'classic'; title: stri
     hint: 'ציור אחד, חתוך לאזורים שאפשר להזיז ולהגדיל; הרקע של כל אזור נשאר בתוכו. הטקסט והשעון חיים.',
     ids: PAINTED_DESIGNS.map((d) => d.id),
   },
-  {
-    id: 'classic',
-    title: 'קלאסיות',
-    hint: 'רקע, תיבות, מסגרות וטקסט מהכלים של הלוח - כל אחד משתנה אחר כך בחלק שלו למטה.',
-    ids: BUILTIN_DESIGNS.filter((d) => !PARTS_DESIGNS.includes(d) && !PAINTED_DESIGNS.includes(d)).map((d) => d.id),
-  },
 ];
 
-/** Designs the TV remote offers to switch to: the classic ones, as before, and the shul's own. */
-export const REMOTE_BUILTIN_IDS = new Set(DESIGN_GROUPS.find((g) => g.id === 'classic')!.ids);

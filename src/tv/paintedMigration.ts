@@ -1,5 +1,5 @@
 import type { TvConfig } from "./config";
-import { applyDesign, BUILTIN_DESIGNS } from "./designs";
+import { applyDesign, PAINTED_BOARD_LOOKS } from "./designs";
 
 /**
  * A painted board, moved onto the ready design that replaces its painting.
@@ -32,7 +32,7 @@ export const DESIGN_FOR_PAINTING: Record<string, string> = {
 
 export function migratePainted(c: TvConfig): TvConfig {
   if (c.screenLayout !== "illustrated") return c;
-  const design = BUILTIN_DESIGNS.find((d) => d.id === DESIGN_FOR_PAINTING[c.illustration]);
+  const design = PAINTED_BOARD_LOOKS.find((d) => d.id === DESIGN_FOR_PAINTING[c.illustration]);
   if (!design) return c;
 
   // What the painting's own settings were (older boards may carry more keys than the type knows).

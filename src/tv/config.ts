@@ -1,4 +1,5 @@
 import { normalizeContainers, type PartContainer } from "./containers";
+import { EMPTY_LIBRARY, normalizeLibrary, type Library } from "./library";
 import { ELEMENT_FONTS, safeImage, normalizeElements, normalizeElementLibrary, type SavedElementSet, type BoardElement, type ElementFont } from "./elements";
 import { normalizeFrameLooks, TITLE_STYLES, type FrameLooks, type TitleStyle } from "./frameLooks";
 import { BUILTIN_DESIGNS, normalizeDesigns, type SavedDesign } from "./designs";
@@ -503,6 +504,8 @@ export interface ElementDefaults {
 export const DEFAULT_ELEMENT_DEFAULTS: ElementDefaults = { color: null, font: null, weight: null, scale: 1 };
 
 export interface TvConfig {
+  /** The order of the library: folders, where each kit and saved part stands, tags, favourites (library.ts). */
+  library: Library;
   elementLibrary: SavedElementSet[];
   elementDefaults: ElementDefaults;
   elements: BoardElement[];
@@ -836,6 +839,7 @@ export const DEFAULT_ILLUSTRATED_STYLE: IllustratedStyle = {
 };
 
 export const DEFAULT_TV_CONFIG: TvConfig = {
+  library: EMPTY_LIBRARY,
   elementLibrary: [],
   elementDefaults: DEFAULT_ELEMENT_DEFAULTS,
   elements: [],
@@ -1458,6 +1462,7 @@ function normalizeStored(stored: unknown): TvConfig {
     : d.alerts.leadMinutes;
 
   return {
+    library: normalizeLibrary(raw.library),
     elementLibrary: normalizeElementLibrary(raw.elementLibrary),
     elementDefaults: normalizeElementDefaults(raw.elementDefaults),
     elements: normalizeElements(raw.elements),

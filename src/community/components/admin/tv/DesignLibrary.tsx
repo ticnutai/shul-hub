@@ -1,8 +1,12 @@
 import { CatalogPreview } from './CatalogPreview';
 import { useSharedCatalog } from '@/tv/sharedCatalog';
-import {CATALOG_CATEGORIES,catalogCategory,type CatalogCategory} from '@/tv/catalogCategories';
+import { CATALOG_CATEGORIES, catalogCategory } from '@/tv/catalogCategories';
+import { useLibraryEdit, useLibraryOf } from './libraryEdit';
+import { sharedId, useTvLibraryItems } from './useTvLibrary';
+import { normalizeTvConfig } from '@/tv/config';
+import { FolderedLibrary, type FixedFolder, type LibraryItem } from './FolderedLibrary';
 import { useState, type ReactNode } from "react";
-import { Folded, SubPart } from "./Parts";
+import { SubPart } from "./Parts";
 import { BookmarkPlus, Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
@@ -10,7 +14,7 @@ import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
 import { isOccasionKit } from "@/tv/occasionDesign";
-import { NameForm, SELECT_CLASS } from "./editorParts";
+import { NameForm } from "./editorParts";
 import { PART_GRID } from "./GalleryTile";
 import { CatalogNotice } from "./SharedCatalogLibrary";
 import { findBackdrop } from "@/tv/backdrops";
@@ -141,21 +145,38 @@ export function SaveKitButton({ config, onEdit }: { config: TvConfig; onEdit: Ed
   );
 }
 
+/** The folders always in the kits' library: one's own, then the topics (catalogCategories.ts). */
+const MINE_FOLDER = "mine";
+export const topicFolder = (topic: string) => `topic:${topic}`;
+const SHARED_FOLDER = "shared";
+const KIT_FOLDERS: FixedFolder[] = [
+  { id: MINE_FOLDER, name: "הערכות שלי" },
+  { id: SHARED_FOLDER, name: "משותף לכל הלוחות" },
+  ...CATALOG_CATEGORIES.filter((c) => c !== "הכול").map((c) => ({ id: topicFolder(c), name: c })),
+];
+
 /**
  * "העיצובים שלי": looks the gabbai built and saved - all of it, or only the
  * parts they chose - shown beside the themes, put on the board with a tap.
  * The model and its rules are designs.ts.
  */
-export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
+export function DesignLibrary({ config, onEdit, todayTopics = [] }: {
+  config: TvConfig;
+  onEdit: Edit;
+  /** The topics of today's occasions: their folders open to begin with. */
+  todayTopics?: string[];
+}) {
   const [form, setForm] = useState<{ mode: "new" | "rename"; id?: string; name: string } | null>(null);
   const designs = config.designs;
   // An occasion's own kit is edited on its page (its 🎨), not listed among the gabbai's kits.
   const mine = designs.filter((d) => !isOccasionKit(config, d));
   const { catalog, error: catalogError, retry } = useSharedCatalog();
-  const [category,setCategory]=useState<CatalogCategory>('הכול');
-  const extra=(catalog?.designs??[]).filter(d=>!BUILTIN_DESIGNS.some(b=>b.id===d.id));
+  // Kits of parts only, here and in the shared collection: a board is built of parts.
+  const extra=(catalog?.designs??[]).filter(d=>ofParts(d)&&!BUILTIN_DESIGNS.some(b=>b.id===d.id));
   const available=[...BUILTIN_DESIGNS,...extra];
-  const groups=[...DESIGN_GROUPS,{id:'shared',title:'האוסף המשותף - לכל הלוחות',hint:'כל ערכה זמינה בכל יום. בוחרים עותק ומשנים אותו בלוח בלבד.',ids:extra.map(d=>d.id)}];
+  const library = useLibraryOf(config);
+  // The library's order is the board's (never an occasion's look): changed on the board itself.
+  const changeLibrary = useLibraryEdit(onEdit);
 
   /** A kit of one's own renamed (a new one is KitSaveForm's). */
   const rename = () => {
@@ -192,12 +213,12 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
   };
 
   /** A ready kit's tile: put on, copied to one's own, opened part by part. */
-  const readyTile = (d: SavedDesign, group: string) => (
+  const readyTile = (d: SavedDesign, group = DESIGN_GROUPS.find((g) => g.ids.includes(d.id))?.id ?? "shared") => (
           <KitTile
             key={d.id}
             design={d}
             config={config}
-            thumb={group === "classic" || group === "shared" || group === "older" ? undefined : `/new-shul-assets/thumbs/${d.id}.webp`}
+            thumb={group === "shared" ? undefined : `/new-shul-assets/thumbs/${d.id}.webp`}
             onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
             onRemove={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))}
             removeReady
@@ -219,8 +240,56 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
             {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
           </KitTile>
   );
-  // The kits not built of parts: kept, and offered folded - a board is built of parts now.
-  const older = available.filter((d) => !ofParts(d) && !isHiddenReady(config, "design", d.id) && (category === "הכול" || catalogCategory(d) === category));
+  /** One's own kit's tile: put on, updated to the board, opened part by part, renamed, deleted. */
+  const ownTile = (d: SavedDesign) => (
+    <KitTile key={d.id} design={d} config={config} onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))} onRemove={() => void remove(d)}>
+      <TileAction onClick={() => update(d)} title="הערכה מקבלת את מה שעל הלוח עכשיו">עדכון</TileAction>
+      {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
+      <TileAction onClick={() => setForm({ mode: "rename", id: d.id, name: d.name })}>שינוי שם</TileAction>
+      <TileAction title="נשמרת בספרייה המשותפת - זמינה בכל הלוחות, בכל בתי הכנסת"
+        onClick={() => void sharedLibrary.add("kit", d.name, d)}>
+        שיתוף לכל הלוחות
+      </TileAction>
+    </KitTile>
+  );
+  // Every kit of parts, ready and one's own, in folders: one's own in "הערכות שלי", a ready one in its topic, until put elsewhere.
+  const ready = available.filter((d) => ofParts(d) && !isHiddenReady(config, "design", d.id));
+  const items: LibraryItem[] = [
+    ...mine.map((d) => ({ id: d.id, name: d.name, home: MINE_FOLDER })),
+    ...ready.map((d) => ({ id: d.id, name: d.name, home: topicFolder(catalogCategory(d)) })),
+  ];
+  // Kept for every board (tv_library_items): each read as a kit of this board would be.
+  const sharedLibrary = useTvLibraryItems();
+  const sharedKits = sharedLibrary.items.filter((r) => r.kind === "kit").flatMap((row) => {
+    const d = normalizeTvConfig({ designs: [row.data] }).designs[0];
+    return d ? [{ row, d }] : [];
+  });
+  items.push(...sharedKits.map(({ row }) => ({ id: sharedId(row.id), name: row.name, home: SHARED_FOLDER })));
+  const kitOf = new Map([...mine, ...ready].map((d) => [d.id, d]));
+  /** A kit kept for every board: put on, opened part by part, copied to one's own, updated by its keeper, taken out. */
+  const sharedTile = ({ row, d }: (typeof sharedKits)[number]) => (
+    <KitTile key={row.id} design={d} config={config} onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
+      onRemove={async () => {
+        const ok = await confirmAction({ title: `להוציא את „${row.name}” מהספרייה המשותפת?`, description: "הערכה לא תופיע יותר בלוחות. לוחות שכבר לובשים אותה לא ישתנו.", confirmLabel: "הוצאה מהספרייה" });
+        if (ok) await sharedLibrary.remove(row);
+      }}>
+      {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים">עריכה בחלקים</TileAction>}
+      <TileAction disabled={designs.length >= MAX_DESIGNS} title="עותק בערכות של הלוח הזה, לשנות ממנו"
+        onClick={() => {
+          onEdit("design-copy", (cfg) => ({ ...cfg, designs: [...cfg.designs, { ...structuredClone(d), id: newDesignId(), name: d.name }].slice(0, MAX_DESIGNS) }));
+          toast.success(`"${d.name}" הועתקה ל"הערכות שלי" בלוח הזה.`);
+        }}>
+        העתקה ללוח הזה
+      </TileAction>
+      <TileAction title="הערכה המשותפת מקבלת את מה שעל הלוח עכשיו - בכל הלוחות"
+        onClick={async () => {
+          const ok = await confirmAction({ title: `לעדכן את „${row.name}” לכל הלוחות?`, description: "הערכה המשותפת תקבל את מה שעל הלוח עכשיו. לוחות שכבר לובשים אותה לא ישתנו.", confirmLabel: "עדכון", destructive: false });
+          if (ok && (await sharedLibrary.update(row, { data: captureDesign(config, d.name, d.parts, d.id) }))) toast.success(`"${row.name}" עודכנה בספרייה המשותפת.`);
+        }}>
+        עדכון
+      </TileAction>
+    </KitTile>
+  );
 
   return (
     <div className="space-y-5" data-testid="design-library">
@@ -228,60 +297,33 @@ export function DesignLibrary({ config, onEdit }: { config: TvConfig; onEdit: Ed
         title="ערכות מוכנות"
         hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
       >
-      <label className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-medium">נושא הערכות:</span>
-        <select aria-label="נושא הערכות" className={SELECT_CLASS} value={category} onChange={(e) => setCategory(e.target.value as CatalogCategory)}>
-          {CATALOG_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
-        </select>
-      </label>
-      <p className="text-[11px] text-muted-foreground">הנושא מסנן את הספרייה בלבד ואינו מגביל את יום השימוש. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
+      <p className="text-[11px] text-muted-foreground">כל הערכות בתיקיות לפי נושא, וגם הערכות שלכם. גוררים ערכה לתיקייה (או "העברה לתיקייה" שמתחתיה), פותחים וסוגרים תיקיות, ומחפשים לפי שם או תגית. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
       {catalogError && <CatalogNotice onRetry={retry} />}
       <div className="space-y-4" data-testid="builtin-designs">
-      {groups.map((group) => {
-        // Kits of parts only: a board is built of parts. The older kits are kept, folded below.
-        const shown = available.filter((d) => group.ids.includes(d.id) && ofParts(d) && !isHiddenReady(config, "design", d.id) && (category==='הכול'||catalogCategory(d)===category));
-        if (!shown.length) return null;
-        return (
-      <section key={group.id} data-design-group={group.id} className="space-y-1.5">
-        <h4 className="text-sm font-semibold">{group.title}</h4>
-        <p className="text-[11px] leading-snug text-muted-foreground">{group.hint}</p>
-      <div className={PART_GRID}>
-        {shown.map((d) => readyTile(d, group.id))}
-      </div>
-      </section>
-        );
-      })}
-      {older.length > 0 && (
-        <Folded label={`ערכות ישנות, שלא בנויות מחלקים (${older.length})`} testId="older-designs">
-          <p className="mb-2 text-[11px] text-muted-foreground">נשמרות לבתי כנסת שכבר משתמשים בהן. לוח חדש בונים מערכה של חלקים, שכל חלק בה משתנה לבד.</p>
-          <div className={PART_GRID}>{older.map((d) => readyTile(d, "older"))}</div>
-        </Folded>
-      )}
+      <FolderedLibrary
+        items={items}
+        fixed={KIT_FOLDERS}
+        library={library}
+        onLibrary={changeLibrary}
+        tile={(item) => {
+          const shared = sharedKits.find(({ row }) => sharedId(row.id) === item.id);
+          if (shared) return sharedTile(shared);
+          const d = kitOf.get(item.id)!;
+          return mine.includes(d) ? ownTile(d) : readyTile(d);
+        }}
+        opened={[MINE_FOLDER, ...todayTopics.map(topicFolder)]}
+        storageKey="tv-library-open:kits"
+        testId="kit-folders"
+        what={{ one: "ערכה", many: "ערכות" }}
+      />
       </div>
       <HiddenShelf
         testId="designs-hidden"
-        items={available.filter((d) => isHiddenReady(config, "design", d.id)).map((d) => ({ key: d.id, name: d.name }))}
+        items={available.filter((d) => ofParts(d) && isHiddenReady(config, "design", d.id)).map((d) => ({ key: d.id, name: d.name }))}
         onRestore={(id) => onEdit("design-show", (cfg) => showReady(cfg, "design", id))}
       />
       </SubPart>
-      <SubPart title="הערכות שלי" hint="ערכות ששמרתם: לחיצה מלבישה; אפשר לשנות שם, לעדכן למה שעל הלוח עכשיו, ולמחוק.">
-      {mine.length > 0 && (
-        <div className={PART_GRID}>
-          {mine.map((d) => (
-            <KitTile
-              key={d.id}
-              design={d}
-              config={config}
-              onApply={() => onEdit("design-apply", (cfg) => applyDesign(cfg, d))}
-              onRemove={() => void remove(d)}
-            >
-              <TileAction onClick={() => update(d)} title="הערכה מקבלת את מה שעל הלוח עכשיו">עדכון</TileAction>
-              {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
-              <TileAction onClick={() => setForm({ mode: "rename", id: d.id, name: d.name })}>שינוי שם</TileAction>
-            </KitTile>
-          ))}
-        </div>
-      )}
+      <SubPart title="הערכות שלי" hint='ערכות ששמרתם נמצאות למעלה, בתיקייה "הערכות שלי" (או בתיקייה שהעברתם אליה): לחיצה מלבישה; אפשר לשנות שם, לעדכן למה שעל הלוח עכשיו, ולמחוק.'>
 
       {form?.mode === "new" ? (
         <KitSaveForm config={config} onEdit={onEdit} onDone={() => setForm(null)} />

@@ -1,3 +1,7 @@
+import { Star } from 'lucide-react';
+import { toast } from 'sonner';
+import { putInFolder, toggleFavorite } from '@/tv/library';
+import { useLibraryEdit, useLibraryOf } from './libraryEdit';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { TvConfig } from '@/tv/config';
@@ -40,6 +44,8 @@ export function SharedCatalogLibrary({ config, onEdit, onSelect }: {
   onSelect?: (ids: string[]) => void;
 }) {
   const { catalog, error, retry } = useSharedCatalog();
+  const library = useLibraryOf(config);
+  const changeLibrary = useLibraryEdit(onEdit);
   const [search, setSearch] = useState('');
   const [source, setSource] = useState('standalone');
   const [limit, setLimit] = useState(PAGE);
@@ -118,17 +124,38 @@ export function SharedCatalogLibrary({ config, onEdit, onSelect }: {
           <p data-testid="shared-count" className="text-[11px] text-muted-foreground">{total} חלקים זמינים</p>
           {total > 0 ? (
             <PartGrid>
-              {parts.slice(0, limit).map((p) => (
-                <PartTile
-                  key={p.id}
-                  name={p.name}
-                  note={p.note}
-                  elements={p.elements}
-                  addLabel={`הוספת חלק משותף ${p.name}`}
-                  disabled={config.elements.length + p.elements.length > MAX_ELEMENTS}
-                  onAdd={() => add(p)}
-                />
-              ))}
+              {parts.slice(0, limit).map((p) => {
+                const id = `catalog:${p.id}`, star = library.favorites.includes(id);
+                return (
+                  <div key={p.id}>
+                    <PartTile
+                      name={p.name}
+                      note={p.note}
+                      elements={p.elements}
+                      addLabel={`הוספת חלק משותף ${p.name}`}
+                      disabled={config.elements.length + p.elements.length > MAX_ELEMENTS}
+                      onAdd={() => add(p)}
+                    />
+                    {/* Into the gabbai's folders: starred, or put in a folder - then it stands there, among their parts. */}
+                    <div className="mt-1 flex flex-wrap items-center gap-1 px-1 text-[11px]">
+                      <button type="button" className="rounded p-0.5 hover:bg-muted" aria-pressed={star} aria-label={`${star ? "הסרה מהמועדפים" : "הוספה למועדפים"} ${p.name}`}
+                        onClick={() => changeLibrary(`library-star:${id}`, (l) => toggleFavorite(l, id))}>
+                        <Star className={`size-4 ${star ? "fill-amber-400 text-amber-500" : "text-muted-foreground"}`} aria-hidden />
+                      </button>
+                      <select aria-label={`העברת ${p.name} לתיקייה`} className={`${SELECT_CLASS} h-6 max-w-32 text-[11px]`} value={library.place[id] ?? ""}
+                        onChange={(e) => {
+                          const folder = e.target.value;
+                          changeLibrary(`library-move:${id}`, (l) => (folder ? putInFolder(l, [id], folder, {}) : { ...l, place: Object.fromEntries(Object.entries(l.place).filter(([k]) => k !== id)) }));
+                          if (folder) toast.success(`"${p.name}" ${folder === "parts-catalog" ? 'נוסף ל"מהאוסף המשותף"' : "הועבר לתיקייה"} - בחלקים שבתיקיות.`);
+                        }}>
+                        <option value="">{library.place[id] ? "הוצאה מהתיקייה" : "לתיקייה…"}</option>
+                        <option value="parts-catalog">מהאוסף המשותף</option>
+                        {library.folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
             </PartGrid>
           ) : (
             <p className="text-sm text-muted-foreground">לא נמצאו חלקים.</p>

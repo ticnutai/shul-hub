@@ -3,13 +3,17 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
-import { elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS } from '@/tv/elements';
+import { elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS, normalizeElementLibrary } from '@/tv/elements';
 import { READY_PARTS } from '@/tv/readyParts';
 import { hideReady, isHiddenReady, showReady } from '@/tv/readyItems';
 import { HiddenShelf } from './ReadyShelf';
 import { SubPart } from './Parts';
 import { NameForm } from './editorParts';
-import { PartGrid, PartTile } from './GalleryTile';
+import { PartTile } from './GalleryTile';
+import { useSharedCatalog } from '@/tv/sharedCatalog';
+import { FolderedLibrary, type FixedFolder, type LibraryItem } from './FolderedLibrary';
+import { useLibraryEdit, useLibraryOf } from './libraryEdit';
+import { sharedId, useTvLibraryItems } from './useTvLibrary';
 import { SharedCatalogLibrary } from './SharedCatalogLibrary';
 
 /**
@@ -50,6 +54,14 @@ export async function saveToLibrary(
   return true;
 }
 
+/** The folders always in the parts' library. */
+const PART_FOLDERS: FixedFolder[] = [
+  { id: 'parts-mine', name: 'החלקים שלי' },
+  { id: 'parts-shared', name: 'משותף לכל הלוחות' },
+  { id: 'parts-ready', name: 'חלקים מוכנים מהערכות' },
+  { id: 'parts-catalog', name: 'מהאוסף המשותף' },
+];
+
 export function ElementLibrary({ config, selected, onEdit, onSelect }: {
   config: TvConfig;
   selected: string[];
@@ -79,27 +91,76 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
     if (ok) onEdit(`element-library:remove:${item.id}`, (c) => ({ ...c, elementLibrary: c.elementLibrary.filter((x) => x.id !== item.id) }));
   };
 
+  // The library: one's own parts at home in "החלקים שלי", the ready ones in theirs, and a part of the shared collection once placed.
+  const changeLibrary = useLibraryEdit(onEdit);
+  const library = useLibraryOf(config);
+  const { catalog } = useSharedCatalog();
+  const ready = READY_PARTS.filter((item) => !isHiddenReady(config, 'part', item.id));
+  const placed = new Set([...Object.keys(library.place), ...library.favorites]);
+  const fromCatalog = (catalog?.parts ?? []).filter((p) => placed.has(`catalog:${p.id}`));
+  const items: LibraryItem[] = [
+    ...config.elementLibrary.map((x) => ({ id: `part:${x.id}`, name: x.name, home: 'parts-mine' })),
+    ...ready.map((x) => ({ id: `part:${x.id}`, name: x.name, home: 'parts-ready' })),
+    ...fromCatalog.map((p) => ({ id: `catalog:${p.id}`, name: p.name, home: 'parts-catalog' })),
+  ];
+  // Kept for every board (tv_library_items), each read as a board's own saved parts are.
+  const sharedLibrary = useTvLibraryItems();
+  const sharedParts = sharedLibrary.items.filter((r) => r.kind === 'part').flatMap((row) => {
+    const set = normalizeElementLibrary([row.data])[0];
+    return set ? [{ row, set }] : [];
+  });
+  items.push(...sharedParts.map(({ row }) => ({ id: sharedId(row.id), name: row.name, home: 'parts-shared' })));
+  const partTile = (id: string) => {
+    const shared = sharedParts.find(({ row }) => sharedId(row.id) === id);
+    if (shared) return <PartTile name={shared.row.name} elements={shared.set.elements} addLabel={`הוספת ${shared.row.name} מהספרייה המשותפת`} disabled={full(shared.set.elements.length)}
+      onAdd={() => insert('shared-library:insert', shared.set.elements)}
+      remove={{ ready: false, onClick: async () => {
+        const ok = await confirmAction({ title: `להוציא את „${shared.row.name}” מהספרייה המשותפת?`, description: 'החלק לא יופיע יותר בלוחות. עותקים שכבר על לוחות יישארו.', confirmLabel: 'הוצאה מהספרייה' });
+        if (ok) await sharedLibrary.remove(shared.row);
+      } }} />;
+    const own = config.elementLibrary.find((x) => `part:${x.id}` === id);
+    if (own) return <PartTile name={own.name} elements={own.elements} addLabel={`הוספת ${own.name} מהחלקים שלי`} disabled={full(own.elements.length)}
+      onAdd={() => insert('element-library:insert', own.elements)} remove={{ ready: false, onClick: () => void remove(own) }} />;
+    const r = ready.find((x) => `part:${x.id}` === id);
+    if (r) return <PartTile name={r.name} elements={r.elements} addLabel={`הוספת ${r.name}`} disabled={full(r.elements.length)}
+      onAdd={() => insert('ready-part:insert', r.elements)}
+      // Hidden from this board's list, brought back from the shelf below - as every ready gallery.
+      remove={{ ready: true, onClick: () => onEdit(`ready-part:hide:${r.id}`, (c) => hideReady(c, 'part', r.id)) }} />;
+    const c = fromCatalog.find((p) => `catalog:${p.id}` === id)!;
+    return <PartTile name={c.name} elements={c.elements} addLabel={`הוספת ${c.name}`} disabled={full(c.elements.length)} onAdd={() => insert('shared-part:insert', c.elements)} />;
+  };
+
   return (
     <div className="space-y-5">
       <SubPart title="חלקים משותפים מכל הערכות" testId="shared-catalog-parts" hint="זמינים בכל לוח, גם חדש. הוספה משנה את הטיוטה בלבד, ולא את המקור המשותף.">
         <SharedCatalogLibrary config={config} onEdit={onEdit} onSelect={onSelect} />
       </SubPart>
 
-      <SubPart title="חלקים מוכנים מהערכות" testId="ready-parts" hint="עמודים, קשתות, מסגרות שעון ופמוטים מתוך הערכות - כל אחד לבד, בלי הקיר שמסביבו. מוסיפים לכל לוח, ומזיזים ומגדילים כרצונכם.">
-        <PartGrid>
-          {READY_PARTS.filter((item) => !isHiddenReady(config, 'part', item.id)).map((item) => (
-            <PartTile
-              key={item.id}
-              name={item.name}
-              elements={item.elements}
-              addLabel={`הוספת ${item.name}`}
-              disabled={full(item.elements.length)}
-              onAdd={() => insert('ready-part:insert', item.elements)}
-              // Hidden from this board's list, brought back from the shelf below - as every ready gallery.
-              remove={{ ready: true, onClick: () => onEdit(`ready-part:hide:${item.id}`, (c) => hideReady(c, 'part', item.id)) }}
-            />
-          ))}
-        </PartGrid>
+      {/* The parts in folders: one's own, the ready ones of the kits, and any of the shared collection put in a folder or starred. */}
+      <SubPart title="החלקים בתיקיות" hint="החלקים שלכם, החלקים המוכנים מהערכות, וכל חלק מהאוסף המשותף שהעברתם לתיקייה או סימנתם בכוכב. גוררים חלק לתיקייה, פותחים וסוגרים, ומחפשים לפי שם או תגית.">
+        <div data-testid="ready-parts">
+          <FolderedLibrary
+            items={items}
+            fixed={PART_FOLDERS}
+            library={library}
+            onLibrary={changeLibrary}
+            tile={(item) => partTile(item.id)}
+            // One's own parts, kept for every board too.
+            extra={(item) => {
+              const own = config.elementLibrary.find((x) => `part:${x.id}` === item.id);
+              return own ? (
+                <button type="button" className="rounded px-1 text-primary hover:bg-muted" title="נשמר בספרייה המשותפת - זמין בכל הלוחות, בכל בתי הכנסת"
+                  onClick={() => void sharedLibrary.add('part', own.name, own)}>
+                  שיתוף לכל הלוחות
+                </button>
+              ) : null;
+            }}
+            opened={['parts-mine', 'parts-ready']}
+            storageKey="tv-library-open:parts"
+            testId="part-folders"
+            what={{ one: 'חלק', many: 'חלקים' }}
+          />
+        </div>
         <HiddenShelf
           testId="ready-parts-hidden"
           items={READY_PARTS.filter((item) => isHiddenReady(config, 'part', item.id)).map((item) => ({ key: item.id, name: item.name }))}
@@ -135,21 +196,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
             onCancel={() => setName(null)}
           />
         )}
-        {config.elementLibrary.length > 0 && (
-          <PartGrid>
-            {config.elementLibrary.map((item) => (
-              <PartTile
-                key={item.id}
-                name={item.name}
-                elements={item.elements}
-                addLabel={`הוספת ${item.name} מהחלקים שלי`}
-                disabled={full(item.elements.length)}
-                onAdd={() => insert('element-library:insert', item.elements)}
-                remove={{ ready: false, onClick: () => void remove(item) }}
-              />
-            ))}
-          </PartGrid>
-        )}
+        {config.elementLibrary.length > 0 && <p className="text-[11px] text-muted-foreground">החלקים ששמרתם ({config.elementLibrary.length}) נמצאים למעלה, בתיקייה "החלקים שלי" או בתיקייה שהעברתם אליה.</p>}
       </SubPart>
     </div>
   );

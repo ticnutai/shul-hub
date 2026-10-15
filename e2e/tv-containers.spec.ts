@@ -92,18 +92,11 @@ test("containers: read off a kit, chosen whole, renamed, layered, duplicated, ne
   expect(errors).toEqual([]);
 });
 
-test("the library offers kits of parts; the older kits are kept, folded", async ({ page, isMobile }) => {
+test("the library offers kits of parts only: the old ones not built of parts are gone", async ({ page, isMobile }) => {
   test.skip(isMobile, "the editor is for a desktop screen");
   await open(page);
-  const library = page.getByTestId("builtin-designs");
-  const wood = library.locator('[data-design-id="d_wood"]');
-  // Not among the kits on offer...
-  await expect(wood).toBeHidden();
-  await expect(library.locator('[data-design-id="d_premium_jerusalem-stone"]')).toBeVisible();
-  // ...but kept, a click away, and still put on.
-  const older = page.getByTestId("older-designs");
-  await older.locator("summary").click();
-  await expect(wood).toBeVisible();
-  await wood.locator('button[title^="ממלא"]').click();
-  await expect(page.locator("[data-board-preview] .tv-frame").first()).toBeVisible();
+  const library = page.getByTestId("design-library");
+  await expect(library.locator('[data-design-id="d_premium_jerusalem-stone"]').first()).toBeVisible();
+  for (const id of ["d_wood", "d_curtain", "d_stone", "d_modern", "d_sapphireparts"]) await expect(library.locator(`[data-design-id="${id}"]`)).toHaveCount(0);
+  await expect(page.getByTestId("older-designs")).toHaveCount(0);
 });

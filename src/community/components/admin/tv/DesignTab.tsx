@@ -8,6 +8,9 @@ import { blankBoard, standardBoard } from "@/tv/blankBoard";
 import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
 import { BlankBoardStarter, type BuildStep } from "./BlankBoardStarter";
 import { DesignLibrary } from "./DesignLibrary";
+import { LibraryContext, type LibraryEdit } from "./libraryEdit";
+import { useTvLibraryOrder } from "./useTvLibrary";
+import { CATALOG_CATEGORIES } from "@/tv/catalogCategories";
 import { ElementsEditor } from "./ElementsEditor";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
 import { Folded, SubPart } from "./Parts";
@@ -19,7 +22,7 @@ import { KindPicker } from "./KindPicker";
 import { Notice } from "./Notice";
 import { isPartsBoard } from "./PartLooks";
 
-export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere }: {
+export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [] }: {
   draft: TvConfig;
   scoped: TvConfig;
   view: TvConfig;
@@ -32,6 +35,8 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   setGuide: (g: BuildStep[] | null) => void;
   layerProps: LayerProps;
   textToolsElsewhere: boolean;
+  /** The names of today's occasions: their folders of kits open to begin with. */
+  todayOccasions?: string[];
 }) {
   const { view: topicsView, topic } = useDesignTopics();
   // A board of parts: the topics dress the parts chosen on it, not the boxes of an ordinary board.
@@ -40,8 +45,15 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   const selected = editing?.selected ?? [];
   /** One topic at a time: the others stay drawn (what was typed in them stays), only hidden. */
   const away = (id: string) => topicsView === "switch" && topic !== id;
+  // The library's order is the gabbai's, on every board (written at once); until it is read, the board's own.
+  const libraryOrder = useTvLibraryOrder();
+  const library = libraryOrder.order ?? draft.library;
+  const editLibrary: LibraryEdit = (key, change) =>
+    libraryOrder.ready
+      ? void libraryOrder.save(change(libraryOrder.current() ?? draft.library))
+      : dispatch({ type: "edit", key: `library:${key}`, update: (c) => ({ ...c, library: change(c.library) }) });
   return (
-    <>
+    <LibraryContext.Provider value={{ library, edit: editLibrary }}>
       {/*
         The topics side by side, always in sight: a click shows its
         section (or jumps to it, with all of them down the page). With them, which box the boxes, frames and text are for -
@@ -125,7 +137,11 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
               onWipe={() => dispatch({ type: "edit", key: "start-over:wipe", update: () => structuredClone(DEFAULT_TV_CONFIG) })}
             />
           </SubPart>
-          <DesignLibrary config={view} onEdit={edit} />
+          <DesignLibrary
+            config={view}
+            onEdit={edit}
+            todayTopics={CATALOG_CATEGORIES.filter((t) => t !== "הכול" && todayOccasions.some((o) => o.includes(t)))}
+          />
         </div>
       </Section>
 
@@ -189,6 +205,6 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
       >
         <ElementsEditor config={view} onEdit={edit} textToolsElsewhere={textToolsElsewhere} />
       </Section>
-    </>
+    </LibraryContext.Provider>
   );
 }

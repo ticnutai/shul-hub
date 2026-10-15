@@ -16,6 +16,8 @@ export interface EditorServer {
   saved: () => Record<string, unknown>;
   /** How many times the editor wrote to it. */
   writes: () => number;
+  /** The shared library, as the "database" now holds it: its items, and this gabbai's order of it. */
+  library: () => { items: Array<{ id: string; kind: string; name: string; data: unknown; created_by: string }>; order: Record<string, unknown> | null };
 }
 
 /**
@@ -127,12 +129,18 @@ export async function serveEditor(
   await page.addInitScript((view) => {
     try {
       if (localStorage.getItem("tv-design-view") === null) localStorage.setItem("tv-design-view", view);
+      // The library's folders all open: the specs of the kits and parts find them where they are (library folders: tv-library.spec.ts).
+      for (const key of ["tv-library-open:kits", "tv-library-open:parts"]) if (localStorage.getItem(key) === null) localStorage.setItem(key, JSON.stringify("all"));
     } catch {
       /* no storage: the page's own default */
     }
   }, designView);
   let saved: Record<string, unknown> = config;
   let writes = 0;
+  // The shared library (tv_library_items, tv_library_order): kept here, as the database would.
+  let libraryItems: Array<{ id: string; kind: string; name: string; data: unknown; created_by: string; created_at: string }> = [];
+  let libraryOrder: Record<string, unknown> | null = null;
+  const USER = "00000000-0000-0000-0000-000000000001";
   // As the database does (tv_config_versions): each save keeps the board it replaced.
   const versions: Array<{ id: string; saved_at: string; replaced_at: string; config: Record<string, unknown> }> = [];
 
@@ -156,6 +164,31 @@ export async function serveEditor(
     const url = new URL(request.url());
     const table = url.pathname.split("/rest/v1/")[1]?.split("?")[0] ?? "";
     const method = request.method();
+
+    const idOf = () => url.searchParams.get("id")?.replace(/^eq\./, "");
+    if (table === "tv_library_items" && method !== "GET") {
+      if (method === "POST") {
+        const body = request.postDataJSON() as { kind: string; name: string; data: unknown };
+        const row = { id: crypto.randomUUID(), kind: body.kind, name: body.name, data: body.data, created_by: USER, created_at: new Date().toISOString() };
+        libraryItems.push(row);
+        return json(route, [row], 201);
+      }
+      if (method === "PATCH") {
+        const body = request.postDataJSON() as Record<string, unknown>;
+        libraryItems = libraryItems.map((r) => (r.id === idOf() ? { ...r, ...body } : r));
+        return json(route, libraryItems.filter((r) => r.id === idOf()));
+      }
+      if (method === "DELETE") {
+        const gone = libraryItems.filter((r) => r.id === idOf());
+        libraryItems = libraryItems.filter((r) => r.id !== idOf());
+        return json(route, gone);
+      }
+    }
+    if (table === "tv_library_order" && (method === "POST" || method === "PATCH")) {
+      const body = request.postDataJSON() as { library: Record<string, unknown> };
+      libraryOrder = body.library;
+      return json(route, [{ user_id: USER, library: libraryOrder }], 201);
+    }
 
     if (method === "PATCH" || method === "POST" || method === "PUT") {
       if (table === "tv_config") {
@@ -196,6 +229,10 @@ export async function serveEditor(
         return json(route, SHIURIM);
       case "logo_library":
         return json(route, LOGO_LIBRARY);
+      case "tv_library_items":
+        return json(route, libraryItems);
+      case "tv_library_order":
+        return json(route, libraryOrder ? [{ user_id: USER, library: libraryOrder }] : []);
       case "tv_config_versions": {
         const id = url.searchParams.get("id")?.replace(/^eq\./, "");
         if (id) return json(route, { config: versions.find((v) => v.id === id)?.config ?? {} });
@@ -206,7 +243,7 @@ export async function serveEditor(
     }
   });
 
-  return { saved: () => saved, writes: () => writes };
+  return { saved: () => saved, writes: () => writes, library: () => ({ items: libraryItems, order: libraryOrder }) };
 }
 
 /** The shared logo library, as the logo_library table returns it. */

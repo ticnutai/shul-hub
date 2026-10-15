@@ -9,7 +9,8 @@
 import { describe, expect, it } from "vitest";
 
 import { boardConfig } from "./boardConfig";
-import { DEFAULT_TV_CONFIG, type TvConfig } from "./config";
+import { DEFAULT_TV_CONFIG, normalizeTvConfig, type TvConfig } from "./config";
+import { captureDesign } from "./designs";
 
 const now = new Date("2026-09-29T12:00:00+03:00"); // a weekday in chol hamoed, no day look set
 
@@ -33,7 +34,8 @@ describe("the board a screen draws", () => {
   });
 
   it("wears a set chosen from the remote for its look, and ignores one that no longer exists", () => {
-    const worn = boardConfig(ohelAvraham, { deviceClass: "tv", lookOverride: "d_curtain", now, settings: null });
+    const own = captureDesign(normalizeTvConfig({ theme: "royal", font: "bold" }), "שלי", ["background", "text"], "d_royal01");
+    const worn = boardConfig({ ...ohelAvraham, designs: [own] }, { deviceClass: "tv", lookOverride: "d_royal01", now, settings: null });
     expect(worn.theme).toBe("royal");
     // Its look only: what stands where on this screen is the screen's own.
     expect(worn.screenLayout).toBe("split");

@@ -213,17 +213,13 @@ test.describe("TV editor, by layer", () => {
   });
 
   test("a ready design puts a whole look on the board, built from parts", async ({ page }) => {
-    // An older kit (not of parts): kept, folded in the library.
-    await page.getByTestId("older-designs").locator("summary").click();
-    await page.getByTestId("builtin-designs").getByRole("button", { name: /^החלת ערכה וילון כחול וזהב/ }).click();
-    const med = root(page).locator(".tv-med");
-    await expect(med).toBeVisible();
-    await expect(root(page)).toHaveClass(/has-frame-image/);
-    await expect.poll(() => bg(med.locator('[data-frame="clock"]'))).toBe("rgb(27, 52, 148)");
-    // And every part stays its own: another background leaves the frames alone.
-    await page.getByTestId("builtin-designs").getByRole("button", { name: /^החלת ערכה לוחות הברית מאבן/ }).click();
-    await expect(root(page)).toHaveClass(/has-frame-arch/);
-    await expect(root(page)).not.toHaveClass(/has-frame-image/);
+    const library = page.getByTestId("builtin-designs");
+    await library.locator('[data-design-id="d_premium_jerusalem-stone"] button[title^="ממלא"]').first().click();
+    await expect(root(page).locator('[data-element-id^="premium_jerusalem-stone_"]').first()).toBeVisible();
+    // Another kit: its own parts instead, every one its own.
+    await library.locator('[data-design-id="d_sapphirelayers"] button[title^="ממלא"]').first().click();
+    await expect(root(page).locator('[data-element-id^="premium_jerusalem-stone_"]')).toHaveCount(0);
+    await expect(root(page).locator("[data-element-id]").first()).toBeVisible();
     await expectNotFrozen(page, "ready designs");
   });
 

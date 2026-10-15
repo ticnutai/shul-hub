@@ -29,8 +29,9 @@ for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library','d_
   await page.goto('/e2e/harness/editor.html');
   await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
   const library=page.getByTestId('design-library');
-  await library.getByLabel('נושא הערכות',{exact:true}).selectOption(category);
   const d=raw.designs.find(x=>x.id===id);
+  // The kits are in folders now: found by their name, through all of them.
+  await library.getByLabel('חיפוש ערכה',{exact:true}).fill(d.name);
   const card=library.locator(`[data-design-id="${id}"]`);
   await card.getByRole('button',{name:'שכפול לעריכה',exact:true}).click();
   await card.getByRole('button',{name:'החלת ערכה '+d.name,exact:true}).click();
@@ -81,14 +82,13 @@ test('central editor shares categorized themes and parts without changing a boar
  await expect(page.locator('.tv-frame .tv-root').first()).toBeVisible({timeout:30000});
  await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
  const library=page.getByTestId('design-library');
- await library.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
- await expect(library.locator('[data-design-id^="d_rc_"]')).toHaveCount(15);
+ // The kits in folders by topic: the shared Rosh Chodesh kits in theirs, each once.
+ const rc=library.locator('[data-library-folder="topic:ראש חודש"]');
+ await expect(rc.locator('[data-design-id^="d_rc_"]')).toHaveCount(15);
  expect(server.writes()).toBe(0);expect(server.saved()).toEqual(original);
- await library.getByLabel('נושא הערכות',{exact:true}).selectOption('הכול');
  const ids=await library.locator('[data-design-id]').evaluateAll(els=>els.map(e=>e.getAttribute('data-design-id')));
  expect(new Set(ids).size).toBe(ids.length);
- await library.getByLabel('נושא הערכות',{exact:true}).selectOption('ראש חודש');
- const card=library.locator('[data-design-id="d_rc_antique"]');
+ const card=rc.locator('[data-design-id="d_rc_antique"]');
  await card.getByRole('button',{name:'שכפול לעריכה',exact:true}).click();
  await card.getByRole('button',{name:'החלת ערכה ראש חודש · שערי הלבנה',exact:true}).click();
  await expect(page.locator('.tv-frame [data-element-id]')).toHaveCount(26);

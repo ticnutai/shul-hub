@@ -14,7 +14,7 @@ const HOSHANA_RABA = new Date("2026-10-02T10:00:00+03:00");
 function board(designOn: Occasion["designOn"]): TvConfig {
   const base = { ...structuredClone(DEFAULT_TV_CONFIG), theme: "navy", screenLayout: "medallion" as const };
   const occasions = readOccasions(base).map((o) =>
-    o.id === "cal:hoshana_raba" ? { ...o, enabled: true, display: "turns" as const, design: "d_wood", designOn } : o,
+    o.id === "cal:hoshana_raba" ? { ...o, enabled: true, display: "turns" as const, design: "d_premium_jerusalem-stone", designOn } : o,
   );
   return normalizeTvConfig(JSON.parse(JSON.stringify({ ...base, occasions })));
 }
@@ -30,18 +30,18 @@ describe("an occasion's design", () => {
     expect(normalizeTvConfig(stored).occasions.find((o) => o.id === "cal:hoshana_raba")!.designOn).toBe("screen");
   });
 
-  it("on its screen only: the occasion's screen in wood, the ordinary screens in their own navy", () => {
+  it("on its screen only: the occasion's screen in its stone kit, the ordinary screens in their own navy", () => {
     const c = board("screen");
-    expect(at(c).frameStyle.image).toBeNull();
+    expect(at(c).elements).toHaveLength(0);
     expect(at(c).theme).toBe("navy");
-    expect(at(c, "screen:main").frameStyle.image).toBeNull();
-    expect(at(c, "occasion:cal:hoshana_raba").frameStyle.image).toBe("frame:carved-wood");
+    expect(at(c, "screen:main").elements).toHaveLength(0);
+    expect(at(c, "occasion:cal:hoshana_raba").elements.length).toBeGreaterThan(0);
     expect(at(c, "occasion:cal:hoshana_raba:screen").theme).toBe("stone");
   });
 
-  it("on the whole board: every screen in wood while it is on", () => {
+  it("on the whole board: every screen in the kit while it is on", () => {
     const c = board("board");
-    expect(at(c).frameStyle.image).toBe("frame:carved-wood");
-    expect(at(c, "screen:main").frameStyle.image).toBe("frame:carved-wood");
+    expect(at(c).theme).toBe("stone");
+    expect(at(c, "screen:main").theme).toBe("stone");
   });
 });

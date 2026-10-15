@@ -1,11 +1,10 @@
 import type { TvConfig } from "./config";
-import { applyDesign, BUILTIN_DESIGNS, findDesign, REMOTE_BUILTIN_IDS } from "./designs";
-import { isHiddenReady } from "./readyItems";
+import { applyDesign, findDesign } from "./designs";
 
 /**
  * The looks a screen can be switched to from its remote (and from the admin's
  * "connected screens" tab): the board as the gabbai designed it, and every set
- * - the ready ones not hidden, and the shul's own. A set is worn for its look
+ * - the shul's own. A set is worn for its look
  * only - background, boxes, frames, text - and never rearranges what is on
  * the screen: a remote on a wall is no place to move the times around.
  */
@@ -27,8 +26,8 @@ export function applyLook(c: TvConfig, id: string | null | undefined): TvConfig 
 }
 
 export function remoteLooks(c: TvConfig): RemoteLook[] {
-  // The remote keeps the sets it always had: the classic ones and the shul's own (a new design is saved as one's own to be here).
-  const sets = [...BUILTIN_DESIGNS.filter((d) => REMOTE_BUILTIN_IDS.has(d.id) && !isHiddenReady(c, "design", d.id)), ...c.designs];
+  // The shul's own sets (a ready kit is copied to one's own to be here); the old classic ones are gone.
+  const sets = c.designs;
   return [
     { id: null, name: "העיצוב של הלוח", config: c },
     ...sets.filter((d) => d.parts.some((p) => p !== "layout")).map((d) => ({ id: d.id, name: d.name, config: applyLook(c, d.id) })),
