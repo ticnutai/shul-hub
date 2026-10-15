@@ -366,14 +366,16 @@ test.describe("TV editor", () => {
     await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
     await expect(root(page)).toHaveClass(/has-bg-gradient/);
 
-    // The ordinary board: asked, cancelled, then done - the look goes back.
-    await starter.getByRole("button", { name: "לוח רגיל של המערכת" }).click();
+    // The system's basic board (of parts): asked, cancelled, then done - the look goes back.
+    await starter.getByRole("button", { name: "הלוח הבסיסי של המערכת" }).click();
     await page.getByRole("button", { name: "ביטול", exact: true }).click();
     await expect(root(page)).toHaveClass(/has-bg-gradient/);
     await expectNotFrozen(page, "start over cancelled");
-    await starter.getByRole("button", { name: "לוח רגיל של המערכת" }).click();
-    await page.getByRole("button", { name: "חזרה ללוח הרגיל" }).click();
+    await starter.getByRole("button", { name: "הלוח הבסיסי של המערכת" }).click();
+    await page.getByRole("button", { name: "חזרה ללוח הבסיסי" }).click();
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
+    // Built of parts: the name, the clock, the prayers, the day's times and the foot - each a container.
+    await expect(page.getByTestId("container-row")).toHaveCount(5);
 
     // Everything deleted: says so before it is done.
     await starter.getByRole("button", { name: "מחיקת הכול" }).click();

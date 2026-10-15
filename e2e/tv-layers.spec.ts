@@ -63,7 +63,7 @@ test.describe("TV editor, by layer", () => {
     await starter.getByRole("checkbox", { name: /זמני היום/ }).uncheck();
     await starter.getByRole("button", { name: "יצירת לוח ריק עם מה שבחרתי" }).click();
 
-    // The board shows what was ticked, and nothing it was not.
+    // The board shows what was ticked, and nothing it was not - each a container of its parts.
     await expect(root(page).locator(".tv-board-frame")).toHaveCount(0);
     await expect(root(page)).not.toHaveClass(/has-bg-image|has-bg-gradient/);
     await expect(page.getByRole("button", { name: "ביטול שינויים" })).toBeEnabled();
@@ -72,7 +72,8 @@ test.describe("TV editor, by layer", () => {
     const guide = page.getByTestId("build-guide");
     await guide.getByRole("button", { name: /סידור על המסך/ }).click();
     await expect(page.getByRole("tab", { name: "פריסה" })).toHaveAttribute("aria-selected", "true");
-    await expect.poll(() => page.locator("#layout-screens").evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThan(300);
+    // A new board is of parts: the arrangement is of its parts.
+    await expect.poll(() => page.locator("#layout-elements").evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThan(300);
     await guide.getByRole("button", { name: /תיבות/ }).click();
     await expect(page.getByRole("tab", { name: "עיצוב" })).toHaveAttribute("aria-selected", "true");
     await expect.poll(() => page.locator("#design-boxes").evaluate((el) => Math.round(el.getBoundingClientRect().top))).toBeLessThan(300);

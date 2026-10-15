@@ -219,7 +219,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     setTab(step === "arrange" ? "layout" : "design");
     if (isDesignTopic(step)) showDesignTopic(step);
     // Once the tab is drawn; instant, as a smooth scroll stops in a background window.
-    else window.setTimeout(() => document.getElementById("layout-screens")?.scrollIntoView({ block: "start" }), 80);
+    // The arrangement: of the parts on a board of parts, of the screens' blocks on any other.
+    else window.setTimeout(() => document.getElementById(state.present.screenLayout === "composition" ? "layout-elements" : "layout-screens")?.scrollIntoView({ block: "start" }), 80);
   };
 
   // The device strip over the preview is the only switcher; choosing a

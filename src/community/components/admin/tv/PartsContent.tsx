@@ -142,7 +142,7 @@ export function PartsContent({ config, onEdit, onManual }: {
           </Button>
           {/* Not the start over of the design tab ("התחלה מחדש" - a blank board, the system's own): this kit's parts only. */}
           {kit && (
-            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => void reset()} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של „${kit.name}”. ללוח ריק או ללוח הרגיל של המערכת - "התחלה מחדש" בלשונית עיצוב.`} data-testid="parts-reset">
+            <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => void reset()} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של „${kit.name}”. ללוח ריק או ללוח הבסיסי של המערכת - "התחלה מחדש" בלשונית עיצוב.`} data-testid="parts-reset">
               <RotateCcw className="size-4" aria-hidden /> איפוס הערכה הנוכחית
             </Button>
           )}
