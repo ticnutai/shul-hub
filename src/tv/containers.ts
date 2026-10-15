@@ -13,7 +13,7 @@
  * names of a frame and its fill), and that reading is written down the first
  * time a container is changed, so from then on nothing is guessed.
  */
-import { BINDING_LABELS, elementId, normalizeElements, type BoardElement } from './elements';
+import { BINDING_LABELS, boundsOf, elementId, normalizeElements, sideOf, type BoardElement } from './elements';
 import { isPartShape, type PartShape } from './partShapes';
 import { linkedSection } from './sectionGeometry';
 
@@ -107,6 +107,13 @@ export function containerTree(elements: BoardElement[], records: PartContainer[]
   }
   // A recorded container whose parts all went (into others) stays while a container stands in it.
   for (const r of records) if (!containers.some(c => c.id === r.id) && records.some(x => x.parent === r.id)) containers.push({ ...r, saved: true, parts: [] });
+  // Two read with the same name (a heading moved to another arch): told apart by where they stand.
+  const side = { right: 'ימין', center: 'אמצע', left: 'שמאל' } as const;
+  const twice = new Set(containers.map(c => c.name).filter((n, i, all) => all.indexOf(n) !== i));
+  for (const c of containers) {
+    if (c.saved || !twice.has(c.name) || !c.parts.length) continue;
+    c.name = `${c.name} (${side[sideOf(boundsOf(elements, c.parts))]})`.slice(0, 60);
+  }
   const known = new Set(containers.map(c => c.id));
   for (const c of containers) if (c.parent && !known.has(c.parent)) c.parent = null;
   const inOne = new Set(containers.flatMap(c => c.parts));

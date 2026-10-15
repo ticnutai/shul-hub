@@ -125,3 +125,13 @@ describe("the containers' records", () => {
     expect(containerName([part("t", "text", 0, 0, 10, 10, { binding: "zmanim" })])).toBe("זמני היום");
   });
 });
+
+describe("two containers read with the same heading", () => {
+  it("are told apart by where they stand", () => {
+    const els = [
+      part("fr", "frame", 65, 20, 30, 60), part("hr", "text", 67, 22, 26, 8, { text: "זמני תפילות" }),
+      part("fl", "frame", 5, 20, 30, 60), part("hl", "text", 7, 22, 26, 8, { text: "זמני תפילות" }),
+    ];
+    expect(containerTree(els, []).containers.map((c) => c.name)).toEqual(["זמני תפילות (ימין)", "זמני תפילות (שמאל)"]);
+  });
+});
