@@ -72,6 +72,23 @@ describe("the reminders' settings", () => {
     expect(example.mock.calls.map((c) => c[0])).toEqual(["board", "panel"]);
   });
 
+  it("shows the example on a connected screen too, chosen - and says which app shows only a note", () => {
+    const pick = vi.fn<(id: string) => void>();
+    const screens = [
+      { id: "a", name: "מסך בית הכנסת", online: true, shows: true },
+      { id: "b", name: "מסך אהבת התורה", online: false, shows: false },
+    ];
+    const { rerender } = render(<AlertsSettings config={staged()} countdown={false} edit={() => {}} onExample={example} screens={screens} screen="" onScreen={pick} />);
+    const box = within(screen.getByTestId("alert-example-screen"));
+    const select = box.getByRole("combobox", { name: "מסך מחובר לדוגמה" }) as HTMLSelectElement;
+    expect([...select.options].map((o) => o.text)).toEqual(["רק התצוגה כאן", "מסך בית הכנסת", "מסך אהבת התורה (לא מחובר עכשיו)", "כל המסכים"]);
+    fireEvent.change(select, { target: { value: "a" } });
+    expect(pick).toHaveBeenLastCalledWith("a");
+    rerender(<AlertsSettings config={staged()} countdown={false} edit={() => {}} onExample={example} screens={screens} screen="b" onScreen={pick} />);
+    expect(box.getByText(/האפליקציה ישנה/)).toBeTruthy();
+    expect(box.getByText(/לא מחובר עכשיו - הדוגמה תופיע כשיתחבר/)).toBeTruthy();
+  });
+
   it("keeps the count to the next minyan beside them", () => {
     render(<Harness start={staged()} />);
     fireEvent.click(screen.getByRole("switch", { name: "ספירה לתפילה הבאה" }));

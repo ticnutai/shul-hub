@@ -1363,6 +1363,22 @@
   animation: tv-fade 250ms ease both;
 }
 
+/* The reminder's example from the editor (alertDemo.ts): over the card, so nobody takes it for a real one. */
+.tv-demo-tag {
+  position: absolute;
+  z-index: 70;
+  top: calc(var(--u) * 2);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: calc(var(--u) * 0.8) calc(var(--u) * 2.4);
+  border-radius: 999px;
+  background: #b42318;
+  color: #fff;
+  font-size: calc(var(--fs) * 2);
+  font-weight: 700;
+  box-shadow: var(--tv-shadow);
+}
+
 .tv-help {
   position: absolute;
   inset: 0;

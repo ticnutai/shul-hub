@@ -17,6 +17,7 @@ import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
+import { readAlertDemo, type AlertDemo } from "./alertDemo";
 import { scheduleNightlyRefresh, setWatchdogReport, watchMainThread } from "./watchdog";
 import { reloadBoard } from "./remoteBoard";
 import { WebControls } from "./TvWebControls";
@@ -199,6 +200,21 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const helpRef = useRef(false);
   helpRef.current = help;
   const [notice, setNotice] = useState<Notice | null>(null);
+  /**
+   * The reminder's example from the editor (alertDemo.ts): for a little while
+   * the board's clock stands a few minutes before a time of the day, so its
+   * countdown runs as it will - the slides, the heartbeat and everything else
+   * keep the real time.
+   */
+  const [demo, setDemo] = useState<AlertDemo | null>(null);
+  const demoOn = Boolean(demo && now.getTime() < demo.until);
+  const boardNow = demo && demoOn ? new Date(now.getTime() + demo.offset) : now;
+  const boardZmanim = useDayZmanim(boardNow, data.settings);
+  useEffect(() => {
+    if (!demo) return;
+    const id = window.setTimeout(() => setDemo(null), Math.max(0, demo.until - Date.now()));
+    return () => window.clearTimeout(id);
+  }, [demo]);
 
   const found = slides.findIndex((s) => s.id === currentId);
   const index = found >= 0 ? found : 0;
@@ -457,13 +473,21 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
         applyTheme(typeof p.theme === "string" ? p.theme : null);
         break;
       }
-      case "message":
+      case "message": {
+        // The reminder's example rides on a message, whose text an older app shows instead.
+        const example = readAlertDemo(p);
+        if (example) {
+          setDemo(example);
+          setNotice(null);
+          break;
+        }
         setNotice({
           kind: "message",
           text: String(p.text ?? "").slice(0, 400),
           until: Date.now() + Math.min(600, Math.max(5, Number(p.seconds) || 30)) * 1000,
         });
         break;
+      }
       case "identify":
         setNotice({ kind: "identify", text: device?.name || "מסך", until: Date.now() + 12_000 });
         break;
@@ -632,6 +656,8 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   // simulated server outage the socket stayed up while every request failed,
   // and the board kept saying "מעודכן" for three minutes.
   const deviceOffline = device?.online === false;
+  // The example shows the reminders as the editor has them, unsaved changes too.
+  const shownConfig = useMemo<TvConfig>(() => (demo && demoOn ? { ...drawConfig, alerts: demo.alerts } : drawConfig), [drawConfig, demo, demoOn]);
   const boardData = useMemo(
     () => (deviceOffline && data.sync.status === "live" ? { ...data, sync: { ...data.sync, status: "offline" as const } } : data),
     [data, deviceOffline],
@@ -640,9 +666,9 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   return (
     <TvBoard
       data={boardData}
-      config={drawConfig}
-      now={now}
-      zmanim={zmanim}
+      config={shownConfig}
+      now={boardNow}
+      zmanim={boardZmanim}
       slides={slides}
       index={index}
       cycle={cycle}
@@ -661,6 +687,7 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
             onLook={applyTheme}
           />
           {toast && <div className="tv-toast">{toast}</div>}
+          {demoOn && <div className="tv-demo-tag">דוגמת תזכורת · לא אמיתית</div>}
           {updateText(update.state) && <div className="tv-update-line">{updateText(update.state)}</div>}
 
           {device && !device.approved && device.pairingCode && (

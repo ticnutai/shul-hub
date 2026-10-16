@@ -11,14 +11,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { TvConfig } from "@/tv/config";
-import { AlertsSettings, type AlertExample } from "./AlertsSettings";
+import { AlertsSettings, type AlertExample, type ExampleScreen } from "./AlertsSettings";
 import { Section, Stepper, SwitchRow } from "./editorParts";
 import { FileButton, useUpload } from "./Upload";
 
-export function ContentTab({ scoped, edit, showAlertExample }: {
+export function ContentTab({ scoped, edit, showAlertExample, exampleScreens, exampleScreen, setExampleScreen }: {
   scoped: TvConfig;
   edit: (key: string, update: (c: TvConfig) => TvConfig) => void;
   showAlertExample: (what?: AlertExample) => void;
+  /** The connected screens the reminder's example can be shown on too. */
+  exampleScreens: ExampleScreen[];
+  exampleScreen: string;
+  setExampleScreen: (id: string) => void;
 }) {
   const { uploading, upload } = useUpload();
   const addPictures = (files: File[]) =>
@@ -131,7 +135,15 @@ export function ContentTab({ scoped, edit, showAlertExample }: {
         title="תזכורות וספירה לאחור"
         hint="תזכורות לפני סוף זמן קריאת שמע, סוף זמן תפילה, שקיעה ועוד: מתי הן מופיעות, באילו שלבים, ואיך הן נראות - צבעים, צורה, גודל ומיקום. ובסוף - ספירה לתפילה הבאה."
       >
-        <AlertsSettings config={scoped} countdown={scoped.countdown.enabled} edit={edit} onExample={showAlertExample} />
+        <AlertsSettings
+          config={scoped}
+          countdown={scoped.countdown.enabled}
+          edit={edit}
+          onExample={showAlertExample}
+          screens={exampleScreens}
+          screen={exampleScreen}
+          onScreen={setExampleScreen}
+        />
       </Section>
     </>
   );

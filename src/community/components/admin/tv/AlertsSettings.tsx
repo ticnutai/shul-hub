@@ -12,12 +12,15 @@ import { Button } from "@/components/ui/button";
 import { ALERT_EVENT_LABELS, DEFAULT_ALERT_LOOK, type AlertEvent, type AlertLook, type TvConfig } from "@/tv/config";
 import { themeStyle } from "@/tv/themes";
 import { ALERT_ICONS, ALERT_PRESETS, alertLookVars, formatCountdown } from "@/tv/zmanAlerts";
+import { SCREEN_EXAMPLE_SECONDS, type AlertExample } from "@/tv/alertDemo";
 import { ColourRow, Segments, Stepper, SwitchRow } from "./editorParts";
 import { itemChipClass } from "./Notice";
 import { ChipRemove } from "./ReadyShelf";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
-export type AlertExample = "board" | "panel" | "chip";
+export type { AlertExample };
+/** A connected screen the example can be shown on: is it on now, and does its app show it (1.40 and on). */
+export interface ExampleScreen { id: string; name: string; online: boolean; shows: boolean }
 
 const STYLES: [AlertLook["style"], string][] = [
   ["theme", "צבעי הלוח"], ["night", "לילה וזהב"], ["gold", "זהב בהיר"], ["parchment", "קלף"], ["crimson", "אדום דחוף"], ["custom", "צבעים שלי"],
@@ -70,12 +73,16 @@ function LeadMinutes({ value, onChange }: { value: number[]; onChange: (v: numbe
   );
 }
 
-export function AlertsSettings({ config, countdown, edit, onExample }: {
+export function AlertsSettings({ config, countdown, edit, onExample, screens = [], screen = "", onScreen }: {
   config: TvConfig;
   /** The count to the next minyan, as the screen being edited has it. */
   countdown: boolean;
   edit: Edit;
   onExample: (what: AlertExample) => void;
+  /** The connected screens; the one chosen ("" none, "all" every one) gets the example too. */
+  screens?: ExampleScreen[];
+  screen?: string;
+  onScreen?: (id: string) => void;
 }) {
   const a = config.alerts;
   const look = a.look;
@@ -181,6 +188,7 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
                 <Button type="button" variant="outline" size="sm" disabled={!a.enabled} onClick={() => onExample("chip")}>דוגמה: הפס הקטן</Button>
               )}
             </div>
+            {onScreen && <ExampleOnScreen screens={screens} screen={screen} onScreen={onScreen} />}
           </div>
         </div>
       </section>
@@ -196,6 +204,45 @@ export function AlertsSettings({ config, countdown, edit, onExample }: {
         />
         <p className="text-xs text-muted-foreground">פועלת בפריסת "לוח מלא". זו לא תזכורת לסוף זמן - רק ספירה למניין הבא, בשורה קטנה.</p>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Where the example shows besides the preview: on a connected screen too -
+ * the board itself, its clock running from a few minutes before, marked
+ * "דוגמה" - and what to expect of the one chosen.
+ */
+function ExampleOnScreen({ screens, screen, onScreen }: { screens: ExampleScreen[]; screen: string; onScreen: (id: string) => void }) {
+  const chosen = screens.find((s) => s.id === screen);
+  const old = screen === "all" ? screens.filter((s) => !s.shows) : chosen && !chosen.shows ? [chosen] : [];
+  return (
+    <div className="space-y-1 rounded-lg border p-2" data-testid="alert-example-screen">
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        הדוגמה מוצגת גם על:
+        <select
+          aria-label="מסך מחובר לדוגמה"
+          className="h-8 rounded-md border bg-background px-2 text-sm"
+          value={screens.length ? screen : ""}
+          disabled={!screens.length}
+          onChange={(e) => onScreen(e.target.value)}
+        >
+          <option value="">רק התצוגה כאן</option>
+          {screens.map((s) => (
+            <option key={s.id} value={s.id}>{s.name}{s.online ? "" : " (לא מחובר עכשיו)"}</option>
+          ))}
+          {screens.length > 1 && <option value="all">כל המסכים</option>}
+        </select>
+      </label>
+      <p className="text-[11px] text-muted-foreground">
+        {!screens.length
+          ? "אין מסך מאושר - מצמידים מסך בלשונית \"מסכים מחוברים\"."
+          : screen
+            ? `הדוגמה תופיע על המסך ל־${SCREEN_EXAMPLE_SECONDS} שניות, עם הכיתוב "דוגמה", והספירה תרוץ בה. אחר כך המסך חוזר לעצמו. ההגדרות כפי שהן כאן - גם לפני שמירה.`
+            : "אפשר לבחור מסך מחובר, והדוגמה תופיע גם עליו."}
+        {old.length > 0 && ` ${old.map((s) => s.name).join(", ")}: האפליקציה ישנה - יופיע רק הסבר שצריך לעדכן אותה לגרסה 1.40.`}
+        {chosen && !chosen.online && " המסך הזה לא מחובר עכשיו - הדוגמה תופיע כשיתחבר, אם זה יהיה בדקה וחצי הקרובה."}
+      </p>
     </div>
   );
 }

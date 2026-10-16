@@ -28,7 +28,6 @@ import {
   ALERT_EVENT_LABELS,
   DEFAULT_TV_CONFIG,
   normalizeTvConfig,
-  type AlertEvent,
   configForDevice,
   editForDevice,
   type TvConfig,
@@ -58,7 +57,6 @@ import {
   type ThemeVar,
 } from "@/tv/themes";
 import { applyImport, buildExport, exportFileName, parseImport, planIllustrations } from "@/tv/transfer";
-import { useDayZmanim } from "@/tv/useBoardData";
 import { downloadFile } from "@/tv/workspaceTransfer";
 
 import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
@@ -86,7 +84,8 @@ import { ReadabilityNote } from "./ReadabilityNote";
 import { SplitHandle } from "./SplitHandle";
 import { StudioPanel } from "./StudioPanel";
 import { ToolsTab } from "./ToolsTab";
-import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth } from "./tvAdminData";
+import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth, sendCommand } from "./tvAdminData";
+import { ALERT_DEMO_APP_CODE, SCREEN_EXAMPLE_SECONDS, alertDemoPayload, alertExampleMoment } from "@/tv/alertDemo";
 import { useDraftSync } from "./tvDraftChannel";
 import { TvEditInspector } from "./TvEditInspector";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
@@ -609,30 +608,31 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     return () => window.clearTimeout(id);
   }, [autoplay, current, board.slides.length]);
 
-  const zmanimToday = useDayZmanim(new Date(), board.data.settings);
+  /** Where the reminder's example shows besides the preview: "" none, "all" every screen, or one screen's id. */
+  const [exampleScreen, setExampleScreen] = useState("");
   const showAlertExample = (what: AlertExample = "board") => {
-    // On Friday and Saturday the simulated moment could fall inside Shabbat,
-    // where the board shows the Shabbat screen and no alerts - so the demo
-    // uses the coming Sunday instead.
-    const weekday = jerusalemWeekday(new Date());
-    const day =
-      weekday >= 5
-        ? zmanimFor(new Date(Date.now() + (7 - weekday) * 86_400_000), board.data.settings)
-        : zmanimToday;
-    const event = view.alerts.events.find((e) => e !== "candle" && day[e]) ?? "sunset";
-    const at = day[event as AlertEvent];
-    if (!at) return toast.error("אין זמן מתאים היום להדגמה");
-    // A moment at the step asked for: the staged board's card or panel, the pulsing card or its strip.
-    const { stages, leadMinutes, mode } = view.alerts;
-    const lead = leadMinutes[leadMinutes.length - 1] ?? 15;
-    const seconds =
-      mode === "staged"
-        ? what === "panel" ? stages.panel * 60 - 5 : (stages.board || stages.panel || stages.highlight) * 60 - 5
-        : what === "chip" ? Math.max(lead * 60 - view.alerts.popupSeconds - 30, 30) : lead * 60 - 2;
-    setSimulatedNow(new Date(at.getTime() - seconds * 1000));
+    const moment = alertExampleMoment(view.alerts, what, (d) => zmanimFor(d, board.data.settings), jerusalemWeekday(new Date()));
+    if (!moment) return toast.error("אין זמן מתאים היום להדגמה");
+    setSimulatedNow(moment.at);
     window.setTimeout(() => setSimulatedNow(null), 12_000);
-    toast.info(`מציג איך תיראה התזכורת ${Math.ceil(seconds / 60)} דקות לפני ${ALERT_EVENT_LABELS[event as AlertEvent]}`);
+    const before = `${Math.ceil(moment.seconds / 60)} דקות לפני ${ALERT_EVENT_LABELS[moment.event]}`;
+    if (!exampleScreen) return toast.info(`מציג איך תיראה התזכורת ${before}`);
+    // On the screen too: the same moment, its clock running from there.
+    const to = exampleScreen === "all" ? null : exampleScreen;
+    const name = to ? (devices.data ?? []).find((d) => d.id === to)?.name || "המסך" : "כל המסכים";
+    sendCommand(to, "message", alertDemoPayload(view.alerts, moment.at))
+      .then(() => toast.success(`הדוגמה (${before}) נשלחה ל${name} - היא תופיע שם תוך כמה שניות, ל־${SCREEN_EXAMPLE_SECONDS} שניות`))
+      .catch(() => toast.error(`השליחה ל${name} נכשלה - אפשר לנסות שוב`));
   };
+  /** The screens the example can go to, and whether their app shows it (1.40 and on). */
+  const exampleScreens = (devices.data ?? [])
+    .filter((d) => d.approved)
+    .map((d) => ({
+      id: d.id,
+      name: d.name || "מסך",
+      online: deviceHealth(d, Date.now()).online,
+      shows: (d.state?.app?.code ?? 0) >= ALERT_DEMO_APP_CODE,
+    }));
 
   // Preview another moment: Shabbat, an occasion's day, any date - until the
   // admin goes back to real time. One control under the preview chooses the
@@ -1249,7 +1249,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="content"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <ContentTab scoped={scoped} edit={edit} showAlertExample={showAlertExample} />
+          <ContentTab scoped={scoped} edit={edit} showAlertExample={showAlertExample} exampleScreens={exampleScreens} exampleScreen={exampleScreen} setExampleScreen={setExampleScreen} />
         </TabsContent>
         <TabsContent
           value="tools"
