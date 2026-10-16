@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
-import { elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS, normalizeElementLibrary } from '@/tv/elements';
+import { boundsOf, elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS, newElement, normalizeElementLibrary } from '@/tv/elements';
 import { READY_PARTS } from '@/tv/readyParts';
 import { hideReady, isHiddenReady, showReady } from '@/tv/readyItems';
 import { HiddenShelf } from './ReadyShelf';
@@ -58,6 +58,7 @@ export async function saveToLibrary(
 const PART_FOLDERS: FixedFolder[] = [
   { id: 'parts-mine', name: 'החלקים שלי' },
   { id: 'parts-shared', name: 'משותף לכל הלוחות' },
+  { id: 'parts-images', name: 'התמונות שלי' },
   { id: 'parts-ready', name: 'חלקים מוכנים מהערכות' },
   { id: 'parts-catalog', name: 'מהאוסף המשותף' },
 ];
@@ -110,7 +111,30 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
     return set ? [{ row, set }] : [];
   });
   items.push(...sharedParts.map(({ row }) => ({ id: sharedId(row.id), name: row.name, home: 'parts-shared' })));
+  // The pictures uploaded (on any board): put on this one - into the container chosen, in its shape, or on their own.
+  const images = sharedLibrary.items.filter((r) => r.kind === 'image' && typeof (r.data as { url?: unknown } | null)?.url === 'string');
+  items.push(...images.map((row) => ({ id: sharedId(row.id), name: row.name, home: 'parts-images' })));
+  const putImage = (url: string, name: string) => {
+    const into = config.elements.find((e) => selected.includes(e.id) && e.group);
+    const area = into ? boundsOf(config.elements, config.elements.filter((e) => e.group === into.group).map((e) => e.id)) : null;
+    const shape = into ? config.elements.find((e) => e.group === into.group && e.kind === 'box')?.shape : undefined;
+    const part = { ...newElement('image'), image: url, name, fit: 'cover' as const,
+      ...(area ? { x: area.x + area.width * 0.06, y: area.y + area.height * 0.06, width: area.width * 0.88, height: area.height * 0.88, group: into!.group, ...(shape ? { shape } : {}) } : { x: 30, y: 25, width: 40, height: 50 }) };
+    onEdit(`library-image:${part.id}`, (c) => (c.elements.length >= MAX_ELEMENTS ? c : { ...c, elements: [...c.elements, part] }));
+    onSelect([part.id]);
+    toast.success(into ? `"${name}" נוספה לקונטיינר שבחרתם, בצורה שלו.` : `"${name}" נוספה ללוח - גררו אותה למקום, ושנו צורה וגודל בידיות.`);
+  };
   const partTile = (id: string) => {
+    const image = images.find((row) => sharedId(row.id) === id);
+    if (image) {
+      const url = (image.data as { url: string }).url;
+      return <PartTile name={image.name} elements={[{ ...newElement('image'), id: `preview_${image.id.slice(0, 8)}`, image: url, x: 5, y: 5, width: 90, height: 90 }]}
+        addLabel={`הוספת התמונה ${image.name}`} disabled={full(1)} onAdd={() => putImage(url, image.name)}
+        remove={{ ready: false, onClick: async () => {
+          const ok = await confirmAction({ title: `להוציא את „${image.name}” מהתמונות שלי?`, description: 'לוחות שכבר מציגים אותה לא ישתנו.', confirmLabel: 'הוצאה' });
+          if (ok) await sharedLibrary.remove(image);
+        } }} />;
+    }
     const shared = sharedParts.find(({ row }) => sharedId(row.id) === id);
     if (shared) return <PartTile name={shared.row.name} elements={shared.set.elements} addLabel={`הוספת ${shared.row.name} מהספרייה המשותפת`} disabled={full(shared.set.elements.length)}
       onAdd={() => insert('shared-library:insert', shared.set.elements)}

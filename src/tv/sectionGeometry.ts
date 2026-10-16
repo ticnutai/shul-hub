@@ -29,6 +29,8 @@ export function setSectionShape(all:BoardElement[],id:string,shape:NonNullable<B
    const sx=b.width*(1-2*inset)/tb.width,sy=b.height*(1-top-inset)/tb.height;
    return {...e,group,rotation:0,x:b.x+b.width*inset+(e.x-tb.x)*sx,width:e.width*sx,y:b.y+b.height*top+(e.y-tb.y)*sy,height:e.height*sy};
   }
+  // A picture of one's own in the section (not a piece of a kit's painting): cut to the same shape, where it stands.
+  if(e.kind==='image'&&e.image&&!e.crop&&!e.sourceMask&&!/^(מסגרת|מילוי) /.test(e.name))return {...e,group,shape};
   if(e.kind==='box'||e.kind==='frame'||(e.kind==='image'&&/^(מסגרת|מילוי) /.test(e.name))){
    const frame=e.kind==='frame'||e.name.startsWith('מסגרת');
    return {...e,...b,group,rotation:0,kind:frame?'frame':'box',shape,image:'',crop:undefined,sourceMask:undefined,imageTune:undefined,archFill:undefined,fill:frame?'transparent':e.fill==='transparent'?'#fff5dc':e.fill};

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render } from "@testing-library/react";
 import { PART_SHAPES, isPartShape, partShapePath } from "./partShapes";
 import { SECTION_SHAPES, setSectionShape } from "./sectionGeometry";
-import { newElement, normalizeElements } from "./elements";
+import { newElement, normalizeElements, ratioResize } from "./elements";
 import { ElementArt } from "./BoardElements";
 
 describe("the shapes of a board of parts", () => {
@@ -54,5 +54,38 @@ describe("a frame of the gallery on a frame part", () => {
     const { container } = render(<ElementArt element={{ ...newElement("frame"), image: "frame:sapphire-silver" }} />);
     const art = container.querySelector<HTMLElement>("[data-art-frame]")!;
     expect(art.style.borderImage).toContain("sapphire-modular-panel-frame.webp");
+  });
+});
+
+describe("a picture of one's own", () => {
+  it("keeps its shape, how it fills it and its proportions through saving - a piece of a kit's painting takes none", () => {
+    const [own, piece] = normalizeElements([
+      { ...newElement("image"), image: "/new-shul-assets/a.webp", shape: "dome", fit: "cover", ratio: true },
+      { ...newElement("image"), image: "/new-shul-assets/a.webp", crop: { x: 0, y: 0, width: 50, height: 50 }, shape: "dome", fit: "cover" },
+    ]);
+    expect([own.shape, own.fit, own.ratio]).toEqual(["dome", "cover", true]);
+    expect(piece.shape).toBeUndefined();
+  });
+
+  it("is cut to its shape on the board, in its own box (never stretched)", () => {
+    const { container } = render(<ElementArt element={{ ...newElement("image"), image: "/new-shul-assets/a.webp", shape: "scallop", fit: "cover" }} />);
+    const img = container.querySelector<HTMLImageElement>('[data-geometric-shape="scallop"] img')!;
+    expect(img.style.objectFit).toBe("cover");
+    expect(img.style.clipPath).toMatch(/^url\(#/);
+    expect(container.querySelector("clipPath")?.getAttribute("clipPathUnits")).toBe("objectBoundingBox");
+  });
+
+  it("takes its container's shape with the rest of it", () => {
+    const box = { ...newElement("box"), id: "b", group: "g", x: 10, y: 10, width: 30, height: 40 };
+    const pic = { ...newElement("image"), id: "p", group: "g", image: "/new-shul-assets/a.webp", x: 12, y: 12, width: 26, height: 36 };
+    const out = setSectionShape([box, pic], "b", "arch");
+    expect(out.find((e) => e.id === "p")).toMatchObject({ shape: "arch", image: "/new-shul-assets/a.webp", x: 12, width: 26 });
+  });
+
+  it("keeps its proportions from any handle, the far corner staying", () => {
+    const b = { x: 10, y: 10, width: 40, height: 20 };
+    expect(ratioResize("e", b, 20, 0)).toEqual({ handle: "se", dx: 20, dy: 10 });
+    expect(ratioResize("nw", b, 10, 99)).toEqual({ handle: "nw", dx: 10, dy: 5 });
+    expect(ratioResize("s", b, 0, 10)).toEqual({ handle: "se", dx: 20, dy: 10 });
   });
 });

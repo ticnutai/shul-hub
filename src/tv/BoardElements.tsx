@@ -6,7 +6,7 @@ import {gridDelta,linkedSection} from './sectionGeometry';
 import { ElementDataProvider, BoundElement, PlainText, type ElementData } from './elementData';
 import { partBelow, partsAt, pressKind, pressSelection, type Press } from './elementHits';
 import { PartPickMenu } from './PartPickMenu';
-import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, resizeElements, type BoardElement, type ResizeHandle } from './elements';
+import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, ratioResize, resizeElements, type BoardElement, type ResizeHandle } from './elements';
 
 /** Where each handle stands on the selection's box, and the cursor it shows. */
 const HANDLE_AT: Record<ResizeHandle, { left: string; top: string; cursor: string }> = {
@@ -56,7 +56,16 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
   }
   // A symbol laid over an arch (artSymbols.ts) fades into the drawing at its edges.
   if (e.kind === 'image' && e.image && e.crop) return <div style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...(e.symbol ? { maskImage: 'radial-gradient(closest-side, #000 72%, transparent 100%)', WebkitMaskImage: 'radial-gradient(closest-side, #000 72%, transparent 100%)' } : {}) }}><img src={e.image} alt={e.name} draggable={false} style={{ position: 'absolute', maxWidth: 'none', width: `${10000 / e.crop.width}%`, height: `${10000 / e.crop.height}%`, left: `${-100 * e.crop.x / e.crop.width}%`, top: `${-100 * e.crop.y / e.crop.height}%` }} /></div>;
-  if (e.kind === 'image') return e.image ? <img src={e.image} alt={e.name} draggable={false} style={{ width: '100%', height: '100%', objectFit: 'contain' }} /> : null;
+  if (e.kind === 'image' && e.image && e.shape) {
+    // A picture of one's own cut to a shape: the shape's own path (in the picture's own box, so the picture keeps its proportions).
+    return <div data-geometric-shape={e.shape} style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <svg width="0" height="0" style={{ position: 'absolute' }} aria-hidden><defs>
+        <clipPath id={maskId} clipPathUnits="objectBoundingBox"><path d={partShapePath(e.shape)} transform="scale(0.01)" /></clipPath>
+      </defs></svg>
+      <img src={e.image} alt={e.name} draggable={false} style={{ width: '100%', height: '100%', objectFit: e.fit === 'cover' ? 'cover' : 'contain', clipPath: `url(#${maskId})` }} />
+    </div>;
+  }
+  if (e.kind === 'image') return e.image ? <img src={e.image} alt={e.name} draggable={false} style={{ width: '100%', height: '100%', objectFit: e.fit === 'cover' ? 'cover' : 'contain' }} /> : null;
   if (e.kind === 'text') return <PlainText e={e} />;
   if (e.kind === 'column') return <svg viewBox="0 0 100 600" preserveAspectRatio="none" width="100%" height="100%" aria-hidden>
     <path fill={e.color} d="M0 0H100V18H0ZM6 22H94V38H6ZM12 48H88L79 75H21ZM25 78H75V535H25ZM17 539H83V558H17ZM7 562H93V579H7ZM0 583H100V600H0Z" />
@@ -149,7 +158,10 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       const b=boundsOf(d.all,d.ids),rawX=(ev.clientX-d.x)/d.width*100,rawY=(ev.clientY-d.y)/d.height*100;
       const sx=d.resize?.includes('e')?b.x+b.width:b.x,sy=d.resize?.includes('s')?b.y+b.height:b.y;
       const dx=editor.snap?gridDelta(sx,rawX,editor.gridStep):rawX,dy=editor.snap?gridDelta(sy,rawY,editor.gridStep):rawY;
-      d.last = d.resize ? normalizeElements(resizeElements(d.all, d.ids, d.resize, dx, dy)) : moveElements(d.all, d.ids, dx, dy);
+      // A picture alone with "שמירת יחס": the other side follows the one dragged.
+      const lone = d.resize && d.ids.length === 1 ? d.all.find(x => x.id === d.ids[0]) : undefined;
+      const r = d.resize && lone?.ratio ? ratioResize(d.resize, b, dx, dy) : null;
+      d.last = d.resize ? normalizeElements(resizeElements(d.all, d.ids, r?.handle ?? d.resize, r?.dx ?? dx, r?.dy ?? dy)) : moveElements(d.all, d.ids, dx, dy);
       editor.setDraft(d.last);
     } : undefined}
     onPointerUp={enabled ? ev => {

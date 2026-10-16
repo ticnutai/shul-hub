@@ -19,6 +19,7 @@ import { SubPart } from './Parts';
 import { Notice } from './Notice';
 import { KindPicker, kindName, ofKind } from './KindPicker';
 import { ContainerLayers, type Board } from './ContainerLayers';
+import { useTvLibraryItems } from './useTvLibrary';
 import { FileButton, useFileTask, useUpload } from './Upload';
 import { ColourRow, FIT_CHOICES, HideToggle, INPUT_CLASS, LockToggle, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
@@ -38,7 +39,7 @@ type Props = {
 };
 export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: Props) {
   const elements = config.elements;
-  const { selected, select, alone, snap, setSnap, gridStep, setGridStep, showGrid, setShowGrid, linkSection, setLinkSection } = useElementEditing()!;
+  const { selected, select, alone, selectAlone, snap, setSnap, gridStep, setGridStep, showGrid, setShowGrid, linkSection, setLinkSection } = useElementEditing()!;
   const first = elements.find(e => e.id === selected[0]);
   /** A picture (or a frame drawn from one): its colours are tuned, not painted. */
   const pictured = !!first && (first.kind === 'image' || (first.kind === 'frame' && !!first.image));
@@ -53,6 +54,11 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     const together = linkSection && !alone;
     if (first && together) { for (const key of ['width', 'height', 'rotation'] as const) if (key in p) { commit(sectionGeometry(elements, first.id, key, p[key]!)); return; } }
     if (first && ('x' in p || 'y' in p)) { commit(moveElements(elements, together ? linkedSection(elements, first.id) : selected, (p.x ?? first.x) - first.x, (p.y ?? first.y) - first.y)); return; }
+    // A picture alone with "שמירת יחס": its other side follows the one typed.
+    if (first?.ratio && selected.length === 1) {
+      if ('width' in p && !('height' in p)) p = { ...p, height: Math.min(100, first.height * p.width! / first.width) };
+      else if ('height' in p && !('width' in p)) p = { ...p, width: Math.min(100, first.width * p.height! / first.height) };
+    }
     commit(elements.map(e => selected.includes(e.id) && !e.locked ? { ...e, ...p } : e), `element-property:${selected.join(',')}:${Object.keys(p).join(',')}`);
   };
   const choose = (e: BoardElement, multi: boolean) => {
@@ -99,9 +105,15 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
   const { uploading, upload } = useUpload();
   const files = useFileTask('ייבוא החלקים נכשל');
   /** A picture as a part of its own: into the synagogue's picture storage, transparency kept - the board keeps only its address. */
+  const sharedLibrary = useTvLibraryItems();
   const addPicture = (f: File) => {
     if (elements.length >= MAX_ELEMENTS || f.size > 15_000_000 || !['image/png', 'image/jpeg', 'image/webp'].includes(f.type)) return void toast.error(`בחרו קובץ תמונה רגיל (עד 15 מגה), ועד ${MAX_ELEMENTS} חלקים בלוח`);
-    void upload([f], ([image]) => { const e = { ...newElement('image'), image, name: f.name }; commit([...elements, e]); select([e.id]); });
+    void upload([f], ([image]) => {
+      const e = { ...newElement('image'), image, name: f.name.replace(/\.[a-z0-9]{2,5}$/i, ''), x: 30, y: 25, width: 40, height: 50 };
+      commit([...elements, e]); select([e.id]);
+      // Kept in "התמונות שלי" too, to be put on any board again.
+      sharedLibrary.keepImage(image, f.name);
+    });
   };
   const importParts = (f: File) => files.run(async () => {
     if (f.size > 15_000_000) throw new Error('הקובץ גדול מדי');
@@ -218,6 +230,25 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
           </div>
         )}
         {first.kind === 'box' && !first.shape && <div className="col-span-full"><SwitchRow label="מילוי בצורת קשת" ariaLabel="מילוי בצורת קשת" checked={first.archFill ?? false} onChange={(on) => patch({ archFill: on })} /></div>}
+        {/* A picture of one's own (not a piece of a kit's painting): its shape, how it fills it, its proportions. */}
+        {first.kind === 'image' && first.image && !first.crop && !first.sourceMask && (
+          <div className="col-span-full space-y-2 rounded-md border p-3" data-testid="own-image-tools">
+            <p className="text-sm font-medium">התמונה</p>
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              צורת התמונה:
+              <select aria-label="צורת התמונה" className={SELECT_CLASS} value={first.shape ?? ''} onChange={ev => patch({ shape: (ev.target.value || undefined) as BoardElement['shape'] })}>
+                <option value="">מלבן, בלי צורה</option>
+                {Object.entries(SECTION_SHAPES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+              </select>
+            </label>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-muted-foreground">התאמה:</span>
+              <Segments label="התאמת התמונה" value={first.fit ?? 'contain'} onChange={(v) => patch({ fit: v === 'cover' ? 'cover' : undefined })}
+                options={[{ id: 'contain', name: 'כל התמונה', hint: 'כל התמונה נראית, ואם צריך נשאר מקום ריק סביבה' }, { id: 'cover', name: 'מילוי התבנית', hint: 'התמונה ממלאת את כל הצורה, והשוליים שלה נחתכים' }]} />
+            </div>
+            <SwitchRow label="שמירת יחס" ariaLabel="שמירת יחס" hint="גרירת ידית או שינוי רוחב משנים גם את הגובה - התמונה לא נמתחת" checked={first.ratio ?? false} onChange={(on) => patch({ ratio: on || undefined })} />
+          </div>
+        )}
         {pictured && (
           // The whole picture's colours - a background, a frame or an ornament - not one carving in it.
           <div className="col-span-full space-y-2 rounded-md border p-3" data-testid="image-colour-tools">
@@ -276,7 +307,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       <div className="space-y-1" aria-label="שכבות החלקים">
         {/* A board of parts, all of it shown: its containers, as a tree. One kind chosen above: those parts, in a flat list. */}
         {parts && listKind === null
-          ? <ContainerLayers elements={elements} containers={config.containers ?? []} selected={selected} select={select} edit={editBoard} row={partRow} />
+          ? <ContainerLayers elements={elements} containers={config.containers ?? []} selected={selected} select={select} selectAlone={selectAlone} edit={editBoard} row={partRow} />
           : [...listed].reverse().map(e => partRow(e))}
       </div>
     </SubPart>

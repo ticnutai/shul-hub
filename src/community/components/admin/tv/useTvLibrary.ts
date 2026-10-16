@@ -16,7 +16,7 @@ import { normalizeLibrary, type Library } from "@/tv/library";
 
 export interface TvLibraryItem {
   id: string;
-  kind: "kit" | "part";
+  kind: "kit" | "part" | "image";
   name: string;
   data: unknown;
   created_by: string | null;
@@ -45,12 +45,18 @@ export function useTvLibraryItems() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: ITEMS });
 
   /** Kept for every board: a copy of the kit or the parts, under a name. */
-  const add = async (kind: TvLibraryItem["kind"], name: string, data: unknown): Promise<boolean> => {
-    const { error } = await items().insert({ kind, name: name.trim().slice(0, 80), data } as never).select("id");
+  const add = async (kind: TvLibraryItem["kind"], name: string, data: unknown, quiet = false): Promise<boolean> => {
+    const { error } = await items().insert({ kind, name: name.trim().slice(0, 80) || "תמונה", data } as never).select("id");
     if (error) return toast.error(`לא נשמר בספרייה המשותפת: ${error.message}`), false;
     await refresh();
-    toast.success(`"${name}" נשמר בספרייה המשותפת - זמין עכשיו בכל הלוחות.`);
+    if (!quiet) toast.success(`"${name}" נשמר בספרייה המשותפת - זמין עכשיו בכל הלוחות.`);
     return true;
+  };
+
+  /** A picture just uploaded, kept in "התמונות שלי" (once: the same address is not kept twice). */
+  const keepImage = (url: string, name: string) => {
+    if ((query.data ?? []).some((r) => r.kind === "image" && (r.data as { url?: string } | null)?.url === url)) return;
+    void add("image", name.replace(/\.[a-z0-9]{2,5}$/i, ""), { url }, true);
   };
 
   /** Taken out of the library: boards that wear it keep their own copy. Only its keeper (or the platform's admin) may. */
@@ -69,7 +75,7 @@ export function useTvLibraryItems() {
     return true;
   };
 
-  return { items: query.data ?? [], ready: query.isSuccess, add, remove, update };
+  return { items: query.data ?? [], ready: query.isSuccess, add, remove, update, keepImage };
 }
 
 /**

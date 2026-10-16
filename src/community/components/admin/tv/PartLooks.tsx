@@ -33,6 +33,8 @@ export function usePartTargets(config: TvConfig) {
     boxes: chosen.filter((e) => e.kind === "box" || e.kind === "frame"),
     /** Frames: what wears a frame of the gallery. */
     frames: chosen.filter((e) => e.kind === "frame"),
+    /** What takes a shape: boxes, frames, and pictures of one's own (not pieces of a kit's painting). */
+    shaped: chosen.filter((e) => e.kind === "box" || e.kind === "frame" || (e.kind === "image" && e.image && !e.crop && !e.sourceMask)),
   };
 }
 
@@ -58,7 +60,7 @@ export function PartsBoardNote({ count, kind }: { count: number; kind: "box" | "
 
 /** The shapes, on the parts chosen - or a new box in the shape chosen. */
 export function PartShapeGallery({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
-  const { boxes, select } = usePartTargets(config);
+  const { shaped: boxes, select } = usePartTargets(config);
   const worn = boxes.length && boxes.every((e) => e.shape === boxes[0].shape) ? boxes[0].shape : null;
   const wear = (shape: PartShape, name: string) => {
     if (!boxes.length) return addPart(onEdit, select, { kind: "box", shape, fill: "#fff5dc", name: `תיבה - ${name}` }, `תיבה בצורת ${name}`);

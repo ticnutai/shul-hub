@@ -19,21 +19,29 @@ import {
   moveLayer, partsOf, takeOut, writeContainers, type ContainerNode, type PartContainer,
 } from "@/tv/containers";
 import { showDesignTopic } from "./designTopics";
+import { FileButton, useUpload } from "./Upload";
+import { useTvLibraryItems } from "./useTvLibrary";
 import { HideToggle, LockToggle, SELECT_CLASS, SIDE_BUTTON } from "./editorParts";
 
 export type Board = { elements: BoardElement[]; containers: PartContainer[] };
 
-export function ContainerLayers({ elements, containers, selected, select, edit, row }: {
+export function ContainerLayers({ elements, containers, selected, select, selectAlone, edit, row }: {
   elements: BoardElement[];
   containers: PartContainer[];
   selected: string[];
   select: (ids: string[]) => void;
+  /** A part chosen alone (just added to a container: to be adjusted by itself, not with all of it). */
+  selectAlone?: (id: string) => void;
   /** A change to the board's parts and containers, as one step of the history. */
   edit: (key: string, change: (b: Board) => Board) => void;
   /** A part's own row of the list. */
   row: (e: BoardElement, inContainer: boolean) => ReactNode;
 }) {
   const tree = containerTree(elements, containers);
+  // Pictures: uploaded here, and kept in "התמונות שלי" to be put in any container again.
+  const { uploading, upload } = useUpload();
+  const library = useTvLibraryItems();
+  const myImages = library.items.filter((r) => r.kind === "image" && typeof (r.data as { url?: unknown } | null)?.url === "string");
   const [closed, setClosed] = useState<Set<string>>(new Set());
   const [naming, setNaming] = useState<{ id: string; value: string } | null>(null);
   const index = new Map(elements.map((e, i) => [e.id, i]));
@@ -53,18 +61,21 @@ export function ContainerLayers({ elements, containers, selected, select, edit, 
   };
 
   /** A new container in the middle of the board: a board behind, a frame on it, a heading - chosen, to drag into place. */
-  const newContainer = () => {
+  const newContainer = (image?: { url: string; name: string }) => {
     if (elements.length + 3 > MAX_ELEMENTS) return void toast.error(`בלוח יש כבר ${elements.length} חלקים - עד ${MAX_ELEMENTS}.`);
     const id = `c_${elementId().slice(3, 40)}`;
     const at = { x: 35, y: 28, width: 30, height: 44 };
     const back = { ...newElement("box"), ...at, group: id, name: "לוח הקונטיינר", shape: "rounded" as const, fill: "#fff5dc" };
     const frame = { ...newElement("frame"), ...at, group: id, name: "מסגרת הקונטיינר", shape: "rounded" as const, color: "#c9a227" };
     const heading = { ...newElement("text"), x: at.x + 3, y: at.y + 4, width: at.width - 6, height: 9, group: id, name: "כותרת", text: "כותרת", color: "#5b3a12" };
+    // With a picture: the board, the picture over it, the frame on both - and no heading.
+    const picture = image && { ...newElement("image"), x: at.x + 1.5, y: at.y + 2.5, width: at.width - 3, height: at.height - 5, group: id, name: image.name, image: image.url, fit: "cover" as const, shape: "rounded" as const };
+    const parts = picture ? [back, picture, frame] : [back, frame, heading];
     edit(`container-new:${id}`, (b) => {
       const w = writeContainers(b);
-      return { elements: [...w.elements, back, frame, heading], containers: [...w.containers, { id, name: "קונטיינר חדש", parent: null }] };
+      return { elements: [...w.elements, ...parts], containers: [...w.containers, { id, name: picture ? image!.name.slice(0, 60) || "תמונה" : "קונטיינר חדש", parent: null }] };
     });
-    select([back.id, frame.id, heading.id]);
+    select(parts.map((p) => p.id));
     toast("נוסף קונטיינר באמצע הלוח, והוא בחור: גררו אותו למקום, ושנו לו צורה, מסגרת וטקסט.");
   };
 
@@ -95,7 +106,9 @@ export function ContainerLayers({ elements, containers, selected, select, edit, 
     /** Something new in the container: inside its area, over what is in it. */
     const addInside = (kind: BoardElement["kind"], more: Partial<BoardElement> = {}) => {
       const e = { ...newElement(kind), ...more, group: c.id };
-      const box = kind === "frame" ? area : { x: area.x + area.width * 0.1, y: area.y + area.height * 0.1, width: area.width * 0.8, height: Math.min(area.height * 0.3, kind === "text" ? 10 : 20) };
+      const box = kind === "frame" ? area
+        : kind === "image" ? { x: area.x + area.width * 0.06, y: area.y + area.height * 0.06, width: area.width * 0.88, height: area.height * 0.88 }
+        : { x: area.x + area.width * 0.1, y: area.y + area.height * 0.1, width: area.width * 0.8, height: Math.min(area.height * 0.3, kind === "text" ? 10 : 20) };
       const part = { ...e, ...box };
       edit(`container-add:${c.id}:${kind}`, (b) => {
         // Written down first: the new part joins the container as it now is, never a second one of the same name.
@@ -103,13 +116,14 @@ export function ContainerLayers({ elements, containers, selected, select, edit, 
         const at = Math.max(-1, ...w.elements.map((x, i) => (ids.includes(x.id) ? i : -1)));
         return {
           ...w,
-          // A frame goes over its board and under what is written on it; anything else over all of the container.
-          elements: kind === "frame" && backing
+          // A frame or a picture goes over its board and under what is written on it (a picture under the frame); anything else over all of the container.
+          elements: (kind === "frame" || kind === "image") && backing
             ? w.elements.flatMap((x) => (x.id === backing.id ? [x, part] : [x]))
             : [...w.elements.slice(0, at + 1), part, ...w.elements.slice(at + 1)],
         };
       });
-      select([part.id]);
+      if (selectAlone) selectAlone(part.id);
+      else select([part.id]);
     };
     return (
       <div key={c.id} data-testid="container-row" data-container={c.id} className="space-y-1" style={{ marginInlineStart: depth * 14 }}>
@@ -181,6 +195,21 @@ export function ContainerLayers({ elements, containers, selected, select, edit, 
                 <button type="button" className="inline-flex h-7 items-center gap-1 rounded border bg-background px-2" onClick={() => addInside("ornament")}>
                   <Plus className="size-3.5" aria-hidden /> עיטור
                 </button>
+                <FileButton label="תמונה" ariaLabel={`העלאת תמונה לתוך ${c.name}`} accept="image/png,image/jpeg,image/webp" busy={uploading} icon={<Plus className="size-3.5" aria-hidden />}
+                  onFiles={(files) => upload(files, ([url]) => {
+                    addInside("image", { image: url, name: files[0].name.replace(/\.[a-z0-9]{2,5}$/i, "").slice(0, 80), fit: "cover", ...(backing?.shape ? { shape: backing.shape } : {}) });
+                    library.keepImage(url, files[0].name);
+                  })} />
+                {myImages.length > 0 && (
+                  <select aria-label={`תמונה מהתמונות שלי לתוך ${c.name}`} className={`${SELECT_CLASS} h-7 max-w-36`} value=""
+                    onChange={(ev) => {
+                      const img = myImages.find((r) => r.id === ev.target.value);
+                      if (img) addInside("image", { image: (img.data as { url: string }).url, name: img.name, fit: "cover", ...(backing?.shape ? { shape: backing.shape } : {}) });
+                    }}>
+                    <option value="">מהתמונות שלי…</option>
+                    {myImages.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                )}
                 <button type="button" className="inline-flex h-7 items-center gap-1 rounded border bg-background px-2"
                   onClick={() => { select(ids); showDesignTopic("design-boxes"); }} title="צורה, מילוי ומסגרת - לכל הקונטיינר">
                   עיצוב הקונטיינר
@@ -206,7 +235,10 @@ export function ContainerLayers({ elements, containers, selected, select, edit, 
     <div className="space-y-1.5" data-testid="container-layers">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="text-muted-foreground">השכבה העליונה ראשונה. קונטיינר: לוח, מסגרת, טקסטים ועיטורים - יחד.</span>
-        <button type="button" onClick={newContainer} data-testid="container-new"
+        <FileButton label="קונטיינר עם תמונה" ariaLabel="העלאת תמונה לקונטיינר חדש" accept="image/png,image/jpeg,image/webp" busy={uploading}
+          title="לוח, תמונה ומסגרת - קונטיינר שלם עם תמונה שלכם"
+          onFiles={(files) => upload(files, ([url]) => { const name = files[0].name.replace(/\.[a-z0-9]{2,5}$/i, "").slice(0, 80); newContainer({ url, name }); library.keepImage(url, files[0].name); })} />
+        <button type="button" onClick={() => newContainer()} data-testid="container-new"
           className="ms-auto inline-flex h-7 items-center gap-1 rounded border bg-background px-2" title="לוח, מסגרת וכותרת - קונטיינר שלם, באמצע הלוח">
           <Plus className="size-3.5" aria-hidden /> קונטיינר חדש
         </button>
