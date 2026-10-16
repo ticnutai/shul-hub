@@ -26,7 +26,8 @@
  *   node scripts/tv-control.mjs restart                force-stop and relaunch the app
  *   node scripts/tv-control.mjs install [apk]          install (default: release APK) + launch
  *   node scripts/tv-control.mjs autostart              allow the board to reopen after power-on
- *   node scripts/tv-control.mjs setup                  autostart + signage, for a screen already out there
+ *   node scripts/tv-control.mjs setup                  autostart + updates + signage, for a screen already out there
+ *   node scripts/tv-control.mjs updates                let the app install its own updates
  *   node scripts/tv-control.mjs signage                stop Android's screensaver covering the board
  *
  * Device: the single device in `adb devices`, or TV_ADB=192.168.33.10:41289.
@@ -298,6 +299,21 @@ const commands = {
   },
 
   /**
+   * Lets the app install its own updates (the APK the board downloads from
+   * tv-version.json). Without it the update is downloaded and then waits
+   * forever: found on the screen of אהבת התורה (16.10.2026), which reported
+   * canInstall=false while the synagogue's screen updated itself. Survives
+   * reboots and `install -r`.
+   */
+  async updates() {
+    shell(`appops set ${APP_ID} REQUEST_INSTALL_PACKAGES allow`);
+    const state = shell(`appops get ${APP_ID} REQUEST_INSTALL_PACKAGES`);
+    console.log(`REQUEST_INSTALL_PACKAGES: ${state}`);
+    if (!/allow/.test(state)) die("the permission did not stick");
+    console.log("the app installs its own updates");
+  },
+
+  /**
    * Stops Android from putting its own screensaver over the board.
    *
    * The app already holds FLAG_KEEP_SCREEN_ON, which keeps the panel lit.
@@ -346,6 +362,7 @@ const commands = {
     console.log((r.stdout + r.stderr).trim().split("\n").pop());
     if (r.status !== 0) process.exit(1);
     await commands.autostart();
+    await commands.updates();
     await commands.signage();
     await commands.restart();
   },
@@ -358,6 +375,7 @@ const commands = {
    */
   async setup() {
     await commands.autostart();
+    await commands.updates();
     await commands.signage();
     console.log("this screen can now bring itself back on its own");
   },
