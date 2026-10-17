@@ -5,6 +5,7 @@ import { Notice } from "./Notice";
 import { BLOCK_BY_ID } from "@/tv/blocks";
 import { STARTER_BLOCKS, STARTER_DEFAULT } from "@/tv/blankBoard";
 import type { BlockId } from "@/tv/config";
+import { WIPE_GROUPS, type WipeGroup } from "@/tv/wipeGroups";
 
 /** The steps after a new board, in order: what stands where, then the look. */
 const BUILD_STEPS = [
@@ -18,33 +19,29 @@ const BUILD_STEPS = [
 export type BuildStep = (typeof BUILD_STEPS)[number]["id"];
 
 /**
- * "התחלה מחדש" - the one place to start the board over, three ways:
- *  - a blank board: tick what it shows, then arrange and dress it step by
- *    step (blankBoard.ts);
- *  - the system's ordinary board: its look and screens as a new board's
- *    (standardBoard);
- *  - everything deleted: the whole board as a new synagogue's - wording,
- *    logos, occasions and galleries with it.
- * The first two keep what the shul has collected. All three are a draft
- * until "שמור ושדר", and a step back (Ctrl+Z) undoes them; once saved, the
- * board before is in "גרסאות קודמות". It was two things in two tabs - this,
- * and a "reset" in "כלים" that said it reset the colours and deleted it all.
- * (A kit of parts also has "איפוס הערכה הנוכחית", in the layout tab: that
- * kit's parts back to how the kit has them - not a new board.)
+ * "התחלה מחדש" - the one place to start the board over, two ways:
+ *  - a blank board: tick what it shows (the usual five ticked to begin with -
+ *    what was once a button of its own, "הלוח הבסיסי של המערכת", the same
+ *    board twice), then arrange and dress it step by step (blankBoard.ts);
+ *  - deleting: tick which of the board's settings go back to a new
+ *    synagogue's - the look, the screens, the wording, the logos, the
+ *    occasions... (wipeGroups.ts) - and say yes to the list of them.
+ * Both are a draft until "שמור ושדר", and a step back (Ctrl+Z) undoes them;
+ * once saved, the board before is in "גרסאות קודמות". (A kit of parts also
+ * has "איפוס הערכה הנוכחית", in the layout tab: that kit's parts back to how
+ * the kit has them - not a new board.)
  */
 export function BlankBoardStarter({
   onCreate,
-  onStandard,
   onWipe,
   unavailable,
 }: {
   onCreate: (blocks: BlockId[]) => void;
-  onStandard: () => void;
-  onWipe: () => void;
+  onWipe: (groups: WipeGroup[]) => void;
   /** Why it is not offered now: starting over is for the whole board, not one kind of screen or an occasion. */
   unavailable?: string | null;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<"blank" | "wipe" | null>(null);
   const [chosen, setChosen] = useState<BlockId[]>([...STARTER_DEFAULT]);
   const toggle = (id: BlockId) => setChosen((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]));
   const fixed = STARTER_BLOCKS.filter((id) => BLOCK_BY_ID[id].chrome || BLOCK_BY_ID[id].zone !== "main");
@@ -57,51 +54,21 @@ export function BlankBoardStarter({
         {unavailable}
       </Notice>
     );
-  /** Each way to start over asks first, the same question as every other in the editor. */
-  const asked = async (title: string, description: string, confirmLabel: string, destructive: boolean, then: () => void) => {
-    if (await confirmAction({ title, description, confirmLabel, destructive })) then();
-  };
 
   if (!open)
     return (
       <div className="flex flex-wrap items-center gap-2" data-testid="blank-board">
-        <Button type="button" onClick={() => setOpen(true)}>
+        <Button type="button" onClick={() => setOpen("blank")}>
           לוח ריק - בוחרים מה יופיע
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() =>
-            void asked(
-              "לחזור ללוח הבסיסי של המערכת?",
-              "הלוח יחזור להיות לוח בסיסי מחלקים: שם בית הכנסת, השעון, התפילות, זמני היום והשורה התחתונה - כל אחד בקונטיינר משלו. הנוסחים, הלוגואים, המועדים, הגלריות והערכות שלכם נשארים.",
-              "חזרה ללוח הבסיסי",
-              false,
-              onStandard,
-            )
-          }
-        >
-          הלוח הבסיסי של המערכת
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          className="text-destructive"
-          onClick={() =>
-            void asked(
-              "למחוק את כל ההגדרות של הלוח?",
-              'הכול חוזר להיות כמו בבית כנסת חדש: המראה והמסכים, וגם הנוסחים, הלוגואים, המועדים, התמונות, הגלריות, הערכות והתיבות שלכם. המניינים, ההודעות והשיעורים לא נמחקים. זו טיוטה עד "שמור ושדר"; אחרי שמירה אפשר להחזיר מ"גרסאות קודמות" בלשונית "כלים".',
-              "מחיקת הכול",
-              true,
-              onWipe,
-            )
-          }
-        >
-          מחיקת הכול
+        <Button type="button" variant="ghost" className="text-destructive" onClick={() => setOpen("wipe")}>
+          מחיקה - בוחרים מה למחוק
         </Button>
         <p className="w-full text-[11px] text-muted-foreground">הכול טיוטה עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר.</p>
       </div>
     );
+
+  if (open === "wipe") return <WipeChooser onWipe={onWipe} onClose={() => setOpen(null)} />;
 
   const group = (title: string, ids: readonly BlockId[]) => (
     <fieldset className="space-y-1.5">
@@ -126,6 +93,12 @@ export function BlankBoardStarter({
   return (
     <div className="space-y-3 rounded-lg border-2 border-primary/50 p-3" data-testid="blank-board">
       <div className="text-sm font-semibold">לוח חדש - שלב 1: מה יופיע על הלוח?</div>
+      <div className="flex flex-wrap gap-1.5">
+        <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setChosen([...STARTER_BLOCKS])}>בחירת הכל</Button>
+        <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setChosen([])}>ניקוי הכל</Button>
+        <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setChosen([...STARTER_DEFAULT])}
+          title="שם בית הכנסת, שעון, תפילות, זמני היום והשורה התחתונה">הבחירה הרגילה</Button>
+      </div>
       {group("התוכן", content)}
       {group("למעלה ולמטה", fixed)}
       {!hasContent && <Notice variant="warning" className="p-2 text-xs">בחרו לפחות דבר אחד מהתוכן - מסך בלי תוכן לא מוצג.</Notice>}
@@ -135,18 +108,67 @@ export function BlankBoardStarter({
           disabled={!hasContent}
           onClick={() => {
             onCreate(chosen);
-            setOpen(false);
+            setOpen(null);
           }}
         >
           יצירת לוח ריק עם מה שבחרתי
         </Button>
-        <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+        <Button type="button" variant="ghost" onClick={() => setOpen(null)}>
           ביטול
         </Button>
       </div>
       <p className="text-[11px] text-muted-foreground">
         העיצוב והסידור מתאפסים; הנוסחים, הלוגואים, המועדים והגלריות שלכם נשארים. שום דבר לא נשמר עד "שמור ושדר".
       </p>
+    </div>
+  );
+}
+
+/**
+ * Deleting by groups: each of the board's settings ticked or not, all or
+ * none at once, and the list of what goes asked about before it goes.
+ */
+function WipeChooser({ onWipe, onClose }: { onWipe: (groups: WipeGroup[]) => void; onClose: () => void }) {
+  const [picked, setPicked] = useState<WipeGroup[]>([]);
+  const flip = (id: WipeGroup) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  const names = WIPE_GROUPS.filter((g) => picked.includes(g.id)).map((g) => g.name);
+  const wipe = async () => {
+    const all = picked.length === WIPE_GROUPS.length;
+    const ok = await confirmAction({
+      title: all ? "למחוק את כל ההגדרות של הלוח?" : `למחוק ${names.length === 1 ? "את" : `${names.length} דברים:`} ${names.join(", ")}?`,
+      description: `${all ? "הלוח יחזור להיות כמו בבית כנסת חדש. " : `יימחקו: ${names.join(", ")}. כל השאר נשאר כמו שהוא. `}המניינים, ההודעות והשיעורים לא נמחקים. זו טיוטה עד "שמור ושדר"; אחרי שמירה אפשר להחזיר מ"גרסאות קודמות" בלשונית "כלים".`,
+      confirmLabel: "מחיקה",
+      destructive: true,
+    });
+    if (!ok) return;
+    onWipe(WIPE_GROUPS.map((g) => g.id).filter((id) => picked.includes(id)));
+    onClose();
+  };
+  return (
+    <div className="space-y-3 rounded-lg border-2 border-destructive/40 p-3" data-testid="wipe-chooser">
+      <div className="text-sm font-semibold">מה למחוק? כל מה שתסמנו יחזור להיות כמו בבית כנסת חדש</div>
+      <div className="flex flex-wrap gap-1.5">
+        <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setPicked(WIPE_GROUPS.map((g) => g.id))}>בחירת הכל</Button>
+        <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setPicked([])}>ניקוי הכל</Button>
+      </div>
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+        {WIPE_GROUPS.map((g) => (
+          <label key={g.id} className={`flex cursor-pointer items-start gap-2 rounded-md border p-2 text-sm ${picked.includes(g.id) ? "border-destructive bg-destructive/5" : ""}`}>
+            <input type="checkbox" className="mt-0.5" checked={picked.includes(g.id)} onChange={() => flip(g.id)} aria-label={g.name} />
+            <span>
+              <span className="block font-medium">{g.name}</span>
+              <span className="block text-[11px] text-muted-foreground">{g.note}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="destructive" disabled={!picked.length} onClick={() => void wipe()}>
+          מחיקת מה שנבחר{picked.length ? ` (${picked.length})` : ""}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onClose}>ביטול</Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">המניינים, ההודעות והשיעורים לא נמחקים אף פעם מכאן.</p>
     </div>
   );
 }

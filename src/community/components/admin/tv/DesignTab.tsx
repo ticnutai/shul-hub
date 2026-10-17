@@ -3,8 +3,10 @@
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
  */
 import type { Dispatch } from "react";
-import { DEFAULT_TV_CONFIG, type TvConfig } from "@/tv/config";
-import { blankBoard, standardBoard } from "@/tv/blankBoard";
+import { toast } from "sonner";
+import type { TvConfig } from "@/tv/config";
+import { blankBoard } from "@/tv/blankBoard";
+import { WIPE_GROUPS, wipeGroups } from "@/tv/wipeGroups";
 import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
 import { BlankBoardStarter, type BuildStep } from "./BlankBoardStarter";
 import { DesignLibrary } from "./DesignLibrary";
@@ -120,7 +122,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
       >
         <div className="space-y-5">
-          <SubPart title="התחלה מחדש" hint='לוח ריק שבונים צעד אחרי צעד, הלוח הבסיסי של המערכת, או מחיקת הכול. כל לוח חדש בנוי מחלקים - כל תוכן בקונטיינר משלו. (יש גם "איפוס הערכה הנוכחית" - בלשונית פריסה.)'>
+          <SubPart title="התחלה מחדש" hint='לוח ריק שבונים צעד אחרי צעד (הבחירה הרגילה מסומנת מראש), או מחיקה של מה שבוחרים. כל לוח חדש בנוי מחלקים - כל תוכן בקונטיינר משלו. (יש גם "איפוס הערכה הנוכחית" - בלשונית פריסה.)'>
             <BlankBoardStarter
               unavailable={
                 wholeBoardOnly
@@ -133,8 +135,10 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
                 setComposerScreen(0);
                 setGuide([]);
               }}
-              onStandard={() => dispatch({ type: "edit", key: "start-over:standard", update: (c) => standardBoard(c) })}
-              onWipe={() => dispatch({ type: "edit", key: "start-over:wipe", update: () => structuredClone(DEFAULT_TV_CONFIG) })}
+              onWipe={(groups) => {
+                dispatch({ type: "edit", key: `start-over:wipe:${groups.join(",")}`, update: (c) => wipeGroups(c, groups) });
+                toast.success(`נמחקו: ${WIPE_GROUPS.filter((g) => groups.includes(g.id)).map((g) => g.name).join(", ")}. זו טיוטה עד "שמור ושדר".`);
+              }}
             />
           </SubPart>
           <DesignLibrary

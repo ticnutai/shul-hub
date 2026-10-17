@@ -77,7 +77,6 @@ export function useAlertSimulation(
       if (next >= end) setPlaying(false);
     }, TICK_MS);
     return () => window.clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing, moment, speed, current]);
 
   const startOf = () => (current ? new Date(current.at.getTime() - alertTimeline(alerts, current.event).from * 60_000) : null);

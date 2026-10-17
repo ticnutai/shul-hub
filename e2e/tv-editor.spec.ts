@@ -357,30 +357,42 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "design deleted");
   });
 
-  test("starting over is one place: the ordinary board, or everything deleted, each asked first", async ({ page }) => {
+  test("starting over is one place: a blank board with the usual choice, or deleting what is chosen, asked first", async ({ page }) => {
     // The reset that lived in "כלים" is gone: starting over is in "ערכות" only.
     await page.getByRole("tab", { name: "כלים" }).click();
     await expect(page.getByRole("button", { name: /איפוס לעיצוב ברירת המחדל/ })).toHaveCount(0);
     await page.getByRole("tab", { name: "עיצוב" }).click();
     const starter = page.getByTestId("blank-board");
+    // One way to the basic board: the blank board, its usual choice ticked.
+    await expect(starter.getByRole("button", { name: "הלוח הבסיסי של המערכת" })).toHaveCount(0);
     await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
     await expect(root(page)).toHaveClass(/has-bg-gradient/);
 
-    // The system's basic board (of parts): asked, cancelled, then done - the look goes back.
-    await starter.getByRole("button", { name: "הלוח הבסיסי של המערכת" }).click();
-    await page.getByRole("button", { name: "ביטול", exact: true }).click();
-    await expect(root(page)).toHaveClass(/has-bg-gradient/);
-    await expectNotFrozen(page, "start over cancelled");
-    await starter.getByRole("button", { name: "הלוח הבסיסי של המערכת" }).click();
-    await page.getByRole("button", { name: "חזרה ללוח הבסיסי" }).click();
+    await starter.getByRole("button", { name: "לוח ריק - בוחרים מה יופיע" }).click();
+    await starter.getByRole("button", { name: "ניקוי הכל" }).click();
+    await expect(starter.getByRole("button", { name: "יצירת לוח ריק עם מה שבחרתי" })).toBeDisabled();
+    await starter.getByRole("button", { name: "הבחירה הרגילה" }).click();
+    await starter.getByRole("button", { name: "יצירת לוח ריק עם מה שבחרתי" }).click();
     await expect(root(page)).not.toHaveClass(/has-bg-gradient/);
     // Built of parts: the name, the clock, the prayers, the day's times and the foot - each a container.
     await expect(page.getByTestId("container-row")).toHaveCount(5);
+    await page.getByTestId("build-guide").getByRole("button", { name: "סגירה" }).click();
 
-    // Everything deleted: says so before it is done.
-    await starter.getByRole("button", { name: "מחיקת הכול" }).click();
-    await expect(page.getByRole("alertdialog")).toContainText("הנוסחים, הלוגואים, המועדים");
-    await page.getByRole("alertdialog").getByRole("button", { name: "מחיקת הכול" }).click();
+    // Deleting: only what is ticked, the list of it asked about first.
+    await page.getByTestId("blank-board").getByRole("button", { name: "מחיקה - בוחרים מה למחוק" }).click();
+    const wipe = page.getByTestId("wipe-chooser");
+    await expect(wipe.getByRole("button", { name: /מחיקת מה שנבחר/ })).toBeDisabled();
+    await wipe.getByRole("checkbox", { name: "הלוגואים" }).check();
+    await wipe.getByRole("checkbox", { name: "המועדים" }).check();
+    await wipe.getByRole("button", { name: "מחיקת מה שנבחר (2)" }).click();
+    await expect(page.getByRole("alertdialog")).toContainText("יימחקו: הלוגואים, המועדים");
+    await page.getByRole("alertdialog").getByRole("button", { name: "ביטול" }).click();
+    await expect(wipe).toBeVisible();
+    await wipe.getByRole("button", { name: "בחירת הכל" }).click();
+    await wipe.getByRole("button", { name: /מחיקת מה שנבחר/ }).click();
+    await expect(page.getByRole("alertdialog")).toContainText("כמו בבית כנסת חדש");
+    await page.getByRole("alertdialog").getByRole("button", { name: "מחיקה", exact: true }).click();
+    await expect(page.getByText(/נמחקו: המראה והחלקים של הלוח/)).toBeVisible();
     await expectNotFrozen(page, "everything deleted");
 
     // Not offered for one kind of screen: it is the whole board's.

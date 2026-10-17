@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blankBoard, standardBoard, STARTER_BLOCKS } from "./blankBoard";
+import { blankBoard, STARTER_BLOCKS, STARTER_DEFAULT } from "./blankBoard";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "./config";
 
 const board = () =>
@@ -66,8 +66,8 @@ describe("a board started from nothing", () => {
     expect(normalizeTvConfig(c).elements).toHaveLength(c.elements.length);
   });
 
-  it("the system's basic board is of parts too", () => {
-    const c = standardBoard(board());
+  it("the usual choice - what was the system's basic board - is of parts too", () => {
+    const c = blankBoard(board(), STARTER_DEFAULT);
     expect(c.screenLayout).toBe("composition");
     expect(c.containers.map((x) => x.name)).toEqual(expect.arrayContaining(["שם בית הכנסת", "שעון", "תפילות היום", "זמני היום"]));
     expect(c.texts["header.title"]).toBe("אהל אברהם");
