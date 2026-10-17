@@ -123,3 +123,19 @@ describe("a new container", () => {
     expect([board?.id, frame?.id]).toEqual([parts[0].id, parts[1].id]);
   });
 });
+
+describe("a kit's frame and board, from either of them", () => {
+  it("are the same pair whichever is chosen - on the board, the frame comes first", async () => {
+    const { BUILTIN_DESIGNS, applyDesign } = await import("./designs");
+    const { DEFAULT_TV_CONFIG } = await import("./config");
+    const c = applyDesign(structuredClone(DEFAULT_TV_CONFIG), BUILTIN_DESIGNS.find((d) => d.id === "d_sapphirelayers")!);
+    const by = (n: string) => c.elements.find((e) => e.name === n)!;
+    for (const [frame, board] of [["מסגרת מרכזית מהמקור", "מילוי התיבה המרכזית"], ["מסגרת תפילות מהמקור", "מילוי תפילות"]]) {
+      const fromFrame = containersOf(c.elements, [by(frame).id])[0];
+      expect([fromFrame.board?.name, fromFrame.frame?.name]).toEqual([board, frame]);
+      // The board's colour, from the frame chosen.
+      const painted = paintBoards(c.elements, [by(frame).id], clouds).find((e) => e.name === board)!;
+      expect(painted.paint?.picture).toBe(clouds.picture);
+    }
+  });
+});

@@ -45,18 +45,40 @@ export interface Container {
   frame: BoardElement | null;
 }
 
-/** The containers the parts chosen stand in, each once, with its board and frame. */
+/** How much of `a` lies inside `b`, 0-1. */
+function inside(a: BoardElement, b: BoardElement): number {
+  const w = Math.min(a.x + a.width, b.x + b.width) - Math.max(a.x, b.x);
+  const h = Math.min(a.y + a.height, b.y + b.height) - Math.max(a.y, b.y);
+  return w > 0 && h > 0 && a.width > 0 && a.height > 0 ? (w * h) / (a.width * a.height) : 0;
+}
+
+/**
+ * The containers the parts chosen stand in, each once, with its board and frame.
+ * A kit's pieces are paired by name ("מילוי X" - "מסגרת X") and by containment;
+ * where neither pairs them ("מסגרת מרכזית מהמקור" over "מילוי התיבה המרכזית"),
+ * a frame takes the board that lies within it, and a board the frame around it -
+ * the same pair from whichever of the two is chosen.
+ */
 export function containersOf(all: BoardElement[], chosen: readonly string[]): Container[] {
   const out: Container[] = [];
   for (const id of chosen) {
     if (out.some((c) => c.ids.includes(id))) continue;
     const ids = linkedSection(all, id);
     const own = all.filter((e) => ids.includes(e.id));
-    out.push({
-      ids,
-      board: own.find((e) => roleOf(e) === "board") ?? null,
-      frame: own.find((e) => roleOf(e) === "frame") ?? null,
-    });
+    let board = own.find((e) => roleOf(e) === "board") ?? null;
+    let frame = own.find((e) => roleOf(e) === "frame") ?? null;
+    const free = (e: BoardElement) => !out.some((c) => c.ids.includes(e.id)) && !ids.includes(e.id);
+    if (frame && !board) {
+      // Close in size too: a box standing somewhere inside a large frame is not its board.
+      board = all.filter((e) => roleOf(e) === "board" && free(e) && inside(e, frame!) >= 0.8 && e.width * e.height >= frame!.width * frame!.height * 0.6)
+        .sort((a, b) => b.width * b.height - a.width * a.height)[0] ?? null;
+      if (board) ids.push(...linkedSection(all, board.id).filter((x) => !ids.includes(x)));
+    } else if (board && !frame) {
+      frame = all.filter((e) => roleOf(e) === "frame" && free(e) && inside(board!, e) >= 0.8 && e.width * e.height >= board!.width * board!.height * 0.9 && e.width * e.height <= board!.width * board!.height * 1.6)
+        .sort((a, b) => a.width * a.height - b.width * b.height)[0] ?? null;
+      if (frame) ids.push(...linkedSection(all, frame.id).filter((x) => !ids.includes(x)));
+    }
+    out.push({ ids, board, frame });
   }
   return out;
 }
