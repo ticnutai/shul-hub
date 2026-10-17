@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig, type TvConfig } from "./config";
-import { BUILTIN_DESIGNS, findDesign } from "./designs";
+import { BUILTIN_DESIGNS, applyDesign, findDesign } from "./designs";
 import { calendarId, readOccasions } from "./occasions";
 import { editOccasionDesign, isOccasionKit, occasionLook } from "./occasionDesign";
 
@@ -108,5 +108,37 @@ describe("a kit made an occasion's own from the library (קבע לשבת ופת�
     const { editOccasionDesign } = await import("./occasionDesign");
     const edited = editOccasionDesign(out, shabbat.id, (c) => ({ ...c, theme: "night-gold" }));
     expect(wornBy(edited, kit.id).map((o) => o.id)).toEqual([shabbat.id]);
+  });
+});
+
+describe("a kit made an occasion's own when the board wears it every day", () => {
+  it("is still the occasion's own - a kit of parts, so its screen is the kit, not the card", async () => {
+    const { wearForOccasion, wornBy } = await import("./occasionDesign");
+    const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_premium_jerusalem-stone")!;
+    const board = applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit);
+    const shabbat = readOccasions(board).find((o) => o.name === "שבת")!;
+    const out = wearForOccasion(board, shabbat.id, kit);
+    const worn = readOccasions(out).find((o) => o.id === shabbat.id)!;
+    const own = findDesign(out, worn.design)!;
+    expect(own.values.screenLayout).toBe("composition");
+    expect(own.values.elements?.length).toBe(board.elements.length);
+    expect(wornBy(out, kit.id).map((o) => o.id)).toEqual([shabbat.id]);
+    // Twice: the same kit of its own, not a second one.
+    expect(wearForOccasion(out, shabbat.id, kit).designs.length).toBe(out.designs.length);
+  });
+});
+
+describe("every occasion", () => {
+  it("takes a kit of parts as its own - Shabbat, Rosh Chodesh, the festivals, the fasts", async () => {
+    const { wearForOccasion } = await import("./occasionDesign");
+    const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_premium_jerusalem-stone")!;
+    const board = applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit);
+    const all = readOccasions(board);
+    expect(all.length).toBeGreaterThan(10);
+    for (const o of all) {
+      const out = wearForOccasion(board, o.id, kit);
+      const own = findDesign(out, readOccasions(out).find((x) => x.id === o.id)!.design);
+      expect([o.name, own?.values.screenLayout, own?.occasion]).toEqual([o.name, "composition", o.id]);
+    }
   });
 });

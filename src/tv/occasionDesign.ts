@@ -76,9 +76,22 @@ export function isOccasionKit(config: TvConfig, d: SavedDesign): boolean {
  * kit it came from, so that kit's tile can say so.
  */
 export function wearForOccasion(config: TvConfig, occasionId: string, kit: SavedDesign): TvConfig {
-  const out = editOccasionDesign(config, occasionId, (c) => applyDesign(c, kit));
-  const id = readOccasions(out).find((o) => o.id === occasionId)?.design;
-  return { ...out, designs: out.designs.map((d) => (d.id === id ? { ...d, from: kit.id, name: kit.name.slice(0, 40) } : d)) };
+  const occ = readOccasions(config).find((o) => o.id === occasionId);
+  if (!occ) return config;
+  // Always a kit of the occasion's own - even when it is the kit the board wears every day, where
+  // an edit "changing nothing" made none, and the occasion kept its card (אושר של יהודי, 18.10.2026).
+  const captured = captureDesign(applyDesign(occasionLook(config, occasionId), kit), kit.name.slice(0, 40), [...DESIGN_PARTS], newDesignId());
+  const own = config.designs.find((d) => d.id === occ.design && d.occasion === occasionId);
+  const shared = own && readOccasions(config).some((o) => o.id !== occasionId && o.design === own.id);
+  const id = own && !shared ? own.id : captured.id;
+  const design: SavedDesign = { ...captured, id, occasion: occasionId, from: kit.id };
+  const designs = config.designs.some((d) => d.id === id)
+    ? config.designs.map((d) => (d.id === id ? design : d))
+    : [...config.designs, design].slice(-MAX_DESIGNS);
+  const occasions = readOccasions(config).map((o) =>
+    o.id === occasionId ? { ...o, design: id, designOn: o.design ? o.designOn : ("screen" as const) } : o,
+  );
+  return { ...config, designs, occasions };
 }
 
 /** The occasions whose own kit was made from this kit. */
