@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import type { TvConfig } from "@/tv/config";
 import { MAX_ELEMENTS, newElement, normalizeElements, type BoardElement } from "@/tv/elements";
 import { useElementEditing } from "@/tv/elementEditing";
-import { PART_SHAPES, STRAIGHT_SHAPES, type PartShape } from "@/tv/partShapes";
+import { PART_SHAPES, type PartShape } from "@/tv/partShapes";
 import { containersOf, wearFrame } from "@/tv/containerParts";
 import { setSectionShape } from "@/tv/sectionGeometry";
 import { GalleryGrid, GalleryTile } from "./GalleryTile";
@@ -18,7 +18,6 @@ import { Notice } from "./Notice";
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
 /** The shapes whose edges are straight: a frame of a picture goes on them. */
-const STRAIGHT = STRAIGHT_SHAPES;
 
 /** A board of parts: its boxes and frames are parts, not the ordinary board's boxes. */
 export const isPartsBoard = (c: TvConfig) => c.screenLayout === "composition";
@@ -129,10 +128,7 @@ export function usePartFramePictures(config: TvConfig, onEdit: Edit) {
       if (ref) addPart(onEdit, select, { kind: "frame", image: ref, name: `מסגרת - ${name}` }, `מסגרת "${name}"`);
       return;
     }
-    const { curved } = wearFrame(config.elements, chosen, ref);
     onEdit(`part-frame:${chosen.join(",")}:${ref ?? "line"}`, (c) => ({ ...c, elements: wearFrame(c.elements, chosen, ref).elements }));
-    if (curved)
-      toast(`מסגרת מתמונה נכנסת רק לצורה מלבנית או מעוגלת. ב־${curved} מהקונטיינרים הצורה אחרת, ושם המסגרת היא קו שעוקב אחרי הצורה - אפשר לשנות לו צבע.`);
   };
   return { count: containers.length, wearing, wear };
 }

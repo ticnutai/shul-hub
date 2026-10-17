@@ -1,5 +1,5 @@
 import { backdropUrl } from "./backdrops";
-import { partShapePath } from './partShapes';
+import { STRAIGHT_SHAPES, partShapePath, shapeCorners } from './partShapes';
 import { FRAME_PICTURES, FRAME_PICTURE_PREFIX, framePictureUrl } from './framePictures';
 import { useEffect, useRef, useId, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { useElementEditing } from './elementEditing';
@@ -47,6 +47,7 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
         :<div style={{position:'absolute',inset:0,border:`.15cqh solid ${e.color}`,borderRadius:radius,boxSizing:'border-box'}} />}
     </div>;
   }
+  if(e.kind==='frame'&&e.shape&&e.image&&!STRAIGHT_SHAPES.includes(e.shape)&&framePictureUrl(e.image))return <ShapedPictureFrame e={e} />;
   if((e.kind==='box'||e.kind==='frame')&&e.shape){
     // One path per shape (partShapes.ts), the same the editor's tile draws.
     return <svg data-geometric-shape={e.shape} viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden>
@@ -339,4 +340,52 @@ function WriteInPlace({ element: e, onDone }: { element: BoardElement; onDone: (
     }}
     onBlur={ev => finish((ev.currentTarget.innerText ?? '').replace(/\n$/, '').slice(0, 2000))}
   >{e.text}</div>;
+}
+
+/** A frame picture's own tone: the mean of its drawn pixels, read once per picture (the band under its texture). */
+const TONES = new Map<string, string>();
+function useFrameTone(src: string, fallback: string) {
+  const [tone, setTone] = useState(() => TONES.get(src) ?? fallback);
+  useEffect(() => {
+    if (TONES.has(src)) return setTone(TONES.get(src)!);
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 32;
+        const g = c.getContext('2d'); if (!g) return;
+        g.drawImage(img, 0, 0, 32, 32);
+        const d = g.getImageData(0, 0, 32, 32).data;
+        let r = 0, gr = 0, b = 0, n = 0;
+        for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 160) { r += d[i]; gr += d[i + 1]; b += d[i + 2]; n++; }
+        if (!n) return;
+        const hex = '#' + [r, gr, b].map(v => Math.round(v / n).toString(16).padStart(2, '0')).join('');
+        TONES.set(src, hex); setTone(hex);
+      } catch { /* a picture that cannot be read keeps the frame's own colour */ }
+    };
+    img.src = src;
+  }, [src]);
+  return tone;
+}
+
+/**
+ * A picture frame on a shape of any outline (an arch, a dome, an octagon...):
+ * a band in the picture's own tone along the outline, the edge's texture laid
+ * over it, and the corner ornament on the shape's corners where it has any.
+ */
+function ShapedPictureFrame({ e }: { e: BoardElement }) {
+  const id = useId().replace(/:/g, '');
+  const ready = FRAME_PICTURES.find(f => FRAME_PICTURE_PREFIX + f.id === e.image);
+  const src = framePictureUrl(e.image)!;
+  const tone = useFrameTone(src, e.color && e.color !== 'transparent' ? e.color : '#c9a24a');
+  const sl = ready?.slice ?? 20, thick = Math.max(3.5, (ready?.width ?? 3) * 2.2), path = partShapePath(e.shape!);
+  return <svg data-geometric-shape={e.shape} data-shaped-picture-frame viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden overflow="visible">
+    <defs><pattern id={id} patternUnits="userSpaceOnUse" width={thick * 3} height={thick * 3}>
+      <svg viewBox={`${sl} 0 ${100 - 2 * sl} ${sl}`} width={thick * 3} height={thick * 3} preserveAspectRatio="none"><image href={src} width="100" height="100" preserveAspectRatio="none" /></svg>
+    </pattern></defs>
+    <path d={path} fill="none" stroke={tone} strokeWidth={thick} strokeLinejoin="round" />
+    <path d={path} fill="none" stroke={`url(#${id})`} strokeWidth={thick} strokeLinejoin="round" />
+    <path d={path} fill="none" stroke="#0005" strokeWidth=".25" />
+    {shapeCorners(e.shape!).map(([x, y], i) => <svg key={i} x={x - thick * 1.1} y={y - thick * 1.1} width={thick * 2.2} height={thick * 2.2} viewBox={`0 0 ${sl} ${sl}`} preserveAspectRatio="none"><image href={src} width="100" height="100" preserveAspectRatio="none" /></svg>)}
+  </svg>;
 }

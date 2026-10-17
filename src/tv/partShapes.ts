@@ -36,3 +36,24 @@ export const partShapePath = (shape: PartShape): string => PART_SHAPES.find((s) 
 
 /** The shapes a picture frame (straight edges) goes on; on any other the frame is a line that follows the shape. */
 export const STRAIGHT_SHAPES: readonly PartShape[] = ["rectangle", "rounded"];
+
+/**
+ * The corners of a shape drawn of straight lines only (an octagon, a bevel, a
+ * diamond...): where a picture frame's corner ornaments go. A shape with a
+ * curve in it (an arch, a dome, an ellipse) has none.
+ */
+export function shapeCorners(shape: PartShape): Array<[number, number]> {
+  const d = partShapePath(shape);
+  if (/[^MLHVZ0-9.\s-]/.test(d)) return [];
+  const out: Array<[number, number]> = [];
+  let x = 0, y = 0;
+  for (const [, cmd, args] of d.matchAll(/([MLHVZ])([^MLHVZ]*)/g)) {
+    const n = args.trim().split(/[\s,]+/).filter(Boolean).map(Number);
+    if (cmd === "M" || cmd === "L") [x, y] = n;
+    else if (cmd === "H") x = n[0];
+    else if (cmd === "V") y = n[0];
+    else continue;
+    if (!out.some(([a, b]) => a === x && b === y)) out.push([x, y]);
+  }
+  return out;
+}

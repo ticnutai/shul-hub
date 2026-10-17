@@ -83,19 +83,18 @@ function realize(e: BoardElement, as: "box" | "frame"): BoardElement {
 /**
  * The frames of the containers chosen in a frame of the gallery ("frame:<id>"),
  * or a drawn line (null). A painted frame is replaced where it stands; a
- * container without one gets one around its board, in its shape. A picture
- * frame has straight edges: on a curved container its line follows the shape.
+ * container without one gets one around its board, in its shape - a picture
+ * frame too, drawn along any outline.
  */
-export function wearFrame(all: BoardElement[], chosen: readonly string[], ref: string | null): { elements: BoardElement[]; curved: number } {
+export function wearFrame(all: BoardElement[], chosen: readonly string[], ref: string | null): { elements: BoardElement[] } {
   let next = [...all];
-  let curved = 0;
   for (const c of containersOf(all, chosen)) {
     const base = c.frame ?? c.board;
     if (!base) continue;
     const shape = c.frame?.kind === "frame" ? c.frame.shape : nearShape(c.board ?? base);
     const straight = !shape || STRAIGHT_SHAPES.includes(shape);
-    if (ref && !straight) curved += 1;
-    const look = { image: ref && straight ? ref : "", shape: ref && straight ? undefined : shape };
+    // A picture frame goes on any shape: on a straight one as it always did, on any other along its outline.
+    const look = { image: ref ?? "", shape: ref && straight ? undefined : shape };
     if (c.frame) {
       const f = c.frame.kind === "frame" ? c.frame : realize(c.frame, "frame");
       next = next.map((e) => (e.id === c.frame!.id ? { ...f, ...look } : e));
@@ -112,7 +111,7 @@ export function wearFrame(all: BoardElement[], chosen: readonly string[], ref: s
       next.splice(at + 1, 0, frame);
     }
   }
-  return { elements: normalizeElements(next), curved };
+  return { elements: normalizeElements(next) };
 }
 
 /** The boards of the containers chosen in a background of the gallery (null - their own colour again). */

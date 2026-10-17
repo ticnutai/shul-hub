@@ -271,11 +271,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               return (
                 <button key={f.id} type="button" aria-label={f.name} title={f.name} aria-pressed={frame?.image === ref}
                   className={`${tile} ${frame?.image === ref ? "ring-2 ring-primary" : ""}`}
-                  onClick={() => {
-                    const { curved } = wearFrame(config.elements, chosen, ref);
-                    editEls("frame-picture", (all) => wearFrame(all, chosen, ref).elements);
-                    if (curved) toast("מסגרת מתמונה נכנסת רק לצורה מלבנית או מעוגלת. בצורה הזאת המסגרת היא קו שעוקב אחרי הצורה - אפשר לשנות לו צבע, או לבחור צורה מעוגלת בלשונית \"הצורה\".");
-                  }}>
+                  onClick={() => editEls("frame-picture", (all) => wearFrame(all, chosen, ref).elements)}>
                   <span className="h-8 w-12" style={{ border: "7px solid transparent", borderImage: `url("${framePictureUrl(ref)}") ${f.slice}% / 7px stretch` }} />
                   <span className="w-full truncate">{f.name}</span>
                 </button>

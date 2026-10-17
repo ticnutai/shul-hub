@@ -65,12 +65,27 @@ describe("a container's frame", () => {
     expect(elements.find((e) => e.id === "frame")).toMatchObject({ kind: "frame", x: 9, y: 19, width: 26, height: 62 });
   });
 
-  it("on a curved container: a line in its shape, said so; on a straight one, the picture", () => {
-    const curved = wearFrame(painted(), ["head"], "frame:gold");
-    expect(curved.curved).toBe(1);
-    expect(curved.elements.find((e) => e.id === "frame")).toMatchObject({ image: "", shape: "arch" });
+  it("a picture frame goes on any shape: on a curved one along its outline, on a straight one as always", () => {
+    const curved = wearFrame(painted(), ["head"], "frame:gold-ornate").elements.find((e) => e.id === "frame")!;
+    expect(curved).toMatchObject({ kind: "frame", image: "frame:gold-ornate", shape: "arch" });
+    const { container } = render(<ElementArt element={curved} />);
+    // A band in the picture's tone, its texture over it.
+    const strokes = [...container.querySelectorAll("[data-shaped-picture-frame] > path")].map((p) => p.getAttribute("stroke"));
+    expect(strokes.some((x) => /^url\(#/.test(x ?? ""))).toBe(true);
+    cleanup();
+    // An octagon: the corner ornament on each of its eight corners.
+    const { container: oct } = render(<ElementArt element={{ ...curved, shape: "octagon" }} />);
+    expect(oct.querySelectorAll("[data-shaped-picture-frame] > svg")).toHaveLength(8);
     const straight = wearFrame([{ ...box("a", 5), shape: "rounded" }, at({ ...newElement("frame"), id: "f", shape: "rounded" }, 5, 30)], ["a"], "frame:gold");
     expect(straight.elements.find((e) => e.id === "f")).toMatchObject({ image: "frame:gold" });
+    expect(straight.elements.find((e) => e.id === "f")!.shape).toBeUndefined();
+  });
+
+  it("keeps its picture when its container changes shape", async () => {
+    const { setSectionShape } = await import("./sectionGeometry");
+    const parts = [{ ...box("a", 5), shape: "rounded" as const }, at({ ...newElement("frame"), id: "f", image: "frame:gold-ornate" }, 5, 30)];
+    const out = setSectionShape(parts, "a", "dome");
+    expect(out.find((e) => e.id === "f")).toMatchObject({ image: "frame:gold-ornate", shape: "dome" });
   });
 
   it("a container without one gets one around its board, in its shape, right over it", () => {

@@ -33,7 +33,9 @@ export function setSectionShape(all:BoardElement[],id:string,shape:NonNullable<B
   if(e.kind==='image'&&e.image&&!e.crop&&!e.sourceMask&&!/^(מסגרת|מילוי) /.test(e.name))return {...e,group,shape};
   if(e.kind==='box'||e.kind==='frame'||(e.kind==='image'&&/^(מסגרת|מילוי) /.test(e.name))){
    const frame=e.kind==='frame'||e.name.startsWith('מסגרת');
-   return {...e,...b,group,rotation:0,kind:frame?'frame':'box',shape,image:'',crop:undefined,sourceMask:undefined,imageTune:undefined,archFill:undefined,fill:frame?'transparent':e.fill==='transparent'?'#fff5dc':e.fill};
+   // A frame of the gallery keeps its picture on any shape (BoardElements draws it along the outline).
+   const keep=frame&&e.kind==='frame'&&e.image.startsWith('frame:')?e.image:'';
+   return {...e,...b,group,rotation:0,kind:frame?'frame':'box',shape,image:keep,crop:undefined,sourceMask:undefined,imageTune:undefined,archFill:undefined,fill:frame?'transparent':e.fill==='transparent'?'#fff5dc':e.fill};
   }
   return {...e,group};
  }));
