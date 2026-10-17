@@ -62,3 +62,51 @@ test("a painted container: its frame replaced, its board dressed, its shape chan
   expect(saved.length).toBe(start.elements.length);
   expect(errors).toEqual([]);
 });
+
+test("the main background, beside the board or at its foot, and a shape dragged onto the board", async ({ page, isMobile }) => {
+  test.skip(isMobile, "the editor is for a desktop screen");
+  test.setTimeout(90_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1600, height: 1200 });
+  const { BUILTIN_DESIGNS } = await import("../src/tv/designs");
+  const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_sapphirelayers")!;
+  const start = JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit)));
+  const server = await serveEditor(page, start);
+  await page.goto("/e2e/harness/editor.html");
+  await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+
+  // The main background: its painted picture chosen from the containers' list, the panel on it - its background only.
+  const layers = page.getByTestId("container-layers");
+  await layers.scrollIntoViewIfNeeded();
+  await page.getByTestId("main-background-layer").getByRole("button", { name: "עריכת הרקע" }).click();
+  const panel = page.getByTestId("part-context-panel");
+  await expect(panel).toContainText("נבחר: הרקע הראשי");
+  await expect(panel.getByRole("tab")).toHaveText(["הרקע", "הוספת קונטיינר"]);
+  await expect(panel.getByTestId("backdrop-note")).toContainText("מסתירה אותו");
+  await panel.getByTestId("board-background-gallery").getByRole("button", { name: "ירוק עמוק", exact: true }).click();
+  await expect(panel.getByRole("button", { name: "החזרת הרקע המצויר" })).toBeVisible();
+
+  // At the board's foot side by side; beside it when the board is above.
+  const place = await panel.getAttribute("data-place");
+  await page.getByRole("button", { name: "תצוגה למעלה" }).first().click();
+  await expect(panel).toHaveAttribute("data-place", "side");
+  expect(["side", "strip"]).toContain(place);
+
+  // A shape dragged onto the board: a container where it fell.
+  await panel.getByRole("tab", { name: "הוספת קונטיינר" }).click();
+  const root = page.locator("[data-board-preview] .tv-frame .tv-root").first();
+  const box = (await root.boundingBox())!;
+  await panel.getByRole("button", { name: "קונטיינר חדש: כיפה" }).dragTo(root, { targetPosition: { x: box.width * 0.2, y: box.height * 0.5 } });
+  await expect(panel).toContainText("נבחר: קונטיינר חדש");
+
+  await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
+  await expect.poll(() => server.writes()).toBeGreaterThan(0);
+  const saved = normalizeTvConfig(server.saved());
+  expect(saved.backgroundGradient).toBe("linear-gradient(180deg, #0f2a1d, #0f2a1d)");
+  expect(saved.elements.find((e) => e.name.startsWith("רקע המקור"))?.hidden).toBe(true);
+  const dome = saved.elements.find((e) => e.kind === "box" && e.shape === "dome" && e.name === "לוח הקונטיינר")!;
+  expect(dome.x).toBeLessThan(15);
+  expect(dome.y).toBeGreaterThan(20);
+  expect(errors).toEqual([]);
+});

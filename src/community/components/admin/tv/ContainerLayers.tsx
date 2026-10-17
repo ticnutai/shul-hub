@@ -13,7 +13,9 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, Copy, FolderPlus, LogOut,
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import type { BoardElement } from "@/tv/elements";
-import { MAX_ELEMENTS, boundsOf, elementId, newElement } from "@/tv/elements";
+import { MAX_ELEMENTS, boundsOf, newElement } from "@/tv/elements";
+import { newContainerParts } from "@/tv/containers";
+import { isBackdrop } from "@/tv/containerParts";
 import {
   changeContainer, containerTree, deleteContainer, descendants, duplicateContainer, gatherIntoContainer,
   moveLayer, partsOf, takeOut, writeContainers, type ContainerNode, type PartContainer,
@@ -63,17 +65,11 @@ export function ContainerLayers({ elements, containers, selected, select, select
   /** A new container in the middle of the board: a board behind, a frame on it, a heading - chosen, to drag into place. */
   const newContainer = (image?: { url: string; name: string }) => {
     if (elements.length + 3 > MAX_ELEMENTS) return void toast.error(`בלוח יש כבר ${elements.length} חלקים - עד ${MAX_ELEMENTS}.`);
-    const id = `c_${elementId().slice(3, 40)}`;
-    const at = { x: 35, y: 28, width: 30, height: 44 };
-    const back = { ...newElement("box"), ...at, group: id, name: "לוח הקונטיינר", shape: "rounded" as const, fill: "#fff5dc" };
-    const frame = { ...newElement("frame"), ...at, group: id, name: "מסגרת הקונטיינר", shape: "rounded" as const, color: "#c9a227" };
-    const heading = { ...newElement("text"), x: at.x + 3, y: at.y + 4, width: at.width - 6, height: 9, group: id, name: "כותרת", text: "כותרת", color: "#5b3a12" };
-    // With a picture: the board, the picture over it, the frame on both - and no heading.
-    const picture = image && { ...newElement("image"), x: at.x + 1.5, y: at.y + 2.5, width: at.width - 3, height: at.height - 5, group: id, name: image.name, image: image.url, fit: "cover" as const, shape: "rounded" as const };
-    const parts = picture ? [back, picture, frame] : [back, frame, heading];
+    const { container, parts } = newContainerParts({ x: 35, y: 28, width: 30, height: 44 }, "rounded", image);
+    const id = container.id;
     edit(`container-new:${id}`, (b) => {
       const w = writeContainers(b);
-      return { elements: [...w.elements, ...parts], containers: [...w.containers, { id, name: picture ? image!.name.slice(0, 60) || "תמונה" : "קונטיינר חדש", parent: null }] };
+      return { elements: [...w.elements, ...parts], containers: [...w.containers, container] };
     });
     select(parts.map((p) => p.id));
     toast("נוסף קונטיינר באמצע הלוח, והוא בחור: גררו אותו למקום, ושנו לו צורה, מסגרת וטקסט.");
@@ -250,7 +246,15 @@ export function ContainerLayers({ elements, containers, selected, select, select
       {childrenOf(null).map((k) => (k.node ? containerRow(k.node, 0) : k.part ? <div key={k.key}>{row(k.part, false)}</div> : null))}
       <div className="flex items-center gap-2 rounded-md border border-dashed px-2 py-1.5 text-sm" data-testid="main-background-layer">
         <span className="flex-1 font-semibold">הרקע הראשי <span className="text-xs font-normal text-muted-foreground">- השכבה התחתונה, מתחת לכולם</span></span>
-        <button type="button" className="h-7 rounded border bg-background px-2 text-xs" onClick={() => showDesignTopic("design-background")}>עריכת הרקע</button>
+        <button type="button" className="h-7 rounded border bg-background px-2 text-xs"
+          onClick={() => {
+            // A kit painted from one picture: its background is a part - chosen, the panel by the board opens on it.
+            const painted = elements.filter(isBackdrop).map((e) => e.id);
+            if (painted.length) select(painted);
+            else showDesignTopic("design-background");
+          }}>
+          עריכת הרקע
+        </button>
       </div>
     </div>
   );

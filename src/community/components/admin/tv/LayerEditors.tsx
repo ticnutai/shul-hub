@@ -37,7 +37,7 @@ import { TEXT_AREAS } from "./textAreas";
 import { useUpload } from "./Upload";
 import { useElementEditing } from "@/tv/elementEditing";
 import { wearsPaint } from "@/tv/partPaint";
-import { colourBoards, containersOf, paintBoards } from "@/tv/containerParts";
+import { colourBoards, containersOf, hideBackdrops, paintBoards } from "@/tv/containerParts";
 import { PartColour, PartShapeGallery, PartsBoardNote, isPartsBoard, usePartFramePictures } from "./PartLooks";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
@@ -120,7 +120,8 @@ export function BackgroundLayer({
   /** Writes a background into the target. null = back to what the theme / style draws. */
   const write = useCallback(
     (c: TvConfig, value: string | null): TvConfig => {
-      if (target === "board") return writeBoardBackground(c, value);
+      // A kit's painted background over the board's own is hidden, or nothing chosen would show (containerParts.ts).
+      if (target === "board") return { ...writeBoardBackground(c, value), elements: hideBackdrops(c.elements) };
       const id = frameOf(target);
       if (id) return { ...c, frameLooks: setFrameLook(c.frameLooks, id, { bg: value }) };
       return { ...c, frameStyle: { ...c.frameStyle, fill: value } };
@@ -210,7 +211,7 @@ export function BackgroundLayer({
           setPreview(null);
           setSource(kindOf(b));
           if (onParts) onEdit("layer-bg:parts", (c) => ({ ...c, elements: paintBoards(c.elements, partIds, b) }));
-          else if (onBoard) onEdit("layer-bg:board", (c) => applyBackground(c, b));
+          else if (onBoard) onEdit("layer-bg:board", (c) => ({ ...applyBackground(c, b), elements: hideBackdrops(c.elements) }));
           else apply(b.picture ?? b.fill);
         }}
       />

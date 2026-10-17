@@ -12,13 +12,26 @@ import { normalizeElements, normalizePaint, type BoardElement } from "./elements
 import { STRAIGHT_SHAPES, type PartShape } from "./partShapes";
 import { linkedSection } from "./sectionGeometry";
 
-export type PartRole = "board" | "frame" | "text" | "ornament" | "picture";
+export type PartRole = "backdrop" | "board" | "frame" | "text" | "ornament" | "picture";
 
 const paintedBoard = (e: BoardElement) => e.kind === "image" && e.name.startsWith("מילוי ");
 const paintedFrame = (e: BoardElement) => e.kind === "image" && e.name.startsWith("מסגרת ");
 
+/**
+ * The main background's own picture, in a kit painted from one picture ("רקע
+ * המקור ללא חלקי העיצוב"): it covers the whole board, over the board's own
+ * background - the main container's board, painted.
+ */
+export const isBackdrop = (e: BoardElement) =>
+  e.kind === "image" && (e.name.startsWith("רקע המקור") || (e.x <= 1 && e.y <= 1 && e.width >= 98 && e.height >= 98));
+
+/** The board's own background chosen: the painted one over it hidden (not deleted - it can come back). */
+export const hideBackdrops = (all: BoardElement[]): BoardElement[] => all.map((e) => (isBackdrop(e) && !e.hidden ? { ...e, hidden: true } : e));
+export const showBackdrops = (all: BoardElement[]): BoardElement[] => all.map((e) => (isBackdrop(e) && e.hidden ? { ...e, hidden: false } : e));
+
 /** What a part is to its container. */
 export function roleOf(e: BoardElement): PartRole {
+  if (isBackdrop(e)) return "backdrop";
   if (e.kind === "box" || paintedBoard(e)) return "board";
   if (e.kind === "frame" || paintedFrame(e)) return "frame";
   if (e.kind === "text") return "text";

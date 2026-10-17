@@ -1,16 +1,22 @@
 /**
  * The panel of what was chosen on the board: a container's board, its frame,
- * its shape, its text, or the main background's - each with its own choices
- * only, right under the board. One rule behind it (containerParts.ts): every
+ * its shape, its text, a decoration, or the main background - each with its
+ * own choices only, beside the board where there is room (else a strip at its
+ * foot that folds away), and shapes dragged from it onto the board as new
+ * containers. One rule behind it (containerParts.ts): every
  * container has one board and one frame, drawn or painted; the board takes a
  * colour or a background of the gallery, the frame is replaced, and the shape
  * changes the board and the frame together.
  */
-import { useState } from "react";
-import { X } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
-import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame, type PartRole } from "@/tv/containerParts";
+import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
+import { newContainerParts, writeContainers } from "@/tv/containers";
+import { MAX_ELEMENTS } from "@/tv/elements";
+import type { PartShape } from "@/tv/partShapes";
+import { BoardBackground } from "./TvEditInspector";
 import { wearsPaint } from "@/tv/partPaint";
 import { galleryOf } from "@/tv/backgrounds";
 import { FRAME_PICTURES, FRAME_PICTURE_PREFIX, framePictureUrl } from "@/tv/framePictures";
@@ -22,10 +28,13 @@ import { ColorPick } from "./ColorPick";
 import { BackgroundTile } from "./LayerEditors";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
-type Tab = "board" | "frame" | "shape" | "text";
+type Tab = "background" | "board" | "frame" | "shape" | "text" | "ornament" | "add";
 
-const TAB_NAMES: Record<Tab, string> = { board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "הטקסט" };
-const ROLE_TAB: Record<PartRole, Tab> = { board: "board", frame: "frame", text: "text", ornament: "board", picture: "board" };
+const TAB_NAMES: Record<Tab, string> = {
+  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "הטקסט", ornament: "העיטור", add: "הוספת קונטיינר",
+};
+/** A shape dragged from the panel onto the board: a new container there. */
+const DRAG_TYPE = "application/x-shul-container";
 const tile = "flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-md border text-[10px] leading-tight hover:border-primary/60";
 
 /** A container's name: its own (containers), else its heading's or its board's words. */
@@ -42,40 +51,174 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const chosen = (editing?.selected ?? []).filter((id) => config.elements.some((e) => e.id === id));
   const first = config.elements.find((e) => e.id === chosen[0]);
   const [tabFor, setTabFor] = useState<{ key: string; tab: Tab } | null>(null);
-  if (!editing || !first) return null;
-  const containers = containersOf(config.elements, chosen);
+  const [folded, setFolded] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  /** Beside the board when there is room for it (the board's own height), else a strip at its foot. */
+  const [place, setPlace] = useState<{ top: number; height: number; width: number; left: boolean } | null>(null);
+  const shown = Boolean(editing && first);
+  useLayoutEffect(() => {
+    const host = ref.current?.parentElement;
+    if (!shown || !host) return;
+    const measure = () => {
+      const frame = host.querySelector(".tv-frame");
+      if (!frame) return setPlace(null);
+      const h = host.getBoundingClientRect(), f = frame.getBoundingClientRect();
+      const left = f.left - h.left, right = h.right - f.right, room = Math.max(left, right) - 12;
+      setPlace(room >= 260 ? { top: f.top - h.top, height: f.height, width: Math.min(room, 440), left: left >= right } : null);
+    };
+    measure();
+    const watch = new ResizeObserver(measure);
+    watch.observe(host);
+    return () => watch.disconnect();
+  }, [shown]);
+  // A shape dropped on the board: a new container where it fell.
+  const configRef = useRef(config);
+  configRef.current = config;
+  useLayoutEffect(() => {
+    const host = ref.current?.parentElement;
+    if (!shown || !host) return;
+    const over = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes(DRAG_TYPE)) e.preventDefault();
+    };
+    const drop = (e: DragEvent) => {
+      const shape = e.dataTransfer?.getData(DRAG_TYPE);
+      const root = host.querySelector(".tv-frame .tv-root") ?? host.querySelector(".tv-frame");
+      if (!shape || !root) return;
+      e.preventDefault();
+      const r = root.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width) * 100, y = ((e.clientY - r.top) / r.height) * 100;
+      addContainer(shape as PartShape, { x: Math.min(70, Math.max(0, x - 15)), y: Math.min(56, Math.max(0, y - 22)), width: 30, height: 44 });
+    };
+    host.addEventListener("dragover", over);
+    host.addEventListener("drop", drop);
+    return () => {
+      host.removeEventListener("dragover", over);
+      host.removeEventListener("drop", drop);
+    };
+  });
+  /** A new container - in the middle, or where a shape was dropped - chosen at once. */
+  const addContainer = (shape: PartShape, at = { x: 35, y: 28, width: 30, height: 44 }) => {
+    if (configRef.current.elements.length + 3 > MAX_ELEMENTS) return void toast.error(`בלוח יש כבר ${configRef.current.elements.length} חלקים - עד ${MAX_ELEMENTS}.`);
+    const { container, parts } = newContainerParts(at, shape);
+    onEdit(`ctx:container-new:${container.id}`, (c) => {
+      const w = writeContainers(c);
+      return { ...c, elements: [...w.elements, ...parts], containers: [...w.containers, container] };
+    });
+    editing?.select(parts.map((e) => e.id));
+    toast("נוסף קונטיינר, והוא בחור: אפשר לגרור אותו, ולשנות לו לוח, מסגרת, צורה וטקסט.");
+  };
+  if (!editing || !first) return <div ref={ref} hidden />;
+  const role = roleOf(first);
+  const containers = role === "backdrop" ? [] : containersOf(config.elements, chosen);
   const own = config.elements.filter((e) => containers[0]?.ids.includes(e.id));
   const key = chosen.join(",");
-  const tab: Tab = tabFor?.key === key ? tabFor.tab : ROLE_TAB[roleOf(first)];
   const many = containers.length > 1;
-  const title = many ? `${containers.length} קונטיינרים` : containerName(config, own);
   const board = containers[0]?.board ?? null;
   const frame = containers[0]?.frame ?? null;
   const texts = config.elements.filter((e) => e.kind === "text" && containers.some((c) => c.ids.includes(e.id)));
-
+  const decor = role === "ornament" || role === "picture";
+  // Only what applies: the main background its background (and its frame there); a decoration on its own its look; a container its board, frame, shape and text.
+  const tabs: Tab[] =
+    role === "backdrop"
+      ? ["background", "add"]
+      : decor && !board && !frame
+        ? ["ornament", "add"]
+        : ["board", "frame", "shape", ...(texts.length ? (["text"] as Tab[]) : []), ...(decor ? (["ornament"] as Tab[]) : []), "add"];
+  const natural: Tab = role === "backdrop" ? "background" : role === "frame" ? "frame" : role === "text" && tabs.includes("text") ? "text" : decor ? "ornament" : tabs[0];
+  const tab: Tab = tabFor?.key === key && tabs.includes(tabFor.tab) ? tabFor.tab : natural;
+  const title = role === "backdrop" ? "הרקע הראשי" : many ? `${containers.length} קונטיינרים` : decor && !board && !frame ? first.name : containerName(config, own);
+  /** The painted decorations of the main container: pieces of the kit's picture that are no container's board or frame. */
+  const paintedDecor = role === "backdrop"
+    ? config.elements.filter((e) => e.kind === "image" && (e.crop || e.sourceMask) && roleOf(e) === "ornament" && !containersOf(config.elements, [e.id]).some((c) => c.board || c.frame))
+    : [];
+  const decorHidden = paintedDecor.length > 0 && paintedDecor.every((e) => e.hidden);
+  const ornaments = config.elements.filter((e) => chosen.includes(e.id) && (roleOf(e) === "ornament" || roleOf(e) === "picture"));
   const editEls = (k: string, f: (all: BoardElement[]) => BoardElement[]) => onEdit(`ctx:${k}:${key}`, (c) => ({ ...c, elements: f(c.elements) }));
 
   return (
-    // Over the board, on the side away from what was chosen: chosen low, it opens at the top.
     <div
-      className={`absolute inset-x-2 z-30 max-h-[48%] overflow-y-auto rounded-lg border bg-card/95 p-2 text-sm shadow-lg backdrop-blur ${first.y + first.height / 2 > 50 ? "top-2" : "bottom-2"}`}
+      ref={ref}
+      className={place
+        ? "absolute z-30 overflow-y-auto rounded-lg border bg-card p-2 text-sm shadow-lg"
+        : `absolute inset-x-2 bottom-2 z-30 overflow-y-auto rounded-lg border bg-card p-2 text-sm shadow-lg ${folded ? "" : "max-h-[40%]"}`}
+      style={place ? { top: place.top, height: place.height, width: place.width, ...(place.left ? { left: 6 } : { right: 6 }) } : undefined}
       dir="rtl"
       data-testid="part-context-panel"
+      data-place={place ? "side" : "strip"}
     >
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
         <span className="font-semibold">נבחר: {title}</span>
         <span className="text-muted-foreground">←</span>
-        {(Object.keys(TAB_NAMES) as Tab[]).map((t) => (
+        {tabs.map((t) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t}
             className={`h-7 rounded-md border px-2 text-xs ${tab === t ? "border-primary bg-primary/10 font-semibold" : "hover:border-primary/50"}`}
-            onClick={() => setTabFor({ key, tab: t })}>
+            onClick={() => { setTabFor({ key, tab: t }); setFolded(false); }}>
             {TAB_NAMES[t]}
           </button>
         ))}
-        <button type="button" aria-label="סגירת החלון" className="ms-auto rounded p-1 hover:bg-muted" onClick={() => editing.select([])}>
-          <X className="size-4" aria-hidden />
-        </button>
+        <span className="ms-auto flex items-center">
+          {!place && (
+            <button type="button" aria-label={folded ? "פתיחת החלון" : "קיפול החלון"} className="rounded p-1 hover:bg-muted" onClick={() => setFolded((f) => !f)}>
+              {folded ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
+            </button>
+          )}
+          <button type="button" aria-label="סגירת החלון" className="rounded p-1 hover:bg-muted" onClick={() => editing.select([])}>
+            <X className="size-4" aria-hidden />
+          </button>
+        </span>
       </div>
+      {!folded && <>
+
+      {tab === "background" && (
+        <div data-testid="ctx-background">
+          {/* The board's own background and frame: the one editor of them, the same as a click on the board opens. */}
+          <BoardBackground config={config} onEdit={onEdit} />
+          {/* A kit painted from one picture covers the board in decorations (curtains, columns, arches): the main container's, hidden together to see its background. */}
+          {paintedDecor.length > 0 && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 rounded-md bg-muted/50 px-2 py-1 text-[11px]" data-testid="painted-decor">
+              בערכה {paintedDecor.length} עיטורים מצוירים (וילונות, עמודים, קשתות) שמכסים את רוב הרקע.
+              <button type="button" className="h-6 rounded border bg-background px-2 hover:border-primary/50"
+                onClick={() => editEls("decor-toggle", (all) => all.map((e) => (paintedDecor.some((d) => d.id === e.id) ? { ...e, hidden: !decorHidden } : e)))}>
+                {decorHidden ? "החזרת העיטורים המצוירים" : "הסתרת העיטורים המצוירים"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "ornament" && (
+        <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="ctx-ornament">
+          {ornaments.some((e) => e.kind === "ornament" || e.kind === "column") && (
+            <label className="flex items-center gap-1.5">
+              צבע העיטור
+              <ColorPick label="צבע העיטור" className="h-7 w-9" value={/^#[\da-f]{6}$/i.test(ornaments[0]?.color ?? "") ? ornaments[0].color : "#c9a24a"}
+                onChange={(v) => editEls("ornament-colour", (all) => all.map((e) => (ornaments.some((o) => o.id === e.id) && (e.kind === "ornament" || e.kind === "column") ? { ...e, color: v } : e)))} />
+            </label>
+          )}
+          <button type="button" className="h-7 rounded-md border px-2 hover:border-primary/50"
+            onClick={() => editEls("ornament-hide", (all) => all.map((e) => (ornaments.some((o) => o.id === e.id) ? { ...e, hidden: !e.hidden } : e)))}>
+            {ornaments.every((e) => e.hidden) ? "הצגת העיטור" : "הסתרת העיטור"}
+          </button>
+          <span className="text-muted-foreground">עיטורים חדשים מוסיפים ב"חלקים" ← "הוספת עיטור".</span>
+        </div>
+      )}
+
+      {tab === "add" && (
+        <div className="space-y-1" data-testid="ctx-add">
+          <p className="text-xs text-muted-foreground">גוררים צורה אל הלוח - ונוצר שם קונטיינר שלם (לוח, מסגרת וכותרת) בצורה הזאת. לחיצה מוסיפה אותו באמצע.</p>
+          <div className="flex flex-wrap gap-1.5">
+            {PART_SHAPES.map((s) => (
+              <button key={s.id} type="button" draggable aria-label={`קונטיינר חדש: ${s.name}`} title={`גרירה ללוח: קונטיינר ב${s.name}`}
+                className={`${tile} cursor-grab`}
+                onDragStart={(e) => { e.dataTransfer.setData(DRAG_TYPE, s.id); e.dataTransfer.effectAllowed = "copy"; }}
+                onClick={() => addContainer(s.id)}>
+                <svg viewBox="0 0 100 100" className="h-7 w-9" aria-hidden><path d={s.path} fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="5" /></svg>
+                {s.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {tab === "board" && (
         <div className="space-y-2" data-testid="ctx-board">
@@ -88,7 +231,6 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
             <button type="button" className="h-7 rounded-md border px-2 hover:border-primary/50" onClick={() => editEls("board-plain", (all) => paintBoards(all, chosen, null))}>
               בלי רקע מהגלריה
             </button>
-            {!board && <span className="text-muted-foreground">לקונטיינר הזה אין לוח.</span>}
           </div>
           <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto" data-testid="ctx-board-gallery">
             {galleryOf(config).map((b) => (
@@ -175,6 +317,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           )}
         </div>
       )}
+      </>}
     </div>
   );
 }

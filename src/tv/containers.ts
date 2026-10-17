@@ -13,7 +13,7 @@
  * names of a frame and its fill), and that reading is written down the first
  * time a container is changed, so from then on nothing is guessed.
  */
-import { BINDING_LABELS, boundsOf, elementId, normalizeElements, sideOf, type BoardElement } from './elements';
+import { BINDING_LABELS, boundsOf, elementId, newElement, normalizeElements, sideOf, type BoardElement } from './elements';
 import { isPartShape, type PartShape } from './partShapes';
 import { linkedSection } from './sectionGeometry';
 
@@ -242,4 +242,26 @@ export function changeContainer(board: Board, id: string, patch: Partial<Omit<Pa
   // Never inside itself, nor inside one of those inside it.
   if (patch.parent && (patch.parent === id || inRing(next, id))) return written;
   return { elements: written.elements, containers: next };
+}
+
+/**
+ * A new container: a board behind, a frame on it, a heading - or, with a
+ * picture, the board, the picture and the frame - in the shape asked, where
+ * asked. The one recipe for "קונטיינר חדש", a container with a picture, and a
+ * shape dragged onto the board.
+ */
+export function newContainerParts(
+  at: { x: number; y: number; width: number; height: number },
+  shape: PartShape = "rounded",
+  image?: { url: string; name: string },
+): { container: PartContainer; parts: BoardElement[] } {
+  const id = `c_${elementId().slice(3, 40)}`;
+  const back = { ...newElement("box"), ...at, group: id, name: "לוח הקונטיינר", shape, fill: "#fff5dc" };
+  const frame = { ...newElement("frame"), ...at, group: id, name: "מסגרת הקונטיינר", shape, color: "#c9a227" };
+  const heading = { ...newElement("text"), x: at.x + 3, y: at.y + 4, width: at.width - 6, height: 9, group: id, name: "כותרת", text: "כותרת", color: "#5b3a12" };
+  const picture = image && { ...newElement("image"), x: at.x + 1.5, y: at.y + 2.5, width: at.width - 3, height: at.height - 5, group: id, name: image.name, image: image.url, fit: "cover" as const, shape };
+  return {
+    container: { id, name: picture ? image!.name.slice(0, 60) || "תמונה" : "קונטיינר חדש", parent: null },
+    parts: picture ? [back, picture, frame] : [back, frame, heading],
+  };
 }

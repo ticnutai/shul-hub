@@ -85,3 +85,26 @@ describe("a container's frame", () => {
     expect(out.find((e) => e.id === "frame")).toMatchObject({ kind: "frame", color: "#123456", shape: "arch" });
   });
 });
+
+describe("the main background", () => {
+  it("painted over the board's own: known, hidden when the board's own is chosen, and back again", async () => {
+    const { hideBackdrops, isBackdrop, showBackdrops } = await import("./containerParts");
+    const wall = at({ ...newElement("image"), id: "wall", name: "רקע המקור ללא חלקי העיצוב", image: "/new-shul-assets/a.webp" }, 0, 0, 100, 100);
+    expect(roleOf(wall)).toBe("backdrop");
+    expect(isBackdrop(box("a", 5))).toBe(false);
+    const hidden = hideBackdrops([wall, box("a", 5)]);
+    expect(hidden.map((e) => Boolean(e.hidden))).toEqual([true, false]);
+    expect(showBackdrops(hidden)[0].hidden).toBe(false);
+  });
+});
+
+describe("a new container", () => {
+  it("is a board, a frame and a heading, where asked, in the shape asked", async () => {
+    const { newContainerParts } = await import("./containers");
+    const { container, parts } = newContainerParts({ x: 10, y: 20, width: 30, height: 44 }, "arch");
+    expect(parts.map((e) => [e.kind, e.shape ?? null, e.group])).toEqual([["box", "arch", container.id], ["frame", "arch", container.id], ["text", null, container.id]]);
+    expect(parts[0]).toMatchObject({ x: 10, y: 20, width: 30, height: 44 });
+    const { board, frame } = containersOf(parts, [parts[2].id])[0];
+    expect([board?.id, frame?.id]).toEqual([parts[0].id, parts[1].id]);
+  });
+});
