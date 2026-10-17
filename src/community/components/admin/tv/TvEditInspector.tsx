@@ -47,7 +47,8 @@ import { BackgroundTile, withUploadedBackgrounds } from "./LayerEditors";
 import { HiddenShelf } from "./ReadyShelf";
 import { useUpload } from "./Upload";
 import { useElementEditing } from "@/tv/elementEditing";
-import { colourParts, paintParts, paintable, wearsPaint } from "@/tv/partPaint";
+import { wearsPaint } from "@/tv/partPaint";
+import { colourBoards, containersOf, paintBoards } from "@/tv/containerParts";
 import { Notice } from "./Notice";
 
 /**
@@ -287,22 +288,22 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
   const gallery = galleryOf(config);
   // The boards of a board of parts chosen (its boxes): the gallery and the colour go on them - one, or all - unless the whole board is asked for.
   const editing = useElementEditing();
-  const chosenParts = paintable(config.elements, editing?.selected ?? []);
-  const allBoxes = config.elements.filter((e) => e.kind === "box");
+  const chosenParts = containersOf(config.elements, editing?.selected ?? []).flatMap((c) => (c.board ? [c.board] : []));
+  const allBoxes = config.elements.filter((e) => e.kind === "box" || (e.kind === "image" && e.name.startsWith("מילוי ")));
   const [wholeBoard, setWholeBoard] = useState(false);
   const onParts = chosenParts.length > 0 && !wholeBoard;
   const ids = chosenParts.map((e) => e.id);
   const first = chosenParts[0];
   const own = onParts ? !first.paint : !config.backgroundGradient && !config.backgroundImage;
   const pick = (b: Parameters<typeof applyBackground>[1] & { name?: string }) =>
-    onParts ? onEdit("part.paint", (c) => ({ ...c, elements: paintParts(c.elements, ids, b) })) : onEdit("bg.gallery", (c) => applyBackground(c, b));
+    onParts ? onEdit("part.paint", (c) => ({ ...c, elements: paintBoards(c.elements, ids, b) })) : onEdit("bg.gallery", (c) => applyBackground(c, b));
   // An upload lands in the same gallery as one from the design tab, and goes on the board.
   const { uploading, upload } = useUpload();
   const uploadPictures = (files: File[]) =>
     upload(files, (urls) => {
       onEdit("bg.gallery", (c) => {
         const next = withUploadedBackgrounds(c, urls);
-        return onParts ? { ...next, elements: paintParts(next.elements, ids, next.backgrounds[0]!) } : applyBackground(next, next.backgrounds[0]!);
+        return onParts ? { ...next, elements: paintBoards(next.elements, ids, next.backgrounds[0]!) } : applyBackground(next, next.backgrounds[0]!);
       });
       toast.success(urls.length > 1 ? `${urls.length} תמונות נשמרו בגלריה` : "התמונה נשמרה בגלריה");
     });
@@ -342,7 +343,7 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
             type="button"
             aria-pressed={own}
             title={onParts ? "בלי רקע מהגלריה: הצבע של החלק עצמו" : "בלי רקע משלו: צבעי הבסיס של הלוח"}
-            onClick={() => (onParts ? onEdit("part.paint", (c) => ({ ...c, elements: paintParts(c.elements, ids, null) })) : onEdit("bg.gallery", (c) => writeBoardBackground(c, null)))}
+            onClick={() => (onParts ? onEdit("part.paint", (c) => ({ ...c, elements: paintBoards(c.elements, ids, null) })) : onEdit("bg.gallery", (c) => writeBoardBackground(c, null)))}
             className={`h-8 rounded-md border px-2 text-[11px] transition ${own ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
           >
             רקע בסיס
@@ -356,7 +357,7 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
               label={onParts ? "צבע החלקים שנבחרו" : "צבע רקע אחיד"}
               className="h-6 w-8"
               value={onParts ? (/^#[\da-f]{6}$/i.test(first.fill) ? first.fill : "#fff8e8") : (!config.backgroundImage && flatColour(config.backgroundGradient)) || "#0b1628"}
-              onChange={(v) => (onParts ? onEdit("part.colour", (c) => ({ ...c, elements: colourParts(c.elements, ids, v) })) : onEdit("bg.colour", (c) => writeBoardBackground(c, `linear-gradient(180deg, ${v}, ${v})`)))}
+              onChange={(v) => (onParts ? onEdit("part.colour", (c) => ({ ...c, elements: colourBoards(c.elements, ids, v) })) : onEdit("bg.colour", (c) => writeBoardBackground(c, `linear-gradient(180deg, ${v}, ${v})`)))}
             />
           </label>
         </div>

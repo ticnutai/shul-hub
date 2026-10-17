@@ -1,48 +1,87 @@
 /**
- * The boards of a board of parts dressed from the backgrounds' gallery: the
- * ones chosen and no other, kept through saving, drawn in their shape - and
- * taken off again, or given one colour of their own.
+ * Every container has one board and one frame, drawn or painted: the board
+ * takes the colour or the gallery's background, the frame is replaced - never
+ * a second one - and a painted piece becomes a part of its own where it
+ * stands. Kept through saving, drawn in its shape.
  */
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { ElementArt } from "./BoardElements";
 import { newElement, normalizeElements, type BoardElement } from "./elements";
 import { builtinBackgrounds } from "./backgrounds";
-import { colourParts, paintParts, wearsPaint } from "./partPaint";
+import { wearsPaint } from "./partPaint";
+import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "./containerParts";
 
 afterEach(cleanup);
-const box = (id: string): BoardElement => ({ ...newElement("box"), id });
+const at = (e: BoardElement, x: number, y: number, width = 20, height = 40): BoardElement => ({ ...e, x, y, width, height });
+const box = (id: string, x: number): BoardElement => at({ ...newElement("box"), id, name: `תיבה ${id}` }, x, 30);
 const clouds = builtinBackgrounds().find((b) => b.id === "x_m_clouds_gold")!;
+/** A container as the kits paint it: a fill and a frame cut from the picture, a heading inside. */
+const painted = (): BoardElement[] => [
+  at({ ...newElement("image"), id: "fill", name: "מילוי זמני תפילות", image: "/new-shul-assets/a.webp", crop: { x: 0, y: 0, width: 50, height: 50 } }, 10, 20, 24, 60),
+  at({ ...newElement("image"), id: "frame", name: "מסגרת זמני תפילות", image: "/new-shul-assets/a.webp", crop: { x: 0, y: 0, width: 52, height: 52 } }, 9, 19, 26, 62),
+  at({ ...newElement("text"), id: "head", name: "כותרת זמני תפילות" }, 13, 30, 18, 6),
+];
 
-describe("a board's own background", () => {
-  it("goes on the boxes chosen only, and is kept through saving", () => {
-    const text = { ...newElement("text"), id: "t" };
-    const out = paintParts([box("a"), box("b"), text], ["a", "t"], clouds);
+describe("a container's board", () => {
+  it("takes the gallery's background - its own, no other's - kept through saving", () => {
+    const out = paintBoards([box("a", 5), box("b", 60)], ["a"], clouds);
     expect(out[0].paint).toEqual({ fill: null, picture: clouds.picture, overlay: clouds.overlay, strength: clouds.strength });
     expect(out[1].paint).toBeUndefined();
-    expect(out[2].paint).toBeUndefined();
     expect(wearsPaint(out[0], clouds)).toBe(true);
     expect(normalizeElements(JSON.parse(JSON.stringify(out)))[0].paint).toEqual(out[0].paint);
   });
 
+  it("painted: becomes a board of its own where it stands, in the shape it nearly has, from any part of its container", () => {
+    const out = paintBoards(painted(), ["head"], clouds);
+    const board = out.find((e) => e.id === "fill")!;
+    expect(board).toMatchObject({ kind: "box", x: 10, y: 20, width: 24, height: 60, shape: "arch", image: "" });
+    expect(board.crop).toBeUndefined();
+    expect(board.paint?.picture).toBe(clouds.picture);
+    // The frame and the heading as they were.
+    expect(out.find((e) => e.id === "frame")!.kind).toBe("image");
+  });
+
   it("is drawn in its shape: the picture, its overlay, the line", () => {
-    const [e] = paintParts([{ ...box("a"), shape: "arch" }], ["a"], clouds);
+    const [e] = paintBoards([{ ...box("a", 5), shape: "arch" }], ["a"], clouds);
     const { container } = render(<ElementArt element={e} />);
-    const painted = container.querySelector<HTMLElement>("[data-part-paint]")!;
-    expect(painted.style.clipPath).toMatch(/^url\(#/);
-    expect(container.querySelector("clipPath path")).toBeTruthy();
-    expect([...painted.querySelectorAll<HTMLElement>("div")].some((d) => d.style.backgroundImage.includes("url("))).toBe(true);
+    const p = container.querySelector<HTMLElement>("[data-part-paint]")!;
+    expect(p.style.clipPath).toMatch(/^url\(#/);
+    expect([...p.querySelectorAll<HTMLElement>("div")].some((d) => d.style.backgroundImage.includes("url("))).toBe(true);
   });
 
-  it("is taken off, or replaced by one colour of its own", () => {
-    const [painted] = paintParts([box("a")], ["a"], clouds);
-    expect(paintParts([painted], ["a"], null)[0].paint).toBeUndefined();
-    const [coloured] = colourParts([painted], ["a"], "#123456");
-    expect([coloured.fill, coloured.paint]).toEqual(["#123456", undefined]);
+  it("is taken off, or given one colour of its own", () => {
+    const [p] = paintBoards([box("a", 5)], ["a"], clouds);
+    expect(paintBoards([p], ["a"], null)[0].paint).toBeUndefined();
+    const [c] = colourBoards([p], ["a"], "#123456");
+    expect([c.fill, c.paint]).toEqual(["#123456", undefined]);
+  });
+});
+
+describe("a container's frame", () => {
+  it("painted: replaced where it stands - never a second frame", () => {
+    const { elements } = wearFrame(painted(), ["frame"], "frame:gold");
+    expect(elements.filter((e) => roleOf(e) === "frame")).toHaveLength(1);
+    expect(elements.find((e) => e.id === "frame")).toMatchObject({ kind: "frame", x: 9, y: 19, width: 26, height: 62 });
   });
 
-  it("refuses what is not a background", () => {
-    const [bad] = normalizeElements([{ ...box("a"), paint: { fill: "url(javascript:alert(1))", picture: "x\" onerror", overlay: null, strength: 9 } }]);
-    expect(bad.paint).toBeUndefined();
+  it("on a curved container: a line in its shape, said so; on a straight one, the picture", () => {
+    const curved = wearFrame(painted(), ["head"], "frame:gold");
+    expect(curved.curved).toBe(1);
+    expect(curved.elements.find((e) => e.id === "frame")).toMatchObject({ image: "", shape: "arch" });
+    const straight = wearFrame([{ ...box("a", 5), shape: "rounded" }, at({ ...newElement("frame"), id: "f", shape: "rounded" }, 5, 30)], ["a"], "frame:gold");
+    expect(straight.elements.find((e) => e.id === "f")).toMatchObject({ image: "frame:gold" });
+  });
+
+  it("a container without one gets one around its board, in its shape, right over it", () => {
+    const { elements } = wearFrame([{ ...box("a", 5), shape: "dome" }], ["a"], null);
+    expect(elements).toHaveLength(2);
+    expect(elements[1]).toMatchObject({ kind: "frame", x: 5, y: 30, width: 20, height: 40, shape: "dome" });
+    expect(containersOf(elements, ["a"])[0].frame?.id).toBe(elements[1].id);
+  });
+
+  it("takes a line colour - a painted one becomes a line", () => {
+    const out = colourFrames(painted(), ["fill"], "#123456");
+    expect(out.find((e) => e.id === "frame")).toMatchObject({ kind: "frame", color: "#123456", shape: "arch" });
   });
 });

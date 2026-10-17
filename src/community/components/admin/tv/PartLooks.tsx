@@ -8,7 +8,8 @@ import { toast } from "sonner";
 import type { TvConfig } from "@/tv/config";
 import { MAX_ELEMENTS, newElement, normalizeElements, type BoardElement } from "@/tv/elements";
 import { useElementEditing } from "@/tv/elementEditing";
-import { PART_SHAPES, type PartShape } from "@/tv/partShapes";
+import { PART_SHAPES, STRAIGHT_SHAPES, type PartShape } from "@/tv/partShapes";
+import { containersOf, wearFrame } from "@/tv/containerParts";
 import { setSectionShape } from "@/tv/sectionGeometry";
 import { GalleryGrid, GalleryTile } from "./GalleryTile";
 import { ColourRow } from "./editorParts";
@@ -17,7 +18,7 @@ import { Notice } from "./Notice";
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 
 /** The shapes whose edges are straight: a frame of a picture goes on them. */
-const STRAIGHT: readonly PartShape[] = ["rectangle", "rounded"];
+const STRAIGHT = STRAIGHT_SHAPES;
 
 /** A board of parts: its boxes and frames are parts, not the ordinary board's boxes. */
 export const isPartsBoard = (c: TvConfig) => c.screenLayout === "composition";
@@ -116,25 +117,22 @@ export function PartColour({ config, onEdit, what }: { config: TvConfig; onEdit:
  * line again). Nothing chosen: a new frame wearing it.
  */
 export function usePartFramePictures(config: TvConfig, onEdit: Edit) {
-  const { frames, select } = usePartTargets(config);
+  const editing = useElementEditing();
+  const chosen = (editing?.selected ?? []).filter((id) => config.elements.some((e) => e.id === id && !e.locked));
+  const select = (ids: string[]) => editing?.select(ids);
+  const containers = containersOf(config.elements, chosen);
+  const frames = containers.flatMap((c) => (c.frame ? [c.frame] : []));
   const wearing = frames.length && frames.every((e) => e.image === frames[0].image) ? frames[0].image || null : null;
   const wear = (ref: string | null, name: string) => {
-    if (!frames.length) {
+    // Nothing chosen: a new frame, to drag into place. Anything chosen: its container's frame, replaced - or one added around its board.
+    if (!containers.length) {
       if (ref) addPart(onEdit, select, { kind: "frame", image: ref, name: `מסגרת - ${name}` }, `מסגרת "${name}"`);
       return;
     }
-    // The frame keeps its board's shape: a picture's straight edges go on a straight one only - on a
-    // cut shape (a dome, a scallop...) the line follows the shape instead, as on an ordinary board.
-    const fits = frames.filter((e) => !ref || !e.shape || STRAIGHT.includes(e.shape));
-    if (fits.length < frames.length)
-      toast(`מסגרת מתמונה נכנסת רק לתבנית מלבנית או מעוגלת. ${frames.length - fits.length} מהמסגרות שבחרתם בצורה אחרת, ושם הקו עוקב אחרי הצורה - אפשר לשנות לו צבע למטה.`);
-    if (!fits.length) return;
-    const ids = fits.map((e) => e.id);
-    // On a straight board the picture is the frame's look; "קו מצויר" takes it off, and the shape stays.
-    onEdit(`part-frame:${ids.join(",")}`, (c) => ({
-      ...c,
-      elements: normalizeElements(c.elements.map((e) => (ids.includes(e.id) ? { ...e, image: ref ?? "", shape: ref ? undefined : e.shape } : e))),
-    }));
+    const { curved } = wearFrame(config.elements, chosen, ref);
+    onEdit(`part-frame:${chosen.join(",")}:${ref ?? "line"}`, (c) => ({ ...c, elements: wearFrame(c.elements, chosen, ref).elements }));
+    if (curved)
+      toast(`מסגרת מתמונה נכנסת רק לצורה מלבנית או מעוגלת. ב־${curved} מהקונטיינרים הצורה אחרת, ושם המסגרת היא קו שעוקב אחרי הצורה - אפשר לשנות לו צבע.`);
   };
-  return { count: frames.length, wearing, wear };
+  return { count: containers.length, wearing, wear };
 }

@@ -33,3 +33,6 @@ export const isPartShape = (v: unknown): v is PartShape => typeof v === 'string'
 
 /** The path of a shape, in its 100-unit square. */
 export const partShapePath = (shape: PartShape): string => PART_SHAPES.find((s) => s.id === shape)!.path;
+
+/** The shapes a picture frame (straight edges) goes on; on any other the frame is a line that follows the shape. */
+export const STRAIGHT_SHAPES: readonly PartShape[] = ["rectangle", "rounded"];

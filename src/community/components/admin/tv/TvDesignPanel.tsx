@@ -86,6 +86,7 @@ import { ToolsTab } from "./ToolsTab";
 import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth, sendCommand } from "./tvAdminData";
 import { ALERT_DEMO_APP_CODE, alertDemoPayload, alertTimeline, screenSeconds, whatShows } from "@/tv/alertDemo";
 import { useAlertSimulation } from "./alertSimulation";
+import { PartContextPanel } from "./PartContextPanel";
 import { useDraftSync } from "./tvDraftChannel";
 import { TvEditInspector } from "./TvEditInspector";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
@@ -1478,7 +1479,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   }
 
   const studioView = (
-    <div className="w-full" data-board-preview>
+    <div className="relative w-full" data-board-preview>
       {comparing && (
         <Notice
           variant="warning"
@@ -1526,6 +1527,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         onResize={fullscreen ? undefined : resizeBoard}
         onResizeReset={resetBoardSize}
       />
+      {/* What was chosen on the board, with its own choices only: a container's board, frame, shape or text. */}
+      {!comparing && <PartContextPanel config={view} onEdit={edit} />}
       {!comparing && (
         <ReadabilityNote
           watch={state.present}

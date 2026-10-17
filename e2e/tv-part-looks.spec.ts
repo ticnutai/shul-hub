@@ -37,27 +37,27 @@ test("the boxes and frames topics dress the parts of a board of parts", async ({
   await expect(preview.locator('[data-geometric-shape="notch"]')).toHaveCount(1);
   await expect(preview.locator('[data-geometric-shape="dome"]')).toHaveCount(0);
 
-  // A box chosen, no frame: a frame of the gallery comes as a new frame wearing it.
+  // A box chosen, no frame: its container gets a frame around it, in its shape - on a cut shape a line, and it says so.
   const pictures = page.getByTestId("frame-pictures");
   await pictures.scrollIntoViewIfNeeded();
   await pictures.getByRole("button", { name: /^כסף ואבני ספיר/ }).click();
-  await expect(preview.locator("[data-art-frame]").first()).toHaveCSS("border-image-source", /sapphire-modular-panel-frame/);
+  await expect(page.getByText("מסגרת מתמונה נכנסת רק לצורה מלבנית או מעוגלת", { exact: false }).first()).toBeVisible();
+  await expect(preview.locator('[data-geometric-shape="notch"]')).toHaveCount(2);
 
-  // That frame cut to a bevel: the picture gives way to the line, which follows the shape...
+  // The container cut to a bevel: its board and its frame together.
   await shapes.scrollIntoViewIfNeeded();
   await shapes.getByRole("button", { name: /^קטום/ }).click();
-  await expect(preview.locator('[data-geometric-shape="bevel"]')).toHaveCount(1);
-  // ...and a picture frame does not go on a cut shape: it says so, and leaves the line.
+  await expect(preview.locator('[data-geometric-shape="bevel"]')).toHaveCount(2);
+  // A picture frame again: still a line in the shape - never a second frame.
   await pictures.scrollIntoViewIfNeeded();
   await pictures.getByRole("button", { name: /^זהב מסולסל/ }).click();
-  await expect(page.getByText("מסגרת מתמונה נכנסת רק לתבנית מלבנית או מעוגלת", { exact: false })).toBeVisible();
-  await expect(preview.locator('[data-geometric-shape="bevel"]')).toHaveCount(1);
+  await expect(preview.locator('[data-geometric-shape="bevel"]')).toHaveCount(2);
 
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect.poll(() => server.writes()).toBeGreaterThan(0);
   const added = normalizeTvConfig(server.saved()).elements.slice(start.elements.length);
   expect(added.map((e) => [e.kind, e.shape ?? null, e.image])).toEqual([
-    ["box", "notch", ""],
+    ["box", "bevel", ""],
     ["frame", "bevel", ""],
   ]);
   expect(errors).toEqual([]);
