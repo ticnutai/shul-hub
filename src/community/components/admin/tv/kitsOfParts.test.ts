@@ -9,7 +9,7 @@ import { describe, expect, it } from "vitest";
 import { BUILTIN_DESIGNS } from "@/tv/designs";
 import { catalogCategory } from "@/tv/catalogCategories";
 import type { SavedDesign } from "@/tv/designs";
-import { ofParts } from "./DesignLibrary";
+import { ofParts } from "@/tv/designs";
 
 const catalog = JSON.parse(readFileSync("public/new-shul-catalog.json", "utf8")) as { designs: SavedDesign[] };
 

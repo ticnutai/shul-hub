@@ -19,6 +19,12 @@ export interface BoardElement {
   imageTune?: { hue: number; saturation: number; brightness: number };
   /** A colour-editable arched fill beneath an independent arched picture frame. */
   archFill?: boolean;
+  /**
+   * A box dressed from the backgrounds' gallery - a colour, a gradient or a
+   * picture with its overlay - as the board's own background is: one board
+   * of the board, or all of them, in a look of their own.
+   */
+  paint?: PartPaint;
   /** A drawn box or frame - or a picture of one's own - cut to one of the board's shapes (partShapes.ts). */
   shape?: PartShape;
   /** A picture of one's own: all of it seen ('contain', absent) or filling its shape, its edges cut ('cover'). */
@@ -109,6 +115,19 @@ export function newElement(kind: ElementKind): BoardElement {
 export const STORAGE_IMAGE = /^https:\/\/[a-z0-9]{20}\.supabase\.co\/storage\/v1\/object\/public\/community-media\/[\w./-]{1,300}$/;
 export const safeImage = (s: unknown): boolean =>
   typeof s === 'string' && s.length < 2000 && (/^\/new-shul-assets\/[a-zA-Z0-9._-]+$/.test(s) || STORAGE_IMAGE.test(s));
+/** A box's look from the backgrounds' gallery: the same four things a background is. */
+export interface PartPaint { fill: string | null; picture: string | null; overlay: string | null; strength: number }
+const safeGradient = (s: unknown): s is string =>
+  typeof s === 'string' && s.length <= 400 && (/^#[\da-f]{3,8}$/i.test(s) || (/^(?:linear|radial|conic)-gradient\(/i.test(s) && !/url|[;"'{}<>\\]/i.test(s)));
+const safePicture = (s: unknown): s is string =>
+  typeof s === 'string' && s.length < 2000 && !/["'()\s<>]/.test(s) && (safeImage(s) || /^backdrop:[a-z0-9-]{1,40}$/.test(s) || s.startsWith('https://'));
+export function normalizePaint(v: unknown): PartPaint | undefined {
+  if (!v || typeof v !== 'object') return undefined;
+  const r = v as Record<string, unknown>;
+  const fill = safeGradient(r.fill) ? r.fill : null, picture = safePicture(r.picture) ? r.picture : null;
+  if (!fill && !picture) return undefined;
+  return { fill, picture, overlay: picture && safeGradient(r.overlay) ? r.overlay : null, strength: typeof r.strength === 'number' && Number.isFinite(r.strength) ? Math.min(.95, Math.max(0, r.strength)) : .55 };
+}
 const colour = (s: unknown, fallback: string) => typeof s === 'string' && /^(#[\da-f]{3,8}|transparent)$/i.test(s) ? s : fallback;
 const n = (v: unknown, fallback: number, min: number, max: number) => typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback;
 const safePath = (v: unknown): v is string => typeof v === 'string' && v.length > 0 && v.length <= 20000 && /^[MmLlHhVvCcSsQqTtAaZz0-9.,\s+-]+$/.test(v);
@@ -132,6 +151,7 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...(v.crop && typeof v.crop === 'object' ? { crop: { x: n(v.crop.x, 0, 0, 100 - cropWidth), y: n(v.crop.y, 0, 0, 100 - cropHeight), width: cropWidth, height: cropHeight } } : {}),
       ...(normalizeMask(v.sourceMask) ? {sourceMask:normalizeMask(v.sourceMask)} : {}),
       ...(v.kind==='box' && v.archFill===true ? {archFill:true} : {}),
+      ...(v.kind==='box' && normalizePaint(v.paint) ? {paint:normalizePaint(v.paint)} : {}),
       ...((['box','frame'].includes(v.kind)||(v.kind==='image'&&!v.crop&&!v.sourceMask))&&isPartShape(v.shape)?{shape:v.shape}:{}),
       ...(v.kind==='image'&&v.fit==='cover'?{fit:'cover' as const}:{}),
       ...(v.kind==='image'&&v.ratio===true?{ratio:true}:{}),

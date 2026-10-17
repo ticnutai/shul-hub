@@ -35,6 +35,8 @@ import { GradientStudio } from "./GradientStudio";
 import { TextAreaControls } from "./TextAreaStyles";
 import { TEXT_AREAS } from "./textAreas";
 import { useUpload } from "./Upload";
+import { useElementEditing } from "@/tv/elementEditing";
+import { colourParts, paintParts, paintable, wearsPaint } from "@/tv/partPaint";
 import { PartColour, PartShapeGallery, PartsBoardNote, isPartsBoard, usePartFramePictures } from "./PartLooks";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
@@ -90,6 +92,12 @@ export function BackgroundLayer({
   const onBoard = target === "board";
   // The board's background is its own section, in parts; a box's sits inside its part, as cards.
   const inParts = onBoard;
+  // The boards of a board of parts chosen: the background goes on them - one, or all - unless the whole board is asked for (as in "רקע הלוח" on the board).
+  const editing = useElementEditing();
+  const chosenParts = onBoard ? paintable(saved.elements, editing?.selected ?? []) : [];
+  const [wholeBoard, setWholeBoard] = useState(false);
+  const onParts = chosenParts.length > 0 && !wholeBoard;
+  const partIds = chosenParts.map((e) => e.id);
 
   /** What this target's background is now: a colour, a gradient or a picture, or nothing. */
   const currentOf = (c: TvConfig): string | null =>
@@ -120,6 +128,15 @@ export function BackgroundLayer({
   );
   const apply = (value: string | null) => {
     setPreview(null);
+    if (onParts) {
+      const flatOne = value ? FLAT.exec(value)?.[1] ?? (/^#[0-9a-f]{6}$/i.test(value) ? value : null) : null;
+      return onEdit("layer-bg:parts", (c) => ({
+        ...c,
+        elements: flatOne
+          ? colourParts(c.elements, partIds, flatOne)
+          : paintParts(c.elements, partIds, value ? { fill: isPictureFill(value) ? null : value, picture: isPictureFill(value) ? value : null, overlay: null, strength: 0.55 } : null),
+      }));
+    }
     onEdit(`layer-bg:${target}`, (c) => write(c, value));
   };
   // Try-outs are laid over what is saved; read through a ref so the callback
@@ -169,6 +186,16 @@ export function BackgroundLayer({
 
   return (
     <div className={onBoard ? "space-y-5" : "space-y-3"} data-testid={onBoard ? "layer-background" : "box-layer-background"}>
+      {chosenParts.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="layer-background-target">
+          <Segments
+            label="על מה חל הרקע"
+            value={onParts ? "parts" : "board"}
+            onChange={(v) => setWholeBoard(v === "board")}
+            options={[{ id: "parts", name: chosenParts.length === 1 ? `על החלק שנבחר: ${chosenParts[0].name}` : `על ${chosenParts.length} החלקים שנבחרו` }, { id: "board", name: "על רקע הלוח כולו" }]}
+          />
+        </div>
+      )}
       <SubPart bare={!inParts} title="גלריית רקעים" hint="לחיצה מלבישה. צבעים, מעברי צבע ותמונות - מוכנים ושלכם; ✕ מסתיר או מוחק.">
       <BackgroundGallery
         testIds={onBoard ? "" : "box-"}
@@ -177,11 +204,12 @@ export function BackgroundLayer({
         look={look}
         uploading={uploading}
         onUpload={(files) => void upload(files)}
-        isOn={(b) => (onBoard ? wears(saved, b) : current === (b.picture ?? b.fill))}
+        isOn={(b) => (onParts ? wearsPaint(chosenParts[0], b) : onBoard ? wears(saved, b) : current === (b.picture ?? b.fill))}
         onPick={(b) => {
           setPreview(null);
           setSource(kindOf(b));
-          if (onBoard) onEdit("layer-bg:board", (c) => applyBackground(c, b));
+          if (onParts) onEdit("layer-bg:parts", (c) => ({ ...c, elements: paintParts(c.elements, partIds, b) }));
+          else if (onBoard) onEdit("layer-bg:board", (c) => applyBackground(c, b));
           else apply(b.picture ?? b.fill);
         }}
       />

@@ -1,6 +1,6 @@
 import type { TvConfig } from "./config";
 import { DESIGN_KEYS, DESIGN_PARTS, MAX_DESIGNS, applyDesign, captureDesign, findDesign, newDesignId, type SavedDesign } from "./designs";
-import { readOccasions } from "./occasions";
+import { readOccasions, type Occasion } from "./occasions";
 
 /**
  * An occasion's own design, edited in the board's design tab.
@@ -46,7 +46,8 @@ export function editOccasionDesign(config: TvConfig, occasionId: string, update:
   // A copy made here is the occasion's own (kept out of "הערכות שלי"); a kit of
   // the gabbai's, changed in place, stays his.
   const owner = own && !shared ? own.occasion : occasionId;
-  const design = owner ? { ...captured, occasion: owner } : captured;
+  const kept = own && !shared && own.from ? { from: own.from } : {};
+  const design = owner ? { ...captured, occasion: owner, ...kept } : { ...captured, ...kept };
   const designs = board.designs.some((d) => d.id === id)
     ? board.designs.map((d) => (d.id === id ? design : d))
     : [...board.designs, design].slice(-MAX_DESIGNS);
@@ -66,4 +67,22 @@ export function editOccasionDesign(config: TvConfig, occasionId: string, update:
 export function isOccasionKit(config: TvConfig, d: SavedDesign): boolean {
   if (d.occasion) return true;
   return d.name.startsWith("עיצוב ") && readOccasions(config).some((o) => o.design === d.id);
+}
+
+/**
+ * A kit made an occasion's own ("קבע לשבת ופתח" in the kits' library): put on
+ * through the occasion's page, as a kit chosen there would be - a copy of the
+ * occasion's, the board and the kit left as they were - and marked with the
+ * kit it came from, so that kit's tile can say so.
+ */
+export function wearForOccasion(config: TvConfig, occasionId: string, kit: SavedDesign): TvConfig {
+  const out = editOccasionDesign(config, occasionId, (c) => applyDesign(c, kit));
+  const id = readOccasions(out).find((o) => o.id === occasionId)?.design;
+  return { ...out, designs: out.designs.map((d) => (d.id === id ? { ...d, from: kit.id, name: kit.name.slice(0, 40) } : d)) };
+}
+
+/** The occasions whose own kit was made from this kit. */
+export function wornBy(config: TvConfig, kitId: string): Occasion[] {
+  const own = new Set(config.designs.filter((d) => d.from === kitId).map((d) => d.id));
+  return readOccasions(config).filter((o) => o.design && own.has(o.design));
 }

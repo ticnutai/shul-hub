@@ -6,6 +6,7 @@ import type { Dispatch } from "react";
 import { toast } from "sonner";
 import type { TvConfig } from "@/tv/config";
 import { blankBoard } from "@/tv/blankBoard";
+import type { SavedDesign } from "@/tv/designs";
 import { WIPE_GROUPS, wipeGroups } from "@/tv/wipeGroups";
 import { allFrameIds, frameLabel, type FrameId } from "@/tv/frameLooks";
 import { BlankBoardStarter, type BuildStep } from "./BlankBoardStarter";
@@ -24,7 +25,7 @@ import { KindPicker } from "./KindPicker";
 import { Notice } from "./Notice";
 import { isPartsBoard } from "./PartLooks";
 
-export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [] }: {
+export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [], onWearFor }: {
   draft: TvConfig;
   scoped: TvConfig;
   view: TvConfig;
@@ -39,6 +40,8 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   textToolsElsewhere: boolean;
   /** The occasions whose folders of kits open to begin with: the one whose page is edited, else today's. */
   todayOccasions?: string[];
+  /** A kit of an occasion's folder made that occasion's, and its page opened (DesignLibrary). */
+  onWearFor?: (occasionId: string, kit: SavedDesign) => void;
 }) {
   const { view: topicsView, topic } = useDesignTopics();
   // A board of parts: the topics dress the parts chosen on it, not the boxes of an ordinary board.
@@ -145,6 +148,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
             config={view}
             onEdit={edit}
             todayTopics={CATALOG_CATEGORIES.filter((t) => t !== "הכול" && todayOccasions.some((o) => o.includes(t)))}
+            onWearFor={onWearFor}
           />
         </div>
       </Section>

@@ -4,6 +4,7 @@ import { CATALOG_CATEGORIES, catalogCategory } from '@/tv/catalogCategories';
 import { useLibraryEdit, useLibraryOf } from './libraryEdit';
 import { sharedId, useTvLibraryItems } from './useTvLibrary';
 import { normalizeTvConfig } from '@/tv/config';
+import { ofParts } from '@/tv/designs';
 import { FolderedLibrary, type FixedFolder, type LibraryItem } from './FolderedLibrary';
 import { useState, type ReactNode } from "react";
 import { SubPart } from "./Parts";
@@ -13,7 +14,9 @@ import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
-import { isOccasionKit } from "@/tv/occasionDesign";
+import { isOccasionKit, wornBy } from "@/tv/occasionDesign";
+import { readOccasions } from "@/tv/occasions";
+import { folderOf } from "@/tv/library";
 import { NameForm } from "./editorParts";
 import { PART_GRID } from "./GalleryTile";
 import { CatalogNotice } from "./SharedCatalogLibrary";
@@ -72,14 +75,6 @@ const startingParts = (config: TvConfig): DesignPart[] =>
   config.screenLayout === "composition" ? [...DESIGN_PARTS] : ["background", "frames", "text"];
 /** On a board of parts, its parts ("מסגרות") and their layout ("פריסה") are always kept: they are what makes the kit editable. */
 const PARTS_KEPT = (config: TvConfig): DesignPart[] => (config.screenLayout === "composition" ? ["frames", "layout"] : []);
-/**
- * A kit made of free parts: put on, its parts are edited one by one in "חלקים חופשיים".
- * A board of parts, or parts with no layout of their own; a kit of another
- * layout with a few ornaments over it (the shared catalogue's three medallions,
- * "שיש וזהב · חדש ועתיק" and its two) is not - it was offered, 16.10.2026.
- */
-export const ofParts = (d: Pick<SavedDesign, "values">) =>
-  d.values.screenLayout === "composition" || (!d.values.screenLayout && Boolean(d.values.elements?.length));
 
 /** The form of a new kit: its name and what it holds. One form, wherever a kit is saved from. */
 export function KitSaveForm({ config, onEdit, onDone, testId }: { config: TvConfig; onEdit: Edit; onDone: () => void; testId?: string }) {
@@ -166,11 +161,16 @@ const KIT_FOLDERS: FixedFolder[] = [
  * parts they chose - shown beside the themes, put on the board with a tap.
  * The model and its rules are designs.ts.
  */
-export function DesignLibrary({ config, onEdit, todayTopics = [] }: {
+export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
   config: TvConfig;
   onEdit: Edit;
   /** The topics of today's occasions: their folders open to begin with. */
   todayTopics?: string[];
+  /**
+   * A kit made an occasion's own and its page opened ("קבע לשבת ופתח"): the
+   * same setting as "בחירת ערכה" in "מועדים" - a way to it, not another one.
+   */
+  onWearFor?: (occasionId: string, kit: SavedDesign) => void;
 }) {
   const [form, setForm] = useState<{ mode: "new" | "rename"; id?: string; name: string } | null>(null);
   const designs = config.designs;
@@ -218,6 +218,48 @@ export function DesignLibrary({ config, onEdit, todayTopics = [] }: {
     toast.success(`הערכה "${d.name}" עודכנה למה שעל הלוח עכשיו.`);
   };
 
+  /** The topic of a kit's folder, and the occasions it is about: "שבת" - the Shabbat and its kind; "ראש חודש"... */
+  const topicOf = (d: SavedDesign) => {
+    const known = new Set(KIT_FOLDERS.map((f) => f.id).concat(library.folders.map((f) => f.id)));
+    const home = mine.includes(d) ? MINE_FOLDER : topicFolder(catalogCategory(d));
+    const folder = folderOf(library, d.id, home, known);
+    return folder.startsWith("topic:") ? folder.slice("topic:".length) : catalogCategory(d);
+  };
+  const occasionsOf = (d: SavedDesign) => {
+    const topic = topicOf(d);
+    return topic === "כללי" ? [] : readOccasions(config).filter((o) => o.name.includes(topic));
+  };
+  /** On a kit of an occasion's folder: made that occasion's, its page opened - and which occasion wears it now. */
+  const forOccasion = (d: SavedDesign) => {
+    const worn = wornBy(config, d.id);
+    const fits = onWearFor ? occasionsOf(d) : [];
+    if (!worn.length && !fits.length) return null;
+    // The folder's own occasion first ("שבת" - the Shabbat itself), the others of its kind in a list (שבת הגדול, שבת שובה...).
+    const main = fits.length === 1 ? fits[0] : fits.find((o) => o.name === topicOf(d));
+    const others = fits.filter((o) => o !== main);
+    return (
+      <>
+        {worn.length > 0 && (
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900" data-testid="kit-worn-by">
+            {worn.map((o) => `ערכת ה${o.name}`.replace("ערכת הה", "ערכת ה")).join(" · ")}
+          </span>
+        )}
+        {main && (
+          <TileAction onClick={() => onWearFor!(main.id, d)} title={`מעכשיו הערכה הזאת מופיעה ב${main.name}, ונפתח העמוד שלו לעריכה`}>
+            קבע ל{main.name} ופתח
+          </TileAction>
+        )}
+        {others.length > 0 && (
+          <select aria-label={`קביעת ${d.name} למועד`} className="h-7 rounded-md border bg-background px-1 text-xs" value=""
+            onChange={(e) => e.target.value && onWearFor!(e.target.value, d)}>
+            <option value="">{main ? "או למועד אחר…" : "קבע למועד ופתח…"}</option>
+            {others.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        )}
+      </>
+    );
+  };
+
   /** A ready kit's tile: put on, copied to one's own, opened part by part. */
   const readyTile = (d: SavedDesign, group = DESIGN_GROUPS.find((g) => g.ids.includes(d.id))?.id ?? "shared") => (
           <KitTile
@@ -244,6 +286,7 @@ export function DesignLibrary({ config, onEdit, todayTopics = [] }: {
               שכפול לעריכה
             </TileAction>
             {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
+            {forOccasion(d)}
           </KitTile>
   );
   /** One's own kit's tile: put on, updated to the board, opened part by part, renamed, deleted. */
@@ -252,6 +295,7 @@ export function DesignLibrary({ config, onEdit, todayTopics = [] }: {
       <TileAction onClick={() => update(d)} title="הערכה מקבלת את מה שעל הלוח עכשיו">עדכון</TileAction>
       {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
       <TileAction onClick={() => setForm({ mode: "rename", id: d.id, name: d.name })}>שינוי שם</TileAction>
+      {forOccasion(d)}
       <TileAction title="נשמרת בספרייה המשותפת - זמינה בכל הלוחות, בכל בתי הכנסת"
         onClick={() => void sharedLibrary.add("kit", d.name, d)}>
         שיתוף לכל הלוחות

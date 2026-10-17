@@ -76,6 +76,8 @@ export interface SavedDesign {
    * gabbai saved himself.
    */
   occasion?: string;
+  /** The kit an occasion's own was made from ("קבע לשבת ופתח"), to mark that kit's tile. */
+  from?: string;
 }
 
 export const MAX_DESIGNS = 40;
@@ -231,6 +233,7 @@ export function normalizeDesigns(raw: unknown, normalize: (raw: unknown) => TvCo
       colours,
       values,
       ...(typeof r.occasion === "string" && r.occasion ? { occasion: r.occasion.slice(0, 80) } : {}),
+      ...(typeof r.from === "string" && /^[\w:-]{1,80}$/.test(r.from) ? { from: r.from } : {}),
     });
   }
   return out;
@@ -384,3 +387,11 @@ export const DESIGN_GROUPS: { id: 'parts' | 'paintings'; title: string; hint: st
   },
 ];
 
+/**
+ * A kit made of free parts: put on, its parts are edited one by one in "חלקים חופשיים".
+ * A board of parts, or parts with no layout of their own; a kit of another
+ * layout with a few ornaments over it (the shared catalogue's three medallions,
+ * "שיש וזהב · חדש ועתיק" and its two) is not - it was offered, 16.10.2026.
+ */
+export const ofParts = (d: Pick<SavedDesign, "values">) =>
+  d.values.screenLayout === "composition" || (!d.values.screenLayout && Boolean(d.values.elements?.length));

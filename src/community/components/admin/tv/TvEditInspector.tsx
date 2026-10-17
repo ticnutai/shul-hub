@@ -46,6 +46,8 @@ import { GalleryGrid, GalleryTile, UploadTile } from "./GalleryTile";
 import { BackgroundTile, withUploadedBackgrounds } from "./LayerEditors";
 import { HiddenShelf } from "./ReadyShelf";
 import { useUpload } from "./Upload";
+import { useElementEditing } from "@/tv/elementEditing";
+import { colourParts, paintParts, paintable, wearsPaint } from "@/tv/partPaint";
 import { Notice } from "./Notice";
 
 /**
@@ -283,14 +285,24 @@ function flatColour(gradient: string | null): string | null {
  */
 function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit }) {
   const gallery = galleryOf(config);
-  const own = !config.backgroundGradient && !config.backgroundImage;
+  // The boards of a board of parts chosen (its boxes): the gallery and the colour go on them - one, or all - unless the whole board is asked for.
+  const editing = useElementEditing();
+  const chosenParts = paintable(config.elements, editing?.selected ?? []);
+  const allBoxes = config.elements.filter((e) => e.kind === "box");
+  const [wholeBoard, setWholeBoard] = useState(false);
+  const onParts = chosenParts.length > 0 && !wholeBoard;
+  const ids = chosenParts.map((e) => e.id);
+  const first = chosenParts[0];
+  const own = onParts ? !first.paint : !config.backgroundGradient && !config.backgroundImage;
+  const pick = (b: Parameters<typeof applyBackground>[1] & { name?: string }) =>
+    onParts ? onEdit("part.paint", (c) => ({ ...c, elements: paintParts(c.elements, ids, b) })) : onEdit("bg.gallery", (c) => applyBackground(c, b));
   // An upload lands in the same gallery as one from the design tab, and goes on the board.
   const { uploading, upload } = useUpload();
   const uploadPictures = (files: File[]) =>
     upload(files, (urls) => {
       onEdit("bg.gallery", (c) => {
         const next = withUploadedBackgrounds(c, urls);
-        return applyBackground(next, next.backgrounds[0]!);
+        return onParts ? { ...next, elements: paintParts(next.elements, ids, next.backgrounds[0]!) } : applyBackground(next, next.backgrounds[0]!);
       });
       toast.success(urls.length > 1 ? `${urls.length} תמונות נשמרו בגלריה` : "התמונה נשמרה בגלריה");
     });
@@ -304,13 +316,33 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
       <FrameAndSpacing config={config} onEdit={onEdit} compact />
 
       <div className="space-y-1.5">
-        <div className="text-xs font-medium text-muted-foreground">רקע הלוח</div>
+        {/* Whose background: the boards chosen, or the whole board's - and all the boards at once. */}
+        {allBoxes.length > 0 && (
+          <div className="flex flex-wrap items-center gap-1.5 text-[11px]" data-testid="background-target">
+            {chosenParts.length > 0 ? (
+              <Segments
+                label="על מה חל הרקע"
+                value={onParts ? "parts" : "board"}
+                onChange={(v) => setWholeBoard(v === "board")}
+                options={[{ id: "parts", name: chosenParts.length === 1 ? `על החלק שנבחר: ${first.name}` : `על ${chosenParts.length} החלקים שנבחרו` }, { id: "board", name: "על רקע הלוח כולו" }]}
+              />
+            ) : (
+              <span className="text-muted-foreground">חל על רקע הלוח כולו. לשנות לוח אחד - בוחרים אותו על הלוח.</span>
+            )}
+            {editing && chosenParts.length < allBoxes.length && (
+              <button type="button" className="h-7 rounded-md border px-2 hover:border-primary/50" onClick={() => { setWholeBoard(false); editing.select(allBoxes.map((e) => e.id)); }}>
+                בחירת כל הלוחות ({allBoxes.length})
+              </button>
+            )}
+          </div>
+        )}
+        <div className="text-xs font-medium text-muted-foreground">{onParts ? (chosenParts.length === 1 ? `רקע של ${first.name}` : `רקע ל־${chosenParts.length} לוחות`) : "רקע הלוח"}</div>
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             type="button"
             aria-pressed={own}
-            title="בלי רקע משלו: צבעי הבסיס של הלוח"
-            onClick={() => onEdit("bg.gallery", (c) => writeBoardBackground(c, null))}
+            title={onParts ? "בלי רקע מהגלריה: הצבע של החלק עצמו" : "בלי רקע משלו: צבעי הבסיס של הלוח"}
+            onClick={() => (onParts ? onEdit("part.paint", (c) => ({ ...c, elements: paintParts(c.elements, ids, null) })) : onEdit("bg.gallery", (c) => writeBoardBackground(c, null)))}
             className={`h-8 rounded-md border px-2 text-[11px] transition ${own ? "ring-2 ring-primary ring-offset-1" : "hover:border-primary/50"}`}
           >
             רקע בסיס
@@ -321,10 +353,10 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
           >
             צבע
             <ColorPick
-              label="צבע רקע אחיד"
+              label={onParts ? "צבע החלקים שנבחרו" : "צבע רקע אחיד"}
               className="h-6 w-8"
-              value={(!config.backgroundImage && flatColour(config.backgroundGradient)) || "#0b1628"}
-              onChange={(v) => onEdit("bg.colour", (c) => writeBoardBackground(c, `linear-gradient(180deg, ${v}, ${v})`))}
+              value={onParts ? (/^#[\da-f]{6}$/i.test(first.fill) ? first.fill : "#fff8e8") : (!config.backgroundImage && flatColour(config.backgroundGradient)) || "#0b1628"}
+              onChange={(v) => (onParts ? onEdit("part.colour", (c) => ({ ...c, elements: colourParts(c.elements, ids, v) })) : onEdit("bg.colour", (c) => writeBoardBackground(c, `linear-gradient(180deg, ${v}, ${v})`)))}
             />
           </label>
         </div>
@@ -337,15 +369,17 @@ function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: Edit })
                 key={b.id}
                 compact
                 name={b.name}
-                on={wears(config, b)}
-                onPick={() => onEdit("bg.gallery", (c) => applyBackground(c, b))}
+                on={onParts ? wearsPaint(first, b) : wears(config, b)}
+                onPick={() => pick(b)}
                 preview={<BackgroundTile b={b} />}
               />
             ))}
           </GalleryGrid>
         </div>
         <p className="text-[11px] leading-tight text-muted-foreground">
-          כמו בחלק "רקע" בלשונית העיצוב: לחיצה מלבישה את הרקע על הלוח כולו. שכבה מעל תמונה, מחוונים ושמירה בגלריה - בלשונית "עיצוב".
+          {onParts
+            ? "לחיצה מלבישה את הרקע רק על הלוחות שנבחרו. כל לוח אחר נשאר כמו שהוא."
+            : 'כמו בחלק "רקע" בלשונית העיצוב: לחיצה מלבישה את הרקע על הלוח כולו. שכבה מעל תמונה, מחוונים ושמירה בגלריה - בלשונית "עיצוב".'}
         </p>
       </div>
     </div>

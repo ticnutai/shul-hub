@@ -87,3 +87,26 @@ describe("an occasion's own kit, apart from the gabbai's", () => {
     expect(isOccasionKit(after, kit)).toBe(false);
   });
 });
+
+describe("a kit made an occasion's own from the library (קבע לשבת ופתח)", () => {
+  it("is the same setting as choosing it in מועדים: a copy of the occasion's, named and marked after the kit; the board and kit untouched", async () => {
+    const { wearForOccasion, wornBy } = await import("./occasionDesign");
+    const { BUILTIN_DESIGNS } = await import("./designs");
+    const { DEFAULT_TV_CONFIG } = await import("./config");
+    const { readOccasions } = await import("./occasions");
+    const board = structuredClone(DEFAULT_TV_CONFIG);
+    const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_premium_jerusalem-stone")!;
+    const shabbat = readOccasions(board).find((o) => o.name === "שבת")!;
+    const out = wearForOccasion(board, shabbat.id, kit);
+    const worn = readOccasions(out).find((o) => o.id === shabbat.id)!;
+    const own = out.designs.find((d) => d.id === worn.design)!;
+    expect(own).toMatchObject({ name: kit.name, from: kit.id, occasion: shabbat.id });
+    expect(worn.designOn).toBe("screen");
+    expect(out.screenLayout).toBe(board.screenLayout);
+    expect(wornBy(out, kit.id).map((o) => o.id)).toEqual([shabbat.id]);
+    // Changed on its page: still marked.
+    const { editOccasionDesign } = await import("./occasionDesign");
+    const edited = editOccasionDesign(out, shabbat.id, (c) => ({ ...c, theme: "night-gold" }));
+    expect(wornBy(edited, kit.id).map((o) => o.id)).toEqual([shabbat.id]);
+  });
+});

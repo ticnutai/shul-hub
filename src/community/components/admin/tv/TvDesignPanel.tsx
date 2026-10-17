@@ -33,7 +33,7 @@ import {
   type TvConfig,
 } from "@/tv/config";
 import { mergeConfig, sameJson } from "@/tv/configMerge";
-import { findDesign } from "@/tv/designs";
+import { findDesign, type SavedDesign } from "@/tv/designs";
 import { classOfPreviewDevice, type DeviceClass } from "@/tv/devices";
 import { useElementEditing } from "@/tv/elementEditing";
 import { normalizeElements } from "@/tv/elements";
@@ -44,7 +44,7 @@ import {
   type CustomIllustration,
   type PortableIllustration,
 } from "@/tv/illustrated";
-import { editOccasionDesign, occasionLook } from "@/tv/occasionDesign";
+import { editOccasionDesign, occasionLook, wearForOccasion } from "@/tv/occasionDesign";
 import { nextDateOf, occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editPage, pageAt, pageLook, readPages } from "@/tv/partPages";
 import { isAllowedEdit } from "@/tv/records";
@@ -661,6 +661,18 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     setOccasionScope(id);
     if (!o.enabled) toast.warning(occasionOffNote(o.name));
   };
+  /**
+   * "קבע לשבת ופתח": a kit of an occasion's folder made that occasion's - the
+   * same setting as "בחירת ערכה" in "מועדים" - and its page opened to edit it.
+   */
+  const wearFor = (occasionId: string, kit: SavedDesign) => {
+    const o = readOccasions(state.present).find((x) => x.id === occasionId);
+    if (!o) return;
+    dispatch({ type: "edit", key: `occasion-kit:${occasionId}:${kit.id}`, update: (c) => wearForOccasion(c, occasionId, kit) });
+    openOccasion(occasionId);
+    showPreview();
+    toast.success(`"${kit.name}" היא עכשיו הערכה של ${o.name} - הנה העמוד שלו לעריכה. "צעד אחורה" מבטל.`);
+  };
   /** Brings the board's preview into sight, from a control further down the page. */
   const showPreview = () =>
     // A timer rather than a frame, and a jump rather than a glide: a smooth
@@ -1122,6 +1134,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       </div>
   );
 
+  /** The kit the occasion being worked on wears (named after the kit it was made from), or null for none. */
+  const occasionKit = occasionScope ? findDesign(state.present, readOccasions(state.present).find((o) => o.id === occasionScope)?.design) : null;
+  const occasionKitName = occasionKit?.name ?? null;
+
   const controls = (
     <>
       {/* The live window puts the bar first in its panel, above the preview's buttons. */}
@@ -1133,21 +1149,34 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           role="status"
           data-testid="occasion-design-banner"
           actions={
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setOccasionScope(null);
-                previewAt(null);
-                setPreviewScreen(null);
-              }}
-            >
-              חזרה לעיצוב הלוח
-            </Button>
+            <>
+              {/* The occasion's kit, changed or taken off here as in "מועדים": the same setting. */}
+              <Button type="button" size="sm" variant="outline" onClick={() => { setTab("design"); showDesignTopic("design-sets"); }}>
+                החלפת ערכה
+              </Button>
+              {occasionKitName !== null && (
+                <Button type="button" size="sm" variant="ghost"
+                  onClick={() => dispatch({ type: "edit", key: `occasion-kit-off:${occasionScope}`, update: (c) => ({ ...c, occasions: readOccasions(c).map((o) => (o.id === occasionScope ? { ...o, design: null } : o)) }) })}>
+                  בלי ערכה
+                </Button>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setOccasionScope(null);
+                  previewAt(null);
+                  setPreviewScreen(null);
+                }}
+              >
+                חזרה לעיצוב הלוח
+              </Button>
+            </>
           }
         >
-          עורכים עכשיו את המסך של <b>{readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? "המועד"}</b> - כל
+          עורכים עכשיו את המסך של <b>{readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? "המועד"}</b>
+          {occasionKitName !== null ? <> בערכה <b>«{occasionKitName}»</b></> : " (בלי ערכה - כמו הלוח)"} - כל
           שינוי כאן (רקע ותמונות, צבעים, מסגרות, גופן) נשמר לערכה שלו בלבד. הלוח הרגיל לא משתנה.
         </Notice>
       ) : (
@@ -1252,7 +1281,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
+          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
         </TabsContent>
         <TabsContent
           value="layout"

@@ -1,3 +1,4 @@
+import { backdropUrl } from "./backdrops";
 import { partShapePath } from './partShapes';
 import { FRAME_PICTURES, FRAME_PICTURE_PREFIX, framePictureUrl } from './framePictures';
 import { useEffect, useRef, useId, useState, type PointerEvent as ReactPointerEvent } from 'react';
@@ -32,6 +33,20 @@ const HANDLE_NAMES: Record<ResizeHandle, string> = { n: 'למעלה', s: 'למט
 export function ElementArt({ element: e }: { element: BoardElement }) {
   // Before any early return: a hook is called on every render, in the same order.
   const maskId=useId().replace(/:/g,'');
+  if(e.kind==='box'&&e.paint){
+    // A box dressed from the backgrounds' gallery: its colour or gradient, the picture over it and the overlay, cut to its shape.
+    const p=e.paint, pic=backdropUrl(p.picture);
+    const radius=e.archFill?'50% 50% 0 0 / 22% 22% 0 0':e.shape?undefined:'1.5cqh';
+    return <div data-part-paint style={{position:'relative',width:'100%',height:'100%',overflow:'hidden',borderRadius:radius,boxShadow:e.shape?undefined:'0 .3cqh 1cqh #0002',...(e.shape?{clipPath:`url(#${maskId})`}:{})}}>
+      {e.shape&&<svg width="0" height="0" style={{position:'absolute'}} aria-hidden><defs><clipPath id={maskId} clipPathUnits="objectBoundingBox"><path d={partShapePath(e.shape)} transform="scale(0.01)" /></clipPath></defs></svg>}
+      <div style={{position:'absolute',inset:0,background:p.fill??e.fill}} />
+      {pic&&<div style={{position:'absolute',inset:0,backgroundImage:`url("${pic}")`,backgroundSize:'cover',backgroundPosition:'center'}} />}
+      {pic&&p.overlay&&<div style={{position:'absolute',inset:0,background:p.overlay,opacity:p.strength}} />}
+      {e.shape
+        ?<svg viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" style={{position:'absolute',inset:0}} aria-hidden><path d={partShapePath(e.shape)} fill="none" stroke={e.color} strokeWidth=".3" /></svg>
+        :<div style={{position:'absolute',inset:0,border:`.15cqh solid ${e.color}`,borderRadius:radius,boxSizing:'border-box'}} />}
+    </div>;
+  }
   if((e.kind==='box'||e.kind==='frame')&&e.shape){
     // One path per shape (partShapes.ts), the same the editor's tile draws.
     return <svg data-geometric-shape={e.shape} viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden>
