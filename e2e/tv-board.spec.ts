@@ -248,9 +248,9 @@ test.describe("administrator", () => {
     for (const tab of await page.getByRole("tab").filter({ hasText: /^\d+\./ }).all()) await tab.click();
 
     await page.getByRole("tab", { name: "תוכן" }).click();
-    // One example button, beside the reminders' own settings.
-    await page.getByRole("button", { name: "דוגמת תזכורת על הלוח" }).click();
-    await expect(page.locator(".tv-alert-card, .tv-alert-chip").first()).toBeVisible();
+    // The reminder's simulation: the last step before the time, on the preview.
+    await page.getByTestId("alert-timeline").getByRole("button").nth(-2).click();
+    await expect(page.locator(".tv-alert-card, .tv-alert-chip, .tv-deadline-panel").first()).toBeVisible();
 
     const undo = page.getByRole("button", { name: "צעד אחורה (Ctrl+Z)" });
     for (let i = 0; i < 30 && (await undo.isEnabled()); i++) await undo.click();

@@ -880,10 +880,10 @@ export function MinyanimAdmin({
                   onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
                   id="minyan-notification"
                 />
-                <Label htmlFor="minyan-notification">לאפשר תזכורת</Label>
+                <Label htmlFor="minyan-notification">לאפשר תזכורת לטלפון (למי שבחר לקבל מניינים)</Label>
               </div>
               <div className="space-y-2">
-                <Label>כמה דקות לפני</Label>
+                <Label>תזכורת לטלפון - כמה דקות לפני המניין</Label>
                 <Input
                   type="number"
                   dir="ltr"

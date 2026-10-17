@@ -211,6 +211,12 @@ export const DEFAULT_ALERT_LOOK: AlertLook = {
   colors: { bg: '#1b2a4a', text: '#fff8ea', accent: '#e3c27a' },
 };
 
+/** When a reminder comes: the staged mode's steps, the pulsing card's minutes. */
+export interface AlertMinutes {
+  stages: { highlight: number; panel: number; board: number };
+  leadMinutes: number[];
+}
+
 export const ALERT_EVENT_LABELS: Record<AlertEvent, string> = {
   ...ZMAN_DISPLAY_LABELS,
   // The four a board always had keep the words it has been showing.
@@ -742,6 +748,12 @@ export interface TvConfig {
      * a countdown over the whole board. 0 leaves a step out. Never out of order.
      */
     stages: { highlight: number; panel: number; board: number };
+    /**
+     * Times with minutes of their own - סוף זמן קריאת שמע from 30, the sunset
+     * from 15: their steps and their card's minutes. A time not here takes the
+     * ones above.
+     */
+    own: Partial<Record<AlertEvent, AlertMinutes>>;
     /** How the reminder looks: its card, the countdown in the prayers' place, the small strip. */
     look: AlertLook;
   };
@@ -875,6 +887,7 @@ export const DEFAULT_TV_CONFIG: TvConfig = {
     leadMinutes: [30, 15, 5],
     popupSeconds: 40,
     stages: { highlight: 30, panel: 20, board: 10 },
+    own: {},
     look: DEFAULT_ALERT_LOOK,
   },
   ticker: { enabled: false, text: "" },
@@ -1344,6 +1357,25 @@ function normalizeAlertStages(raw: unknown): TvConfig["alerts"]["stages"] {
   const board = Math.min(m(raw.board, d.board), panel || highlight || 120);
   return { highlight, panel, board };
 }
+/** The pulsing card's minutes: up to five, each once, the earliest first. */
+function normalizeLeads(raw: unknown, fallback: number[]): number[] {
+  if (!Array.isArray(raw)) return fallback;
+  const leads = [...new Set(raw.filter((n): n is number => typeof n === "number" && n >= 1 && n <= 180))]
+    .sort((a, b) => b - a)
+    .slice(0, 5);
+  return leads.length ? leads : fallback;
+}
+/** The times with minutes of their own; anything else, or broken, is left out. */
+function normalizeOwnMinutes(raw: unknown): TvConfig["alerts"]["own"] {
+  if (!isObj(raw)) return {};
+  const out: TvConfig["alerts"]["own"] = {};
+  for (const e of ALERT_EVENTS) {
+    const v = raw[e];
+    if (!isObj(v)) continue;
+    out[e] = { stages: normalizeAlertStages(v.stages), leadMinutes: normalizeLeads(v.leadMinutes, DEFAULT_TV_CONFIG.alerts.leadMinutes) };
+  }
+  return out;
+}
 const HEX = /^#[\da-f]{6}$/i;
 function normalizeAlertLook(raw: unknown): AlertLook {
   const d = DEFAULT_ALERT_LOOK;
@@ -1455,11 +1487,7 @@ function normalizeStored(stored: unknown): TvConfig {
   const shabbat = isObj(raw.shabbat) ? raw.shabbat : {};
   const slideshow = isObj(raw.slideshow) ? raw.slideshow : {};
 
-  const leads = Array.isArray(alerts.leadMinutes)
-    ? [...new Set(alerts.leadMinutes.filter((n): n is number => typeof n === "number" && n >= 1 && n <= 180))]
-        .sort((a, b) => b - a)
-        .slice(0, 5)
-    : d.alerts.leadMinutes;
+  const leads = normalizeLeads(alerts.leadMinutes, d.alerts.leadMinutes);
 
   return {
     library: normalizeLibrary(raw.library),
@@ -1499,9 +1527,10 @@ function normalizeStored(stored: unknown): TvConfig {
       events: Array.isArray(alerts.events)
         ? [...new Set(alerts.events.filter((e): e is AlertEvent => ALERT_EVENTS.includes(e as AlertEvent)))]
         : d.alerts.events,
-      leadMinutes: leads.length ? leads : d.alerts.leadMinutes,
+      leadMinutes: leads,
       popupSeconds: num(alerts.popupSeconds, d.alerts.popupSeconds, 10, 300),
       stages: normalizeAlertStages(alerts.stages),
+      own: normalizeOwnMinutes(alerts.own),
       look: normalizeAlertLook(alerts.look),
     },
     ticker: { enabled: bool(ticker.enabled, d.ticker.enabled), text: str(ticker.text, "", 400) },

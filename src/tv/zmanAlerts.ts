@@ -1,5 +1,5 @@
 import type { Zmanim } from "@community/lib/zmanim";
-import { ALERT_EVENT_LABELS, type AlertEvent, type AlertLook, type TvConfig } from "./config";
+import { ALERT_EVENT_LABELS, type AlertEvent, type AlertLook, type AlertMinutes, type TvConfig } from "./config";
 
 /**
  * Countdown reminders before the day's deadlines (sof zman shma, sof zman
@@ -24,6 +24,11 @@ export interface ZmanAlert {
   stage?: 'highlight' | 'panel' | 'board';
 }
 
+/** A time's own minutes, or the ones for every time. */
+export function minutesFor(alerts: TvConfig["alerts"], event: AlertEvent): AlertMinutes {
+  return alerts.own?.[event] ?? { stages: alerts.stages ?? { highlight: 30, panel: 20, board: 10 }, leadMinutes: alerts.leadMinutes };
+}
+
 /** Every upcoming selected time is highlighted; the nearest drives the countdown. */
 export function stagedZmanAlerts(now: Date, zmanim: Zmanim, alerts: TvConfig['alerts'], isFriday: boolean): ZmanAlert[] {
   if (!alerts.enabled || alerts.mode !== 'staged') return [];
@@ -32,7 +37,7 @@ export function stagedZmanAlerts(now: Date, zmanim: Zmanim, alerts: TvConfig['al
     if (!at || !Number.isFinite(at.getTime()) || event === 'candle' && !isFriday) return [];
     const remaining = at.getTime() - now.getTime();
     // The gabbai's steps (30 / 20 / 10 until set otherwise); a step of 0 is left out.
-    const { highlight, panel, board } = alerts.stages ?? { highlight: 30, panel: 20, board: 10 };
+    const { highlight, panel, board } = minutesFor(alerts, event).stages;
     const first = Math.max(highlight, panel, board);
     if (remaining <= 0 || remaining > first * 60_000) return [];
     const stage = board && remaining <= board * 60_000 ? 'board' : panel && remaining <= panel * 60_000 ? 'panel' : highlight && remaining <= highlight * 60_000 ? 'highlight' : null;
@@ -48,8 +53,7 @@ export function currentZmanAlert(
   isFriday: boolean,
 ): ZmanAlert | null {
   if (alerts.mode === 'staged') return stagedZmanAlerts(now,zmanim,alerts,isFriday)[0] ?? null;
-  if (!alerts.enabled || alerts.events.length === 0 || alerts.leadMinutes.length === 0) return null;
-  const maxLead = Math.max(...alerts.leadMinutes);
+  if (!alerts.enabled || alerts.events.length === 0) return null;
 
   let best: ZmanAlert | null = null;
   for (const event of alerts.events) {
@@ -57,11 +61,14 @@ export function currentZmanAlert(
     if (event === "candle" && !isFriday) continue;
     const at = zmanim[event];
     if (!at) continue;
+    const leads = minutesFor(alerts, event).leadMinutes;
+    if (leads.length === 0) continue;
+    const maxLead = Math.max(...leads);
     const secondsLeft = Math.floor((at.getTime() - now.getTime()) / 1000);
     if (secondsLeft <= 0 || secondsLeft > maxLead * 60) continue;
 
     const lead =
-      alerts.leadMinutes.find((m) => secondsLeft <= m * 60 && secondsLeft > m * 60 - alerts.popupSeconds) ?? null;
+      leads.find((m) => secondsLeft <= m * 60 && secondsLeft > m * 60 - alerts.popupSeconds) ?? null;
     const candidate: ZmanAlert = {
       event,
       label: ALERT_EVENT_LABELS[event].replace(" (בערב שבת)", ""),

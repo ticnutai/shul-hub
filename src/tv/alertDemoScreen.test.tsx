@@ -51,7 +51,7 @@ describe("the reminder's example on the screen", () => {
     // Some hours on: the board's clock is set to it, whatever the real time.
     const at = new Date(shma.getTime() - (10 * 60 - 5) * 1000);
     const alerts = { ...DEFAULT_TV_CONFIG.alerts, mode: "staged" as const, events: ["sof_zman_shma" as const], stages: { highlight: 30, panel: 20, board: 10 } };
-    send(alertDemoPayload(alerts, at));
+    send(alertDemoPayload(alerts, at, 1, 20));
     expect(container.querySelector(".tv-demo-tag")?.textContent).toBe("דוגמת תזכורת · לא אמיתית");
     expect(container.querySelector(".tv-alert-card")?.textContent).toContain("סוף זמן קריאת שמע");
     // Not the older app's text.
@@ -64,6 +64,17 @@ describe("the reminder's example on the screen", () => {
     act(() => { vi.advanceTimersByTime(20_000); });
     expect(container.querySelector(".tv-demo-tag")).toBeNull();
     expect(container.querySelector(".tv-alert-card")).toBeNull();
+  });
+
+  it("runs at the speed chosen: a second on the wall, a minute on the board", () => {
+    const { container } = render(<QueryClientProvider client={new QueryClient()}><TvApp /></QueryClientProvider>);
+    const shma = zmanimFor(new Date(), null).sof_zman_shma!;
+    const alerts = { ...DEFAULT_TV_CONFIG.alerts, mode: "staged" as const, events: ["sof_zman_shma" as const], stages: { highlight: 30, panel: 20, board: 10 } };
+    send(alertDemoPayload(alerts, new Date(shma.getTime() - 9 * 60_000), 60, 10));
+    const count = () => container.querySelector(".tv-alert-countdown")?.textContent;
+    expect(count()).toBe("9:00");
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(count()).toBe("8:00");
   });
 
   it("leaves a plain message as it was", () => {

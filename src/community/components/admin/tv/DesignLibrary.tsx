@@ -72,8 +72,14 @@ const startingParts = (config: TvConfig): DesignPart[] =>
   config.screenLayout === "composition" ? [...DESIGN_PARTS] : ["background", "frames", "text"];
 /** On a board of parts, its parts ("מסגרות") and their layout ("פריסה") are always kept: they are what makes the kit editable. */
 const PARTS_KEPT = (config: TvConfig): DesignPart[] => (config.screenLayout === "composition" ? ["frames", "layout"] : []);
-/** A kit made of free parts: put on, its parts are edited one by one in "חלקים חופשיים". */
-const ofParts = (d: SavedDesign) => d.values.screenLayout === "composition" || Boolean(d.values.elements?.length);
+/**
+ * A kit made of free parts: put on, its parts are edited one by one in "חלקים חופשיים".
+ * A board of parts, or parts with no layout of their own; a kit of another
+ * layout with a few ornaments over it (the shared catalogue's three medallions,
+ * "שיש וזהב · חדש ועתיק" and its two) is not - it was offered, 16.10.2026.
+ */
+export const ofParts = (d: Pick<SavedDesign, "values">) =>
+  d.values.screenLayout === "composition" || (!d.values.screenLayout && Boolean(d.values.elements?.length));
 
 /** The form of a new kit: its name and what it holds. One form, wherever a kit is saved from. */
 export function KitSaveForm({ config, onEdit, onDone, testId }: { config: TvConfig; onEdit: Edit; onDone: () => void; testId?: string }) {

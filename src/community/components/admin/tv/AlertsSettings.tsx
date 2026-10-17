@@ -1,26 +1,31 @@
 /**
- * The countdown reminders, in one place: when they come (which times, and in
- * which steps), how they look (colours, shape, size, where on the board), and
- * the count to the next minyan beside them. A picture of the card stands at
- * the side and changes with every choice; "דוגמת תזכורת על הלוח" shows it on the
- * board's preview, at the step chosen.
+ * The countdown reminders, in one place: when they come (which times, in
+ * which steps - for every time, or a time with minutes of its own), a
+ * simulation that runs the board's preview up to a time through those steps,
+ * how they look (colours, shape, size, where on the board), and the count to
+ * the next minyan beside them. A picture of the card stands at the side and
+ * changes with every choice.
  */
 import { useState, type CSSProperties } from "react";
-import { BellRing } from "lucide-react";
+import { Pause, Play, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { ALERT_EVENT_LABELS, DEFAULT_ALERT_LOOK, type AlertEvent, type AlertLook, type TvConfig } from "@/tv/config";
+import { ALERT_EVENT_LABELS, DEFAULT_ALERT_LOOK, type AlertEvent, type AlertLook, type AlertMinutes, type TvConfig } from "@/tv/config";
 import { themeStyle } from "@/tv/themes";
 import { ALERT_ICONS, ALERT_PRESETS, alertLookVars, formatCountdown } from "@/tv/zmanAlerts";
-import { SCREEN_EXAMPLE_SECONDS, type AlertExample } from "@/tv/alertDemo";
+import { alertTimeline, whatShows, type SimSpeed, type TimelineMark } from "@/tv/alertDemo";
+import type { AlertSimulation } from "./alertSimulation";
 import { ColourRow, Segments, Stepper, SwitchRow } from "./editorParts";
 import { itemChipClass } from "./Notice";
 import { ChipRemove } from "./ReadyShelf";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
-export type { AlertExample };
-/** A connected screen the example can be shown on: is it on now, and does its app show it (1.40 and on). */
+/** A connected screen the simulation can be sent to: is it on now, and does its app show it (1.40 and on). */
 export interface ExampleScreen { id: string; name: string; online: boolean; shows: boolean }
+
+/** A time's name, without the note that candle lighting is on Friday. */
+const eventName = (e: AlertEvent) => ALERT_EVENT_LABELS[e].replace(" (בערב שבת)", "");
+const hhmm = (d: Date) => d.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jerusalem" });
 
 const STYLES: [AlertLook["style"], string][] = [
   ["theme", "צבעי הלוח"], ["night", "לילה וזהב"], ["gold", "זהב בהיר"], ["parchment", "קלף"], ["crimson", "אדום דחוף"], ["custom", "צבעים שלי"],
@@ -73,29 +78,50 @@ function LeadMinutes({ value, onChange }: { value: number[]; onChange: (v: numbe
   );
 }
 
-export function AlertsSettings({ config, countdown, edit, onExample, screens = [], screen = "", onScreen }: {
+export function AlertsSettings({ config, countdown, edit, simulation, screens = [], onSend }: {
   config: TvConfig;
   /** The count to the next minyan, as the screen being edited has it. */
   countdown: boolean;
   edit: Edit;
-  onExample: (what: AlertExample) => void;
-  /** The connected screens; the one chosen ("" none, "all" every one) gets the example too. */
+  /** The simulation on the board's preview (alertSimulation.ts); without it, none shown. */
+  simulation?: AlertSimulation;
+  /** The connected screens the simulation can be sent to ("all" - every one). */
   screens?: ExampleScreen[];
-  screen?: string;
-  onScreen?: (id: string) => void;
+  onSend?: (to: string) => void;
 }) {
   const a = config.alerts;
   const look = a.look;
   const staged = a.mode === "staged";
   const setAlerts = (key: string, patch: Partial<TvConfig["alerts"]>) => edit(`al-${key}`, (c) => ({ ...c, alerts: { ...c.alerts, ...patch } }));
   const setLook = (patch: Partial<AlertLook>) => edit(`al-look:${Object.keys(patch).join(",")}`, (c) => ({ ...c, alerts: { ...c.alerts, look: { ...c.alerts.look, ...patch } } }));
+
+  // Whose minutes are edited: every time's, or one time's own. A time no longer chosen is every time's again.
+  const [chosenTarget, setTarget] = useState<AlertEvent | "all">("all");
+  const target = chosenTarget !== "all" && a.events.includes(chosenTarget) ? chosenTarget : "all";
+  const own = target === "all" ? undefined : a.own[target];
+  const mins: AlertMinutes = own ?? { stages: a.stages, leadMinutes: a.leadMinutes };
+  const setMins = (key: string, patch: Partial<AlertMinutes>) =>
+    target === "all"
+      ? setAlerts(key, patch)
+      : setAlerts(`own:${target}:${key}`, { own: { ...a.own, [target]: { ...mins, ...patch } } });
+  const setOwn = (on: boolean) => {
+    if (target === "all") return;
+    const rest = { ...a.own };
+    delete rest[target];
+    setAlerts(`own:${target}`, { own: on ? { ...rest, [target]: { stages: a.stages, leadMinutes: a.leadMinutes } } : rest });
+  };
+  const choose = (t: AlertEvent | "all") => {
+    setTarget(t);
+    // The simulation runs up to the time being worked on.
+    if (t !== "all") simulation?.setEvent(t);
+  };
   // Steps in order: setting one keeps the others around it in order.
-  const setStage = (k: keyof TvConfig["alerts"]["stages"], v: number) => {
-    const s = { ...a.stages, [k]: v };
+  const setStage = (k: keyof AlertMinutes["stages"], v: number) => {
+    const s = { ...mins.stages, [k]: v };
     if (k === "highlight") { if (s.panel > v && v) s.panel = v; if (s.board > (s.panel || v) && v) s.board = s.panel || v; }
     if (k === "panel") { if (v > s.highlight && s.highlight) s.highlight = v; if (s.board > v && v) s.board = v; }
     if (k === "board") { if (v > s.panel && s.panel) s.panel = v; if (v > s.highlight && s.highlight) s.highlight = v; }
-    setAlerts("stages", { stages: s });
+    setMins("stages", { stages: s });
   };
   const colours = look.style === "custom" ? look.colors : look.style === "theme" ? null : ALERT_PRESETS[look.style];
 
@@ -119,24 +145,47 @@ export function AlertsSettings({ config, countdown, edit, onExample, screens = [
         </div>
         <Choice label="איך זה מתקדם" value={a.mode} onChange={(m) => setAlerts("mode", { mode: m })}
           options={[["staged", "בשלבים - ככל שהזמן מתקרב, התזכורת גדלה"], ["pulse", "כרטיס שקופץ לרגע בדקות שבוחרים"]]} />
-        {staged ? (
-          <div className="space-y-2 rounded-lg border p-3" data-testid="alert-stages">
-            <Minutes label="1. סימון הזמן ברשימה" value={a.stages.highlight} onChange={(v) => setStage("highlight", v)} hint="דקות לפני: הזמן מודגש בזמני היום" />
-            <Minutes label="2. ספירה במקום התפילות" value={a.stages.panel} onChange={(v) => setStage("panel", v)} hint="דקות לפני: ספירה לאחור במקום רשימת התפילות" />
-            <Minutes label="3. ספירה על כל הלוח" value={a.stages.board} onChange={(v) => setStage("board", v)} hint="דקות לפני: כרטיס גדול על הלוח, עד שהזמן מגיע" />
-            <p className="text-xs text-muted-foreground">0 מדלג על השלב. השלבים תמיד בסדר: הסימון קודם, אחר כך הספירה במקום התפילות, ובסוף הספירה על כל הלוח.</p>
-          </div>
-        ) : (
-          <div className="space-y-2 rounded-lg border p-3">
-            <LeadMinutes value={a.leadMinutes} onChange={(leads) => setAlerts("leads", { leadMinutes: leads })} />
+        <div className="space-y-2 rounded-lg border p-3" data-testid="alert-minutes">
+          {a.events.length > 0 && (
+            <label className="flex flex-wrap items-center gap-2 text-sm">
+              הדקות של:
+              <select aria-label="הדקות של" className="h-8 rounded-md border bg-background px-2 text-sm" value={target}
+                onChange={(e) => choose(e.target.value as AlertEvent | "all")}>
+                <option value="all">כל הזמנים</option>
+                {a.events.map((e) => (
+                  <option key={e} value={e}>{eventName(e)}{a.own[e] ? " (דקות משלו)" : ""}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {target !== "all" && (
+            <SwitchRow label={`דקות משלו ל${eventName(target)}`} note={own ? "רק לזמן הזה" : "כרגע כמו כל הזמנים"} ariaLabel="דקות משלו לזמן הזה" checked={Boolean(own)} onChange={setOwn} />
+          )}
+          {(target === "all" || own) && (staged ? (
+            <div className="space-y-2" data-testid="alert-stages">
+              <Minutes label="1. סימון הזמן ברשימה" value={mins.stages.highlight} onChange={(v) => setStage("highlight", v)} hint="דקות לפני: הזמן מודגש בזמני היום" />
+              <Minutes label="2. ספירה במקום התפילות" value={mins.stages.panel} onChange={(v) => setStage("panel", v)} hint="דקות לפני: ספירה לאחור במקום רשימת התפילות" />
+              <Minutes label="3. ספירה על כל הלוח" value={mins.stages.board} onChange={(v) => setStage("board", v)} hint="דקות לפני: כרטיס גדול על הלוח, עד שהזמן מגיע" />
+              <p className="text-xs text-muted-foreground">0 מדלג על השלב. השלבים תמיד בסדר: הסימון קודם, אחר כך הספירה במקום התפילות, ובסוף הספירה על כל הלוח.</p>
+            </div>
+          ) : (
+            <LeadMinutes value={mins.leadMinutes} onChange={(leads) => setMins("leads", { leadMinutes: leads })} />
+          ))}
+          {!staged && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
               הכרטיס נשאר על המסך
               <Stepper label="משך הצגת הכרטיס בשניות" value={a.popupSeconds} min={10} max={180} step={5} format={(v) => `${v} שניות`}
                 onChange={(v) => setAlerts("sec", { popupSeconds: v })} />
               בין הכרטיסים - פס קטן עם ספירה בתחתית הלוח.
             </div>
-          </div>
-        )}
+          )}
+          {target === "all" && a.events.some((e) => a.own[e]) && (
+            <p className="text-xs text-muted-foreground">
+              עם דקות משלהם: {a.events.filter((e) => a.own[e]).map(eventName).join(", ")}.
+            </p>
+          )}
+        </div>
+        {simulation && a.enabled && <Simulation alerts={a} sim={simulation} screens={screens} onSend={onSend} />}
       </section>
 
       {/* ------------------------------------------------------------ look */}
@@ -177,18 +226,7 @@ export function AlertsSettings({ config, countdown, edit, onExample, screens = [
               </div>
             </div>
             {colours && <p className="text-[11px] text-muted-foreground">גם הספירה במקום התפילות והפס הקטן מקבלים את אותם צבעים.</p>}
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" size="sm" disabled={!a.enabled} onClick={() => onExample("board")}>
-                <BellRing className="size-4" aria-hidden /> דוגמת תזכורת על הלוח
-              </Button>
-              {staged && a.stages.panel > 0 && (
-                <Button type="button" variant="outline" size="sm" disabled={!a.enabled} onClick={() => onExample("panel")}>דוגמה: במקום התפילות</Button>
-              )}
-              {!staged && (
-                <Button type="button" variant="outline" size="sm" disabled={!a.enabled} onClick={() => onExample("chip")}>דוגמה: הפס הקטן</Button>
-              )}
-            </div>
-            {onScreen && <ExampleOnScreen screens={screens} screen={screen} onScreen={onScreen} />}
+            <p className="text-[11px] text-muted-foreground">את התזכורת על הלוח עצמו, בכל שלב, רואים בהדמיה שבקטע "מתי".</p>
           </div>
         </div>
       </section>
@@ -209,39 +247,117 @@ export function AlertsSettings({ config, countdown, edit, onExample, screens = [
 }
 
 /**
- * Where the example shows besides the preview: on a connected screen too -
- * the board itself, its clock running from a few minutes before, marked
- * "דוגמה" - and what to expect of the one chosen.
+ * The steps before a time on a line - when each comes, in minutes before it -
+ * and where the simulation stands; a step is a button that jumps the board's
+ * preview to it.
  */
-function ExampleOnScreen({ screens, screen, onScreen }: { screens: ExampleScreen[]; screen: string; onScreen: (id: string) => void }) {
+function Timeline({ marks, from, position, onJump }: { marks: TimelineMark[]; from: number; position: number | null; onJump: (minutes: number) => void }) {
+  // Right to left, as the page reads: the start on the right, the time itself on the left.
+  const at = (minutes: number) => `${(Math.min(from, Math.max(0, from - minutes)) / from) * 100}%`;
+  return (
+    <div className="space-y-2" data-testid="alert-timeline">
+      <div className="relative mx-2 h-4" aria-hidden>
+        <div className="absolute inset-x-0 top-1/2 h-0.5 -translate-y-1/2 bg-border" />
+        {marks.map((m) => (
+          <span key={m.minutes} className={`absolute top-1/2 size-2.5 -translate-y-1/2 translate-x-1/2 rounded-full ${m.minutes ? "bg-primary" : "bg-destructive"}`} style={{ right: at(m.minutes) }} title={m.label} />
+        ))}
+        {position !== null && (
+          <span className="absolute -top-0.5 h-5 w-1 translate-x-1/2 rounded bg-amber-500" style={{ right: at(position) }} data-testid="timeline-now" />
+        )}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {marks.map((m) => (
+          <Button key={m.minutes} type="button" variant="outline" size="sm" className="h-7 px-2 text-xs" onClick={() => onJump(m.minutes)}>
+            {m.minutes ? `${m.minutes} דקות לפני: ${m.label}` : m.label}
+          </Button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The simulation: the board's preview run up to a time through its steps -
+ * played, paused, faster, or jumped to a step - and sent to a connected
+ * screen from where it stands.
+ */
+function Simulation({ alerts, sim, screens, onSend }: { alerts: TvConfig["alerts"]; sim: AlertSimulation; screens: ExampleScreen[]; onSend?: (to: string) => void }) {
+  if (!sim.event || !sim.at) {
+    return (
+      <p className="text-xs text-muted-foreground" data-testid="alert-simulation">
+        אין {sim.dayNote} זמן מהזמנים שנבחרו שאפשר להדגים (הדלקת נרות - רק בערב שבת).
+      </p>
+    );
+  }
+  const { marks, from } = alertTimeline(alerts, sim.event);
+  const left = sim.moment ? Math.round((sim.at.getTime() - sim.moment.getTime()) / 1000) : null;
+  return (
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-3" data-testid="alert-simulation">
+      <div className="text-sm font-medium">
+        הדמיה על הלוח: {eventName(sim.event)} {sim.dayNote} בשעה <span dir="ltr">{hhmm(sim.at)}</span>
+        {alerts.own[sim.event] ? " (דקות משלו)" : ""}
+      </div>
+      <Timeline marks={marks} from={from} position={left === null ? null : left / 60} onJump={sim.jump} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="button" size="sm" onClick={sim.playing ? sim.pause : sim.play}>
+          {sim.playing ? <Pause className="size-4" aria-hidden /> : <Play className="size-4" aria-hidden />}
+          {sim.playing ? "השהיית ההדמיה" : sim.moment ? "המשך ההדמיה" : "הפעלת ההדמיה"}
+        </Button>
+        {sim.moment && (
+          <Button type="button" variant="ghost" size="sm" onClick={sim.stop}>
+            סיום - חזרה לזמן אמת
+          </Button>
+        )}
+        <Segments
+          label="מהירות ההדמיה"
+          value={String(sim.speed)}
+          onChange={(v) => sim.setSpeed(Number(v) as SimSpeed)}
+          options={[{ id: "1", name: "רגיל" }, { id: "10", name: "פי 10" }, { id: "60", name: "פי 60" }]}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground" data-testid="simulation-readout">
+        {sim.moment && left !== null
+          ? `${left > 0 ? `נשארו ${formatCountdown(left)}` : "הזמן עבר"} · על הלוח: ${whatShows(alerts, sim.event, sim.at, sim.moment)}`
+          : `ההדמיה מתחילה ${from} דקות לפני ${eventName(sim.event)} ורצה עד דקה אחריו, על התצוגה של הלוח. לחיצה על שלב קופצת אליו.`}
+      </p>
+      {onSend && <SendToScreen screens={screens} onSend={onSend} />}
+    </div>
+  );
+}
+
+/**
+ * The simulation on a connected screen too: the board itself, its clock
+ * running from where the simulation stands, at its speed, marked "דוגמה" -
+ * and what to expect of the screen chosen.
+ */
+function SendToScreen({ screens, onSend }: { screens: ExampleScreen[]; onSend: (to: string) => void }) {
+  const [screen, setScreen] = useState("");
   const chosen = screens.find((s) => s.id === screen);
   const old = screen === "all" ? screens.filter((s) => !s.shows) : chosen && !chosen.shows ? [chosen] : [];
   return (
-    <div className="space-y-1 rounded-lg border p-2" data-testid="alert-example-screen">
-      <label className="flex flex-wrap items-center gap-2 text-sm">
-        הדוגמה מוצגת גם על:
-        <select
-          aria-label="מסך מחובר לדוגמה"
-          className="h-8 rounded-md border bg-background px-2 text-sm"
-          value={screens.length ? screen : ""}
-          disabled={!screens.length}
-          onChange={(e) => onScreen(e.target.value)}
-        >
-          <option value="">רק התצוגה כאן</option>
-          {screens.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}{s.online ? "" : " (לא מחובר עכשיו)"}</option>
-          ))}
-          {screens.length > 1 && <option value="all">כל המסכים</option>}
-        </select>
-      </label>
+    <div className="space-y-1 border-t pt-2" data-testid="alert-example-screen">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <label className="flex items-center gap-2">
+          גם על מסך מחובר:
+          <select aria-label="מסך מחובר להדמיה" className="h-8 rounded-md border bg-background px-2 text-sm" value={screen} disabled={!screens.length}
+            onChange={(e) => setScreen(e.target.value)}>
+            <option value="">בחירת מסך</option>
+            {screens.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}{s.online ? "" : " (לא מחובר עכשיו)"}</option>
+            ))}
+            {screens.length > 1 && <option value="all">כל המסכים</option>}
+          </select>
+        </label>
+        <Button type="button" variant="outline" size="sm" disabled={!screen} onClick={() => onSend(screen)}>
+          <Send className="size-4" aria-hidden /> שליחה למסך
+        </Button>
+      </div>
       <p className="text-[11px] text-muted-foreground">
         {!screens.length
-          ? "אין מסך מאושר - מצמידים מסך בלשונית \"מסכים מחוברים\"."
-          : screen
-            ? `הדוגמה תופיע על המסך ל־${SCREEN_EXAMPLE_SECONDS} שניות, עם הכיתוב "דוגמה", והספירה תרוץ בה. אחר כך המסך חוזר לעצמו. ההגדרות כפי שהן כאן - גם לפני שמירה.`
-            : "אפשר לבחור מסך מחובר, והדוגמה תופיע גם עליו."}
+          ? 'אין מסך מאושר - מצמידים מסך בלשונית "מסכים מחוברים".'
+          : 'ההדמיה רצה על המסך מהרגע שבו היא עומדת כאן ובאותה מהירות, עד קצת אחרי הזמן (עד דקה), עם הכיתוב "דוגמה". אחר כך המסך חוזר לעצמו. ההגדרות כפי שהן כאן - גם לפני שמירה.'}
         {old.length > 0 && ` ${old.map((s) => s.name).join(", ")}: האפליקציה ישנה - יופיע רק הסבר שצריך לעדכן אותה לגרסה 1.40.`}
-        {chosen && !chosen.online && " המסך הזה לא מחובר עכשיו - הדוגמה תופיע כשיתחבר, אם זה יהיה בדקה וחצי הקרובה."}
+        {chosen && !chosen.online && " המסך הזה לא מחובר עכשיו - ההדמיה תופיע כשיתחבר, אם זה יהיה בדקה וחצי הקרובה."}
       </p>
     </div>
   );

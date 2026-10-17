@@ -771,10 +771,10 @@ export function ShiurimAdmin() {
                 checked={draft.notification_enabled ?? false}
                 onCheckedChange={(value) => setDraft({ ...draft, notification_enabled: value })}
               />
-              <Label htmlFor="shiur-notification">לאפשר תזכורת</Label>
+              <Label htmlFor="shiur-notification">לאפשר תזכורת לטלפון (למי שבחר לקבל שיעורים)</Label>
             </div>
             <div className="space-y-2">
-              <Label>כמה דקות לפני</Label>
+              <Label>תזכורת לטלפון - כמה דקות לפני השיעור</Label>
               <Input
                 type="number"
                 dir="ltr"

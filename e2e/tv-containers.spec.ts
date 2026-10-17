@@ -97,6 +97,6 @@ test("the library offers kits of parts only: the old ones not built of parts are
   await open(page);
   const library = page.getByTestId("design-library");
   await expect(library.locator('[data-design-id="d_premium_jerusalem-stone"]').first()).toBeVisible();
-  for (const id of ["d_wood", "d_curtain", "d_stone", "d_modern", "d_sapphireparts"]) await expect(library.locator(`[data-design-id="${id}"]`)).toHaveCount(0);
+  for (const id of ["d_wood", "d_curtain", "d_stone", "d_modern", "d_sapphireparts", "d_new_marble", "d_new_wood", "d_new_marble-dark"]) await expect(library.locator(`[data-design-id="${id}"]`)).toHaveCount(0);
   await expect(page.getByTestId("older-designs")).toHaveCount(0);
 });

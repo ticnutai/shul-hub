@@ -200,3 +200,21 @@ describe("קריאת שמע ותפילה: 10 דקות בתיבה, 5 על כל ה
     }
   });
 });
+
+describe("a time with minutes of its own", () => {
+  // The sunset from 15 minutes, everything else as set for every time.
+  const own = { sunset: { stages: { highlight: 15, panel: 10, board: 5 }, leadMinutes: [12] } };
+  it("is staged by its own steps, the others by every time's", () => {
+    const staged = { ...DEFAULT_TV_CONFIG.alerts, mode: "staged" as const, events: ["sunset" as const, "sof_zman_shma" as const], own };
+    // 20 minutes before: the shma is counting already, the sunset not yet.
+    expect(currentZmanAlert(new Date(at(9, 31).getTime() - 20 * 60_000), zmanim, staged, false)?.stage).toBe("panel");
+    expect(currentZmanAlert(new Date(at(18, 45).getTime() - 20 * 60_000), zmanim, staged, false)).toBeNull();
+    expect(currentZmanAlert(new Date(at(18, 45).getTime() - 4 * 60_000), zmanim, staged, false)?.stage).toBe("board");
+  });
+  it("pops its card at its own minutes", () => {
+    const pulse = { ...alerts, events: ["sunset" as const], own };
+    expect(currentZmanAlert(new Date(at(18, 45).getTime() - 12 * 60_000 + 5_000), zmanim, pulse, false)).toMatchObject({ popup: true, lead: 12 });
+    // Every time's 30 minutes are not its own.
+    expect(currentZmanAlert(new Date(at(18, 45).getTime() - 25 * 60_000), zmanim, pulse, false)).toBeNull();
+  });
+});

@@ -412,9 +412,10 @@ test.describe("TV editor", () => {
     await expectNotFrozen(page, "back from shabbat");
 
     await page.getByRole("tab", { name: "תוכן" }).click();
-    // One example button, beside the reminders' own settings.
-    await page.getByRole("button", { name: "דוגמת תזכורת על הלוח" }).click();
-    await expectNotFrozen(page, "alert demo");
+    // The reminder's simulation, beside the reminders' own settings.
+    await page.getByRole("button", { name: "הפעלת ההדמיה" }).click();
+    await expectNotFrozen(page, "alert simulation");
+    await page.getByRole("button", { name: "סיום - חזרה לזמן אמת" }).click();
 
     // The bar at the top; the same button also stands under the preview while
     // there is something to save.

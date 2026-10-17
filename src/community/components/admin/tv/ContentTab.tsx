@@ -11,18 +11,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { TvConfig } from "@/tv/config";
-import { AlertsSettings, type AlertExample, type ExampleScreen } from "./AlertsSettings";
+import { AlertsSettings, type ExampleScreen } from "./AlertsSettings";
+import type { AlertSimulation } from "./alertSimulation";
 import { Section, Stepper, SwitchRow } from "./editorParts";
 import { FileButton, useUpload } from "./Upload";
 
-export function ContentTab({ scoped, edit, showAlertExample, exampleScreens, exampleScreen, setExampleScreen }: {
+export function ContentTab({ scoped, edit, simulation, simulationScreens, sendSimulation }: {
   scoped: TvConfig;
   edit: (key: string, update: (c: TvConfig) => TvConfig) => void;
-  showAlertExample: (what?: AlertExample) => void;
-  /** The connected screens the reminder's example can be shown on too. */
-  exampleScreens: ExampleScreen[];
-  exampleScreen: string;
-  setExampleScreen: (id: string) => void;
+  /** The reminder's simulation on the preview (alertSimulation.ts). */
+  simulation: AlertSimulation;
+  /** The connected screens it can be sent to. */
+  simulationScreens: ExampleScreen[];
+  sendSimulation: (to: string) => void;
 }) {
   const { uploading, upload } = useUpload();
   const addPictures = (files: File[]) =>
@@ -139,10 +140,9 @@ export function ContentTab({ scoped, edit, showAlertExample, exampleScreens, exa
           config={scoped}
           countdown={scoped.countdown.enabled}
           edit={edit}
-          onExample={showAlertExample}
-          screens={exampleScreens}
-          screen={exampleScreen}
-          onScreen={setExampleScreen}
+          simulation={simulation}
+          screens={simulationScreens}
+          onSend={sendSimulation}
         />
       </Section>
     </>

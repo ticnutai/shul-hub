@@ -17,7 +17,7 @@ import { TvBoard } from "./TvBoard";
 import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
-import { readAlertDemo, type AlertDemo } from "./alertDemo";
+import { demoNow, readAlertDemo, type AlertDemo } from "./alertDemo";
 import { scheduleNightlyRefresh, setWatchdogReport, watchMainThread } from "./watchdog";
 import { reloadBoard } from "./remoteBoard";
 import { WebControls } from "./TvWebControls";
@@ -201,14 +201,14 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   helpRef.current = help;
   const [notice, setNotice] = useState<Notice | null>(null);
   /**
-   * The reminder's example from the editor (alertDemo.ts): for a little while
-   * the board's clock stands a few minutes before a time of the day, so its
-   * countdown runs as it will - the slides, the heartbeat and everything else
-   * keep the real time.
+   * The reminder's simulation from the editor (alertDemo.ts): for a little
+   * while the board's clock runs from a few minutes before a time of the day,
+   * at the speed chosen, so its countdown goes as it will - the slides, the
+   * heartbeat and everything else keep the real time.
    */
   const [demo, setDemo] = useState<AlertDemo | null>(null);
   const demoOn = Boolean(demo && now.getTime() < demo.until);
-  const boardNow = demo && demoOn ? new Date(now.getTime() + demo.offset) : now;
+  const boardNow = demo && demoOn ? demoNow(demo, now.getTime()) : now;
   const boardZmanim = useDayZmanim(boardNow, data.settings);
   useEffect(() => {
     if (!demo) return;

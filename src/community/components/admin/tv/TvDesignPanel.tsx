@@ -61,7 +61,6 @@ import { downloadFile } from "@/tv/workspaceTransfer";
 
 import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
 
-import { type AlertExample } from "./AlertsSettings";
 import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { ContentTab } from "./ContentTab";
 import { DesignTab } from "./DesignTab";
@@ -85,7 +84,8 @@ import { SplitHandle } from "./SplitHandle";
 import { StudioPanel } from "./StudioPanel";
 import { ToolsTab } from "./ToolsTab";
 import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth, sendCommand } from "./tvAdminData";
-import { ALERT_DEMO_APP_CODE, SCREEN_EXAMPLE_SECONDS, alertDemoPayload, alertExampleMoment } from "@/tv/alertDemo";
+import { ALERT_DEMO_APP_CODE, alertDemoPayload, alertTimeline, screenSeconds, whatShows } from "@/tv/alertDemo";
+import { useAlertSimulation } from "./alertSimulation";
 import { useDraftSync } from "./tvDraftChannel";
 import { TvEditInspector } from "./TvEditInspector";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
@@ -608,24 +608,26 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     return () => window.clearTimeout(id);
   }, [autoplay, current, board.slides.length]);
 
-  /** Where the reminder's example shows besides the preview: "" none, "all" every screen, or one screen's id. */
-  const [exampleScreen, setExampleScreen] = useState("");
-  const showAlertExample = (what: AlertExample = "board") => {
-    const moment = alertExampleMoment(view.alerts, what, (d) => zmanimFor(d, board.data.settings), jerusalemWeekday(new Date()));
-    if (!moment) return toast.error("אין זמן מתאים היום להדגמה");
-    setSimulatedNow(moment.at);
-    window.setTimeout(() => setSimulatedNow(null), 12_000);
-    const before = `${Math.ceil(moment.seconds / 60)} דקות לפני ${ALERT_EVENT_LABELS[moment.event]}`;
-    if (!exampleScreen) return toast.info(`מציג איך תיראה התזכורת ${before}`);
-    // On the screen too: the same moment, its clock running from there.
-    const to = exampleScreen === "all" ? null : exampleScreen;
-    const name = to ? (devices.data ?? []).find((d) => d.id === to)?.name || "המסך" : "כל המסכים";
-    sendCommand(to, "message", alertDemoPayload(view.alerts, moment.at))
-      .then(() => toast.success(`הדוגמה (${before}) נשלחה ל${name} - היא תופיע שם תוך כמה שניות, ל־${SCREEN_EXAMPLE_SECONDS} שניות`))
-      .catch(() => toast.error(`השליחה ל${name} נכשלה - אפשר לנסות שוב`));
+  // Preview another moment: Shabbat, an occasion's day, any date - until the
+  // admin goes back to real time. One control under the preview chooses the
+  // day; an occasion's eye (its row in "מועדים") shows its own.
+  const [dayPreview, setDayPreview] = useState(false);
+  const [shabbatPreview, setShabbatPreview] = useState(false);
+  /** The reminder's simulation: the same simulated clock, run up to a time of the day. */
+  const simulation = useAlertSimulation(view.alerts, board.data.settings, (at) => {
+    setDayPreview(false);
+    setShabbatPreview(false);
+    setSimulatedNow(at);
+  });
+  const previewAt = (at: Date | null) => {
+    simulation.halt();
+    setDayPreview(Boolean(at));
+    setShabbatPreview(false);
+    setSimulatedNow(at);
+    setPreviewIndex(0);
   };
-  /** The screens the example can go to, and whether their app shows it (1.40 and on). */
-  const exampleScreens = (devices.data ?? [])
+  /** The screens the simulation can go to, and whether their app shows it (1.40 and on). */
+  const simulationScreens = (devices.data ?? [])
     .filter((d) => d.approved)
     .map((d) => ({
       id: d.id,
@@ -633,17 +635,17 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       online: deviceHealth(d, Date.now()).online,
       shows: (d.state?.app?.code ?? 0) >= ALERT_DEMO_APP_CODE,
     }));
-
-  // Preview another moment: Shabbat, an occasion's day, any date - until the
-  // admin goes back to real time. One control under the preview chooses the
-  // day; an occasion's eye (its row in "מועדים") shows its own.
-  const [dayPreview, setDayPreview] = useState(false);
-  const [shabbatPreview, setShabbatPreview] = useState(false);
-  const previewAt = (at: Date | null) => {
-    setDayPreview(Boolean(at));
-    setShabbatPreview(false);
-    setSimulatedNow(at);
-    setPreviewIndex(0);
+  /** The simulation on a screen ("all" - every one): from its moment here, at its speed. */
+  const sendSimulation = (to: string) => {
+    const { event, at, moment, speed } = simulation;
+    if (!event || !at) return toast.error("אין זמן מתאים היום להדמיה");
+    const from = moment ?? new Date(at.getTime() - alertTimeline(view.alerts, event).from * 60_000);
+    const seconds = screenSeconds(Math.round((at.getTime() - from.getTime()) / 1000), speed);
+    const device = to === "all" ? null : to;
+    const name = device ? simulationScreens.find((d) => d.id === device)?.name || "המסך" : "כל המסכים";
+    sendCommand(device, "message", alertDemoPayload(view.alerts, from, speed, seconds))
+      .then(() => toast.success(`ההדמיה לפני ${ALERT_EVENT_LABELS[event]} נשלחה ל${name} - היא תופיע שם תוך כמה שניות, ל־${seconds} שניות`))
+      .catch(() => toast.error(`השליחה ל${name} נכשלה - אפשר לנסות שוב`));
   };
   /** An occasion's screen worked on as a page: its day in the preview, on its screen, its design being edited. */
   const openOccasion = (id: string) => {
@@ -1018,6 +1020,19 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           <span dir="ltr">{simulatedNow.toTimeString().slice(0, 5)}</span>
         </span>
       )}
+      {/* The reminder's simulation, while it runs: what the board shows now, and its pause - beside the preview it plays on. */}
+      {simulation.moment && simulation.event && simulation.at && (
+        <span className="flex flex-wrap items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs" data-testid="simulation-status">
+          <b>הדמיית תזכורת:</b> {whatShows(view.alerts, simulation.event, simulation.at, simulation.moment)}
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={simulation.playing ? simulation.pause : simulation.play}>
+            {simulation.playing ? <Pause className="size-3.5" aria-hidden /> : <Play className="size-3.5" aria-hidden />}
+            {simulation.playing ? "השהיה" : "המשך"}
+          </Button>
+          <Button type="button" variant="ghost" size="sm" className="h-6 px-2" onClick={simulation.stop}>
+            סיום ההדמיה
+          </Button>
+        </span>
+      )}
       {dayLookNow && (
         <Notice
           variant="info"
@@ -1237,7 +1252,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} todayOccasions={occasionTabs.filter((t) => t.on).map((t) => t.name)} />
+          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
         </TabsContent>
         <TabsContent
           value="layout"
@@ -1249,7 +1264,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="content"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <ContentTab scoped={scoped} edit={edit} showAlertExample={showAlertExample} exampleScreens={exampleScreens} exampleScreen={exampleScreen} setExampleScreen={setExampleScreen} />
+          <ContentTab scoped={scoped} edit={edit} simulation={simulation} simulationScreens={simulationScreens} sendSimulation={sendSimulation} />
         </TabsContent>
         <TabsContent
           value="tools"

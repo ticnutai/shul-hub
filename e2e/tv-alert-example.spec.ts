@@ -3,9 +3,10 @@ import { serveEditor } from "./support/tvEditor";
 import { DEFAULT_TV_CONFIG } from "../src/tv/config";
 
 /**
- * The reminder's example on a connected screen too: the screen chosen beside
- * the example buttons gets it, as a message (an older app shows its text),
- * with the moment and the reminders as the editor has them - unsaved too.
+ * The reminder's simulation: the board's preview run up to a time through its
+ * steps - played, jumped to a step, ended - and sent to the connected screen
+ * chosen, as a message (an older app shows its text), from where it stands,
+ * at its speed, with the reminders as the editor has them - unsaved too.
  * Nothing leaves this machine: the screens and their commands answer here.
  */
 const SCREEN = {
@@ -19,7 +20,7 @@ const SCREEN = {
   info: {},
 };
 
-test("the reminder's example goes to the connected screen chosen, with the editor's own settings", async ({ page, isMobile }) => {
+test("the reminder's simulation on the preview, and on the connected screen chosen", async ({ page, isMobile }) => {
   test.skip(isMobile, "the editor is for a desktop screen");
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -39,26 +40,39 @@ test("the reminder's example goes to the connected screen chosen, with the edito
   });
   await page.goto("/e2e/harness/editor.html");
   await page.getByRole("tab", { name: "תוכן", exact: true }).click();
-  const settings = page.getByTestId("alerts-settings");
-  await settings.scrollIntoViewIfNeeded();
+  const simulation = page.getByTestId("alert-simulation");
+  await simulation.scrollIntoViewIfNeeded();
 
-  // Only the preview, until a screen is chosen.
-  await settings.getByRole("button", { name: /דוגמת תזכורת על הלוח/ }).click();
-  await expect(page.getByText(/מציג איך תיראה התזכורת/)).toBeVisible();
+  // A step jumped to: the card on the preview, and what is on the board said beside the preview.
+  await simulation.getByRole("button", { name: "5 דקות לפני: כרטיס קופץ", exact: true }).click();
+  await expect(page.locator("[data-board-preview] .tv-alert-card").first()).toBeVisible();
+  await expect(page.getByTestId("simulation-status")).toContainText("כרטיס קופץ");
+  await expect(page.getByTestId("simulation-readout")).toContainText("נשארו 4:5");
+
+  // Played: the clock runs.
+  await simulation.getByRole("button", { name: "המשך ההדמיה" }).click();
+  const readout = await page.getByTestId("simulation-readout").textContent();
+  await expect(page.getByTestId("simulation-readout")).not.toHaveText(readout!);
+  await simulation.getByRole("button", { name: "השהיית ההדמיה" }).click();
+
+  // Ended: the real time, nothing left on the board.
+  await simulation.getByRole("button", { name: "סיום - חזרה לזמן אמת" }).click();
+  await expect(page.getByTestId("simulation-status")).toHaveCount(0);
+  await expect(page.locator("[data-board-preview] .tv-alert-card")).toHaveCount(0);
   expect(commands).toHaveLength(0);
 
-  // A change not saved yet goes with it.
-  await settings.getByRole("radio", { name: /בשלבים/ }).click();
-  await settings.getByLabel("מסך מחובר לדוגמה", { exact: true }).selectOption({ label: "מסך בית הכנסת" });
-  await expect(page.getByTestId("alert-example-screen")).toContainText("עם הכיתוב \"דוגמה\"");
-  await settings.getByRole("button", { name: /דוגמת תזכורת על הלוח/ }).click();
+  // A change not saved yet goes to the screen with it, at the speed chosen.
+  await page.getByTestId("alerts-settings").getByRole("radio", { name: /בשלבים/ }).click();
+  await simulation.getByRole("radio", { name: "פי 60" }).click();
+  await simulation.getByRole("button", { name: "10 דקות לפני: ספירה על כל הלוח", exact: true }).click();
+  await simulation.getByLabel("מסך מחובר להדמיה", { exact: true }).selectOption({ label: "מסך בית הכנסת" });
+  await simulation.getByRole("button", { name: /שליחה למסך/ }).click();
   await expect.poll(() => commands.length).toBe(1);
   const [sent] = commands;
   expect(sent.device_id).toBe(SCREEN.id);
   expect(sent.command).toBe("message");
   expect(sent.payload.text).toContain("1.40");
-  expect(sent.payload.alertDemo.alerts.mode).toBe("staged");
-  expect(Date.parse(sent.payload.alertDemo.at)).not.toBeNaN();
+  expect(sent.payload.alertDemo).toMatchObject({ speed: 60, seconds: 11, alerts: { mode: "staged" } });
   await expect(page.getByText(/נשלחה למסך בית הכנסת/)).toBeVisible();
   expect(errors).toEqual([]);
 });

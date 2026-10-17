@@ -35,7 +35,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   setGuide: (g: BuildStep[] | null) => void;
   layerProps: LayerProps;
   textToolsElsewhere: boolean;
-  /** The names of today's occasions: their folders of kits open to begin with. */
+  /** The occasions whose folders of kits open to begin with: the one whose page is edited, else today's. */
   todayOccasions?: string[];
 }) {
   const { view: topicsView, topic } = useDesignTopics();
