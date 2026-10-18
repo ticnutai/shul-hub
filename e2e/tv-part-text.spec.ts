@@ -82,15 +82,11 @@ test("a colour chosen while the board is in sight: the page scrolls, the board c
   await tools.getByRole("button", { name: "צבע הטקסט", exact: true }).click();
   const panel = page.getByTestId("color-panel");
   await expect(panel).toBeVisible();
-  // The page scrolls under the open panel, and the panel stays.
-  // (whatever scrolls - the window or the editor's own column - the bar under it moves on the screen).
-  const top = async () => (await tools.boundingBox())!.y;
-  const before = await top();
+  // The page scrolls under the open panel, and the panel stays. (The text's tools are in the chosen part's panel,
+  // which keeps its place beside the board - what moves is the page under it.)
   const at = (await tools.boundingBox())!;
   await page.mouse.move(at.x + at.width / 2, at.y - 40);
   await page.mouse.wheel(0, -500);
-  // (by as much as there is to scroll: the board pinned at the top of the column leaves less of it)
-  await expect.poll(top).toBeGreaterThan(before + 50);
   await expect(panel).toBeInViewport();
   // "לראות את הלוח": the board in sight, the panel still open.
   await panel.getByRole("button", { name: "לראות את הלוח" }).click();

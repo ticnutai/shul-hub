@@ -1,6 +1,6 @@
 /**
  * The panel of what was chosen on the board: a container's board, its frame,
- * its shape, a list's "הבא בתור", a decoration, or the main background - each with its
+ * its shape, its text, a list's "הבא בתור", a decoration, or the main background - each with its
  * own choices only - docked beside the board where there is room for it, else
  * floating in a corner of the screen; dragged by its title anywhere, where it
  * stays next time (a double click on the title puts it back), folded to its
@@ -30,13 +30,14 @@ import { toast } from "sonner";
 import { ColorPick } from "./ColorPick";
 import { BackgroundTile } from "./LayerEditors";
 import { NextMarkTools } from "./NextMarkTools";
+import { ElementTextTools } from "./ElementTextTools";
 import { marksNext } from "@/tv/nextMark";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
-type Tab = "background" | "board" | "frame" | "shape" | "ornament" | "next" | "add";
+type Tab = "background" | "board" | "frame" | "shape" | "text" | "ornament" | "next" | "add";
 
 const TAB_NAMES: Record<Tab, string> = {
-  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", ornament: "העיטור", next: "סימון הבא", add: "הוספת קונטיינר",
+  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "טקסט", ornament: "העיטור", next: "סימון הבא", add: "הוספת קונטיינר",
 };
 /** Where the panel was dragged to, for next time (this browser). */
 const PANEL_POS_KEY = "tv-part-panel-pos";
@@ -156,9 +157,9 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
     editing?.select(parts.map((e) => e.id));
     toast("נוסף קונטיינר, והוא בחור: אפשר לגרור אותו, ולשנות לו לוח, מסגרת, צורה וטקסט.");
   };
-  // Texts alone: the text bar under the board is theirs (font, size, colour) - a second place for their colour was a duplicate.
+  // Texts alone: the panel too, its "טקסט" first - the one place of a text's letters (the bar under the board is gone).
   const onlyTexts = chosen.length > 0 && chosen.every((id) => config.elements.find((e) => e.id === id)?.kind === "text");
-  if (!editing || !first || onlyTexts) return <div ref={ref} hidden />;
+  if (!editing || !first) return <div ref={ref} hidden />;
   const role = roleOf(first);
   const containers = role === "backdrop" ? [] : containersOf(config.elements, chosen);
   const own = config.elements.filter((e) => containers[0]?.ids.includes(e.id));
@@ -170,13 +171,19 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   // The container's list with times (prayers, lessons, the day's times): its "הבא בתור" here too, not only in the text bar below.
   const lists = config.elements.filter((e) => (own.some((o) => o.id === e.id) || chosen.includes(e.id)) && e.kind === "text" && marksNext(e.binding) && !e.locked);
   // Only what applies: the main background its background (and its frame there); a decoration on its own its look; a container its board, frame, shape and text.
+  // The texts its "טקסט" edits: those chosen, else the container's own (its heading and its content).
+  const texts = config.elements.filter((e) => e.kind === "text" && !e.locked && (chosen.includes(e.id) || (!onlyTexts && own.some((o) => o.id === e.id))));
+  const textTab: Tab[] = texts.length ? ["text"] : [];
+  const nextTab: Tab[] = lists.length ? ["next"] : [];
   const tabs: Tab[] =
     role === "backdrop"
       ? ["background", "add"]
-      : decor && !board && !frame
-        ? ["ornament", "add"]
-        : ["board", "frame", "shape", ...(decor ? (["ornament"] as Tab[]) : []), ...(lists.length ? (["next"] as Tab[]) : []), "add"];
-  const natural: Tab = role === "backdrop" ? "background" : role === "frame" ? "frame" : decor ? "ornament" : tabs[0];
+      : onlyTexts
+        ? [...textTab, ...nextTab, ...(board || frame ? (["board", "frame", "shape"] as Tab[]) : []), "add"]
+        : decor && !board && !frame
+          ? ["ornament", "add"]
+          : ["board", "frame", "shape", ...textTab, ...(decor ? (["ornament"] as Tab[]) : []), ...nextTab, "add"];
+  const natural: Tab = role === "backdrop" ? "background" : onlyTexts || (role === "text" && texts.length) ? tabs.includes("text") ? "text" : tabs[0] : role === "frame" ? "frame" : decor ? "ornament" : tabs[0];
   const tab: Tab = tabFor?.key === key && tabs.includes(tabFor.tab) ? tabFor.tab : natural;
   const title = role === "backdrop" ? "הרקע הראשי" : many ? `${containers.length} קונטיינרים` : decor && !board && !frame ? first.name : containerName(config, own);
   /** The painted decorations of the main container: pieces of the kit's picture that are no container's board or frame. */
@@ -237,6 +244,14 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === "text" && (
+        <div data-testid="preview-text-tools">
+          <ElementTextTools elements={config.elements} ids={texts.map((e) => e.id)} withNextMark={false}
+            onPatch={(ids, p, what) => onEdit(`element-text:${ids.join(",")}:${what}`, (c) => ({ ...c, elements: c.elements.map((e) => (ids.includes(e.id) && !e.locked ? { ...e, ...p } : e)) }))} />
+          <p className="mt-1 text-[11px] text-muted-foreground">לחיצה כפולה על טקסט בלוח - כותבים בו ישירות. Enter לסיום, Esc לביטול.</p>
         </div>
       )}
 

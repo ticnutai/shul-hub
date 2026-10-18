@@ -1320,7 +1320,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           value="design"
           className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
         >
-          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={editing && Boolean(partText)} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
+          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={Boolean(partText)} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
         </TabsContent>
         <TabsContent
           value="layout"
@@ -1608,7 +1608,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         </div>
       )}
       {editing && partKinds && <div className="mt-3">{partKinds}</div>}
-      {editing && partText && <div className="mt-3">{partText}</div>}
+      {/* The texts' letters are in the chosen part's panel ("טקסט"), not in a bar here as well. */}
       {/* Under the board, one row that fills as it wraps: editing, the day shown, then the screens, the layout and the
           windows - no group pushed to the far side leaving a hole, the two "separate window" buttons one menu. */}
       <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="preview-bottom-row">

@@ -51,8 +51,8 @@ test("all the texts chosen at once, and coloured together", async ({ page, isMob
   await layers.getByRole("checkbox", { name: `בחירת ${left.name}`, exact: true }).uncheck();
   await expect(layers.getByRole("checkbox", { checked: true })).toHaveCount(allTexts - 1);
 
-  // One colour for them all.
-  await page.getByRole("button", { name: "צבע החלק", exact: true }).click();
+  // One colour for them all - in the chosen part's panel, its "טקסט" (the one place of a text's colour).
+  await page.getByTestId("part-context-panel").getByTestId("preview-text-tools").getByRole("button", { name: "צבע הטקסט", exact: true }).click();
   await page.getByTestId("color-panel").getByLabel("קוד הצבע", { exact: true }).fill("#c0392b");
   await page.getByLabel("סגירת בחירת הצבע", { exact: true }).click();
 

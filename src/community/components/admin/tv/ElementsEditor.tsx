@@ -267,7 +267,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         {first.kind === 'text' && selected.length === 1 && <label className="text-xs">מקור התוכן<select className={`${SELECT_CLASS} mt-1 block w-full`} aria-label="מקור התוכן של החלק" value={first.binding ?? ''} onChange={e => patch({ binding: (e.target.value || undefined) as BoardElement['binding'] })}><option value="">טקסט חופשי</option>{ELEMENT_BINDINGS.map(b => <option key={b} value={b}>{BINDING_LABELS[b]}</option>)}</select></label>}
         {/* The letters - size, font, bold, wrapping, the words - in the same bar as under the board's preview. */}
         {first.kind === 'text' && <div className="col-span-full">{textToolsElsewhere
-          ? <Notice variant="neutral" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות) נמצא מתחת לתצוגה המקדימה של הלוח.</Notice>
+          ? <Notice variant="neutral" data-testid="text-tools-elsewhere">עיצוב הטקסט (גודל, גופן, מודגש, גלישת שורות, מה כתוב) נמצא בלשונית "טקסט" בחלון של החלק הנבחר, ליד הלוח.</Notice>
           : <ElementTextTools elements={elements} ids={selected} withColor={false} onPatch={textPatch} />}</div>}
       </fieldset>
     </SubPart>}

@@ -20,12 +20,14 @@ const BTN = 'grid size-8 place-items-center rounded border text-muted-foreground
 const ON = 'border-primary bg-primary/10 text-primary';
 const WIDE = 'flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded border px-2 text-xs text-muted-foreground hover:border-primary hover:text-foreground';
 
-export function ElementTextTools({ elements, ids, onPatch, withColor = true }: {
+export function ElementTextTools({ elements, ids, onPatch, withColor = true, withNextMark = true }: {
   elements: BoardElement[];
   ids: string[];
   /** The change, for the parts given (the locked among them are left alone). */
   onPatch: (ids: string[], patch: Partial<BoardElement>, what: string) => void;
   withColor?: boolean;
+  /** "הבא בתור" here too - not where it has a tab of its own (the chosen part's panel). */
+  withNextMark?: boolean;
 }) {
   const texts = elements.filter(e => ids.includes(e.id) && e.kind === 'text' && !e.locked);
   const cut = useCutText(texts.map(e => e.id).join(','));
@@ -94,7 +96,7 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true }: {
           חלק מהטקסט לא נכנס בתיבה ונחתך בתחתית שלה.
         </Notice>
       )}
-      <NextMarkTools elements={elements} texts={texts} onPatch={onPatch} />
+      {withNextMark && <NextMarkTools elements={elements} texts={texts} onPatch={onPatch} />}
       {plain && (
         <label className="block text-xs">
           מה כתוב

@@ -27,6 +27,8 @@ test("the next minyan marked, its shape and colour chosen", async ({ page, isMob
 
   await page.getByRole("button", { name: /עריכה ישירה בלוח/ }).first().click();
   await prayers.click();
+  // "סימון הבא" has a tab of its own in the chosen part's panel.
+  await page.getByTestId("part-context-panel").getByRole("tab", { name: "סימון הבא" }).click();
   const tools = page.getByTestId("next-mark-tools");
   await expect(tools).toBeVisible();
   await tools.getByRole("radio", { name: "תווית \"הבא\"" }).click();
