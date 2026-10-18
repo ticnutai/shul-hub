@@ -1,15 +1,16 @@
 /**
  * The panel of what was chosen on the board: a container's board, its frame,
  * its shape, its text, a decoration, or the main background - each with its
- * own choices only, beside the board where there is room (else a strip at its
- * foot that folds away), and shapes dragged from it onto the board as new
- * containers. One rule behind it (containerParts.ts): every
+ * own choices only - docked beside the board where there is room for it, else
+ * floating in a corner of the screen; dragged by its title anywhere, where it
+ * stays next time (a double click on the title puts it back), folded to its
+ * title - and shapes dragged from it onto the board as new containers. One rule behind it (containerParts.ts): every
  * container has one board and one frame, drawn or painted; the board takes a
  * colour or a background of the gallery, the frame is replaced, and the shape
  * changes the board and the frame together.
  */
 import { useLayoutEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp, GripVertical, X } from "lucide-react";
 import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
@@ -33,6 +34,8 @@ type Tab = "background" | "board" | "frame" | "shape" | "text" | "ornament" | "a
 const TAB_NAMES: Record<Tab, string> = {
   background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "הטקסט", ornament: "העיטור", add: "הוספת קונטיינר",
 };
+/** Where the panel was dragged to, for next time (this browser). */
+const PANEL_POS_KEY = "tv-part-panel-pos";
 /** A shape dragged from the panel onto the board: a new container there. */
 const DRAG_TYPE = "application/x-shul-container";
 const tile = "flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-md border text-[10px] leading-tight hover:border-primary/60";
@@ -52,6 +55,48 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const first = config.elements.find((e) => e.id === chosen[0]);
   const [tabFor, setTabFor] = useState<{ key: string; tab: Tab } | null>(null);
   const [folded, setFolded] = useState(false);
+  /** Where it was dragged to (the window's corner, in pixels), kept for next time; null - its own place. */
+  const [moved, setMoved] = useState<{ x: number; y: number } | null>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(PANEL_POS_KEY) ?? "null");
+      return v && Number.isFinite(v.x) && Number.isFinite(v.y) ? v : null;
+    } catch {
+      return null;
+    }
+  });
+  const keep = (v: { x: number; y: number } | null) => {
+    setMoved(v);
+    try {
+      if (v) localStorage.setItem(PANEL_POS_KEY, JSON.stringify(v));
+      else localStorage.removeItem(PANEL_POS_KEY);
+    } catch {
+      /* private window: it stays where it is for this visit */
+    }
+  };
+  /** Kept on the screen: dragged too far, it stops at the edge. */
+  const clamp = (x: number, y: number, el: HTMLElement | null) => {
+    const w = el?.offsetWidth ?? 420, h = el?.offsetHeight ?? 120;
+    return { x: Math.min(Math.max(0, x), Math.max(0, window.innerWidth - w)), y: Math.min(Math.max(0, y), Math.max(0, window.innerHeight - Math.min(h, 60))) };
+  };
+  const drag = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest("button, select, input, label")) return;
+    const el = ref.current;
+    if (!el) return;
+    e.preventDefault();
+    const box = el.getBoundingClientRect(), dx = e.clientX - box.left, dy = e.clientY - box.top;
+    let last = { x: box.left, y: box.top };
+    const move = (ev: PointerEvent) => {
+      last = clamp(ev.clientX - dx, ev.clientY - dy, el);
+      setMoved(last);
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      keep(last);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  };
   const ref = useRef<HTMLDivElement>(null);
   /** Beside the board when there is room for it (the board's own height), else a strip at its foot. */
   const [place, setPlace] = useState<{ top: number; height: number; width: number; left: boolean } | null>(null);
@@ -135,18 +180,21 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const ornaments = config.elements.filter((e) => chosen.includes(e.id) && (roleOf(e) === "ornament" || roleOf(e) === "picture"));
   const editEls = (k: string, f: (all: BoardElement[]) => BoardElement[]) => onEdit(`ctx:${k}:${key}`, (c) => ({ ...c, elements: f(c.elements) }));
 
+  // Docked beside the board when there is room and it was not moved; else floating - where it was put, or the lower corner.
+  const docked = place && !moved;
+  const floating = moved ?? { x: 16, y: Math.max(16, window.innerHeight - 380) };
   return (
     <div
       ref={ref}
-      className={place
-        ? "absolute z-30 overflow-y-auto rounded-lg border bg-card p-2 text-sm shadow-lg"
-        : `absolute inset-x-2 bottom-2 z-30 overflow-y-auto rounded-lg border bg-card p-2 text-sm shadow-lg ${folded ? "" : "max-h-[40%]"}`}
-      style={place ? { top: place.top, height: place.height, width: place.width, ...(place.left ? { left: 6 } : { right: 6 }) } : undefined}
+      className={`z-50 overflow-y-auto rounded-lg border bg-card p-2 text-sm shadow-xl ${docked ? "absolute" : "fixed max-h-[45vh] w-[min(440px,calc(100vw-32px))]"}`}
+      style={docked ? { top: place.top, height: folded ? undefined : place.height, width: place.width, ...(place.left ? { left: 6 } : { right: 6 }) } : { left: floating.x, top: floating.y }}
       dir="rtl"
       data-testid="part-context-panel"
-      data-place={place ? "side" : "strip"}
+      data-place={docked ? "side" : "float"}
     >
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+      <div className="mb-2 flex cursor-move flex-wrap items-center gap-1.5 select-none" onPointerDown={drag} onDoubleClick={() => keep(null)}
+        title="גרירה מזיזה את החלון; לחיצה כפולה מחזירה אותו למקומו" data-testid="part-context-handle">
+        <GripVertical className="size-4 text-muted-foreground" aria-hidden />
         <span className="font-semibold">נבחר: {title}</span>
         <span className="text-muted-foreground">←</span>
         {tabs.map((t) => (
@@ -157,11 +205,9 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           </button>
         ))}
         <span className="ms-auto flex items-center">
-          {!place && (
-            <button type="button" aria-label={folded ? "פתיחת החלון" : "קיפול החלון"} className="rounded p-1 hover:bg-muted" onClick={() => setFolded((f) => !f)}>
-              {folded ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
-            </button>
-          )}
+          <button type="button" aria-label={folded ? "פתיחת החלון" : "מזעור החלון"} className="rounded p-1 hover:bg-muted" onClick={() => setFolded((f) => !f)}>
+            {folded ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
+          </button>
           <button type="button" aria-label="סגירת החלון" className="rounded p-1 hover:bg-muted" onClick={() => editing.select([])}>
             <X className="size-4" aria-hidden />
           </button>

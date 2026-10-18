@@ -314,3 +314,20 @@ export async function pickColour(scope: Page | import("@playwright/test").Locato
   await panel.getByLabel("קוד הצבע").fill(hex);
   await panel.getByRole("button", { name: "סיום" }).click();
 }
+
+/**
+ * The floating panel of what was chosen, folded and moved to the lower corner,
+ * out of the way of the controls a test goes on to use - as a gabbai drags it.
+ */
+export async function movePanelAside(page: Page) {
+  const panel = page.getByTestId("part-context-panel");
+  if (!(await panel.count()) || (await panel.getAttribute("data-place")) !== "float") return;
+  const fold = panel.getByRole("button", { name: "מזעור החלון" });
+  if (await fold.count()) await fold.click();
+  const h = (await panel.getByTestId("part-context-handle").boundingBox())!;
+  const size = page.viewportSize()!;
+  await page.mouse.move(h.x + 12, h.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(size.width, size.height, { steps: 4 });
+  await page.mouse.up();
+}

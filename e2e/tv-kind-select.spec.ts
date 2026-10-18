@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { serveEditor } from "./support/tvEditor";
+import { movePanelAside, serveEditor } from "./support/tvEditor";
 import { BUILTIN_DESIGNS, applyDesign } from "../src/tv/designs";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "../src/tv/config";
 
@@ -111,6 +111,7 @@ test("under the preview too: all the texts of the board edited directly, some ta
   for (const e of saved.filter((x) => x.kind !== "text")) expect(e.color).not.toBe("#1d6f42");
 
   // Closing the list leaves the kinds' buttons.
+  await movePanelAside(page);
   await list.getByRole("button", { name: "סגירת הרשימה", exact: true }).click();
   await expect(tools.getByTestId("kind-checklist")).toHaveCount(0);
   expect(errors).toEqual([]);

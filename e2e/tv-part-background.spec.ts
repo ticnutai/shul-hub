@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { serveEditor } from "./support/tvEditor";
+import { movePanelAside, serveEditor } from "./support/tvEditor";
 import { BUILTIN_DESIGNS, applyDesign } from "../src/tv/designs";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "../src/tv/config";
 
@@ -65,6 +65,7 @@ test("from the board itself: all the boards at once in a background of their own
   const panel = page.getByTestId("board-background");
   await expect(panel).toBeVisible();
   await panel.getByRole("button", { name: /בחירת כל הלוחות/ }).click();
+  await movePanelAside(page);
   await expect(panel.getByRole("radio", { name: /החלקים שנבחרו/ })).toBeChecked();
   await panel.getByTestId("board-background-gallery").getByRole("button", { name: "עננים בזהב", exact: true }).click();
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();

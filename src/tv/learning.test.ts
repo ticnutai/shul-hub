@@ -155,3 +155,12 @@ describe("amud yomi", () => {
     expect([0, 1]).toContain(a.side);
   });
 });
+
+describe("a parasha of two words joined by a maqaf", () => {
+  it("is shown as two words: לך לך, not לךלך", async () => {
+    const { stripNiqqud, weeklyParasha } = await import("./learning");
+    expect(stripNiqqud("פָּרָשַׁת לֶךְ־לְךָ")).toBe("פרשת לך לך");
+    // Shabbat Lech Lecha, 24.10.2026.
+    expect(weeklyParasha(new Date("2026-10-20T10:00:00+03:00"))).toContain("לך לך");
+  });
+});

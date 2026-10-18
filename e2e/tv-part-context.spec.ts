@@ -91,7 +91,7 @@ test("the main background, beside the board or at its foot, and a shape dragged 
   const place = await panel.getAttribute("data-place");
   await page.getByRole("button", { name: "תצוגה למעלה" }).first().click();
   await expect(panel).toHaveAttribute("data-place", "side");
-  expect(["side", "strip"]).toContain(place);
+  expect(["side", "float"]).toContain(place);
 
   // A shape dragged onto the board: a container where it fell.
   await panel.getByRole("tab", { name: "הוספת קונטיינר" }).click();
@@ -109,4 +109,53 @@ test("the main background, beside the board or at its foot, and a shape dragged 
   expect(dome.x).toBeLessThan(15);
   expect(dome.y).toBeGreaterThan(20);
   expect(errors).toEqual([]);
+});
+
+test("the panel floats where there is no room beside the board: dragged, kept there, put back, folded", async ({ page, isMobile }) => {
+  test.skip(isMobile, "the editor is for a desktop screen");
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1500, height: 950 });
+  const kit = catalog.designs.find((d) => d.id === "d_shabbatpeace")!;
+  await serveEditor(page, JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit))));
+  await page.goto("/e2e/harness/editor.html");
+  await page.getByRole("button", { name: "זה לצד זה" }).first().click();
+  await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+  const pick = async () => {
+    await page.getByTestId("container-layers").scrollIntoViewIfNeeded();
+    await page.getByTestId("container-row").filter({ has: page.getByRole("checkbox", { name: "בחירת הקונטיינר זמני תפילות", exact: true }) }).first().getByTestId("container-name").first().click();
+  };
+  await pick();
+  const panel = page.getByTestId("part-context-panel");
+  await expect(panel).toHaveAttribute("data-place", "float");
+  // Dragged by its title: it goes where it is put.
+  const handle = panel.getByTestId("part-context-handle");
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(700, 200, { steps: 8 });
+  await page.mouse.up();
+  const at = (await panel.boundingBox())!;
+  expect(Math.abs(at.y - (200 - box.height / 2))).toBeLessThan(30);
+  // Kept for next time.
+  await panel.getByRole("button", { name: "סגירת החלון" }).click();
+  await pick();
+  const again = (await panel.boundingBox())!;
+  expect(Math.abs(again.y - at.y)).toBeLessThan(5);
+  // Folded to its title, and open again.
+  await panel.getByRole("button", { name: "מזעור החלון" }).click();
+  await expect(panel.getByTestId("ctx-board")).toHaveCount(0);
+  await panel.getByRole("button", { name: "פתיחת החלון" }).click();
+  // A double click on the title: back to its own corner.
+  await handle.dblclick({ position: { x: 10, y: 10 } });
+  const home = (await panel.boundingBox())!;
+  expect(home.y).toBeGreaterThan(at.y + 100);
+  // Never off the screen.
+  const b2 = (await handle.boundingBox())!;
+  await page.mouse.move(b2.x + 20, b2.y + 8);
+  await page.mouse.down();
+  await page.mouse.move(-500, -500, { steps: 5 });
+  await page.mouse.up();
+  const edge = (await panel.boundingBox())!;
+  expect(edge.x).toBeGreaterThanOrEqual(0);
+  expect(edge.y).toBeGreaterThanOrEqual(0);
 });

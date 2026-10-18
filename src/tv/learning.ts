@@ -79,7 +79,8 @@ export function dafYomi(date: Date): DafYomi | null {
 
 /** Hebrew text without niqqud, which is too small to read on a wall. */
 export function stripNiqqud(text: string): string {
-  return text.replace(/[֑-ׇ]/g, "");
+  // The maqaf joins two words ("לֶךְ־לְךָ"): a space, or the board showed "לךלך" (18.10.2026).
+  return text.replace(/־/g, " ").replace(/[֑-ֽֿ-ׇ]/g, "");
 }
 
 /**
