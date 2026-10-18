@@ -508,8 +508,10 @@ export function TvDeviceStudio({
     );
   }
 
+  // Under the board (toolbarIn), its buttons flow in the row they are put in - one row with the editor's own, no row of
+  // their own half empty; above the board, a row of its own.
   const toolbarRow = (
-    <div className="flex min-w-0 flex-wrap items-center gap-2">
+    <div className={toolbarSlot ? "contents" : "flex min-w-0 flex-wrap items-center gap-2"}>
         <DeviceToolbar
           compare={compare}
           onCompare={setCompare}
@@ -520,7 +522,7 @@ export function TvDeviceStudio({
           onView={choice.setView}
           onActualSize={setActualSize}
         />
-        {toolbarExtra && <div className="grid w-full min-w-0 grid-cols-2 gap-2 [&>button]:h-auto [&>button]:whitespace-normal [&>button]:py-2 sm:ms-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center">{toolbarExtra}</div>}
+        {toolbarExtra && (toolbarSlot ? toolbarExtra : <div className="grid w-full min-w-0 grid-cols-2 gap-2 [&>button]:h-auto [&>button]:whitespace-normal [&>button]:py-2 sm:ms-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center">{toolbarExtra}</div>)}
       </div>
   );
   return (

@@ -21,7 +21,7 @@ import { useLocation } from 'react-router-dom';
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -1575,30 +1575,28 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       )}
       {editing && partKinds && <div className="mt-3">{partKinds}</div>}
       {editing && partText && <div className="mt-3">{partText}</div>}
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {/* The preview's own row (the screens, a new kit, the layout) - here, one row less above the board. */}
-        <span id={PREVIEW_TOOLBAR_SLOT} className="contents" />
+      {/* Under the board, one row that fills as it wraps: editing, the day shown, then the screens, the layout and the
+          windows - no group pushed to the far side leaving a hole, the two "separate window" buttons one menu. */}
+      <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="preview-bottom-row">
         {previewActions}
-        <span className="ms-auto flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            title="פותח את הלוח על כל המסך בחלון נפרד, עם כל כלי העריכה בחלונית צפה. השינויים עוברים בין החלון לכאן בשני הכיוונים, ונשמרים רק ב'שמור ושדר'. אפשר לגרור אותו למסך שני או לטלוויזיה שמחוברת למחשב."
-            onClick={() => window.open("/admin/tv-board?draft=1", "shul-tv-draft")}
-          >
-            <ExternalLink className="size-4" /> עורך חי בחלון נפרד
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            title="הלוח במסך מלא בעיצוב השמור, בדיוק כמו בטלוויזיות. מתאים גם כדי להשתמש במחשב כמסך תצוגה."
-            onClick={() => window.open("/admin/tv-board", "_blank")}
-          >
-            <ExternalLink className="size-4" /> תצוגת הלוח השמור בחלון נפרד
-          </Button>
-        </span>
+        <span id={PREVIEW_TOOLBAR_SLOT} className="contents" />
+        <DropdownMenu dir="rtl" modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="outline" size="sm">
+              <ExternalLink className="size-4" aria-hidden /> חלון נפרד <ChevronDown className="size-3.5" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[16rem]">
+            <DropdownMenuItem className="cursor-pointer flex-col items-start gap-0.5" onSelect={() => window.open("/admin/tv-board?draft=1", "shul-tv-draft")}>
+              <span className="font-medium">עורך חי בחלון נפרד</span>
+              <span className="text-[11px] text-muted-foreground">הלוח על כל המסך עם כלי העריכה. השינויים עוברים לכאן, ונשמרים ב"שמור ושדר".</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer flex-col items-start gap-0.5" onSelect={() => window.open("/admin/tv-board", "_blank")}>
+              <span className="font-medium">תצוגת הלוח השמור בחלון נפרד</span>
+              <span className="text-[11px] text-muted-foreground">הלוח בעיצוב השמור, בדיוק כמו בטלוויזיות.</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       {view.screenLayout !== "composition" && <div className="mt-2">
         <SlideStrip
