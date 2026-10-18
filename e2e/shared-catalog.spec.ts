@@ -4,6 +4,7 @@ import {DEFAULT_TV_CONFIG,normalizeTvConfig} from '../src/tv/config';
 import {parseSharedCatalog} from '../src/tv/sharedCatalog';
 import {readFileSync} from 'node:fs';
 import {applyDesign,captureDesign} from '../src/tv/designs';
+import {catalogCategory as catalogCategoryOf} from '../src/tv/catalogCategories';
 const raw=JSON.parse(readFileSync('public/new-shul-catalog.json','utf8'));
 
 test('every catalogue design can be applied, edited and captured without mutating its source',()=>{
@@ -63,7 +64,7 @@ for(const id of ['d_rc_sapphire_hall','d_rc_ivory_moon','d_rc_lunar_library','d_
 }
 test('catalog preserves images, masks and bindings through central normalizer',()=>{
  const parsed=parseSharedCatalog(raw);
- expect(parsed.designs).toHaveLength(88);expect(parsed.parts).toHaveLength(1138);
+ expect(parsed.designs).toHaveLength(97);expect(parsed.parts).toHaveLength(1243);
  for(const d of parsed.designs){
   const source=raw.designs.find(x=>x.id===d.id);
   expect(d.values.elements?.length??0).toBe(source.values.elements?.length??0);
@@ -108,3 +109,36 @@ test('central editor shares categorized themes and parts without changing a boar
  await page.screenshot({path:'../outputs/central-global-catalog-editor.png'});
  expect(errors).toEqual([]);
 });
+
+// The Shabbat collection of the New Shul package (18.10.2026): offered, never put on a board by itself; put on, one
+// layer of each part over the kit's own background, every live content filled, every picture loaded - at 16:9.
+for(const id of ['d_shabbatwalnut','d_shbwalnut','d_shbivory','d_shbsapphire','d_shbsky','d_shbpalace','d_shblibrary','d_shbjerusalem','d_shbmodern']){
+ test('the Shabbat collection: '+id,async({page})=>{
+  test.setTimeout(90000);await page.setViewportSize({width:1920,height:1080});
+  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  const original=JSON.parse(JSON.stringify(DEFAULT_TV_CONFIG));
+  const server=await serveEditor(page,original);
+  await page.goto('/e2e/harness/editor.html');
+  await page.getByRole('tab',{name:'עיצוב',exact:true}).click();
+  const library=page.getByTestId('design-library');
+  const d=raw.designs.find(x=>x.id===id);
+  expect(catalogCategoryOf(d)).toBe('שבת');
+  await library.getByLabel('חיפוש ערכה',{exact:true}).fill(d.name);
+  const card=library.locator(`[data-design-id="${id}"]`);
+  await expect(card).toBeVisible();
+  // Offered only: nothing written until it is chosen.
+  expect(server.writes()).toBe(0);
+  await card.getByRole('button',{name:'החלת ערכה '+d.name,exact:true}).click();
+  const board=page.locator('.tv-frame .tv-root').first();
+  await expect(board.locator('[data-element-id]')).toHaveCount(d.values.elements.length);
+  await expect.poll(()=>board.locator('img').evaluateAll(imgs=>imgs.every(i=>(i as HTMLImageElement).complete&&(i as HTMLImageElement).naturalWidth>0))).toBe(true);
+  for(const b of ['clock','prayers','zmanim','announcements','lessons'])
+   await expect(board.locator(`[data-content-binding="${b}"]`).first()).not.toBeEmpty();
+  await board.screenshot({path:'test-results/shabbat-collection/'+id+'.png'});
+  await page.getByRole('button',{name:/שמור ושדר/}).first().click();
+  await expect.poll(()=>server.writes()).toBeGreaterThan(0);
+  const saved=normalizeTvConfig(server.saved());
+  expect(saved.elements.map(e=>e.id).sort()).toEqual(d.values.elements.map((e:{id:string})=>e.id).sort());
+  expect(errors).toEqual([]);
+ });
+}
