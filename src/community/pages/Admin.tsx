@@ -1,7 +1,9 @@
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { AdminButtonsSettings } from "@community/components/admin/AdminButtonsSettings";
 import { useQueryClient } from "@tanstack/react-query";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { PATH_END_ID } from "@/community/components/admin/adminPath";
 import { Building2, LayoutGrid, List, LogOut, ShieldAlert } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
@@ -159,7 +161,55 @@ export function AdminPage() {
   }
 
   const communities = sections.find((section) => section.value === "communities");
+  // The end of the steps' line (tiles, "תצוגות"): found after each render, since the steps come and go.
+  const [pathEnd, setPathEnd] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const el = activeTab === "tv" ? document.getElementById(PATH_END_ID) : null;
+    if (el !== pathEnd) setPathEnd(el);
+  });
 
+  /** The page's own buttons: the synagogues, the switcher, the layout, "יציאה". */
+  const controls = (
+    <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
+      {/* Beside the switcher rather than among the tabs: it is about all
+          the synagogues, and the tabs below are about the one chosen.
+          Not with the tiles: there it is a tile of its own, by the same name. */}
+      {isAdmin && layout === "tabs" && communities && (
+        <Button
+          variant={activeTab === "communities" ? "default" : "outline"}
+          aria-pressed={activeTab === "communities"}
+          onClick={() => void openTab("communities")}
+        >
+          <Building2 className="size-4" /> {communities.label}
+        </Button>
+      )}
+      <CommunitySwitcher />
+      {/* Two ways into the same screens (adminLayout.ts): a list of tabs (on a
+          phone, a list to choose from), or tiles step by step.
+          Only for a gabbai - to anyone else there are no screens to lay out. */}
+      {isAdmin && (
+      <div role="radiogroup" aria-label="פריסת מסך הניהול" className="flex rounded-lg border p-0.5" data-testid="admin-layout-switch">
+        {([["tabs", "רשימה", List], ["tiles", "אריחים", LayoutGrid]] as const).map(([value, label, Icon]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={layout === value}
+            onClick={async () => {
+              if (layout !== value && (await confirmLeave())) setLayout(value);
+            }}
+            className={`flex min-h-11 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm sm:min-h-0 ${layout === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
+          >
+            <Icon className="size-4" aria-hidden /> {label}
+          </button>
+        ))}
+      </div>
+      )}
+      <Button variant="outline" onClick={() => void signOut()}>
+        <LogOut className="size-4" /> יציאה
+      </Button>
+    </div>
+  );
   return (
     <div className="min-h-screen">
       {/* The boards' editor takes the whole screen: the site's own header (its menus) is not
@@ -173,61 +223,21 @@ export function AdminPage() {
         data-focus-tight
       >
         {/* data-focus-hide: hidden while the TV editor is in its work mode (tvEdit.css). */}
-        <div className="flex flex-wrap items-center justify-between gap-3" data-focus-hide>
-          {activeTab === "tv" ? (
-            // The boards' editor: the title, the synagogue and who is signed in - one line.
-            <div className="flex min-w-0 max-w-full flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <h1 className="text-xl font-bold">ניהול האתר</h1>
-              <ShulNow />
-              <span className="break-all text-xs text-muted-foreground">{session?.user.email}</span>
-            </div>
-          ) : (
+        {/* The boards' editor: no title - its buttons stand at the end of the steps' line (AdminTiles), or alone in a line of their own. */}
+        {activeTab === "tv" ? (
+          pathEnd ? createPortal(controls, pathEnd) : (
+            <div className="flex flex-wrap items-center justify-end gap-3" data-focus-hide>{controls}</div>
+          )
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-3" data-focus-hide>
             <div className="min-w-0 max-w-full">
               <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
               <ShulNow />
               <p className="mt-1 break-all text-sm text-muted-foreground">{session?.user.email}</p>
             </div>
-          )}
-          <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
-            {/* Beside the switcher rather than among the tabs: it is about all
-                the synagogues, and the tabs below are about the one chosen.
-                Not with the tiles: there it is a tile of its own, by the same name. */}
-            {isAdmin && layout === "tabs" && communities && (
-              <Button
-                variant={activeTab === "communities" ? "default" : "outline"}
-                aria-pressed={activeTab === "communities"}
-                onClick={() => void openTab("communities")}
-              >
-                <Building2 className="size-4" /> {communities.label}
-              </Button>
-            )}
-            <CommunitySwitcher />
-            {/* Two ways into the same screens (adminLayout.ts): a list of tabs (on a
-                phone, a list to choose from), or tiles step by step.
-                Only for a gabbai - to anyone else there are no screens to lay out. */}
-            {isAdmin && (
-            <div role="radiogroup" aria-label="פריסת מסך הניהול" className="flex rounded-lg border p-0.5" data-testid="admin-layout-switch">
-              {([["tabs", "רשימה", List], ["tiles", "אריחים", LayoutGrid]] as const).map(([value, label, Icon]) => (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={layout === value}
-                  onClick={async () => {
-                    if (layout !== value && (await confirmLeave())) setLayout(value);
-                  }}
-                  className={`flex min-h-11 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm sm:min-h-0 ${layout === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-                >
-                  <Icon className="size-4" aria-hidden /> {label}
-                </button>
-              ))}
-            </div>
-            )}
-            <Button variant="outline" onClick={() => void signOut()}>
-              <LogOut className="size-4" /> יציאה
-            </Button>
+            {controls}
           </div>
-        </div>
+        )}
 
         {/* A screen nobody has heard from, on every tab - the device panel
             already knew, but only said so to somebody who opened it. */}

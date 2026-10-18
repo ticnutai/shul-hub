@@ -87,6 +87,10 @@ import { uploadTvImage, useTvConfig, useTvDevices, deviceHealth, sendCommand } f
 import { ALERT_DEMO_APP_CODE, alertDemoPayload, alertTimeline, screenSeconds, whatShows } from "@/tv/alertDemo";
 import { useAlertSimulation } from "./alertSimulation";
 import { PartContextPanel } from "./PartContextPanel";
+import { PART_PANEL_SLOT } from "../adminPath";
+
+/** Where the preview's toolbar row stands: under the board, beside its buttons. */
+const PREVIEW_TOOLBAR_SLOT = "preview-toolbar-slot";
 import { useDraftSync } from "./tvDraftChannel";
 import { TvEditInspector } from "./TvEditInspector";
 import { SlideStrip, TvDeviceStudio } from "./TvPreview";
@@ -1531,6 +1535,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                 : undefined
         }
         toolbarExtra={layoutButtons}
+        toolbarIn={PREVIEW_TOOLBAR_SLOT}
         bare={bare}
         onRequestEdit={editOnBoardAt}
         onResize={fullscreen ? undefined : resizeBoard}
@@ -1555,6 +1560,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   /** Everything under the board: the inspector, the actions, the slides, the save bar. */
   const underPreview = (
     <>
+      {/* The panel of what was chosen, in the page when there is no room beside the board (PartContextPanel). */}
+      <div id={PART_PANEL_SLOT} />
       {editing && (
         <div className="mt-3">
           <TvEditInspector
@@ -1569,6 +1576,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {editing && partKinds && <div className="mt-3">{partKinds}</div>}
       {editing && partText && <div className="mt-3">{partText}</div>}
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {/* The preview's own row (the screens, a new kit, the layout) - here, one row less above the board. */}
+        <span id={PREVIEW_TOOLBAR_SLOT} className="contents" />
         {previewActions}
         <span className="ms-auto flex flex-wrap gap-2">
           <Button

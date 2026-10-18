@@ -10,6 +10,8 @@
  * changes the board and the frame together.
  */
 import { useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { PART_PANEL_SLOT } from "../adminPath";
 import { ChevronDown, ChevronUp, GripVertical, X } from "lucide-react";
 import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
@@ -23,16 +25,16 @@ import { galleryOf } from "@/tv/backgrounds";
 import { FRAME_PICTURES, FRAME_PICTURE_PREFIX, framePictureUrl } from "@/tv/framePictures";
 import { PART_SHAPES } from "@/tv/partShapes";
 import { setSectionShape } from "@/tv/sectionGeometry";
-import { normalizeElements, type BoardElement } from "@/tv/elements";
+import type { BoardElement } from "@/tv/elements";
 import { toast } from "sonner";
 import { ColorPick } from "./ColorPick";
 import { BackgroundTile } from "./LayerEditors";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
-type Tab = "background" | "board" | "frame" | "shape" | "text" | "ornament" | "add";
+type Tab = "background" | "board" | "frame" | "shape" | "ornament" | "add";
 
 const TAB_NAMES: Record<Tab, string> = {
-  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "הטקסט", ornament: "העיטור", add: "הוספת קונטיינר",
+  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", ornament: "העיטור", add: "הוספת קונטיינר",
 };
 /** Where the panel was dragged to, for next time (this browser). */
 const PANEL_POS_KEY = "tv-part-panel-pos";
@@ -102,7 +104,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const [place, setPlace] = useState<{ top: number; height: number; width: number; left: boolean } | null>(null);
   const shown = Boolean(editing && first);
   useLayoutEffect(() => {
-    const host = ref.current?.parentElement;
+    const host = document.querySelector<HTMLElement>("[data-board-preview]");
     if (!shown || !host) return;
     const measure = () => {
       const frame = host.querySelector(".tv-frame");
@@ -120,7 +122,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const configRef = useRef(config);
   configRef.current = config;
   useLayoutEffect(() => {
-    const host = ref.current?.parentElement;
+    const host = document.querySelector<HTMLElement>("[data-board-preview]");
     if (!shown || !host) return;
     const over = (e: DragEvent) => {
       if (e.dataTransfer?.types.includes(DRAG_TYPE)) e.preventDefault();
@@ -152,7 +154,9 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
     editing?.select(parts.map((e) => e.id));
     toast("נוסף קונטיינר, והוא בחור: אפשר לגרור אותו, ולשנות לו לוח, מסגרת, צורה וטקסט.");
   };
-  if (!editing || !first) return <div ref={ref} hidden />;
+  // Texts alone: the text bar under the board is theirs (font, size, colour) - a second place for their colour was a duplicate.
+  const onlyTexts = chosen.length > 0 && chosen.every((id) => config.elements.find((e) => e.id === id)?.kind === "text");
+  if (!editing || !first || onlyTexts) return <div ref={ref} hidden />;
   const role = roleOf(first);
   const containers = role === "backdrop" ? [] : containersOf(config.elements, chosen);
   const own = config.elements.filter((e) => containers[0]?.ids.includes(e.id));
@@ -160,7 +164,6 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const many = containers.length > 1;
   const board = containers[0]?.board ?? null;
   const frame = containers[0]?.frame ?? null;
-  const texts = config.elements.filter((e) => e.kind === "text" && containers.some((c) => c.ids.includes(e.id)));
   const decor = role === "ornament" || role === "picture";
   // Only what applies: the main background its background (and its frame there); a decoration on its own its look; a container its board, frame, shape and text.
   const tabs: Tab[] =
@@ -168,8 +171,8 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
       ? ["background", "add"]
       : decor && !board && !frame
         ? ["ornament", "add"]
-        : ["board", "frame", "shape", ...(texts.length ? (["text"] as Tab[]) : []), ...(decor ? (["ornament"] as Tab[]) : []), "add"];
-  const natural: Tab = role === "backdrop" ? "background" : role === "frame" ? "frame" : role === "text" && tabs.includes("text") ? "text" : decor ? "ornament" : tabs[0];
+        : ["board", "frame", "shape", ...(decor ? (["ornament"] as Tab[]) : []), "add"];
+  const natural: Tab = role === "backdrop" ? "background" : role === "frame" ? "frame" : decor ? "ornament" : tabs[0];
   const tab: Tab = tabFor?.key === key && tabs.includes(tabFor.tab) ? tabFor.tab : natural;
   const title = role === "backdrop" ? "הרקע הראשי" : many ? `${containers.length} קונטיינרים` : decor && !board && !frame ? first.name : containerName(config, own);
   /** The painted decorations of the main container: pieces of the kit's picture that are no container's board or frame. */
@@ -180,17 +183,18 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const ornaments = config.elements.filter((e) => chosen.includes(e.id) && (roleOf(e) === "ornament" || roleOf(e) === "picture"));
   const editEls = (k: string, f: (all: BoardElement[]) => BoardElement[]) => onEdit(`ctx:${k}:${key}`, (c) => ({ ...c, elements: f(c.elements) }));
 
-  // Docked beside the board when there is room and it was not moved; else floating - where it was put, or the lower corner.
+  // Beside the board when there is room; where it was dragged to; else in its own place under the board, in the page -
+  // pushing what is under it down rather than covering it (the text bar, the buttons under the board).
   const docked = place && !moved;
-  const floating = moved ?? { x: 16, y: Math.max(16, window.innerHeight - 380) };
-  return (
+  const inPage = !docked && !moved ? document.getElementById(PART_PANEL_SLOT) : null;
+  const panel = (
     <div
       ref={ref}
-      className={`z-50 overflow-y-auto rounded-lg border bg-card p-2 text-sm shadow-xl ${docked ? "absolute" : "fixed max-h-[45vh] w-[min(440px,calc(100vw-32px))]"}`}
-      style={docked ? { top: place.top, height: folded ? undefined : place.height, width: place.width, ...(place.left ? { left: 6 } : { right: 6 }) } : { left: floating.x, top: floating.y }}
+      className={`overflow-y-auto rounded-lg border bg-card p-2 text-sm ${docked ? "absolute z-50 shadow-xl" : inPage ? "mt-2 shadow-sm" : "fixed z-50 max-h-[45vh] w-[min(440px,calc(100vw-32px))] shadow-xl"}`}
+      style={docked ? { top: place.top, height: folded ? undefined : place.height, width: place.width, ...(place.left ? { left: 6 } : { right: 6 }) } : inPage ? undefined : { left: moved!.x, top: moved!.y }}
       dir="rtl"
       data-testid="part-context-panel"
-      data-place={docked ? "side" : "float"}
+      data-place={docked ? "side" : inPage ? "page" : "float"}
     >
       <div className="mb-2 flex cursor-move flex-wrap items-center gap-1.5 select-none" onPointerDown={drag} onDoubleClick={() => keep(null)}
         title="גרירה מזיזה את החלון; לחיצה כפולה מחזירה אותו למקומו" data-testid="part-context-handle">
@@ -342,24 +346,8 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           </div>
         </div>
       )}
-
-      {tab === "text" && (
-        <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="ctx-text">
-          {texts.length ? (
-            <>
-              <label className="flex items-center gap-1.5">
-                צבע הטקסט ({texts.length})
-                <ColorPick label="צבע הטקסט בקונטיינר" className="h-7 w-9" value={/^#[\da-f]{6}$/i.test(texts[0].color) ? texts[0].color : "#3a2a12"}
-                  onChange={(v) => editEls("text-colour", (all) => normalizeElements(all.map((e) => (texts.some((t) => t.id === e.id) ? { ...e, color: v } : e))))} />
-              </label>
-              <span className="text-muted-foreground">גופן, גודל ותוכן - בכלי הטקסט שמתחת.</span>
-            </>
-          ) : (
-            <span className="text-muted-foreground">אין טקסט בקונטיינר הזה.</span>
-          )}
-        </div>
-      )}
       </>}
     </div>
   );
+  return inPage ? createPortal(panel, inPage) : panel;
 }

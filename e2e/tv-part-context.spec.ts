@@ -91,7 +91,7 @@ test("the main background, beside the board or at its foot, and a shape dragged 
   const place = await panel.getAttribute("data-place");
   await page.getByRole("button", { name: "תצוגה למעלה" }).first().click();
   await expect(panel).toHaveAttribute("data-place", "side");
-  expect(["side", "float"]).toContain(place);
+  expect(["side", "page"]).toContain(place);
 
   // A shape dragged onto the board: a container where it fell.
   await panel.getByRole("tab", { name: "הוספת קונטיינר" }).click();
@@ -111,7 +111,7 @@ test("the main background, beside the board or at its foot, and a shape dragged 
   expect(errors).toEqual([]);
 });
 
-test("the panel floats where there is no room beside the board: dragged, kept there, put back, folded", async ({ page, isMobile }) => {
+test("no room beside the board: the panel in its own place under it; dragged, it floats and stays there; put back, folded", async ({ page, isMobile }) => {
   test.skip(isMobile, "the editor is for a desktop screen");
   test.setTimeout(90_000);
   await page.setViewportSize({ width: 1500, height: 950 });
@@ -126,16 +126,18 @@ test("the panel floats where there is no room beside the board: dragged, kept th
   };
   await pick();
   const panel = page.getByTestId("part-context-panel");
-  await expect(panel).toHaveAttribute("data-place", "float");
-  // Dragged by its title: it goes where it is put.
+  // In the page, under the board - covering nothing.
+  await expect(panel).toHaveAttribute("data-place", "page");
+  // Dragged by its title: it floats where it is put.
   const handle = panel.getByTestId("part-context-handle");
   const box = (await handle.boundingBox())!;
-  await page.mouse.move(box.x + 20, box.y + box.height / 2);
+  await page.mouse.move(box.x + box.width - 8, box.y + 10);
   await page.mouse.down();
   await page.mouse.move(700, 200, { steps: 8 });
   await page.mouse.up();
+  await expect(panel).toHaveAttribute("data-place", "float");
   const at = (await panel.boundingBox())!;
-  expect(Math.abs(at.y - (200 - box.height / 2))).toBeLessThan(30);
+  expect(Math.abs(at.y - (200 - 10))).toBeLessThan(30);
   // Kept for next time.
   await panel.getByRole("button", { name: "סגירת החלון" }).click();
   await pick();
@@ -145,13 +147,12 @@ test("the panel floats where there is no room beside the board: dragged, kept th
   await panel.getByRole("button", { name: "מזעור החלון" }).click();
   await expect(panel.getByTestId("ctx-board")).toHaveCount(0);
   await panel.getByRole("button", { name: "פתיחת החלון" }).click();
-  // A double click on the title: back to its own corner.
+  // A double click on the title: back to its own place in the page.
   await handle.dblclick({ position: { x: 10, y: 10 } });
-  const home = (await panel.boundingBox())!;
-  expect(home.y).toBeGreaterThan(at.y + 100);
+  await expect(panel).toHaveAttribute("data-place", "page");
   // Never off the screen.
   const b2 = (await handle.boundingBox())!;
-  await page.mouse.move(b2.x + 20, b2.y + 8);
+  await page.mouse.move(b2.x + b2.width - 8, b2.y + 10);
   await page.mouse.down();
   await page.mouse.move(-500, -500, { steps: 5 });
   await page.mouse.up();

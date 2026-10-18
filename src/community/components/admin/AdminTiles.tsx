@@ -11,7 +11,7 @@
  * the two is up is the gabbai's choice (adminLayout.ts).
  */
 import type { ReactNode } from "react";
-import { PATH_BESIDE_ID } from "./adminPath";
+import { PATH_BESIDE_ID, PATH_END_ID } from "./adminPath";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -116,7 +116,8 @@ function Path({ steps, beside = false }: { steps: { label: string; onClick?: () 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
       {nav}
-      <div id={PATH_BESIDE_ID} className="min-w-0 flex-1" />
+      <div id={PATH_BESIDE_ID} className="min-w-0 max-w-[560px] shrink" />
+      <div id={PATH_END_ID} className="ms-auto flex flex-wrap items-center gap-2" />
     </div>
   );
 }

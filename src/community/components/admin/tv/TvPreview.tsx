@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type RefObject } from "react";
 import "./tvEdit.css";
+import { createPortal } from "react-dom";
 import { configForDevice, type TvConfig } from "@/tv/config";
 import { applyDayLook } from "@/tv/dayLooks";
 import { classOfPreviewDevice } from "@/tv/devices";
@@ -155,6 +156,7 @@ export function TvDeviceStudio({
   preview,
   fitHeight,
   toolbarExtra,
+  toolbarIn,
   bare = false,
   onResize,
   onResizeReset,
@@ -196,6 +198,11 @@ export function TvDeviceStudio({
   fitHeight?: number;
   /** Buttons that belong on the toolbar's row (the editor's layout switches). */
   toolbarExtra?: ReactNode;
+  /**
+   * The id of a place under the board where the toolbar's row goes - beside the
+   * buttons under it, one row less above the board (18.10.2026). Without it, above.
+   */
+  toolbarIn?: string;
   /** The live editor window: the board alone on the whole screen, no device frame. */
   fullscreen?: boolean;
   selected?: string | null;
@@ -245,9 +252,14 @@ export function TvDeviceStudio({
   const [actualSize, setActualSize] = useState(false);
   const [hovered, setHovered] = useState<string | null>(null);
   const editing = Boolean(props.editing);
-  // The toolbar row (32px), the gap under it (12px), the frame's padding (24px).
+  const [toolbarSlot, setToolbarSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const el = toolbarIn ? document.getElementById(toolbarIn) : null;
+    if (el !== toolbarSlot) setToolbarSlot(el);
+  });
+  // The toolbar row (32px), the gap under it (12px) - unless it stands under the board - the frame's padding (24px).
   const maxH = fitHeight
-    ? Math.max(120, fitHeight - 72)
+    ? Math.max(120, fitHeight - (toolbarSlot ? 28 : 72))
     : large
       ? Math.max(360, (typeof window === "undefined" ? 900 : window.innerHeight) - 220)
       : undefined;
@@ -496,11 +508,8 @@ export function TvDeviceStudio({
     );
   }
 
-  return (
-    <div className={`min-w-0 max-w-full space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
-      {editing && <EditHighlight hovered={hovered} selected={selected} />}
-      {editing && <SnapGuides xRef={guideX} yRef={guideY} />}
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+  const toolbarRow = (
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
         <DeviceToolbar
           compare={compare}
           onCompare={setCompare}
@@ -513,6 +522,12 @@ export function TvDeviceStudio({
         />
         {toolbarExtra && <div className="grid w-full min-w-0 grid-cols-2 gap-2 [&>button]:h-auto [&>button]:whitespace-normal [&>button]:py-2 sm:ms-auto sm:flex sm:w-auto sm:flex-wrap sm:items-center">{toolbarExtra}</div>}
       </div>
+  );
+  return (
+    <div className={`min-w-0 max-w-full space-y-3${editing ? " tv-edit-mode" : ""}`} {...editHandlers}>
+      {editing && <EditHighlight hovered={hovered} selected={selected} />}
+      {editing && <SnapGuides xRef={guideX} yRef={guideY} />}
+      {toolbarSlot ? createPortal(toolbarRow, toolbarSlot) : toolbarRow}
       {choice.mode === "all" && compare ? (
         <div className="grid grid-cols-2 items-end gap-x-4 gap-y-5 rounded-xl bg-muted/30 p-3 sm:grid-cols-6">
           {DEVICE_ORDER.map((id) => (
