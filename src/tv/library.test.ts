@@ -40,3 +40,11 @@ describe("the library's order", () => {
     expect(normalizeLibrary(null)).toEqual(EMPTY_LIBRARY);
   });
 });
+
+describe("the topics' folders, in Hebrew", () => {
+  it("keep what was put in them through saving and loading", async () => {
+    const { normalizeLibrary } = await import("./library");
+    const lib = normalizeLibrary(JSON.parse(JSON.stringify({ folders: [], place: { d_abc123: "topic:שבת", d_def456: "topic:ראש חודש" }, tags: {}, favorites: [] })));
+    expect(lib.place).toEqual({ d_abc123: "topic:שבת", d_def456: "topic:ראש חודש" });
+  });
+});

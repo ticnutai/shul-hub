@@ -93,7 +93,7 @@ test("whatever can be added can be removed: a ready background and a ready desig
   await designShelf.locator("summary").click();
   await designShelf.getByRole("button", { name: "החזרת אבן ירושלים" }).click();
   await expect(stone.first()).toBeVisible();
-  await designs.locator('[data-design-id="d_premium_heritage-wood"]').first().getByRole("button", { name: "שכפול לעריכה" }).click();
+  await designs.locator('[data-library-item="d_premium_heritage-wood"]').first().getByLabel(/^העתקת .* לתיקייה$/).selectOption({ label: "הערכות שלי" });
   await expect(page.getByTestId("design-library").getByText("עץ היכל (שלי)").first()).toBeVisible();
   await expectNotFrozen(page, "ready items");
 });

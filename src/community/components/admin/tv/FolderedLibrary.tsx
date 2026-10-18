@@ -45,7 +45,7 @@ function readOpen(key: string): string[] | typeof ALL | null {
   }
 }
 
-export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra, opened, storageKey, testId, what }: {
+export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra, onCopy, opened, storageKey, testId, what }: {
   items: LibraryItem[];
   /** The folders that are always there (the topics, one's own), after the gabbai's. */
   fixed: FixedFolder[];
@@ -55,6 +55,11 @@ export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra,
   tile: (item: LibraryItem) => ReactNode;
   /** More actions on an item's line, beside the star and the folder (sharing it with every board...). */
   extra?: (item: LibraryItem) => ReactNode;
+  /**
+   * A copy of its own into a folder (any, its own too): a thing apart from the one
+   * it was copied from - changed or deleted, the other stays as it was.
+   */
+  onCopy?: (item: LibraryItem, folder: string) => void;
   /** Folders open to begin with (today's occasion, one's own...), until the gabbai opens or closes any. */
   opened: string[];
   /** Where on this computer the open folders are kept. */
@@ -195,6 +200,14 @@ export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra,
             <option value="">העברה לתיקייה…</option>
             {folders.filter((f) => f.id !== folderOf(library, item.id, item.home, known)).map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
+          {onCopy && (
+            <select aria-label={`העתקת ${item.name} לתיקייה`} className={`${SELECT_CLASS} h-6 max-w-32 text-[11px]`} value=""
+              title="עותק נפרד: שינוי או מחיקה שלו לא משנים את המקור, וגם לא להפך"
+              onChange={(e) => e.target.value && onCopy(item, e.target.value)}>
+              <option value="">העתקה לתיקייה…</option>
+              {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          )}
           {extra?.(item)}
           {mine.map((t) => (
             <span key={t} className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5">

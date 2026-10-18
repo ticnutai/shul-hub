@@ -26,7 +26,9 @@ export const EMPTY_LIBRARY: Library = { folders: [], place: {}, tags: {}, favori
 
 export const MAX_FOLDERS = 40;
 export const MAX_TAGS = 8;
-const ID = /^[\w:-]{1,90}$/;
+// Hebrew too, and a space: the topics' folders are "topic:שבת", "topic:ראש חודש" - without them a kit put there
+// went back to its own folder at the next load (18.10.2026).
+const ID = /^[\w֐-׿: -]{1,90}$/;
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 export function normalizeLibrary(raw: unknown): Library {

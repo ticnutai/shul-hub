@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import type { TvConfig } from "@/tv/config";
 import { isOccasionKit, wornBy } from "@/tv/occasionDesign";
 import { readOccasions } from "@/tv/occasions";
-import { folderOf } from "@/tv/library";
+import { folderOf, putInFolder } from "@/tv/library";
 import { NameForm } from "./editorParts";
 import { PART_GRID } from "./GalleryTile";
 import { CatalogNotice } from "./SharedCatalogLibrary";
@@ -203,6 +203,23 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
     if (ok) onEdit("design-delete", (cfg) => ({ ...cfg, designs: cfg.designs.filter((x) => x.id !== d.id) }));
   };
 
+  /**
+   * A kit copied into a folder - "הערכות שלי", a topic, one of one's own: a kit of
+   * one's own, with every part, apart from the one it came from - changed or
+   * deleted, the other stays as it was (and the other way round). The one way to
+   * copy a kit; it was two buttons ("שכפול לעריכה", "העתקה ללוח הזה").
+   */
+  const copyKit = (d: SavedDesign, folder: string) => {
+    if (designs.length >= MAX_DESIGNS) return void toast.error(`הגעתם למספר הערכות המרבי (${MAX_DESIGNS}) - מחקו ערכה שלכם כדי להעתיק`);
+    const id = newDesignId();
+    const { occasion: _occasion, from: _from, ...kit } = structuredClone(d);
+    const copy: SavedDesign = { ...kit, id, name: `${d.name.replace(/ \(שלי\)$/, "")} (שלי)`.slice(0, 40) };
+    onEdit(`design-copy:${id}`, (cfg) => ({ ...cfg, designs: [...cfg.designs, copy] }));
+    if (folder !== MINE_FOLDER) changeLibrary(`library-copy:${id}:${folder}`, (l) => putInFolder(l, [id], folder, { [id]: MINE_FOLDER }));
+    const where = folder === MINE_FOLDER ? "הערכות שלי" : KIT_FOLDERS.find((f) => f.id === folder)?.name ?? library.folders.find((f) => f.id === folder)?.name ?? "התיקייה";
+    toast.success(`נוצר עותק נפרד: "${copy.name}" - בתיקייה "${where}". שינוי או מחיקה שלו לא נוגעים במקור.`);
+  };
+
   /** A kit of parts, put on and opened part by part: the list of free parts, where each is chosen, moved and changed. */
   const editInParts = (d: SavedDesign) => {
     onEdit("design-apply", (cfg) => applyDesign(cfg, d));
@@ -271,20 +288,7 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
             onRemove={() => onEdit("design-hide", (cfg) => hideReady(cfg, "design", d.id))}
             removeReady
           >
-            <TileAction
-              disabled={designs.length >= MAX_DESIGNS}
-              title={designs.length >= MAX_DESIGNS ? `הגעתם למספר הערכות המרבי (${MAX_DESIGNS})` : "עותק שלכם, לשנות ממנו"}
-              onClick={() => {
-                // A copy of one's own: renamed, changed, updated and deleted like any.
-                onEdit("design-copy", (cfg) => ({
-                  ...cfg,
-                  designs: [...cfg.designs, { ...structuredClone(d), id: newDesignId(), name: `${d.name} (שלי)` }].slice(0, MAX_DESIGNS),
-                }));
-                toast.success(`נוצר עותק: "${d.name} (שלי)" - ב"הערכות שלי"`);
-              }}
-            >
-              שכפול לעריכה
-            </TileAction>
+
             {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים - כל חלק נבחר, זז ומשתנה לבד">עריכה בחלקים</TileAction>}
             {forOccasion(d)}
           </KitTile>
@@ -324,13 +328,7 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
         if (ok) await sharedLibrary.remove(row);
       }}>
       {ofParts(d) && <TileAction onClick={() => editInParts(d)} title="מלביש את הערכה ופותח את רשימת החלקים">עריכה בחלקים</TileAction>}
-      <TileAction disabled={designs.length >= MAX_DESIGNS} title="עותק בערכות של הלוח הזה, לשנות ממנו"
-        onClick={() => {
-          onEdit("design-copy", (cfg) => ({ ...cfg, designs: [...cfg.designs, { ...structuredClone(d), id: newDesignId(), name: d.name }].slice(0, MAX_DESIGNS) }));
-          toast.success(`"${d.name}" הועתקה ל"הערכות שלי" בלוח הזה.`);
-        }}>
-        העתקה ללוח הזה
-      </TileAction>
+
       <TileAction title="הערכה המשותפת מקבלת את מה שעל הלוח עכשיו - בכל הלוחות"
         onClick={async () => {
           const ok = await confirmAction({ title: `לעדכן את „${row.name}” לכל הלוחות?`, description: "הערכה המשותפת תקבל את מה שעל הלוח עכשיו. לוחות שכבר לובשים אותה לא ישתנו.", confirmLabel: "עדכון", destructive: false });
@@ -355,6 +353,11 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
         fixed={KIT_FOLDERS}
         library={library}
         onLibrary={changeLibrary}
+        onCopy={(item, folder) => {
+          const shared = sharedKits.find(({ row }) => sharedId(row.id) === item.id);
+          const d = shared?.d ?? kitOf.get(item.id);
+          if (d) copyKit(d, folder);
+        }}
         tile={(item) => {
           const shared = sharedKits.find(({ row }) => sharedId(row.id) === item.id);
           if (shared) return sharedTile(shared);

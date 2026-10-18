@@ -128,7 +128,7 @@ test.describe("TV editor, occasions", () => {
     const rc = row(page, "cal:rosh_chodesh");
     const preview = page.locator("[data-board-preview] .tv-frame").first();
     const library = page.getByTestId("builtin-designs");
-    // The kit's own button (beside it: ✕ to hide it, and "שכפול לעריכה").
+    // The kit's own button (beside it: ✕ to hide it, and "העתקה לתיקייה").
     const kit = (id: string) => library.locator(`[data-design-id="d_premium_rc_${id}"] button[title^="ממלא"]`);
 
     // No kit yet: its screen is the card.
@@ -151,8 +151,7 @@ test.describe("TV editor, occasions", () => {
     await expect(page.getByRole("button", { name: "הצגת פרשת השבוע" }).first()).toBeVisible();
 
     // A ready kit copied, inside the occasion, to edit as one's own.
-    const copy = library.locator('[data-design-id="d_premium_rc_onyx-gold"]').getByRole("button", { name: "שכפול לעריכה" });
-    await copy.click();
+    await library.locator('[data-library-item="d_premium_rc_onyx-gold"]').first().getByLabel(/^העתקת .* לתיקייה$/).selectOption({ label: "הערכות שלי" });
     await expect(page.getByTestId("design-library")).toContainText("(שלי)");
 
     // Back to the board: the board itself never wore any of it.
