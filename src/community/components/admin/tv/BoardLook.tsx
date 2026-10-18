@@ -14,7 +14,7 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { GalleryGrid, GalleryTile, TilePicture, UploadTile } from "./GalleryTile";
-import { NameForm, Range } from "./editorParts";
+import { NameForm, Range, SliderLayoutToggle } from "./editorParts";
 import { DEFAULT_BOARD_FRAME_TUNE, READY_PICTURE_BOARD_FRAMES, type BoardFrameTune } from "@/tv/boardFrame";
 import { hideReady, isHiddenReady, showReady } from "@/tv/readyItems";
 import { HiddenShelf } from "./ReadyShelf";
@@ -379,7 +379,11 @@ export function FrameSpacing({
   const heading = compact ? "text-xs font-medium text-muted-foreground" : "text-sm font-medium";
   return (
     <div className="space-y-2">
-      <div className={`${heading} pt-1`}>מרווחים</div>
+      {/* The heading, with the switch for how the sliders stand (and, small, where else the same spacing is set). */}
+      <div className={`${heading} flex items-center gap-2 pt-1`}>
+        <span title={compact ? 'אותם מרווחים כמו בלשונית "פריסה", תחת "פריסת מסך"' : undefined}>מרווחים</span>
+        <span className="ms-auto"><SliderLayoutToggle /></span>
+      </div>
       {SPACING_EDGES.map((edge) => (
         <AutoSlider
           key={edge}
@@ -394,9 +398,7 @@ export function FrameSpacing({
         />
       ))}
 
-      {compact ? (
-        <p className="text-[11px] text-muted-foreground">אותם מרווחים כמו בלשונית "פריסה", תחת "פריסת מסך".</p>
-      ) : (
+      {compact ? null : (
         <p className="text-[11px] text-muted-foreground">
           חל על כל התיבות בכל הפריסות - בטלוויזיה, בלפטופ ובנייד. מרווח קטן יותר מגביה את
           התיבות, ולפעמים מכניס שורה נוספת. אפשר לשנות אותם גם בגרירה בשרטוט שב"מסכים ומה עליהם".

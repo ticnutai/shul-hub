@@ -5,7 +5,7 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, RotateCcw, Unlock } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -484,6 +484,54 @@ export function ColourChoice({
  * under them. With `auto`, the value can also be left to the board ("רגיל"):
  * the slider rests until "רגיל" is let go.
  */
+/**
+ * How the sliders stand: each under its name ("stack"), or the name, the slider and
+ * its value in one line ("row") - half the height. The gabbai's choice, kept in this
+ * browser and the same for every slider of the editor (SliderLayoutToggle).
+ */
+type SliderLayout = "stack" | "row";
+const SLIDER_LAYOUT_KEY = "tv-slider-layout";
+const readSliderLayout = (): SliderLayout => {
+  try {
+    return localStorage.getItem(SLIDER_LAYOUT_KEY) === "row" ? "row" : "stack";
+  } catch {
+    return "stack";
+  }
+};
+function useSliderLayout(): [SliderLayout, (l: SliderLayout) => void] {
+  const [layout, setLayout] = useState<SliderLayout>(readSliderLayout);
+  useEffect(() => {
+    const on = () => setLayout(readSliderLayout());
+    window.addEventListener(SLIDER_LAYOUT_KEY, on);
+    return () => window.removeEventListener(SLIDER_LAYOUT_KEY, on);
+  }, []);
+  const set = (l: SliderLayout) => {
+    try {
+      localStorage.setItem(SLIDER_LAYOUT_KEY, l);
+    } catch {
+      /* a private window: for this visit only */
+    }
+    setLayout(l);
+    window.dispatchEvent(new Event(SLIDER_LAYOUT_KEY));
+  };
+  return [layout, set];
+}
+
+/** The small switch between sliders under their names and in one line each. */
+export function SliderLayoutToggle() {
+  const [layout, setLayout] = useSliderLayout();
+  const row = layout === "row";
+  return (
+    <button type="button" aria-pressed={row} data-testid="slider-layout"
+      aria-label={row ? "סליידרים אחד מתחת לשני" : "סליידרים בשורה אחת"}
+      title={row ? "כל סליידר מתחת לשם שלו" : "השם, הסליידר והערך בשורה אחת - פחות מקום"}
+      onClick={() => setLayout(row ? "stack" : "row")}
+      className="inline-flex size-7 items-center justify-center rounded-md border text-muted-foreground hover:border-primary/50 hover:text-foreground">
+      {row ? <Rows3 className="size-4" aria-hidden /> : <StretchHorizontal className="size-4" aria-hidden />}
+    </button>
+  );
+}
+
 export function Range({
   label,
   value,
@@ -506,36 +554,52 @@ export function Range({
   auto?: { isDefault: boolean; onToggle: () => void };
 }) {
   const resting = Boolean(auto?.isDefault);
+  const [layout] = useSliderLayout();
+  const slider = (
+    <input
+      type="range"
+      aria-label={label}
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      disabled={resting}
+      onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full min-w-0 accent-primary disabled:opacity-40"
+    />
+  );
+  const readout = (
+    <span className="flex items-center gap-2">
+      <span className="tabular-nums text-muted-foreground">{resting ? "רגיל" : show(value)}</span>
+      {auto && (
+        <button
+          type="button"
+          aria-pressed={resting}
+          title={resting ? "כרגע לפי הלוח - לחיצה מאפשרת לכוונן" : "חזרה למה שהלוח קובע"}
+          onClick={auto.onToggle}
+          className={`h-6 rounded-md border px-2 text-[11px] ${resting ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
+        >
+          רגיל
+        </button>
+      )}
+    </span>
+  );
+  // One line: the name, the slider, its value.
+  if (layout === "row")
+    return (
+      <div className="grid grid-cols-[minmax(5.5rem,8rem)_minmax(0,1fr)_auto] items-center gap-2 text-xs" title={hint} data-slider-layout="row">
+        <span className="truncate">{label}</span>
+        {slider}
+        {readout}
+      </div>
+    );
   return (
     <div className="space-y-1 text-xs" title={hint}>
       <div className="flex items-center justify-between gap-2">
         <span>{label}</span>
-        <span className="flex items-center gap-2">
-          <span className="tabular-nums text-muted-foreground">{resting ? "רגיל" : show(value)}</span>
-          {auto && (
-            <button
-              type="button"
-              aria-pressed={resting}
-              title={resting ? "כרגע לפי הלוח - לחיצה מאפשרת לכוונן" : "חזרה למה שהלוח קובע"}
-              onClick={auto.onToggle}
-              className={`h-6 rounded-md border px-2 text-[11px] ${resting ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}
-            >
-              רגיל
-            </button>
-          )}
-        </span>
+        {readout}
       </div>
-      <input
-        type="range"
-        aria-label={label}
-        min={min}
-        max={max}
-        step={step}
-        value={value}
-        disabled={resting}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="w-full accent-primary disabled:opacity-40"
-      />
+      {slider}
     </div>
   );
 }

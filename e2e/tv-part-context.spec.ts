@@ -160,3 +160,22 @@ test("no room beside the board: the panel in its own place under it; dragged, it
   expect(edge.x).toBeGreaterThanOrEqual(0);
   expect(edge.y).toBeGreaterThanOrEqual(0);
 });
+
+test("a click where the main background is seen chooses it - through the see-through of the pieces over it", async ({ page, isMobile }) => {
+  test.skip(isMobile, "the editor is for a desktop screen");
+  await page.setViewportSize({ width: 1500, height: 950 });
+  const { BUILTIN_DESIGNS } = await import("../src/tv/designs");
+  const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_sapphirelayers")!;
+  await serveEditor(page, JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit))));
+  await page.goto("/e2e/harness/editor.html");
+  await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
+  const root = page.locator("[data-board-preview] .tv-frame .tv-root").first();
+  const b = (await root.boundingBox())!;
+  // Within the curtains' box, where only the wall is painted.
+  await root.click({ position: { x: b.width * 0.06, y: b.height * 0.42 } });
+  await expect(page.getByTestId("part-context-panel")).toContainText("נבחר: הרקע הראשי");
+  // On the curtains themselves: the curtains.
+  await page.keyboard.press("Escape");
+  await root.click({ position: { x: b.width * 0.5, y: b.height * 0.25 } });
+  await expect(page.getByTestId("part-context-panel")).toContainText("כתר עליון ווילונות");
+});

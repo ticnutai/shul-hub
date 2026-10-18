@@ -5,7 +5,7 @@ import { useEffect, useRef, useId, useState, type PointerEvent as ReactPointerEv
 import { useElementEditing } from './elementEditing';
 import {gridDelta,linkedSection} from './sectionGeometry';
 import { ElementDataProvider, BoundElement, PlainText, type ElementData } from './elementData';
-import { partBelow, partsAt, pressKind, pressSelection, type Press } from './elementHits';
+import { partBelow, partSeenAt, partsAt, pressKind, pressSelection, type Press } from './elementHits';
 import { PartPickMenu } from './PartPickMenu';
 import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, ratioResize, resizeElements, type BoardElement, type ResizeHandle } from './elements';
 
@@ -215,8 +215,10 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       const node = (ev.target as Element).closest<HTMLElement>('[data-element-id]');
       // Alt on the empty board: the board's ordinary click, as before.
       if (!node) { lastPress.current = null; if (!ev.altKey) editor.select([]); return; }
-      // The part pressed: the one drawn on top at that place (a turned part, too).
-      const e = elements.find(x => x.id === node.dataset.elementId); if (!e) return;
+      // The part pressed: the one seen at that place - a press on the see-through of a painted
+      // piece goes on to what is seen under it (the main background, at last) - else the one on top.
+      const seen = partSeenAt(elements, pointAt(ev.currentTarget, ev.clientX, ev.clientY));
+      const e = elements.find(x => x.id === (seen ?? node.dataset.elementId)); if (!e) return;
       const at = Date.now(), last = lastDown.current;
       lastDown.current = { id: e.id, at };
       if (!ev.altKey && last?.id === e.id && at - last.at < 450 && writable(e)) {

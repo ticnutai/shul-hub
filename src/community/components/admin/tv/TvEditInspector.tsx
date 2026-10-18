@@ -321,24 +321,15 @@ export function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: 
       <FrameAndSpacing config={config} onEdit={onEdit} compact />
 
       <div className="space-y-1.5">
-        {/* Whose background: the boards chosen, or the whole board's - and all the boards at once. */}
-        {allBoxes.length > 0 && (
+        {/* Whose background, when boards are chosen: theirs, or the whole board's. */}
+        {chosenParts.length > 0 && (
           <div className="flex flex-wrap items-center gap-1.5 text-[11px]" data-testid="background-target">
-            {chosenParts.length > 0 ? (
-              <Segments
-                label="על מה חל הרקע"
-                value={onParts ? "parts" : "board"}
-                onChange={(v) => setWholeBoard(v === "board")}
-                options={[{ id: "parts", name: chosenParts.length === 1 ? `על החלק שנבחר: ${first.name}` : `על ${chosenParts.length} החלקים שנבחרו` }, { id: "board", name: "על רקע הלוח כולו" }]}
-              />
-            ) : (
-              <span className="text-muted-foreground">חל על רקע הלוח כולו. לשנות לוח אחד - בוחרים אותו על הלוח.</span>
-            )}
-            {editing && chosenParts.length < allBoxes.length && (
-              <button type="button" className="h-7 rounded-md border px-2 hover:border-primary/50" onClick={() => { setWholeBoard(false); editing.select(allBoxes.map((e) => e.id)); }}>
-                בחירת כל הלוחות ({allBoxes.length})
-              </button>
-            )}
+            <Segments
+              label="על מה חל הרקע"
+              value={onParts ? "parts" : "board"}
+              onChange={(v) => setWholeBoard(v === "board")}
+              options={[{ id: "parts", name: chosenParts.length === 1 ? `על החלק שנבחר: ${first.name}` : `על ${chosenParts.length} החלקים שנבחרו` }, { id: "board", name: "על רקע הלוח כולו" }]}
+            />
           </div>
         )}
         {!onParts && backdrops.length > 0 && (
@@ -353,8 +344,11 @@ export function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: 
             )}
           </div>
         )}
-        <div className="text-xs font-medium text-muted-foreground">{onParts ? (chosenParts.length === 1 ? `רקע של ${first.name}` : `רקע ל־${chosenParts.length} לוחות`) : "רקע הלוח"}</div>
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* One line: what it is for, its own choices, and all the boards at once. */}
+        <div className="flex flex-wrap items-center gap-1.5" data-testid="background-line">
+          <span className="text-xs font-medium text-muted-foreground" title={onParts ? undefined : "חל על רקע הלוח כולו. לשנות לוח אחד - בוחרים אותו על הלוח."}>
+            {onParts ? (chosenParts.length === 1 ? `רקע של ${first.name}` : `רקע ל־${chosenParts.length} לוחות`) : "רקע הלוח"}
+          </span>
           <button
             type="button"
             aria-pressed={own}
@@ -376,6 +370,11 @@ export function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: 
               onChange={(v) => (onParts ? onEdit("part.colour", (c) => ({ ...c, elements: colourBoards(c.elements, ids, v) })) : onEdit("bg.colour", (c) => bare(writeBoardBackground(c, `linear-gradient(180deg, ${v}, ${v})`))))}
             />
           </label>
+          {editing && allBoxes.length > 0 && chosenParts.length < allBoxes.length && (
+            <button type="button" className="h-8 rounded-md border px-2 text-[11px] hover:border-primary/50" onClick={() => { setWholeBoard(false); editing.select(allBoxes.map((e) => e.id)); }}>
+              בחירת כל הלוחות ({allBoxes.length})
+            </button>
+          )}
         </div>
         {/* The design tab's gallery, in the small tiles of this panel: the upload first, as in every gallery. */}
         <div className="max-h-56 overflow-y-auto p-0.5">
