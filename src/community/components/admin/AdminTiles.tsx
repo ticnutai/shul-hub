@@ -11,6 +11,7 @@
  * the two is up is the gabbai's choice (adminLayout.ts).
  */
 import type { ReactNode } from "react";
+import { PATH_BESIDE_ID } from "./adminPath";
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -87,9 +88,9 @@ function TileGrid({ children, label }: { children: ReactNode; label: string }) {
 }
 
 /** "ראשי › מניינים › יום חול": where one is, each step a way back to it. */
-function Path({ steps }: { steps: { label: string; onClick?: () => void | Promise<void> }[] }) {
+function Path({ steps, beside = false }: { steps: { label: string; onClick?: () => void | Promise<void> }[]; beside?: boolean }) {
   const back = [...steps].reverse().find((s, i) => i > 0 && s.onClick);
-  return (
+  const nav = (
     <nav aria-label="המיקום בניהול" className="flex flex-wrap items-center gap-1.5 text-sm" data-testid="admin-path">
       {back && (
         <button type="button" onClick={back.onClick} className="me-1 rounded-md border px-2.5 py-1.5 font-medium hover:bg-muted" aria-label={`חזרה ל${back.label}`}>
@@ -110,7 +111,16 @@ function Path({ steps }: { steps: { label: string; onClick?: () => void | Promis
       ))}
     </nav>
   );
+  if (!beside) return nav;
+  // The steps and, beside them on the same line, what the section puts there (the boards: screens off line).
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {nav}
+      <div id={PATH_BESIDE_ID} className="min-w-0 flex-1" />
+    </div>
+  );
 }
+
 
 export function AdminTiles({ sections, badges, renderSection }: {
   /** The sections this gabbai has (the store app has no boards). */
@@ -186,7 +196,7 @@ function MinyanimSteps({ root, sectionStep }: { root: Step; sectionStep: Step })
   if (!category) {
     return (
       <div className="mt-5 space-y-4">
-        <Path steps={[root, sectionStep]} />
+        <Path beside steps={[root, sectionStep]} />
         <TileGrid label="ימים">
           {regular.map((c) => (
             <Tile
@@ -269,8 +279,8 @@ function TvSteps({ root, sectionStep, renderSection }: { root: Step; sectionStep
     );
   }
   return (
-    <div className="mt-5 space-y-4">
-      <Path steps={[root, sectionStep, { label: step?.label ?? "עורך" }]} />
+    <div className="mt-2 space-y-3">
+      <Path beside steps={[root, sectionStep, { label: step?.label ?? "עורך" }]} />
       {/* Opened anew at the step chosen: the editor reads ?panel= when it opens. */}
       <div key={`${tvTab}:${panel ?? ""}`}>{renderSection("tv")}</div>
     </div>

@@ -162,21 +162,32 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen">
-      <CommunityHeader />
+      {/* The boards' editor takes the whole screen: the site's own header (its menus) is not
+          needed there - "חזרה", the steps and "יציאה" lead out (18.10.2026). */}
+      {activeTab !== "tv" && <CommunityHeader />}
       {/* Forms read better in a narrow column; the TV editor is a preview
           beside its controls and needs the whole screen. */}
       <main
         dir="rtl"
-        className={`gabbai-admin mx-auto min-w-0 px-3 py-5 text-right sm:px-4 sm:py-8 ${activeTab === "tv" ? "max-w-[1800px]" : "max-w-5xl"}`}
+        className={`gabbai-admin mx-auto min-w-0 px-3 text-right sm:px-4 ${activeTab === "tv" ? "max-w-[1800px] py-2 sm:py-3" : "max-w-5xl py-5 sm:py-8"}`}
         data-focus-tight
       >
         {/* data-focus-hide: hidden while the TV editor is in its work mode (tvEdit.css). */}
         <div className="flex flex-wrap items-center justify-between gap-3" data-focus-hide>
-          <div className="min-w-0 max-w-full">
-            <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
-            <ShulNow />
-            <p className="mt-1 break-all text-sm text-muted-foreground">{session?.user.email}</p>
-          </div>
+          {activeTab === "tv" ? (
+            // The boards' editor: the title, the synagogue and who is signed in - one line.
+            <div className="flex min-w-0 max-w-full flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <h1 className="text-xl font-bold">ניהול האתר</h1>
+              <ShulNow />
+              <span className="break-all text-xs text-muted-foreground">{session?.user.email}</span>
+            </div>
+          ) : (
+            <div className="min-w-0 max-w-full">
+              <h1 className="text-2xl font-bold sm:text-3xl">ניהול האתר</h1>
+              <ShulNow />
+              <p className="mt-1 break-all text-sm text-muted-foreground">{session?.user.email}</p>
+            </div>
+          )}
           <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
             {/* Beside the switcher rather than among the tabs: it is about all
                 the synagogues, and the tabs below are about the one chosen.

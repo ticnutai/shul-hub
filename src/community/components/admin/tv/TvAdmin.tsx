@@ -1,5 +1,7 @@
 import { useSearchParams } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { PATH_BESIDE_ID } from "../adminPath";
 import { ChevronDown, MonitorX } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNow } from "@community/lib/realtime";
@@ -86,7 +88,10 @@ function OfflineAlert({ offline, now }: { offline: ReturnType<typeof useTvDevice
       return !v;
     });
   };
-  return (
+  // Beside the steps ("חזרה › ראשי › תצוגות"), on their line, when the tiles show them; else where it stands.
+  const [beside, setBeside] = useState<HTMLElement | null>(null);
+  useEffect(() => setBeside(document.getElementById(PATH_BESIDE_ID)), []);
+  const alert = (
     <div role="alert" data-focus-hide data-testid="offline-alert" className={noticeClass("error")}>
       <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2 text-right">
         <MonitorX className="size-4 shrink-0 text-red-600 dark:text-red-400" aria-hidden />
@@ -111,4 +116,5 @@ function OfflineAlert({ offline, now }: { offline: ReturnType<typeof useTvDevice
       )}
     </div>
   );
+  return beside ? createPortal(alert, beside) : alert;
 }
