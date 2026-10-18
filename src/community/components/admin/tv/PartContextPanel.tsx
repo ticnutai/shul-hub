@@ -1,6 +1,6 @@
 /**
  * The panel of what was chosen on the board: a container's board, its frame,
- * its shape, its text, a decoration, or the main background - each with its
+ * its shape, a list's "הבא בתור", a decoration, or the main background - each with its
  * own choices only - docked beside the board where there is room for it, else
  * floating in a corner of the screen; dragged by its title anywhere, where it
  * stays next time (a double click on the title puts it back), folded to its
@@ -29,12 +29,14 @@ import type { BoardElement } from "@/tv/elements";
 import { toast } from "sonner";
 import { ColorPick } from "./ColorPick";
 import { BackgroundTile } from "./LayerEditors";
+import { NextMarkTools } from "./NextMarkTools";
+import { marksNext } from "@/tv/nextMark";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
-type Tab = "background" | "board" | "frame" | "shape" | "ornament" | "add";
+type Tab = "background" | "board" | "frame" | "shape" | "ornament" | "next" | "add";
 
 const TAB_NAMES: Record<Tab, string> = {
-  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", ornament: "העיטור", add: "הוספת קונטיינר",
+  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", ornament: "העיטור", next: "סימון הבא", add: "הוספת קונטיינר",
 };
 /** Where the panel was dragged to, for next time (this browser). */
 const PANEL_POS_KEY = "tv-part-panel-pos";
@@ -165,13 +167,15 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const board = containers[0]?.board ?? null;
   const frame = containers[0]?.frame ?? null;
   const decor = role === "ornament" || role === "picture";
+  // The container's list with times (prayers, lessons, the day's times): its "הבא בתור" here too, not only in the text bar below.
+  const lists = config.elements.filter((e) => (own.some((o) => o.id === e.id) || chosen.includes(e.id)) && e.kind === "text" && marksNext(e.binding) && !e.locked);
   // Only what applies: the main background its background (and its frame there); a decoration on its own its look; a container its board, frame, shape and text.
   const tabs: Tab[] =
     role === "backdrop"
       ? ["background", "add"]
       : decor && !board && !frame
         ? ["ornament", "add"]
-        : ["board", "frame", "shape", ...(decor ? (["ornament"] as Tab[]) : []), "add"];
+        : ["board", "frame", "shape", ...(decor ? (["ornament"] as Tab[]) : []), ...(lists.length ? (["next"] as Tab[]) : []), "add"];
   const natural: Tab = role === "backdrop" ? "background" : role === "frame" ? "frame" : decor ? "ornament" : tabs[0];
   const tab: Tab = tabFor?.key === key && tabs.includes(tabFor.tab) ? tabFor.tab : natural;
   const title = role === "backdrop" ? "הרקע הראשי" : many ? `${containers.length} קונטיינרים` : decor && !board && !frame ? first.name : containerName(config, own);
@@ -233,6 +237,13 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {tab === "next" && (
+        <div data-testid="ctx-next">
+          <NextMarkTools elements={config.elements} texts={lists}
+            onPatch={(ids, p, what) => onEdit(`ctx:${what}:${ids.join(",")}`, (c) => ({ ...c, elements: c.elements.map((e) => (ids.includes(e.id) && !e.locked ? { ...e, ...p } : e)) }))} />
         </div>
       )}
 

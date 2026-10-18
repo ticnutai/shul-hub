@@ -37,6 +37,17 @@ test("the next minyan marked, its shape and colour chosen", async ({ page, isMob
   const all = tools.getByRole("button", { name: /אותו סימון לכל הרשימות בלוח/ });
   if (lists > 1) await all.click();
 
+  // The whole container chosen (its frame, beside the list): the panel has a tab of its own for it.
+  const box = (await prayers.boundingBox())!;
+  await page.keyboard.press("Escape");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height + 6);
+  const panel = page.getByTestId("part-context-panel");
+  await expect(panel).toBeVisible();
+  await panel.getByRole("tab", { name: "סימון הבא" }).click();
+  await panel.getByTestId("ctx-next").getByRole("radio", { name: "פס בצד" }).click();
+  await expect(prayers.locator("[data-next]")).toHaveCSS("box-shadow", /inset/);
+  await panel.getByTestId("ctx-next").getByRole("radio", { name: "מסגרת" }).click();
+
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect.poll(() => server.writes()).toBeGreaterThan(0);
   const saved = normalizeTvConfig(server.saved());
