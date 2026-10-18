@@ -1520,7 +1520,16 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         large={top || fullscreen}
         // Side by side the board is pinned over what is under it: never so tall
         // that nothing under it could be reached (60% of the window at most).
-        fitHeight={top ? topHeight : side && isLarge ? Math.min(sideHeight, Math.max(260, Math.round((windowHeight - headerOffset) * 0.6))) : undefined}
+        fitHeight={
+          top
+            ? topHeight
+            : fullscreen && !(side && isLarge)
+              // Full screen with the board above: about half the screen, the controls scrolling under it.
+              ? Math.max(260, Math.round(windowHeight * 0.55))
+              : side && isLarge
+                ? Math.min(sideHeight, Math.max(260, Math.round((windowHeight - headerOffset) * 0.6)))
+                : undefined
+        }
         toolbarExtra={layoutButtons}
         bare={bare}
         onRequestEdit={editOnBoardAt}
@@ -1679,7 +1688,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
               (the panel being edited, the text bar) scrolls beneath it, so the
               change is always in sight. It scrolled away with them, and the
               board being edited could not be seen (11.10.2026). */}
-          <div ref={pinnedRef} className={fullscreen ? "" : "lg:sticky lg:top-0 lg:z-20 lg:bg-background lg:pb-1"} data-testid="preview-pinned">
+          {/* Full screen too: pinned at the top of the column that scrolls (it scrolled away - 18.10.2026). */}
+          <div ref={pinnedRef} className={fullscreen ? "sticky -top-4 z-20 bg-background pb-1 pt-1" : "lg:sticky lg:top-0 lg:z-20 lg:bg-background lg:pb-1"} data-testid="preview-pinned">
             {studioView}
           </div>
           {underPreview}
