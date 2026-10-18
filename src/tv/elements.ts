@@ -1,4 +1,5 @@
 import { isPartShape, type PartShape } from './partShapes';
+import { normalizeNextMark, type NextMark } from './nextMark';
 import type { CSSProperties } from 'react';
 import type { ElementDefaults } from './config';
 import { ZMAN_DISPLAY_KEYS } from '@/community/lib/zmanim';
@@ -33,6 +34,8 @@ export interface BoardElement {
   ratio?: boolean;
   binding?: ElementBinding;
   rowsPerPage?: number;
+  /** The next minyan, lesson or time of the day marked on this list: its shape and colour (nextMark.ts). Absent: a highlighted row. */
+  nextMark?: NextMark;
   zmanKeys?: (typeof ZMAN_DISPLAY_KEYS)[number][];
   /**
    * Content longer than its frame, moved rather than shrunk or paged: the
@@ -158,6 +161,7 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...((v.kind === 'image' || v.kind === 'frame') && v.imageTune && typeof v.imageTune === 'object' ? {imageTune:{hue:n(v.imageTune.hue,0,-180,180),saturation:n(v.imageTune.saturation,1,0,2),brightness:n(v.imageTune.brightness,1,.2,2)}} : {}),
       ...(ELEMENT_BINDINGS.includes(v.binding) ? { binding: v.binding } : {}),
       ...(typeof v.rowsPerPage === 'number' ? { rowsPerPage: Math.round(n(v.rowsPerPage, 3, 1, 30)) } : {}),
+      ...(normalizeNextMark(v.nextMark) ? { nextMark: normalizeNextMark(v.nextMark) } : {}),
       ...(v.scroll === 'pause' || v.scroll === 'loop' ? { scroll: v.scroll as ElementScroll } : {}),
       ...(v.backdrop === true ? { backdrop: true } : {}),
       ...(Array.isArray(v.alternates) && v.alternates.some((b: unknown) => ELEMENT_BINDINGS.includes(b as ElementBinding))

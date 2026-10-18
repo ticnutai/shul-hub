@@ -1,7 +1,8 @@
 /**
  * The letters of the chosen parts: size, font, bold, slant, alignment,
  * shadow, colour, and whether long text breaks into lines or is made
- * smaller - for one part or several at once.
+ * smaller - for one part or several at once; on a list with times, how its
+ * "הבא בתור" is marked.
  *
  * One bar, in both places a part is worked on: under the board's preview,
  * for the part clicked on the board itself, and in the list of parts. It is
@@ -11,7 +12,8 @@ import { useEffect, useState } from 'react';
 import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, WrapText } from 'lucide-react';
 
 import { ELEMENT_FONTS, wraps, type BoardElement, type ElementFont } from '@/tv/elements';
-import { ColourRow, SELECT_CLASS, Stepper } from './editorParts';
+import { ColourRow, SELECT_CLASS, Segments, Stepper } from './editorParts';
+import { DEFAULT_NEXT_MARK, NEXT_SHAPES, NEXT_SHAPE_NAMES, marksNext, type NextMark } from '@/tv/nextMark';
 import { Notice } from './Notice';
 
 const BTN = 'grid size-8 place-items-center rounded border text-muted-foreground hover:border-primary hover:text-foreground disabled:opacity-40';
@@ -92,6 +94,7 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true }: {
           חלק מהטקסט לא נכנס בתיבה ונחתך בתחתית שלה.
         </Notice>
       )}
+      <NextMarkTools elements={elements} texts={texts} onPatch={onPatch} />
       {plain && (
         <label className="block text-xs">
           מה כתוב
@@ -127,4 +130,47 @@ function useCutText(key: string): Record<string, number> {
     return () => window.clearInterval(timer);
   }, [key]);
   return cut;
+}
+
+/**
+ * "הבא בתור" on the chosen lists - prayers, lessons, the day's times: its
+ * shape and colour, and whether what is over fades. "לכל הרשימות בלוח" gives
+ * every list of the board the same look.
+ */
+function NextMarkTools({ elements, texts, onPatch }: {
+  elements: BoardElement[];
+  texts: BoardElement[];
+  onPatch: (ids: string[], patch: Partial<BoardElement>, what: string) => void;
+}) {
+  const lists = texts.filter(e => marksNext(e.binding));
+  if (!lists.length) return null;
+  const mark = lists[0].nextMark ?? DEFAULT_NEXT_MARK;
+  const set = (m: NextMark) => onPatch(lists.map(e => e.id), { nextMark: m }, 'nextMark');
+  const everyList = elements.filter(e => e.kind === 'text' && marksNext(e.binding) && !e.locked);
+  return (
+    <div className="space-y-2 rounded-md border border-dashed p-2" role="group" aria-label="סימון הבא בתור" data-testid="next-mark-tools">
+      <p className="text-xs font-semibold">סימון "הבא בתור"</p>
+      <p className="text-[11px] text-muted-foreground">המניין, השיעור או הזמן הבא מסומן. ברגע שהזמן שלו עובר, הסימון עובר לבא אחריו.</p>
+      <Segments label="צורת הסימון" value={mark.shape} onChange={shape => set({ ...mark, shape })}
+        options={NEXT_SHAPES.map(id => ({ id, name: NEXT_SHAPE_NAMES[id] }))} />
+      {mark.shape !== 'none' && (
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-40">
+            <ColourRow label="צבע הסימון" value={mark.color ?? lists[0].color} onChange={color => set({ ...mark, color })}
+              reset={mark.color ? { label: 'כמו הטקסט', onClick: () => set({ ...mark, color: undefined }) } : undefined} />
+          </div>
+          <label className="flex items-center gap-1.5 text-xs">
+            <input type="checkbox" aria-label="עמעום מה שעבר" checked={mark.dimPast !== false} onChange={ev => set({ ...mark, dimPast: ev.target.checked ? undefined : false })} />
+            עמעום מה שכבר עבר
+          </label>
+        </div>
+      )}
+      {everyList.length > lists.length && (
+        <button type="button" className="rounded border px-2 py-1 text-xs hover:border-primary/50"
+          onClick={() => onPatch(everyList.map(e => e.id), { nextMark: mark }, 'nextMark-all')}>
+          אותו סימון לכל הרשימות בלוח ({everyList.length})
+        </button>
+      )}
+    </div>
+  );
 }

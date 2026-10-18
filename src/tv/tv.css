@@ -4432,3 +4432,8 @@
 
 /* Layer compositions own their canvas; keep live alerts outside this rule. */
 .tv-root.is-layout-composition > .tv-stage, .tv-root.is-layout-composition > .tv-footer { display: none; }
+
+/* "הבא בתור" as a dot (nextMark.ts): it breathes, gently. */
+.tv-next-dot { animation: tv-next-pulse 1.4s ease-in-out infinite; }
+@keyframes tv-next-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .tv-next-dot { animation: none; } }

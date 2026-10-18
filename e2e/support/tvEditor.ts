@@ -118,7 +118,7 @@ const SHIURIM = [
 export async function serveEditor(
   page: Page,
   config: Record<string, unknown> = {},
-  { designView = "scroll" }: { designView?: "switch" | "scroll" } = {},
+  { designView = "scroll", minyanim }: { designView?: "switch" | "scroll"; /** The day's minyanim, in place of the fixture's (fixed "HH:MM:SS", weekday). */ minyanim?: [string, string][] } = {},
 ): Promise<EditorServer> {
   /*
    * The design tab's topics: the specs of each topic's tools read them all
@@ -220,7 +220,7 @@ export async function serveEditor(
       case "settings":
         return json(route, SETTINGS);
       case "minyanim":
-        return json(route, MINYANIM);
+        return json(route, minyanim ? minyanim.map(([label, at], i) => minyan(`mx${i}`, label, at, i + 1)) : MINYANIM);
       case "minyan_categories":
         return json(route, CATEGORIES);
       case "announcements":
