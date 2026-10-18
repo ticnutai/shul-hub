@@ -47,6 +47,17 @@ test("the next minyan marked, its shape and colour chosen", async ({ page, isMob
   await panel.getByTestId("ctx-next").getByRole("radio", { name: "פס בצד" }).click();
   await expect(prayers.locator("[data-next]")).toHaveCSS("box-shadow", /inset/);
   await panel.getByTestId("ctx-next").getByRole("radio", { name: "מסגרת" }).click();
+  // Its solidity and saturation, from the same place.
+  await panel.getByTestId("ctx-next").getByRole("slider", { name: "אטימות הסימון" }).fill("50");
+  await expect(prayers.locator("[data-next]")).toHaveCSS("box-shadow", /0\.5\)/);
+
+  // The lists held on the page of "הבא", and turned by hand - in the preview only.
+  const paging = page.getByTestId("list-paging");
+  await paging.getByRole("button", { name: "עצירת הרשימות" }).click();
+  await expect(paging.getByRole("button", { name: "המשך התחלפות" })).toHaveAttribute("aria-pressed", "true");
+  await expect(paging.getByRole("button", { name: "העמוד הבא ברשימות" })).toBeVisible();
+  await expect(prayers.locator("[data-next]")).toContainText("ערבית מאוחרת");
+  await paging.getByRole("button", { name: "המשך התחלפות" }).click();
 
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect.poll(() => server.writes()).toBeGreaterThan(0);
@@ -54,5 +65,6 @@ test("the next minyan marked, its shape and colour chosen", async ({ page, isMob
   const marked = saved.elements.filter((e) => ["prayers", "lessons", "zmanim"].includes(e.binding ?? ""));
   expect(marked.length).toBeGreaterThan(0);
   for (const e of lists > 1 ? marked : marked.filter((x) => x.binding === "prayers")) expect(e.nextMark?.shape).toBe("frame");
+  expect(saved.elements.find((x) => x.binding === "prayers")?.nextMark?.alpha).toBe(0.5);
   expect(errors).toEqual([]);
 });

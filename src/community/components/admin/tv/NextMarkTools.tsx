@@ -1,6 +1,6 @@
 import type { BoardElement } from '@/tv/elements';
-import { DEFAULT_NEXT_MARK, NEXT_SHAPES, NEXT_SHAPE_NAMES, marksNext, type NextMark } from '@/tv/nextMark';
-import { ColourRow, Segments } from './editorParts';
+import { DEFAULT_NEXT_MARK, NEXT_SHAPES, NEXT_SHAPE_NAMES, markAlpha, marksNext, type NextMark } from '@/tv/nextMark';
+import { ColourRow, Range, Segments } from './editorParts';
 
 /**
  * "הבא בתור" on the chosen lists - prayers, lessons, the day's times: its
@@ -29,6 +29,12 @@ export function NextMarkTools({ elements, texts, onPatch }: {
           <div className="min-w-40">
             <ColourRow label="צבע הסימון" value={mark.color ?? lists[0].color} onChange={color => set({ ...mark, color })}
               reset={mark.color ? { label: 'כמו הטקסט', onClick: () => set({ ...mark, color: undefined }) } : undefined} />
+          </div>
+          <div className="grid w-full gap-2 sm:grid-cols-2">
+            <Range label="אטימות הסימון" value={Math.round(markAlpha(mark) * 100)} min={5} max={100} step={5} show={(v) => `${v}%`}
+              onChange={v => set({ ...mark, alpha: v / 100 })} hint="כמה הסימון מלא: נמוך - שקוף ועדין, גבוה - מלא ובולט" />
+            <Range label="רוויה" value={Math.round((mark.saturation ?? 1) * 100)} min={0} max={200} step={10} show={(v) => `${v}%`}
+              onChange={v => set({ ...mark, saturation: v === 100 ? undefined : v / 100 })} hint="0% - אפור, 100% - הצבע שנבחר, 200% - חי במיוחד" />
           </div>
           <label className="flex items-center gap-1.5 text-xs">
             <input type="checkbox" aria-label="עמעום מה שעבר" checked={mark.dimPast !== false} onChange={ev => set({ ...mark, dimPast: ev.target.checked ? undefined : false })} />

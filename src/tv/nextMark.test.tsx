@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/react';
 import { BoundElement, ElementDataProvider, type ElementData } from './elementData';
 import { newElement, normalizeElements, type BoardElement } from './elements';
-import { inkOn, nextRow, normalizeNextMark, rowPast } from './nextMark';
+import { inkOn, markAlpha, nextRow, nextRowStyle, normalizeNextMark, rowPast, saturate } from './nextMark';
+import { listPage } from './listPaging';
 
 /** A moment in Jerusalem, on a winter day (UTC+2). */
 const at = (hhmm: string) => new Date(`2026-11-18T${hhmm}:00+02:00`);
@@ -29,6 +30,28 @@ describe('הבא בתור', () => {
   it("the label's letters read on its colour", () => {
     expect(inkOn('#3b2410')).toBe('#ffffff');
     expect(inkOn('#ffd76a')).toBe('#1b1b1b');
+  });
+
+  it('its solidity and its saturation', () => {
+    expect(markAlpha({ shape: 'fill' })).toBe(0.28);
+    expect(markAlpha({ shape: 'frame' })).toBe(1);
+    expect(normalizeNextMark({ shape: 'fill', alpha: 0.6, saturation: 1.5 })).toEqual({ shape: 'fill', alpha: 0.6, saturation: 1.5 });
+    expect(normalizeNextMark({ shape: 'fill', alpha: 9, saturation: -1 })).toEqual({ shape: 'fill', alpha: 1, saturation: 0 });
+    expect(nextRowStyle({ shape: 'fill', color: '#ff0000', alpha: 0.5 }, '#000').background).toBe('rgba(255, 0, 0, 0.5)');
+    // No saturation: grey of the same lightness; as it is: the colour itself.
+    expect(saturate('#ff0000', 0)).toBe('#808080');
+    expect(saturate('#c08040', 1)).toBe('#c08040');
+    const vivid = saturate('#a08060', 2);
+    expect(vivid).not.toBe('#a08060');
+  });
+
+  it('held in the editor: the page of "הבא", turned by hand', () => {
+    const now = new Date(0);
+    expect(listPage(3, 4, 9, now, { paused: true, shift: 0 })).toBe(2);
+    expect(listPage(3, 4, 9, now, { paused: true, shift: 1 })).toBe(0);
+    expect(listPage(3, 4, 9, now, { paused: true, shift: -1 })).toBe(1);
+    expect(listPage(3, 4, -1, now, { paused: true, shift: 0 })).toBe(0);
+    expect(listPage(3, 4, 9, new Date(15000), { paused: false, shift: 0 })).toBe(1);
   });
 
   it('the mark is kept as saved, a bad one dropped', () => {
@@ -71,6 +94,6 @@ describe('הסימון על הלוח', () => {
 
   it('the mark in the colour chosen', () => {
     const row = show(part({ nextMark: { shape: 'frame', color: '#ff0000' } }), at('05:00')).querySelector<HTMLElement>('[data-next]');
-    expect(row?.style.boxShadow).toMatch(/#ff0000|rgb\(255, 0, 0\)/);
+    expect(row?.style.boxShadow).toMatch(/255, 0, 0/);
   });
 });

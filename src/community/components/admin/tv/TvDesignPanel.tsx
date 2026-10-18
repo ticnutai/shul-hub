@@ -1,8 +1,12 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { setListPaging, useListPaging } from "@/tv/listPaging";
+import { marksNext } from "@/tv/nextMark";
 import {
   ArrowLeftRight,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   Columns2,
   Rows2,
@@ -119,6 +123,9 @@ export function TvDesignPanel(props: { studio?: boolean } = {}) {
   return <ElementEditingProvider><TvDesignPanelContent {...props} /></ElementEditingProvider>;
 }
 function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
+  // The lists held on the page of "הבא" (the preview only); let go when the editor closes, so nothing stays held.
+  const listPaging = useListPaging();
+  useEffect(() => () => setListPaging({ paused: false, shift: 0 }), []);
   const elementEditing = useElementEditing()!;
   const routerLocation = useLocation();
   const { setEnabled: setElementEditingEnabled, setDraft: setElementDraft, select: selectElements } = elementEditing;
@@ -994,6 +1001,33 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         {/* A toggle: the way back to the draft is offered once, on the note over the preview. */}
         <ArrowLeftRight className="size-4" /> לפני / אחרי
       </Button>
+      {/* Lists that take turns in their container (prayers that do not fit together): held on the page of "הבא", turned by hand. */}
+      {view.screenLayout === "composition" && view.elements.some((e) => !e.hidden && marksNext(e.binding)) && (
+        <span className="inline-flex items-center rounded-md border" role="group" aria-label="דפדוף הרשימות בתצוגה" data-testid="list-paging">
+          <Button
+            type="button"
+            variant={listPaging.paused ? "default" : "ghost"}
+            size="sm"
+            className="h-8"
+            aria-pressed={listPaging.paused}
+            title={listPaging.paused ? "הרשימות עומדות על העמוד של הבא בתור. לחיצה מחזירה את ההתחלפות" : "עוצר את התחלפות העמודים ברשימות (תפילות, שיעורים, זמני היום) על העמוד של הבא בתור - בתצוגה כאן בלבד, לא במסכים"}
+            onClick={() => setListPaging((p) => ({ paused: !p.paused, shift: 0 }))}
+          >
+            {listPaging.paused ? <Play className="size-4" aria-hidden /> : <Pause className="size-4" aria-hidden />}
+            {listPaging.paused ? "המשך התחלפות" : "עצירת הרשימות"}
+          </Button>
+          {listPaging.paused && (
+            <>
+              <Button type="button" variant="ghost" size="sm" className="h-8 px-1.5" aria-label="העמוד הקודם ברשימות" title="העמוד הקודם" onClick={() => setListPaging((p) => ({ ...p, shift: p.shift - 1 }))}>
+                <ChevronRight className="size-4" aria-hidden />
+              </Button>
+              <Button type="button" variant="ghost" size="sm" className="h-8 px-1.5" aria-label="העמוד הבא ברשימות" title="העמוד הבא" onClick={() => setListPaging((p) => ({ ...p, shift: p.shift + 1 }))}>
+                <ChevronLeft className="size-4" aria-hidden />
+              </Button>
+            </>
+          )}
+        </span>
+      )}
       {/* A board of parts turns its pages from the bar of pages ("הפעלת סבב העמודים"), not here as well. */}
       {view.screenLayout !== "composition" && (
         <Button
