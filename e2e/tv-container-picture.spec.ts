@@ -83,3 +83,50 @@ test("a container with a picture, things put inside it, kept in my parts; a pict
   expect(saved.elements.length).toBe(start.elements.length + 6);
   expect(errors).toEqual([]);
 });
+
+test("a picture standing alone put into a container: it fills it, in its shape, and is its own", async ({ page, isMobile }) => {
+  test.skip(isMobile, "the editor is for a desktop screen");
+  test.setTimeout(120_000);
+  const errors: string[] = [];
+  page.on("pageerror", (e) => errors.push(e.message));
+  await page.setViewportSize({ width: 1600, height: 1200 });
+  await storage(page);
+  const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_premium_jerusalem-stone")!;
+  const start = JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit)));
+  const server = await serveEditor(page, start);
+  await page.goto("/e2e/harness/editor.html");
+  await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+  const row = (name: string) => page.getByTestId("container-row").filter({ has: page.getByRole("checkbox", { name: `בחירת הקונטיינר ${name}`, exact: true }) }).first();
+
+  // A picture alone, as the gabbai put one over the board.
+  await row("זמני תפילות").getByTestId("container-name").first().click();
+  const panel = page.getByTestId("part-context-panel");
+  await panel.getByRole("tab", { name: "הוספה", exact: true }).click();
+  await panel.getByLabel("העלאת תמונה לתמונה לבד", { exact: true }).setInputFiles({ name: "תפילין.png", mimeType: "image/png", buffer: PNG });
+  await expect(panel).toContainText("נבחר: תפילין");
+
+  // Into a container: it fills it and is its own.
+  const box = panel.getByTestId("ctx-into-container");
+  await box.getByLabel("הכנסה לקונטיינר", { exact: true }).selectOption({ label: "שיעורי תורה" });
+  await expect(box.getByRole("button", { name: "התאמה מחדש לקונטיינר", exact: true })).toBeVisible();
+  await expect(row("שיעורי תורה").getByTestId("container-inside").first().getByRole("checkbox", { name: "בחירת תפילין", exact: true })).toHaveCount(1);
+  // The picture its content now: the words under it hidden, and shown again from here.
+  const words = box.getByRole("button", { name: "הצגת הכתוב שבקונטיינר", exact: true });
+  await expect(words).toBeVisible();
+  await words.click();
+  await expect(box.getByRole("button", { name: "הסתרת הכתוב שבקונטיינר", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
+  await expect.poll(() => server.writes()).toBeGreaterThan(0);
+  const saved = normalizeTvConfig(server.saved());
+  const p = saved.elements.find((e) => e.name === "תפילין")!;
+  const lessons = saved.containers.find((c) => c.name === "שיעורי תורה")!;
+  expect(p.group).toBe(lessons.id);
+  expect(p.fit).toBe("cover");
+  expect(saved.elements.filter((e) => e.group === lessons.id && e.kind === "text").every((e) => !e.hidden)).toBe(true);
+  const others = saved.elements.filter((e) => e.group === lessons.id && e.id !== p.id);
+  const left = Math.min(...others.map((e) => e.x)), right = Math.max(...others.map((e) => e.x + e.width));
+  expect(p.x).toBeGreaterThanOrEqual(left - 0.01);
+  expect(p.x + p.width).toBeLessThanOrEqual(right + 0.01);
+  expect(errors).toEqual([]);
+});

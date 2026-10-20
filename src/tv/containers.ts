@@ -314,3 +314,41 @@ export function addPictureAlone(board: Board, id: string, image: { url: string; 
   const part: BoardElement = { ...newElement('image'), id, x: 35, y: 25, width: 30, height: 40, image: image.url, name: image.name.slice(0, 80) || 'תמונה', fit: 'cover' };
   return { elements: [...board.elements, part], containers: board.containers };
 }
+
+/**
+ * A picture put into a container, or fitted again to the one it is in: it
+ * fills the container's board (else its frame, else what is in it), a little
+ * inside it so a frame stays seen, in the container's shape, over the board
+ * and under the frame and what is written - and from then on it is the
+ * container's, moving and growing with it as live content does.
+ */
+export function fitIntoContainer(board: Board, partId: string, containerId: string): Board {
+  const w = writeContainers(board);
+  const tree = containerTree(w.elements, w.containers);
+  const node = tree.containers.find(c => c.id === containerId);
+  const part = w.elements.find(e => e.id === partId);
+  const others = (node?.parts ?? []).filter(id => id !== partId);
+  if (!node || !part || !others.length) return w;
+  const own = others.map(id => w.elements.find(e => e.id === id)).filter((e): e is BoardElement => Boolean(e));
+  const back = own.find(e => e.kind === 'box') ?? own.find(e => e.kind === 'image' && /^מילוי /.test(e.name));
+  const frame = own.find(e => e.kind === 'frame') ?? own.find(e => e.kind === 'image' && /^(מסגרת|קשת)/.test(e.name));
+  const area = back ?? frame ?? boundsOf(w.elements, others);
+  // A kit's frame is a piece of its painting, solid inside: the picture goes over it, inside its edge.
+  const paintedFrame = !back && frame?.kind === 'image';
+  const ix = area.width * (paintedFrame ? 0.09 : 0.04), iy = area.height * (paintedFrame ? 0.08 : 0.03);
+  const shape = back?.kind === 'box' ? back.shape : frame?.kind === 'frame' ? frame.shape : undefined;
+  const fitted: BoardElement = {
+    ...part, group: containerId, x: area.x + ix, y: area.y + iy, width: area.width - 2 * ix, height: area.height - 2 * iy,
+    fit: 'cover', ...(shape ? { shape } : {}), hidden: false,
+  };
+  const rest = w.elements.filter(e => e.id !== partId);
+  if (!back && !frame) {
+    // Only words of its own (a kit's arch is painted on the background, and its pieces may lie over that place):
+    // the picture over all that is there, and the container's words over it.
+    const mine = rest.filter(e => others.includes(e.id));
+    return { elements: [...rest.filter(e => !others.includes(e.id)), fitted, ...mine], containers: w.containers };
+  }
+  // Over the board; else under a drawn frame (it is open inside), over a painted one.
+  const at = Math.max(0, back ? rest.findIndex(e => e.id === back.id) + 1 : rest.findIndex(e => e.id === frame!.id) + (paintedFrame ? 1 : 0));
+  return { elements: [...rest.slice(0, at), fitted, ...rest.slice(at)], containers: w.containers };
+}

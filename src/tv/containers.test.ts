@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { newElement, type BoardElement } from "./elements";
 import {
   changeContainer, containerName, containerTree, deleteContainer, duplicateContainer,
-  gatherIntoContainer, moveLayer, normalizeContainers, partsOf, takeOut, writeContainers,
+  fitIntoContainer, gatherIntoContainer, moveLayer, newContainerParts, normalizeContainers, partsOf, takeOut, writeContainers,
 } from "./containers";
 import { BUILTIN_DESIGNS } from "./designs";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "./config";
@@ -133,5 +133,55 @@ describe("two containers read with the same heading", () => {
       part("fl", "frame", 5, 20, 30, 60), part("hl", "text", 7, 22, 26, 8, { text: "זמני תפילות" }),
     ];
     expect(containerTree(els, []).containers.map((c) => c.name)).toEqual(["זמני תפילות (ימין)", "זמני תפילות (שמאל)"]);
+  });
+});
+
+describe("a picture put into a container", () => {
+  const made = newContainerParts({ x: 60, y: 20, width: 30, height: 50 }, "dome");
+  const picture: BoardElement = { ...newElement("image"), x: 5, y: 5, width: 20, height: 20, image: "https://x/p.png", name: "תפילין" };
+  const start = { elements: [...made.parts, picture], containers: [made.container] };
+
+  it("fills the container's board, in its shape, over the board and under the frame and the heading", () => {
+    const { elements } = fitIntoContainer(start, picture.id, made.container.id);
+    const p = elements.find((e) => e.id === picture.id)!;
+    expect(p.group).toBe(made.container.id);
+    expect(p.shape).toBe("dome");
+    expect(p.fit).toBe("cover");
+    expect(p.x).toBeGreaterThan(60);
+    expect(p.x + p.width).toBeLessThan(90);
+    expect(p.y + p.height).toBeLessThan(70);
+    const order = elements.map((e) => e.name);
+    expect(order.indexOf("תפילין")).toBe(order.indexOf("לוח הקונטיינר") + 1);
+    expect(order.indexOf("תפילין")).toBeLessThan(order.indexOf("מסגרת הקונטיינר"));
+  });
+
+  it("follows the container when fitted again after it changed", () => {
+    const once = fitIntoContainer(start, picture.id, made.container.id);
+    const moved = { ...once, elements: once.elements.map((e) => (e.name === "לוח הקונטיינר" ? { ...e, x: 10, width: 40 } : e)) };
+    const p = fitIntoContainer(moved, picture.id, made.container.id).elements.find((e) => e.id === picture.id)!;
+    expect(p.x).toBeGreaterThan(10);
+    expect(p.width).toBeGreaterThan(30);
+  });
+
+  it("a container of words alone (a kit's painted arch): the picture over what lies there, its words over the picture", () => {
+    const words = { ...newElement("text"), id: "w1", name: "שיעורים", x: 70, y: 30, width: 20, height: 40, group: "c_words" };
+    const painted = { ...newElement("image"), id: "arch", name: "קשת מצוירת", x: 65, y: 25, width: 30, height: 50, image: "x.png", crop: { x: 0, y: 0, width: 1, height: 1 } } as BoardElement;
+    const b = { elements: [words, painted, picture], containers: [{ id: "c_words", name: "שיעורים", parent: null }] };
+    const order = fitIntoContainer(b, picture.id, "c_words").elements.map((e) => e.id);
+    expect(order).toEqual(["arch", picture.id, "w1"]);
+  });
+
+  it("a kit's painted frame (solid inside): the picture over it, inside its edge, under the words", () => {
+    const frame = { ...newElement("image"), id: "f", name: "מסגרת שיעורים", x: 60, y: 20, width: 30, height: 60, image: "k.webp", group: "c_k" } as BoardElement;
+    const words = { ...newElement("text"), id: "w", name: "שיעורים", x: 65, y: 30, width: 20, height: 40, group: "c_k" };
+    const b = { elements: [frame, words, picture], containers: [{ id: "c_k", name: "שיעורים", parent: null }] };
+    const out = fitIntoContainer(b, picture.id, "c_k").elements;
+    expect(out.map((e) => e.id)).toEqual(["f", picture.id, "w"]);
+    const p = out.find((e) => e.id === picture.id)!;
+    expect(p.x).toBeGreaterThan(62);
+  });
+
+  it("leaves the board as it was for a container that is not there", () => {
+    expect(fitIntoContainer(start, picture.id, "c_none").elements.find((e) => e.id === picture.id)!.x).toBe(5);
   });
 });

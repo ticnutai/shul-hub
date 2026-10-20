@@ -16,7 +16,7 @@ import { ChevronDown, ChevronUp, GripVertical, X } from "lucide-react";
 import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
-import { addContainer, addInside, addPictureAlone, containerTree, newContainerParts, type InsideKind } from "@/tv/containers";
+import { addContainer, addInside, addPictureAlone, containerTree, fitIntoContainer, newContainerParts, type InsideKind } from "@/tv/containers";
 import { MAX_ELEMENTS, elementId } from "@/tv/elements";
 import type { PartShape } from "@/tv/partShapes";
 import { BoardBackground } from "./TvEditInspector";
@@ -205,6 +205,26 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
     : [];
   const decorHidden = paintedDecor.length > 0 && paintedDecor.every((e) => e.hidden);
   const ornaments = config.elements.filter((e) => chosen.includes(e.id) && (roleOf(e) === "ornament" || roleOf(e) === "picture"));
+  // A picture of one's own chosen alone: put into a container, where it fills it and goes with it as live content does.
+  const picture = chosen.length === 1 && first.kind === "image" && roleOf(first) === "picture" ? first : null;
+  const allContainers = picture ? containerTree(config.elements, config.containers ?? []).containers : [];
+  const pictureIn = allContainers.find((c) => c.parts.includes(picture?.id ?? "") && c.parts.length > 1) ?? null;
+  const intoTargets = allContainers.filter((c) => c.parts.some((id) => id !== picture?.id));
+  /** Into a container: the picture its content now - its words hidden under it, to be shown again here. A fitting again leaves them as they are. */
+  const putInto = (containerId: string) => {
+    if (!picture) return;
+    const again = pictureIn?.id === containerId;
+    const words = intoTargets.find((c) => c.id === containerId)?.parts ?? [];
+    onEdit(`ctx:into-container:${picture.id}:${containerId}`, (c) => {
+      const fitted = { ...c, ...fitIntoContainer(c, picture.id, containerId) };
+      return again ? fitted : { ...fitted, elements: fitted.elements.map((e) => (words.includes(e.id) && e.kind === "text" ? { ...e, hidden: true } : e)) };
+    });
+    editing?.select([picture.id]);
+    const name = intoTargets.find((c) => c.id === containerId)?.name ?? "הקונטיינר";
+    if (!again) toast.success(`התמונה היא עכשיו התוכן של „${name}”: ממלאת אותו, וזזה וגדלה יחד איתו. הכתוב שבו הוסתר - אפשר להחזיר אותו כאן.`);
+  };
+  const pictureWords = pictureIn ? config.elements.filter((e) => pictureIn.parts.includes(e.id) && e.kind === "text") : [];
+  const wordsHidden = pictureWords.length > 0 && pictureWords.every((e) => e.hidden);
   // One container chosen: what is added in "הוספה" goes inside it.
   const tree = role === "backdrop" || many ? null : containerTree(config.elements, config.containers ?? []);
   const inside = tree?.containers.find((c) => c.parts.includes(first.id)) ?? null;
@@ -242,7 +262,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           <button key={t} type="button" role="tab" aria-selected={tab === t}
             className={`h-7 rounded-md border px-2 text-xs ${tab === t ? "border-primary bg-primary/10 font-semibold" : "hover:border-primary/50"}`}
             onClick={() => { setTabFor({ key, tab: t }); setFolded(false); }}>
-            {TAB_NAMES[t]}
+            {t === "ornament" && picture ? "התמונה" : TAB_NAMES[t]}
           </button>
         ))}
         <span className="ms-auto flex flex-wrap items-center justify-end gap-1">
@@ -289,6 +309,34 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
         </div>
       )}
 
+      {tab === "ornament" && picture && intoTargets.length > 0 && (
+        <div className="mb-2 space-y-1 rounded-md border border-primary/30 bg-primary/5 p-2 text-xs" data-testid="ctx-into-container">
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 font-medium">
+              {pictureIn ? "בתוך:" : "הכנסה לקונטיינר:"}
+              <select aria-label="הכנסה לקונטיינר" className="h-7 max-w-48 rounded border bg-background px-1" value={pictureIn?.id ?? ""}
+                onChange={(e) => e.target.value && putInto(e.target.value)}>
+                {!pictureIn && <option value="">בחירת קונטיינר…</option>}
+                {intoTargets.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+            {pictureIn && (
+              <button type="button" className="h-7 rounded-md border bg-background px-2 hover:border-primary/50" onClick={() => putInto(pictureIn.id)}
+                title="התמונה ממלאת שוב את הקונטיינר - אחרי שהוא הוזז, הוגדל או קיבל צורה אחרת">
+                התאמה מחדש לקונטיינר
+              </button>
+            )}
+            {pictureWords.length > 0 && (
+              <button type="button" className="h-7 rounded-md border bg-background px-2 hover:border-primary/50"
+                onClick={() => editEls("picture-words", (all) => all.map((e) => (pictureWords.some((w) => w.id === e.id) ? { ...e, hidden: !wordsHidden } : e)))}>
+                {wordsHidden ? "הצגת הכתוב שבקונטיינר" : "הסתרת הכתוב שבקונטיינר"}
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted-foreground">התמונה נעשית התוכן של הקונטיינר: ממלאת אותו בצורה שלו, וזזה וגדלה יחד איתו - כמו תוכן חי. הכתוב שבו מוסתר, ואפשר להחזיר אותו.</p>
+        </div>
+      )}
+
       {tab === "ornament" && (
         <div className="flex flex-wrap items-center gap-2 text-xs" data-testid="ctx-ornament">
           {ornaments.some((e) => e.kind === "ornament" || e.kind === "column") && (
@@ -300,7 +348,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           )}
           <button type="button" className="h-7 rounded-md border px-2 hover:border-primary/50"
             onClick={() => editEls("ornament-hide", (all) => all.map((e) => (ornaments.some((o) => o.id === e.id) ? { ...e, hidden: !e.hidden } : e)))}>
-            {ornaments.every((e) => e.hidden) ? "הצגת העיטור" : "הסתרת העיטור"}
+            {ornaments.every((e) => e.hidden) ? (picture ? "הצגת התמונה" : "הצגת העיטור") : (picture ? "הסתרת התמונה" : "הסתרת העיטור")}
           </button>
           <span className="text-muted-foreground">עיטורים חדשים מוסיפים ב"חלקים" ← "הוספת עיטור".</span>
         </div>
