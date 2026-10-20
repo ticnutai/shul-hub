@@ -4,10 +4,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { PATH_END_ID } from "@/community/components/admin/adminPath";
-import { Building2, LayoutGrid, List, LogOut, ShieldAlert } from "lucide-react";
+import { Building2, LogOut, ShieldAlert } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import "@community/components/admin/adminMobile.css";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MinyanimAdmin } from "@community/components/admin/MinyanimAdmin";
@@ -32,6 +31,7 @@ import { CommunitySwitcher, ShulNow } from "@/community/components/admin/Communi
 import { CommunitiesAdmin } from "@/community/components/admin/CommunitiesAdmin";
 import { SilentScreensAlert } from "@community/components/admin/tv/SilentScreensAlert";
 import { AdminTiles } from "@community/components/admin/AdminTiles";
+import { LayoutChooser, MenusLayout, SearchLayout, SectionSelect, SideMenuLayout } from "@community/components/admin/AdminNav";
 import { ADMIN_SECTIONS, SECTION_ALIASES, type AdminSection } from "@community/lib/adminSections";
 import { useAdminLayout } from "@community/lib/adminLayout";
 import { confirmLeave } from "@community/lib/unsavedChanges";
@@ -184,27 +184,9 @@ export function AdminPage() {
         </Button>
       )}
       <CommunitySwitcher />
-      {/* Two ways into the same screens (adminLayout.ts): a list of tabs (on a
-          phone, a list to choose from), or tiles step by step.
+      {/* Five ways into the same screens (adminLayout.ts, AdminNav.tsx): one button, opening them.
           Only for a gabbai - to anyone else there are no screens to lay out. */}
-      {isAdmin && (
-      <div role="radiogroup" aria-label="פריסת מסך הניהול" className="flex rounded-lg border p-0.5" data-testid="admin-layout-switch">
-        {([["tabs", "רשימה", List], ["tiles", "אריחים", LayoutGrid]] as const).map(([value, label, Icon]) => (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={layout === value}
-            onClick={async () => {
-              if (layout !== value && (await confirmLeave())) setLayout(value);
-            }}
-            className={`flex min-h-11 items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm sm:min-h-0 ${layout === value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted"}`}
-          >
-            <Icon className="size-4" aria-hidden /> {label}
-          </button>
-        ))}
-      </div>
-      )}
+      {isAdmin && <LayoutChooser layout={layout} onChange={async (next) => { if (layout !== next && (await confirmLeave())) setLayout(next); }} />}
       <Button variant="outline" onClick={() => void signOut()}>
         <LogOut className="size-4" /> יציאה
       </Button>
@@ -256,6 +238,12 @@ export function AdminPage() {
           </div>
         ) : layout === "tiles" ? (
           <AdminTiles sections={sections} badges={{ messages: unread }} renderSection={sectionScreen} />
+        ) : layout === "side" ? (
+          <SideMenuLayout sections={sections} activeTab={activeTab} openTab={openTab} sectionLabel={sectionLabel} renderSection={sectionScreen} />
+        ) : layout === "menus" ? (
+          <MenusLayout sections={sections} activeTab={activeTab} openTab={openTab} sectionLabel={sectionLabel} renderSection={sectionScreen} />
+        ) : layout === "search" ? (
+          <SearchLayout sections={sections} chosen={sections.some((section) => section.value === requestedTab) ? requestedTab : null} sectionLabel={sectionLabel} renderSection={sectionScreen} />
         ) : (
           <Tabs
             dir="rtl"
@@ -264,20 +252,7 @@ export function AdminPage() {
             className="mt-5 min-w-0 text-right sm:mt-6"
             data-focus-tight
           >
-            <div className="sticky top-[var(--app-header-height,7rem)] z-20 bg-background py-2 sm:hidden" data-focus-hide>
-              <Select dir="rtl" value={activeTab} onValueChange={(tab) => void openTab(tab)}>
-                <SelectTrigger aria-label="מדור ניהול" className="h-12 w-full font-semibold">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent dir="rtl" position="popper" className="max-h-[60dvh]">
-                  {sections.map((section) => (
-                    <SelectItem key={section.value} value={section.value} className="min-h-11 py-3">
-                      {sectionLabel(section)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <SectionSelect sections={sections} value={activeTab} onChange={(tab) => void openTab(tab)} label={sectionLabel} />
             <TabsList
               dir="rtl"
               aria-label="מדורי ניהול"

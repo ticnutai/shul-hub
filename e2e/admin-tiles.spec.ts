@@ -62,11 +62,16 @@ test.describe("the gabbai's area, as tiles", () => {
     const tabs = page.getByRole("tablist", { name: "מדורי ניהול" });
     // A computer opens on the tabs, as it always did.
     await expect(tabs).toBeVisible({ timeout: 30_000 });
-    const sw = page.getByTestId("admin-layout-switch");
-    await sw.getByRole("radio", { name: "אריחים" }).click();
+    const choose = async (name: string) => {
+      // A menu just chosen from closes first; then the chooser opens.
+      await expect(page.getByRole("menu")).toHaveCount(0);
+      await page.getByTestId("admin-layout-switch").click();
+      await page.getByRole("menuitemradio", { name: new RegExp(`^${name}`) }).click();
+    };
+    await choose("אריחים");
     await expect(page.getByTestId("admin-home")).toBeVisible();
     await expect(tabs).toHaveCount(0);
-    await sw.getByRole("radio", { name: "רשימה" }).click();
+    await choose("רשימה");
     await expect(page.getByRole("tablist", { name: "מדורי ניהול" })).toBeVisible();
   });
 

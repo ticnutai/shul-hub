@@ -45,3 +45,20 @@ export const SECTION_ALIASES: Record<string, { tab: string; focus?: string }> = 
   qr: { tab: "share" },
   apps: { tab: "share", focus: "apps" },
 };
+
+/**
+ * The sections in four groups, for the layouts that show them grouped (the
+ * side menu, the menus, the search): each section in exactly one group, in
+ * the order of ADMIN_SECTIONS within it.
+ */
+export const ADMIN_GROUPS: { id: string; label: string; sections: string[] }[] = [
+  { id: "prayer", label: "תפילות ולימוד", sections: ["minyanim", "shiurim", "chavrutot", "chavruta-requests"] },
+  { id: "community", label: "קהילה ופניות", sections: ["announcements", "messages", "users"] },
+  { id: "site", label: "האתר והמסכים", sections: ["tv", "widgets", "share"] },
+  { id: "system", label: "הגדרות ונתונים", sections: ["communities", "ai", "data"] },
+];
+
+/** The groups with the sections this gabbai has (the store app has no boards), empty groups left out. */
+export function groupSections(sections: AdminSection[]): { id: string; label: string; sections: AdminSection[] }[] {
+  return ADMIN_GROUPS.map((g) => ({ ...g, sections: g.sections.flatMap((v) => sections.filter((s) => s.value === v)) })).filter((g) => g.sections.length);
+}

@@ -30,7 +30,7 @@ import { confirmLeave } from "@community/lib/unsavedChanges";
 /** The steps under a section, deepest last: what "back" takes off. */
 const STEP_PARAMS = ["cat", "prayer", "tvTab", "panel"] as const;
 
-function useSteps() {
+export function useSteps() {
   const [params, setParams] = useSearchParams();
   /**
    * A step forward (or back): its own entry in the history, so the phone's
@@ -240,7 +240,7 @@ function MinyanimSteps({ root, sectionStep }: { root: Step; sectionStep: Step })
   );
 }
 
-const TV_STEPS: { tvTab: string; panel?: string; label: string; icon: LucideIcon; hint: string }[] = [
+export const TV_STEPS: { tvTab: string; panel?: string; label: string; icon: LucideIcon; hint: string }[] = [
   { tvTab: "design", panel: "design", label: "עיצוב", icon: Palette, hint: "ערכות, רקע, תיבות, מסגרות, טקסט וחלקים - עם תצוגה מקדימה" },
   { tvTab: "design", panel: "layout", label: "פריסה", icon: LayoutTemplate, hint: "מה מופיע על הלוח ובאיזה צד, המסכים והעמודים" },
   { tvTab: "design", panel: "content", label: "תוכן", icon: Type, hint: "טקסטים, תזכורות לפני הזמנים, כתובית רצה" },
