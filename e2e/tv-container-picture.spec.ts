@@ -74,6 +74,9 @@ test("a container with a picture, things put inside it, kept in my parts; a pict
   const mine = page.getByTestId("part-folders").locator('[data-library-folder="parts-mine"] [data-library-item]');
   await expect(mine).toHaveCount(2);
 
+  // The notices close once the mouse is off them (a mouse resting on one keeps it open, over the save button).
+  await page.mouse.move(5, 900);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 15_000 });
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect.poll(() => server.writes()).toBeGreaterThan(0);
   const saved = normalizeTvConfig(server.saved());
@@ -111,11 +114,18 @@ test("a picture standing alone put into a container: it fills it, in its shape, 
   await expect(box.getByRole("button", { name: "התאמה מחדש לקונטיינר", exact: true })).toBeVisible();
   await expect(row("שיעורי תורה").getByTestId("container-inside").first().getByRole("checkbox", { name: "בחירת תפילין", exact: true })).toHaveCount(1);
   // The picture its content now: the words under it hidden, and shown again from here.
-  const words = box.getByRole("button", { name: "הצגת הכתוב שבקונטיינר", exact: true });
+  const words = box.getByRole("button", { name: "הצגת מה שהיה בקונטיינר", exact: true });
   await expect(words).toBeVisible();
   await words.click();
-  await expect(box.getByRole("button", { name: "הסתרת הכתוב שבקונטיינר", exact: true })).toBeVisible();
+  await expect(box.getByRole("button", { name: "הסתרת מה שהיה בקונטיינר", exact: true })).toBeVisible();
+  // Its layer, from the same window: to the bottom of its container, then one step up again.
+  const layers = panel.getByTestId("ctx-layers");
+  await layers.getByRole("button", { name: "לתחתית השכבות - מתחת לכולם", exact: true }).click();
+  await layers.getByRole("button", { name: "שכבה למעלה - מעל השכן", exact: true }).click();
 
+  // The notices close once the mouse is off them (a mouse resting on one keeps it open, over the save button).
+  await page.mouse.move(5, 900);
+  await expect(page.locator("[data-sonner-toast]")).toHaveCount(0, { timeout: 15_000 });
   await page.getByRole("button", { name: /שמור ושדר/ }).first().click();
   await expect.poll(() => server.writes()).toBeGreaterThan(0);
   const saved = normalizeTvConfig(server.saved());
@@ -123,8 +133,11 @@ test("a picture standing alone put into a container: it fills it, in its shape, 
   const lessons = saved.containers.find((c) => c.name === "שיעורי תורה")!;
   expect(p.group).toBe(lessons.id);
   expect(p.fit).toBe("cover");
-  expect(saved.elements.filter((e) => e.group === lessons.id && e.kind === "text").every((e) => !e.hidden)).toBe(true);
+  expect(saved.elements.filter((e) => e.group === lessons.id && e.id !== p.id && e.kind === "text").every((e) => !e.hidden)).toBe(true);
   const others = saved.elements.filter((e) => e.group === lessons.id && e.id !== p.id);
+  // Second of its container's parts: under all of them, then one step up.
+  const order = saved.elements.filter((e) => e.group === lessons.id).map((e) => e.id);
+  expect(order.indexOf(p.id)).toBe(1);
   const left = Math.min(...others.map((e) => e.x)), right = Math.max(...others.map((e) => e.x + e.width));
   expect(p.x).toBeGreaterThanOrEqual(left - 0.01);
   expect(p.x + p.width).toBeLessThanOrEqual(right + 0.01);

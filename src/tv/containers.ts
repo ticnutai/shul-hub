@@ -16,6 +16,7 @@
 import { BINDING_LABELS, boundsOf, elementId, newElement, normalizeElements, sideOf, type BoardElement } from './elements';
 import { isPartShape, type PartShape } from './partShapes';
 import { linkedSection } from './sectionGeometry';
+import { roleOf } from './containerParts';
 
 export interface PartContainer {
   id: string;
@@ -289,7 +290,8 @@ export function addInside(board: Board, containerId: string, id: string, kind: I
   const node = tree.containers.find(c => c.id === containerId);
   const ids = partsOf(tree, containerId);
   const own = (node?.parts ?? []).map(id => w.elements.find(e => e.id === id)).filter((e): e is BoardElement => Boolean(e));
-  const backing = own.find(e => e.kind === 'box') ?? own.find(e => e.kind === 'image');
+  // Its board and its frame, as the editor tells them everywhere (roleOf): drawn, or painted pieces of a kit.
+  const backing = own.find(e => roleOf(e) === 'board');
   const name = node?.name ?? 'קונטיינר';
   const area = ids.length ? boundsOf(w.elements, ids) : { x: 35, y: 30, width: 30, height: 40 };
   const box = kind === 'frame' ? area
@@ -330,8 +332,8 @@ export function fitIntoContainer(board: Board, partId: string, containerId: stri
   const others = (node?.parts ?? []).filter(id => id !== partId);
   if (!node || !part || !others.length) return w;
   const own = others.map(id => w.elements.find(e => e.id === id)).filter((e): e is BoardElement => Boolean(e));
-  const back = own.find(e => e.kind === 'box') ?? own.find(e => e.kind === 'image' && /^מילוי /.test(e.name));
-  const frame = own.find(e => e.kind === 'frame') ?? own.find(e => e.kind === 'image' && /^(מסגרת|קשת)/.test(e.name));
+  const back = own.find(e => roleOf(e) === 'board');
+  const frame = own.find(e => roleOf(e) === 'frame');
   const area = back ?? frame ?? boundsOf(w.elements, others);
   // A kit's frame is a piece of its painting, solid inside: the picture goes over it, inside its edge.
   const paintedFrame = !back && frame?.kind === 'image';
@@ -351,4 +353,47 @@ export function fitIntoContainer(board: Board, partId: string, containerId: stri
   // Over the board; else under a drawn frame (it is open inside), over a painted one.
   const at = Math.max(0, back ? rest.findIndex(e => e.id === back.id) + 1 : rest.findIndex(e => e.id === frame!.id) + (paintedFrame ? 1 : 0));
   return { elements: [...rest.slice(0, at), fitted, ...rest.slice(at)], containers: w.containers };
+}
+
+/**
+ * What was chosen, a layer up or down - the one way, from the panel by the
+ * board and the rows of the list alike: a whole container among its
+ * neighbours (the containers beside it and the parts standing alone), or one
+ * part inside its container among the container's own parts. One step past
+ * the neighbour, or (`toEnd`) over all of them or under all of them.
+ */
+export function moveChosenLayer(board: Board, chosen: string[], direction: 'up' | 'down', toEnd = false): Board {
+  const w = writeContainers(board);
+  const tree = containerTree(w.elements, w.containers);
+  const whole = tree.containers.filter(c => {
+    const ids = partsOf(tree, c.id);
+    return ids.length > 0 && ids.every(id => chosen.includes(id));
+  });
+  const outer = whole.filter(c => !whole.some(o => o.id !== c.id && descendants(tree, o.id).includes(c.id)));
+  const step = (b: Board, ids: string[], parent: string | null) => ({ ...b, elements: moveLayer(b, ids, parent, direction) });
+  const repeat = (ids: string[], parent: string | null) => {
+    let b = w;
+    for (let i = 0; i < (toEnd ? 200 : 1); i++) {
+      const next = step(b, ids, parent);
+      if (next.elements.every((e, k) => e.id === b.elements[k].id)) break;
+      b = next;
+    }
+    return b;
+  };
+  if (outer.length === 1) return repeat(partsOf(tree, outer[0].id), outer[0].parent);
+  if (chosen.length !== 1) return w;
+  const id = chosen[0];
+  const node = tree.containers.find(c => c.parts.includes(id));
+  if (!node) return repeat([id], null);
+  // A part inside its container: among the container's own parts.
+  const index = new Map(w.elements.map((e, i) => [e.id, i]));
+  const own = [...node.parts].sort((a, b) => (index.get(a) ?? 0) - (index.get(b) ?? 0));
+  const k = own.indexOf(id);
+  const to = toEnd ? (direction === 'up' ? own.length - 1 : 0) : k + (direction === 'up' ? 1 : -1);
+  if (to < 0 || to >= own.length || to === k) return w;
+  const part = w.elements[index.get(id)!];
+  const rest = w.elements.filter(e => e.id !== id);
+  const anchor = rest.findIndex(e => e.id === own[to]);
+  const at = direction === 'up' ? anchor + 1 : anchor;
+  return { elements: [...rest.slice(0, at), part, ...rest.slice(at)], containers: w.containers };
 }

@@ -14,10 +14,10 @@ import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import type { BoardElement } from "@/tv/elements";
 import { MAX_ELEMENTS, elementId } from "@/tv/elements";
-import { isBackdrop } from "@/tv/containerParts";
+import { isBackdrop, roleOf } from "@/tv/containerParts";
 import {
-  addContainer, addInside, changeContainer, newContainerParts, containerTree, deleteContainer, descendants, duplicateContainer, gatherIntoContainer,
-  moveLayer, partsOf, takeOut, writeContainers, type ContainerNode, type InsideKind, type PartContainer,
+  addContainer, addInside, changeContainer, moveChosenLayer, newContainerParts, containerTree, deleteContainer, descendants, duplicateContainer, gatherIntoContainer,
+  partsOf, takeOut, type ContainerNode, type InsideKind, type PartContainer,
 } from "@/tv/containers";
 import { showDesignTopic } from "./designTopics";
 import { ImagePick, InsideButtons } from "./ContainerAdd";
@@ -82,7 +82,7 @@ export function ContainerLayers({ elements, containers, selected, select, select
     const open = !closed.has(c.id);
     const own = c.parts.map((id) => byId.get(id)!).filter(Boolean);
     // A drawn frame, or the frame of the kit's picture: either way it has one.
-    const hasFrame = own.some((e) => e.kind === "frame" || (e.kind === "image" && /^(מסגרת|קשת)/.test(e.name)));
+    const hasFrame = own.some((e) => roleOf(e) === "frame");
     const setAll = (patch: Partial<BoardElement>, what: string) =>
       edit(`container-${what}:${c.id}`, (b) => ({ ...b, elements: b.elements.map((e) => (ids.includes(e.id) ? { ...e, ...patch } : e)) }));
     // Not inside itself, nor inside one of those inside it.
@@ -122,9 +122,9 @@ export function ContainerLayers({ elements, containers, selected, select, select
           <span className="flex shrink-0 flex-wrap items-center gap-0.5">
             <button type="button" className={SIDE_BUTTON} aria-label={`שינוי השם של ${c.name}`} title="שינוי השם" onClick={() => setNaming({ id: c.id, value: c.name })}><Pencil className="size-4" aria-hidden /></button>
             <button type="button" className={SIDE_BUTTON} aria-label={`${c.name} שכבה למעלה`} title="שכבה למעלה - מעל הקונטיינר שמעליו"
-              onClick={() => edit(`container-up:${c.id}`, (b) => { const w = writeContainers(b); return { ...w, elements: moveLayer(w, ids, c.parent, "up") }; })}><ArrowUp className="size-4" aria-hidden /></button>
+              onClick={() => edit(`container-up:${c.id}`, (b) => moveChosenLayer(b, ids, "up"))}><ArrowUp className="size-4" aria-hidden /></button>
             <button type="button" className={SIDE_BUTTON} aria-label={`${c.name} שכבה למטה`} title="שכבה למטה - מתחת לקונטיינר שמתחתיו"
-              onClick={() => edit(`container-down:${c.id}`, (b) => { const w = writeContainers(b); return { ...w, elements: moveLayer(w, ids, c.parent, "down") }; })}><ArrowDown className="size-4" aria-hidden /></button>
+              onClick={() => edit(`container-down:${c.id}`, (b) => moveChosenLayer(b, ids, "down"))}><ArrowDown className="size-4" aria-hidden /></button>
             <button type="button" className={SIDE_BUTTON} aria-label={`שכפול ${c.name}`} title="שכפול - עותק קצת הצידה, מעל המקורי"
               onClick={() => {
                 if (elements.length + ids.length > MAX_ELEMENTS) return void toast.error(`אין מקום לעוד ${ids.length} חלקים: בלוח עד ${MAX_ELEMENTS}.`);

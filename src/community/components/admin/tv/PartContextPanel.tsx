@@ -12,11 +12,11 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PART_PANEL_SLOT } from "../adminPath";
-import { ChevronDown, ChevronUp, GripVertical, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, GripVertical, X } from "lucide-react";
 import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
-import { addContainer, addInside, addPictureAlone, containerTree, fitIntoContainer, newContainerParts, type InsideKind } from "@/tv/containers";
+import { addContainer, addInside, addPictureAlone, containerTree, fitIntoContainer, moveChosenLayer, newContainerParts, type InsideKind } from "@/tv/containers";
 import { MAX_ELEMENTS, elementId } from "@/tv/elements";
 import type { PartShape } from "@/tv/partShapes";
 import { BoardBackground } from "./TvEditInspector";
@@ -214,21 +214,23 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const putInto = (containerId: string) => {
     if (!picture) return;
     const again = pictureIn?.id === containerId;
-    const words = intoTargets.find((c) => c.id === containerId)?.parts ?? [];
+    // What the container showed - its words and its decorations, not its board and its frame - hidden under the picture.
+    const before = intoTargets.find((c) => c.id === containerId)?.parts ?? [];
+    const shown = (e: BoardElement) => before.includes(e.id) && e.id !== picture.id && !["board", "frame", "backdrop"].includes(roleOf(e));
     onEdit(`ctx:into-container:${picture.id}:${containerId}`, (c) => {
       const fitted = { ...c, ...fitIntoContainer(c, picture.id, containerId) };
-      return again ? fitted : { ...fitted, elements: fitted.elements.map((e) => (words.includes(e.id) && e.kind === "text" ? { ...e, hidden: true } : e)) };
+      return again ? fitted : { ...fitted, elements: fitted.elements.map((e) => (shown(e) ? { ...e, hidden: true } : e)) };
     });
     editing?.select([picture.id]);
     const name = intoTargets.find((c) => c.id === containerId)?.name ?? "הקונטיינר";
-    if (!again) toast.success(`התמונה היא עכשיו התוכן של „${name}”: ממלאת אותו, וזזה וגדלה יחד איתו. הכתוב שבו הוסתר - אפשר להחזיר אותו כאן.`);
+    if (!again) toast.success(`התמונה היא עכשיו התוכן של „${name}”: ממלאת אותו, וזזה וגדלה יחד איתו. מה שהיה בו (כתוב וקישוטים) הוסתר - אפשר להחזיר אותו כאן.`);
   };
-  const pictureWords = pictureIn ? config.elements.filter((e) => pictureIn.parts.includes(e.id) && e.kind === "text") : [];
+  const pictureWords = pictureIn ? config.elements.filter((e) => pictureIn.parts.includes(e.id) && e.id !== picture?.id && !["board", "frame", "backdrop"].includes(roleOf(e))) : [];
   const wordsHidden = pictureWords.length > 0 && pictureWords.every((e) => e.hidden);
   // One container chosen: what is added in "הוספה" goes inside it.
   const tree = role === "backdrop" || many ? null : containerTree(config.elements, config.containers ?? []);
   const inside = tree?.containers.find((c) => c.parts.includes(first.id)) ?? null;
-  const insideFrame = Boolean(inside && config.elements.some((e) => inside.parts.includes(e.id) && (e.kind === "frame" || (e.kind === "image" && /^(מסגרת|קשת)/.test(e.name)))));
+  const insideFrame = Boolean(inside && config.elements.some((e) => inside.parts.includes(e.id) && roleOf(e) === "frame"));
   const putInside = (kind: InsideKind, more?: Partial<BoardElement>) => {
     if (!inside || !room(1)) return;
     const id = elementId();
@@ -266,6 +268,17 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           </button>
         ))}
         <span className="ms-auto flex flex-wrap items-center justify-end gap-1">
+          {/* The layers: what is chosen, over or under its neighbours - a whole container, or one part inside its container. */}
+          {role !== "backdrop" && (
+            <span className="inline-flex items-center rounded-md border" role="group" aria-label="סדר השכבות" data-testid="ctx-layers">
+              {([["up", true, ChevronsUp, "לראש השכבות - מעל כולם"], ["up", false, ArrowUp, "שכבה למעלה - מעל השכן"], ["down", false, ArrowDown, "שכבה למטה - מתחת לשכן"], ["down", true, ChevronsDown, "לתחתית השכבות - מתחת לכולם"]] as const).map(([dir, end, Icon, label]) => (
+                <button key={label} type="button" aria-label={label} title={label} className="rounded p-1 hover:bg-muted"
+                  onClick={() => onEdit(`ctx:layer:${dir}:${end}:${key}`, (c) => ({ ...c, ...moveChosenLayer(c, chosen, dir, end) }))}>
+                  <Icon className="size-4" aria-hidden />
+                </button>
+              ))}
+            </span>
+          )}
           {keepEls.length > 0 && <SaveToParts key={keepIds.join(",")} config={config} onEdit={onEdit} elements={keepEls} name={title} compact />}
           <button type="button" aria-label={folded ? "פתיחת החלון" : "מזעור החלון"} className="rounded p-1 hover:bg-muted" onClick={() => setFolded((f) => !f)}>
             {folded ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
@@ -329,11 +342,11 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
             {pictureWords.length > 0 && (
               <button type="button" className="h-7 rounded-md border bg-background px-2 hover:border-primary/50"
                 onClick={() => editEls("picture-words", (all) => all.map((e) => (pictureWords.some((w) => w.id === e.id) ? { ...e, hidden: !wordsHidden } : e)))}>
-                {wordsHidden ? "הצגת הכתוב שבקונטיינר" : "הסתרת הכתוב שבקונטיינר"}
+                {wordsHidden ? "הצגת מה שהיה בקונטיינר" : "הסתרת מה שהיה בקונטיינר"}
               </button>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground">התמונה נעשית התוכן של הקונטיינר: ממלאת אותו בצורה שלו, וזזה וגדלה יחד איתו - כמו תוכן חי. הכתוב שבו מוסתר, ואפשר להחזיר אותו.</p>
+          <p className="text-[11px] text-muted-foreground">התמונה נעשית התוכן של הקונטיינר: ממלאת אותו בצורה שלו, וזזה וגדלה יחד איתו - כמו תוכן חי. מה שהיה בו (כתוב וקישוטים) מוסתר, ואפשר להחזיר אותו.</p>
         </div>
       )}
 

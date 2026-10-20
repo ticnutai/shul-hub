@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { newElement, type BoardElement } from "./elements";
 import {
   changeContainer, containerName, containerTree, deleteContainer, duplicateContainer,
-  fitIntoContainer, gatherIntoContainer, moveLayer, newContainerParts, normalizeContainers, partsOf, takeOut, writeContainers,
+  fitIntoContainer, gatherIntoContainer, moveChosenLayer, moveLayer, newContainerParts, normalizeContainers, partsOf, takeOut, writeContainers,
 } from "./containers";
 import { BUILTIN_DESIGNS } from "./designs";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "./config";
@@ -183,5 +183,34 @@ describe("a picture put into a container", () => {
 
   it("leaves the board as it was for a container that is not there", () => {
     expect(fitIntoContainer(start, picture.id, "c_none").elements.find((e) => e.id === picture.id)!.x).toBe(5);
+  });
+});
+
+describe("what was chosen, a layer up or down", () => {
+  const a = newContainerParts({ x: 10, y: 10, width: 30, height: 40 });
+  const b = newContainerParts({ x: 50, y: 10, width: 30, height: 40 });
+  const alone: BoardElement = { ...newElement("ornament"), id: "orn", name: "עיטור" };
+  const start = { elements: [...a.parts, ...b.parts, alone], containers: [a.container, b.container] };
+  const ids = (x: { elements: BoardElement[] }) => x.elements.map((e) => e.id);
+  const aIds = a.parts.map((p) => p.id), bIds = b.parts.map((p) => p.id);
+
+  it("a whole container one step past its neighbour, all of it together", () => {
+    const out = ids(moveChosenLayer(start, aIds, "up"));
+    expect(out).toEqual([...bIds, ...aIds, "orn"]);
+  });
+
+  it("to the top: over everything", () => {
+    expect(ids(moveChosenLayer(start, aIds, "up", true))).toEqual([...bIds, "orn", ...aIds]);
+  });
+
+  it("a part inside its container: among the container's own parts only", () => {
+    const [back, frame, heading] = aIds;
+    expect(ids(moveChosenLayer(start, [back], "up")).slice(0, 3)).toEqual([frame, back, heading]);
+    expect(ids(moveChosenLayer(start, [back], "up", true)).slice(0, 3)).toEqual([frame, heading, back]);
+    expect(ids(moveChosenLayer(start, [heading], "down", true)).slice(0, 3)).toEqual([heading, back, frame]);
+  });
+
+  it("nothing past the end", () => {
+    expect(ids(moveChosenLayer(start, ["orn"], "up"))).toEqual(ids(start));
   });
 });

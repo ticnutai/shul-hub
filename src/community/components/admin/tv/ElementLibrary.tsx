@@ -1,7 +1,8 @@
 import { toast } from 'sonner';
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
-import { boundsOf, elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS, newElement, normalizeElementLibrary } from '@/tv/elements';
+import { elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS, newElement, normalizeElementLibrary } from '@/tv/elements';
+import { addInside, addPictureAlone, containerTree } from '@/tv/containers';
 import { READY_PARTS } from '@/tv/readyParts';
 import { hideReady, isHiddenReady, showReady } from '@/tv/readyItems';
 import { HiddenShelf } from './ReadyShelf';
@@ -106,14 +107,13 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
   // The pictures uploaded (on any board): put on this one - into the container chosen, in its shape, or on their own.
   const images = sharedLibrary.items.filter((r) => r.kind === 'image' && typeof (r.data as { url?: unknown } | null)?.url === 'string');
   items.push(...images.map((row) => ({ id: sharedId(row.id), name: row.name, home: 'parts-images' })));
+  /** A picture of "התמונות שלי" put on: into the container chosen (addInside - its board's area and shape), else alone (addPictureAlone). */
   const putImage = (url: string, name: string) => {
-    const into = config.elements.find((e) => selected.includes(e.id) && e.group);
-    const area = into ? boundsOf(config.elements, config.elements.filter((e) => e.group === into.group).map((e) => e.id)) : null;
-    const shape = into ? config.elements.find((e) => e.group === into.group && e.kind === 'box')?.shape : undefined;
-    const part = { ...newElement('image'), image: url, name, fit: 'cover' as const,
-      ...(area ? { x: area.x + area.width * 0.06, y: area.y + area.height * 0.06, width: area.width * 0.88, height: area.height * 0.88, group: into!.group, ...(shape ? { shape } : {}) } : { x: 30, y: 25, width: 40, height: 50 }) };
-    onEdit(`library-image:${part.id}`, (c) => (c.elements.length >= MAX_ELEMENTS ? c : { ...c, elements: [...c.elements, part] }));
-    onSelect([part.id]);
+    const tree = containerTree(config.elements, config.containers ?? []);
+    const into = tree.containers.find((c) => selected.some((id) => c.parts.includes(id)));
+    const id = elementId();
+    onEdit(`library-image:${id}`, (c) => (c.elements.length >= MAX_ELEMENTS ? c : { ...c, ...(into ? addInside(c, into.id, id, 'image', { image: url, name }) : addPictureAlone(c, id, { url, name })) }));
+    onSelect([id]);
     toast.success(into ? `"${name}" נוספה לקונטיינר שבחרתם, בצורה שלו.` : `"${name}" נוספה ללוח - גררו אותה למקום, ושנו צורה וגודל בידיות.`);
   };
   const partTile = (id: string) => {

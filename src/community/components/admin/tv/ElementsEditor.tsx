@@ -180,7 +180,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
       </div>
     </SubPart>
 
-    <SubPart title="פעולות על הבחירה" hint="יישור, שכפול, קיבוץ, סדר השכבות, ייצוא וייבוא בקובץ.">
+    <SubPart title="פעולות על הבחירה" hint="יישור, שכפול, קיבוץ, ייצוא וייבוא בקובץ. סדר השכבות - בחצים שבחלון שליד הלוח, ובחצים של כל קונטיינר ברשימה.">
       <div className="flex flex-wrap gap-2" role="group" aria-label="יישור הבחירה">
         {ALIGNMENTS.map(([alignment, label]) => <Button key={alignment} size="sm" variant="outline" className="h-8" disabled={!first || lockedInSelection} onClick={() => commit(alignElements(elements, selected, alignment))}>{label}</Button>)}
       </div>
@@ -188,9 +188,6 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
         <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={duplicate}>שכפול החלק</Button>
         <Button size="sm" variant="outline" className="h-8" disabled={selected.length < 2 || lockedInSelection} onClick={() => patch({ group: elementId() })}>קיבוץ</Button>
         <Button size="sm" variant="outline" className="h-8" disabled={!first?.group} onClick={() => patch({ group: null })}>פירוק קבוצה</Button>
-        {/* Over and under the others: the layers, not an order of turns. */}
-        <Button size="sm" variant="outline" className="h-8" disabled={!first} title="מעל שאר החלקים" onClick={() => commit([...elements.filter(e => !selected.includes(e.id)), ...elements.filter(e => selected.includes(e.id))])}>שכבה למעלה</Button>
-        <Button size="sm" variant="outline" className="h-8" disabled={!first} title="מתחת לשאר החלקים" onClick={() => commit([...elements.filter(e => selected.includes(e.id)), ...elements.filter(e => !selected.includes(e.id))])}>שכבה למטה</Button>
         {/* In and out in a file, in the words of "ייבוא וייצוא" in the tools tab: these are the parts alone. */}
         <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={() => downloadFile(new Blob([exportElementSet(elements.filter(e => selected.includes(e.id)))], { type: 'application/json' }), 'חלקים.json')}>ייצוא הבחירה לקובץ</Button>
         <FileButton label="ייבוא חלקים מקובץ" ariaLabel="ייבוא חלקים מקובץ" accept=".json" icon={null} busy={files.busy} onFiles={([f]) => void importParts(f)} />
