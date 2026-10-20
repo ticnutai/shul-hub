@@ -16,8 +16,8 @@ import { ChevronDown, ChevronUp, GripVertical, X } from "lucide-react";
 import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
-import { newContainerParts, writeContainers } from "@/tv/containers";
-import { MAX_ELEMENTS } from "@/tv/elements";
+import { addContainer, addInside, addPictureAlone, containerTree, newContainerParts, type InsideKind } from "@/tv/containers";
+import { MAX_ELEMENTS, elementId } from "@/tv/elements";
 import type { PartShape } from "@/tv/partShapes";
 import { BoardBackground } from "./TvEditInspector";
 import { wearsPaint } from "@/tv/partPaint";
@@ -32,12 +32,13 @@ import { BackgroundTile } from "./LayerEditors";
 import { NextMarkTools } from "./NextMarkTools";
 import { ElementTextTools } from "./ElementTextTools";
 import { marksNext } from "@/tv/nextMark";
+import { ImagePick, InsideButtons, SaveToParts, type Picture } from "./ContainerAdd";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 type Tab = "background" | "board" | "frame" | "shape" | "text" | "ornament" | "next" | "add";
 
 const TAB_NAMES: Record<Tab, string> = {
-  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "טקסט", ornament: "העיטור", next: "סימון הבא", add: "הוספת קונטיינר",
+  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "טקסט", ornament: "העיטור", next: "סימון הבא", add: "הוספה",
 };
 /** Where the panel was dragged to, for next time (this browser). */
 const PANEL_POS_KEY = "tv-part-panel-pos";
@@ -137,7 +138,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
       e.preventDefault();
       const r = root.getBoundingClientRect();
       const x = ((e.clientX - r.left) / r.width) * 100, y = ((e.clientY - r.top) / r.height) * 100;
-      addContainer(shape as PartShape, { x: Math.min(70, Math.max(0, x - 15)), y: Math.min(56, Math.max(0, y - 22)), width: 30, height: 44 });
+      newContainer(shape as PartShape, { x: Math.min(70, Math.max(0, x - 15)), y: Math.min(56, Math.max(0, y - 22)), width: 30, height: 44 });
     };
     host.addEventListener("dragover", over);
     host.addEventListener("drop", drop);
@@ -146,16 +147,28 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
       host.removeEventListener("drop", drop);
     };
   });
-  /** A new container - in the middle, or where a shape was dropped - chosen at once. */
-  const addContainer = (shape: PartShape, at = { x: 35, y: 28, width: 30, height: 44 }) => {
-    if (configRef.current.elements.length + 3 > MAX_ELEMENTS) return void toast.error(`בלוח יש כבר ${configRef.current.elements.length} חלקים - עד ${MAX_ELEMENTS}.`);
-    const { container, parts } = newContainerParts(at, shape);
-    onEdit(`ctx:container-new:${container.id}`, (c) => {
-      const w = writeContainers(c);
-      return { ...c, elements: [...w.elements, ...parts], containers: [...w.containers, container] };
-    });
-    editing?.select(parts.map((e) => e.id));
-    toast("נוסף קונטיינר, והוא בחור: אפשר לגרור אותו, ולשנות לו לוח, מסגרת, צורה וטקסט.");
+  /** Room for this many more parts on the board, else said so. */
+  const room = (n: number) => {
+    const have = configRef.current.elements.length;
+    if (have + n <= MAX_ELEMENTS) return true;
+    toast.error(`בלוח יש כבר ${have} חלקים - עד ${MAX_ELEMENTS}.`);
+    return false;
+  };
+  /** A new container - in the middle, or where a shape was dropped; with a picture of one's own if given - chosen at once. */
+  const newContainer = (shape: PartShape, at?: { x: number; y: number; width: number; height: number }, image?: Picture) => {
+    if (!room(3)) return;
+    const made = newContainerParts(at ?? { x: 35, y: 28, width: 30, height: 44 }, shape, image);
+    onEdit(`ctx:container-new:${made.container.id}`, (c) => ({ ...c, ...addContainer(c, made) }));
+    editing?.select(made.parts.map((e) => e.id));
+    toast(image ? "נוסף קונטיינר עם התמונה, והוא בחור: גררו אותו למקום, ובלשונית \"הוספה\" מוסיפים לתוכו טקסט, תיבה ועוד." : "נוסף קונטיינר, והוא בחור: אפשר לגרור אותו, ולשנות לו לוח, מסגרת, צורה וטקסט.");
+  };
+  /** A picture alone on the board, no board or frame round it. */
+  const pictureAlone = (image: Picture) => {
+    if (!room(1)) return;
+    const id = elementId();
+    onEdit(`ctx:picture-alone:${id}`, (c) => ({ ...c, ...addPictureAlone(c, id, image) }));
+    editing?.select([id]);
+    toast(`"${image.name}" נוספה לבד - גררו אותה למקום, ושנו גודל בידיות.`);
   };
   // Texts alone: the panel too, its "טקסט" first - the one place of a text's letters (the bar under the board is gone).
   const onlyTexts = chosen.length > 0 && chosen.every((id) => config.elements.find((e) => e.id === id)?.kind === "text");
@@ -192,6 +205,19 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
     : [];
   const decorHidden = paintedDecor.length > 0 && paintedDecor.every((e) => e.hidden);
   const ornaments = config.elements.filter((e) => chosen.includes(e.id) && (roleOf(e) === "ornament" || roleOf(e) === "picture"));
+  // One container chosen: what is added in "הוספה" goes inside it.
+  const tree = role === "backdrop" || many ? null : containerTree(config.elements, config.containers ?? []);
+  const inside = tree?.containers.find((c) => c.parts.includes(first.id)) ?? null;
+  const insideFrame = Boolean(inside && config.elements.some((e) => inside.parts.includes(e.id) && (e.kind === "frame" || (e.kind === "image" && /^(מסגרת|קשת)/.test(e.name)))));
+  const putInside = (kind: InsideKind, more?: Partial<BoardElement>) => {
+    if (!inside || !room(1)) return;
+    const id = elementId();
+    onEdit(`ctx:inside:${inside.id}:${id}`, (c) => ({ ...c, ...addInside(c, inside.id, id, kind, more) }));
+    editing?.select([id]);
+  };
+  // "שמירה בחלקים שלי": the whole of the containers chosen (with the containers inside them), else what was chosen - a picture alone, a text.
+  const keepIds = role === "backdrop" ? [] : containers.length ? [...new Set(containers.flatMap((c) => c.ids))] : chosen;
+  const keepEls = config.elements.filter((e) => keepIds.includes(e.id));
   const editEls = (k: string, f: (all: BoardElement[]) => BoardElement[]) => onEdit(`ctx:${k}:${key}`, (c) => ({ ...c, elements: f(c.elements) }));
 
   // Beside the board when there is room; where it was dragged to; else in its own place under the board, in the page -
@@ -219,7 +245,8 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
             {TAB_NAMES[t]}
           </button>
         ))}
-        <span className="ms-auto flex items-center">
+        <span className="ms-auto flex flex-wrap items-center justify-end gap-1">
+          {keepEls.length > 0 && <SaveToParts key={keepIds.join(",")} config={config} onEdit={onEdit} elements={keepEls} name={title} compact />}
           <button type="button" aria-label={folded ? "פתיחת החלון" : "מזעור החלון"} className="rounded p-1 hover:bg-muted" onClick={() => setFolded((f) => !f)}>
             {folded ? <ChevronUp className="size-4" aria-hidden /> : <ChevronDown className="size-4" aria-hidden />}
           </button>
@@ -280,19 +307,37 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
       )}
 
       {tab === "add" && (
-        <div className="space-y-1" data-testid="ctx-add">
-          <p className="text-xs text-muted-foreground">גוררים צורה אל הלוח - ונוצר שם קונטיינר שלם (לוח, מסגרת וכותרת) בצורה הזאת. לחיצה מוסיפה אותו באמצע.</p>
-          <div className="flex flex-wrap gap-1.5">
-            {PART_SHAPES.map((s) => (
-              <button key={s.id} type="button" draggable aria-label={`קונטיינר חדש: ${s.name}`} title={`גרירה ללוח: קונטיינר ב${s.name}`}
-                className={`${tile} cursor-grab`}
-                onDragStart={(e) => { e.dataTransfer.setData(DRAG_TYPE, s.id); e.dataTransfer.effectAllowed = "copy"; }}
-                onClick={() => addContainer(s.id)}>
-                <svg viewBox="0 0 100 100" className="h-7 w-9" aria-hidden><path d={s.path} fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="5" /></svg>
-                {s.name}
-              </button>
-            ))}
+        <div className="space-y-2.5" data-testid="ctx-add">
+          {inside && (
+            <div className="space-y-1 rounded-md border border-primary/30 bg-primary/5 p-2" data-testid="ctx-add-inside">
+              <p className="text-xs font-medium">להוסיף לתוך „{inside.name}”</p>
+              <InsideButtons name={inside.name} hasFrame={insideFrame} onAdd={putInside} />
+            </div>
+          )}
+          <div className="space-y-1">
+            <p className="text-xs font-medium">קונטיינר חדש</p>
+            <p className="text-[11px] text-muted-foreground">גוררים צורה אל הלוח - ונוצר שם קונטיינר שלם (לוח, מסגרת וכותרת) בצורה הזאת. לחיצה מוסיפה אותו באמצע.</p>
+            <div className="flex flex-wrap gap-1.5">
+              {PART_SHAPES.map((s) => (
+                <button key={s.id} type="button" draggable aria-label={`קונטיינר חדש: ${s.name}`} title={`גרירה ללוח: קונטיינר ב${s.name}`}
+                  className={`${tile} cursor-grab`}
+                  onDragStart={(e) => { e.dataTransfer.setData(DRAG_TYPE, s.id); e.dataTransfer.effectAllowed = "copy"; }}
+                  onClick={() => newContainer(s.id)}>
+                  <svg viewBox="0 0 100 100" className="h-7 w-9" aria-hidden><path d={s.path} fill="currentColor" fillOpacity=".15" stroke="currentColor" strokeWidth="5" /></svg>
+                  {s.name}
+                </button>
+              ))}
+            </div>
           </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs" data-testid="ctx-add-picture">
+            <span className="flex flex-wrap items-center gap-1" title="לוח, התמונה ומסגרת - קונטיינר שלם, ואפשר להוסיף לתוכו טקסט ותיבות">
+              <ImagePick label="קונטיינר עם תמונה" what="קונטיינר חדש" onPick={(p) => newContainer("rounded", undefined, p)} />
+            </span>
+            <span className="flex flex-wrap items-center gap-1" title="התמונה לבד, בלי לוח ובלי מסגרת">
+              <ImagePick label="תמונה לבד" what="תמונה לבד" onPick={pictureAlone} />
+            </span>
+          </div>
+          <p className="text-[11px] text-muted-foreground">כל תמונה שמעלים נשמרת ב"התמונות שלי". כדי לשמור קונטיינר שלם או תמונה - בוחרים אותם ולוחצים "שמירה בחלקים שלי" למעלה.</p>
         </div>
       )}
 

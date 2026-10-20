@@ -13,16 +13,14 @@ import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, Copy, FolderPlus, LogOut,
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import type { BoardElement } from "@/tv/elements";
-import { MAX_ELEMENTS, boundsOf, newElement } from "@/tv/elements";
-import { newContainerParts } from "@/tv/containers";
+import { MAX_ELEMENTS, elementId } from "@/tv/elements";
 import { isBackdrop } from "@/tv/containerParts";
 import {
-  changeContainer, containerTree, deleteContainer, descendants, duplicateContainer, gatherIntoContainer,
-  moveLayer, partsOf, takeOut, writeContainers, type ContainerNode, type PartContainer,
+  addContainer, addInside, changeContainer, newContainerParts, containerTree, deleteContainer, descendants, duplicateContainer, gatherIntoContainer,
+  moveLayer, partsOf, takeOut, writeContainers, type ContainerNode, type InsideKind, type PartContainer,
 } from "@/tv/containers";
 import { showDesignTopic } from "./designTopics";
-import { FileButton, useUpload } from "./Upload";
-import { useTvLibraryItems } from "./useTvLibrary";
+import { ImagePick, InsideButtons } from "./ContainerAdd";
 import { HideToggle, LockToggle, SELECT_CLASS, SIDE_BUTTON } from "./editorParts";
 
 export type Board = { elements: BoardElement[]; containers: PartContainer[] };
@@ -40,10 +38,6 @@ export function ContainerLayers({ elements, containers, selected, select, select
   row: (e: BoardElement, inContainer: boolean) => ReactNode;
 }) {
   const tree = containerTree(elements, containers);
-  // Pictures: uploaded here, and kept in "התמונות שלי" to be put in any container again.
-  const { uploading, upload } = useUpload();
-  const library = useTvLibraryItems();
-  const myImages = library.items.filter((r) => r.kind === "image" && typeof (r.data as { url?: unknown } | null)?.url === "string");
   const [closed, setClosed] = useState<Set<string>>(new Set());
   const [naming, setNaming] = useState<{ id: string; value: string } | null>(null);
   const index = new Map(elements.map((e, i) => [e.id, i]));
@@ -65,13 +59,9 @@ export function ContainerLayers({ elements, containers, selected, select, select
   /** A new container in the middle of the board: a board behind, a frame on it, a heading - chosen, to drag into place. */
   const newContainer = (image?: { url: string; name: string }) => {
     if (elements.length + 3 > MAX_ELEMENTS) return void toast.error(`בלוח יש כבר ${elements.length} חלקים - עד ${MAX_ELEMENTS}.`);
-    const { container, parts } = newContainerParts({ x: 35, y: 28, width: 30, height: 44 }, "rounded", image);
-    const id = container.id;
-    edit(`container-new:${id}`, (b) => {
-      const w = writeContainers(b);
-      return { elements: [...w.elements, ...parts], containers: [...w.containers, container] };
-    });
-    select(parts.map((p) => p.id));
+    const made = newContainerParts({ x: 35, y: 28, width: 30, height: 44 }, "rounded", image);
+    edit(`container-new:${made.container.id}`, (b) => addContainer(b, made));
+    select(made.parts.map((p) => p.id));
     toast("נוסף קונטיינר באמצע הלוח, והוא בחור: גררו אותו למקום, ושנו לו צורה, מסגרת וטקסט.");
   };
 
@@ -93,33 +83,16 @@ export function ContainerLayers({ elements, containers, selected, select, select
     const own = c.parts.map((id) => byId.get(id)!).filter(Boolean);
     // A drawn frame, or the frame of the kit's picture: either way it has one.
     const hasFrame = own.some((e) => e.kind === "frame" || (e.kind === "image" && /^(מסגרת|קשת)/.test(e.name)));
-    const backing = own.find((e) => e.kind === "box") ?? own.find((e) => e.kind === "image");
     const setAll = (patch: Partial<BoardElement>, what: string) =>
       edit(`container-${what}:${c.id}`, (b) => ({ ...b, elements: b.elements.map((e) => (ids.includes(e.id) ? { ...e, ...patch } : e)) }));
     // Not inside itself, nor inside one of those inside it.
     const notInside = new Set([c.id, ...descendants(tree, c.id)]);
-    const area = ids.length ? boundsOf(elements, ids) : { x: 35, y: 30, width: 30, height: 40 };
-    /** Something new in the container: inside its area, over what is in it. */
-    const addInside = (kind: BoardElement["kind"], more: Partial<BoardElement> = {}) => {
-      const e = { ...newElement(kind), ...more, group: c.id };
-      const box = kind === "frame" ? area
-        : kind === "image" ? { x: area.x + area.width * 0.06, y: area.y + area.height * 0.06, width: area.width * 0.88, height: area.height * 0.88 }
-        : { x: area.x + area.width * 0.1, y: area.y + area.height * 0.1, width: area.width * 0.8, height: Math.min(area.height * 0.3, kind === "text" ? 10 : 20) };
-      const part = { ...e, ...box };
-      edit(`container-add:${c.id}:${kind}`, (b) => {
-        // Written down first: the new part joins the container as it now is, never a second one of the same name.
-        const w = writeContainers(b);
-        const at = Math.max(-1, ...w.elements.map((x, i) => (ids.includes(x.id) ? i : -1)));
-        return {
-          ...w,
-          // A frame or a picture goes over its board and under what is written on it (a picture under the frame); anything else over all of the container.
-          elements: (kind === "frame" || kind === "image") && backing
-            ? w.elements.flatMap((x) => (x.id === backing.id ? [x, part] : [x]))
-            : [...w.elements.slice(0, at + 1), part, ...w.elements.slice(at + 1)],
-        };
-      });
-      if (selectAlone) selectAlone(part.id);
-      else select([part.id]);
+    /** Something new in the container (addInside), chosen alone to be adjusted. */
+    const add = (kind: InsideKind, more?: Partial<BoardElement>) => {
+      const id = elementId();
+      edit(`container-add:${c.id}:${kind}`, (b) => addInside(b, c.id, id, kind, more));
+      if (selectAlone) selectAlone(id);
+      else select([id]);
     };
     return (
       <div key={c.id} data-testid="container-row" data-container={c.id} className="space-y-1" style={{ marginInlineStart: depth * 14 }}>
@@ -180,32 +153,7 @@ export function ContainerLayers({ elements, containers, selected, select, select
                 </select>
               </label>
               <span className="ms-auto flex flex-wrap gap-1">
-                {!hasFrame && (
-                  <button type="button" className="inline-flex h-7 items-center gap-1 rounded border bg-background px-2" onClick={() => addInside("frame", { shape: backing?.shape, name: `מסגרת ${c.name}`.slice(0, 80), color: "#c9a227" })}>
-                    <Plus className="size-3.5" aria-hidden /> מסגרת
-                  </button>
-                )}
-                <button type="button" className="inline-flex h-7 items-center gap-1 rounded border bg-background px-2" onClick={() => addInside("text", { name: `טקסט ${c.name}`.slice(0, 80) })}>
-                  <Plus className="size-3.5" aria-hidden /> טקסט
-                </button>
-                <button type="button" className="inline-flex h-7 items-center gap-1 rounded border bg-background px-2" onClick={() => addInside("ornament")}>
-                  <Plus className="size-3.5" aria-hidden /> עיטור
-                </button>
-                <FileButton label="תמונה" ariaLabel={`העלאת תמונה לתוך ${c.name}`} accept="image/png,image/jpeg,image/webp" busy={uploading} icon={<Plus className="size-3.5" aria-hidden />}
-                  onFiles={(files) => upload(files, ([url]) => {
-                    addInside("image", { image: url, name: files[0].name.replace(/\.[a-z0-9]{2,5}$/i, "").slice(0, 80), fit: "cover", ...(backing?.shape ? { shape: backing.shape } : {}) });
-                    library.keepImage(url, files[0].name);
-                  })} />
-                {myImages.length > 0 && (
-                  <select aria-label={`תמונה מהתמונות שלי לתוך ${c.name}`} className={`${SELECT_CLASS} h-7 max-w-36`} value=""
-                    onChange={(ev) => {
-                      const img = myImages.find((r) => r.id === ev.target.value);
-                      if (img) addInside("image", { image: (img.data as { url: string }).url, name: img.name, fit: "cover", ...(backing?.shape ? { shape: backing.shape } : {}) });
-                    }}>
-                    <option value="">מהתמונות שלי…</option>
-                    {myImages.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-                  </select>
-                )}
+                <InsideButtons name={c.name} hasFrame={hasFrame} onAdd={add} />
                 <button type="button" className="inline-flex h-7 items-center gap-1 rounded border bg-background px-2"
                   onClick={() => { select(ids); showDesignTopic("design-boxes"); }} title="צורה, מילוי ומסגרת - לכל הקונטיינר">
                   עיצוב הקונטיינר
@@ -231,9 +179,7 @@ export function ContainerLayers({ elements, containers, selected, select, select
     <div className="space-y-1.5" data-testid="container-layers">
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="text-muted-foreground">השכבה העליונה ראשונה. קונטיינר: לוח, מסגרת, טקסטים ועיטורים - יחד.</span>
-        <FileButton label="קונטיינר עם תמונה" ariaLabel="העלאת תמונה לקונטיינר חדש" accept="image/png,image/jpeg,image/webp" busy={uploading}
-          title="לוח, תמונה ומסגרת - קונטיינר שלם עם תמונה שלכם"
-          onFiles={(files) => upload(files, ([url]) => { const name = files[0].name.replace(/\.[a-z0-9]{2,5}$/i, "").slice(0, 80); newContainer({ url, name }); library.keepImage(url, files[0].name); })} />
+        <ImagePick label="קונטיינר עם תמונה" what="קונטיינר חדש" onPick={newContainer} />
         <button type="button" onClick={() => newContainer()} data-testid="container-new"
           className="ms-auto inline-flex h-7 items-center gap-1 rounded border bg-background px-2" title="לוח, מסגרת וכותרת - קונטיינר שלם, באמצע הלוח">
           <Plus className="size-3.5" aria-hidden /> קונטיינר חדש

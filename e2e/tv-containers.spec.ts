@@ -69,7 +69,7 @@ test("containers: read off a kit, chosen whole, renamed, layered, duplicated, ne
   const fresh = row(page, "קונטיינר חדש");
   await expect(fresh.getByTestId("container-inside").getByRole("checkbox")).toHaveCount(3);
   // Something more inside it.
-  await fresh.getByTestId("container-inside").first().getByRole("button", { name: "טקסט", exact: true }).first().click();
+  await fresh.getByTestId("container-inside").first().getByRole("button", { name: "טקסט לתוך קונטיינר חדש", exact: true }).first().click();
   await expect(fresh.getByTestId("container-inside").getByRole("checkbox")).toHaveCount(4);
 
   // Deleted, after asking.

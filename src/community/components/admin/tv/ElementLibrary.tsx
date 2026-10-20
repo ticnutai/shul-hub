@@ -1,6 +1,4 @@
-import { useState } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
 import { boundsOf, elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS, newElement, normalizeElementLibrary } from '@/tv/elements';
@@ -8,7 +6,7 @@ import { READY_PARTS } from '@/tv/readyParts';
 import { hideReady, isHiddenReady, showReady } from '@/tv/readyItems';
 import { HiddenShelf } from './ReadyShelf';
 import { SubPart } from './Parts';
-import { NameForm } from './editorParts';
+import { SaveToParts } from './ContainerAdd';
 import { PartTile } from './GalleryTile';
 import { useSharedCatalog } from '@/tv/sharedCatalog';
 import { FolderedLibrary, type FixedFolder, type LibraryItem } from './FolderedLibrary';
@@ -69,7 +67,6 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
   onSelect: (ids: string[]) => void;
   onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void;
 }) {
-  const [name, setName] = useState<string | null>(null);
   const chosen = config.elements.filter((e) => selected.includes(e.id));
   const insert = (key: string, elements: TvConfig['elements']) => {
     const added = importElementSet(exportElementSet(elements)).map((e) => ({ ...e, locked: false, hidden: false }));
@@ -77,11 +74,6 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
     onSelect(added.map((e) => e.id));
   };
   const full = (n: number) => config.elements.length + n > MAX_ELEMENTS;
-
-  /** The chosen parts kept under a name (saveToLibrary). */
-  const save = async () => {
-    if (await saveToLibrary(config, onEdit, name ?? '', chosen)) setName(null);
-  };
 
   const remove = async (item: TvConfig['elementLibrary'][number]) => {
     const ok = await confirmAction({
@@ -193,33 +185,12 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
       </SubPart>
 
       <SubPart title="החלקים והתיבות שלי" testId="element-library" hint='שומרים בחירה פעם אחת ומוסיפים עותקים לכל לוח. אותה רשימה מופיעה גם ב"הוספת תוכן", ותיבה שנשמרה מ"עוד אפשרויות" של מסגרת נכנסת לכאן. נשמרת עם הלוח ובקובץ הלוח.'>
-        {name === null ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8"
-              disabled={!chosen.length || config.elementLibrary.length >= MAX_ELEMENT_SETS}
-              onClick={() => setName('')}
-            >
-              שמירה בחלקים שלי
-            </Button>
-            <span className="text-[11px] text-muted-foreground">
-              {chosen.length ? `נבחרו ${chosen.length} חלקים` : 'בחרו חלק או קבוצה ברשימה למעלה כדי לשמור אותם.'}
-            </span>
-          </div>
-        ) : (
-          <NameForm
-            label="שם החלק"
-            value={name}
-            maxLength={80}
-            placeholder="למשל: זוג עמודים מוזהבים"
-            onChange={setName}
-            onSave={() => void save()}
-            onCancel={() => setName(null)}
-          />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <SaveToParts key={selected.join(',')} config={config} onEdit={onEdit} elements={chosen} name="" />
+          <span className="text-[11px] text-muted-foreground">
+            {chosen.length ? `נבחרו ${chosen.length} חלקים` : 'בוחרים קונטיינר, תמונה או חלק - בלוח או ברשימה למעלה. אותו כפתור נמצא גם בחלון שנפתח ליד הלוח.'}
+          </span>
+        </div>
         {config.elementLibrary.length > 0 && <p className="text-[11px] text-muted-foreground">החלקים ששמרתם ({config.elementLibrary.length}) נמצאים למעלה, בתיקייה "החלקים שלי" או בתיקייה שהעברתם אליה.</p>}
       </SubPart>
     </div>

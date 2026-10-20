@@ -265,3 +265,52 @@ export function newContainerParts(
     parts: picture ? [back, picture, frame] : [back, frame, heading],
   };
 }
+
+/** A new container (made by newContainerParts beforehand, to choose its parts) put on the board, written down with the others. */
+export function addContainer(board: Board, made: { container: PartContainer; parts: BoardElement[] }): Board {
+  const w = writeContainers(board);
+  return { elements: [...w.elements, ...made.parts], containers: [...w.containers, made.container] };
+}
+
+/** What can be added inside a container. */
+export type InsideKind = 'frame' | 'text' | 'box' | 'ornament' | 'image';
+
+/**
+ * Something new inside a container - a frame round it, a text, a smaller
+ * box, an ornament, a picture - in its area, over what is in it: a frame or a
+ * picture over its board and under what is written on it (a picture under
+ * the frame), anything else over all of it. The one way, from the list of
+ * layers and from the panel by the board alike.
+ */
+export function addInside(board: Board, containerId: string, id: string, kind: InsideKind, more: Partial<BoardElement> = {}): Board {
+  // Written down first: the new part joins the container as it now is, never a second one of the same name.
+  const w = writeContainers(board);
+  const tree = containerTree(w.elements, w.containers);
+  const node = tree.containers.find(c => c.id === containerId);
+  const ids = partsOf(tree, containerId);
+  const own = (node?.parts ?? []).map(id => w.elements.find(e => e.id === id)).filter((e): e is BoardElement => Boolean(e));
+  const backing = own.find(e => e.kind === 'box') ?? own.find(e => e.kind === 'image');
+  const name = node?.name ?? 'קונטיינר';
+  const area = ids.length ? boundsOf(w.elements, ids) : { x: 35, y: 30, width: 30, height: 40 };
+  const box = kind === 'frame' ? area
+    : kind === 'image' || kind === 'box' ? { x: area.x + area.width * 0.06, y: area.y + area.height * 0.06, width: area.width * 0.88, height: area.height * (kind === 'box' ? 0.4 : 0.88) }
+    : { x: area.x + area.width * 0.1, y: area.y + area.height * 0.1, width: area.width * 0.8, height: Math.min(area.height * 0.3, kind === 'text' ? 10 : 20) };
+  const named: Partial<BoardElement> = kind === 'frame' ? { shape: backing?.shape, name: `מסגרת ${name}`, color: '#c9a227' }
+    : kind === 'text' ? { name: `טקסט ${name}` }
+    : kind === 'box' ? { name: `תיבה ${name}`, shape: backing?.shape }
+    : kind === 'image' ? { fit: 'cover', ...(backing?.shape ? { shape: backing.shape } : {}) }
+    : {};
+  const part: BoardElement = { ...newElement(kind), ...named, ...more, ...box, id, group: containerId };
+  part.name = part.name.slice(0, 80);
+  const at = Math.max(-1, ...w.elements.map((x, i) => (ids.includes(x.id) ? i : -1)));
+  const elements = (kind === 'frame' || kind === 'image') && backing
+    ? w.elements.flatMap(x => (x.id === backing.id ? [x, part] : [x]))
+    : [...w.elements.slice(0, at + 1), part, ...w.elements.slice(at + 1)];
+  return { elements, containers: w.containers };
+}
+
+/** A picture on its own, on the main background - no board and no frame - to drag into place. */
+export function addPictureAlone(board: Board, id: string, image: { url: string; name: string }): Board {
+  const part: BoardElement = { ...newElement('image'), id, x: 35, y: 25, width: 30, height: 40, image: image.url, name: image.name.slice(0, 80) || 'תמונה', fit: 'cover' };
+  return { elements: [...board.elements, part], containers: board.containers };
+}

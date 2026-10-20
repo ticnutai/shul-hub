@@ -82,7 +82,7 @@ test("the main background, beside the board or at its foot, and a shape dragged 
   await page.getByTestId("main-background-layer").getByRole("button", { name: "עריכת הרקע" }).click();
   const panel = page.getByTestId("part-context-panel");
   await expect(panel).toContainText("נבחר: הרקע הראשי");
-  await expect(panel.getByRole("tab")).toHaveText(["הרקע", "הוספת קונטיינר"]);
+  await expect(panel.getByRole("tab")).toHaveText(["הרקע", "הוספה"]);
   await expect(panel.getByTestId("backdrop-note")).toContainText("מסתירה אותו");
   await panel.getByTestId("board-background-gallery").getByRole("button", { name: "ירוק עמוק", exact: true }).click();
   await expect(panel.getByRole("button", { name: "החזרת הרקע המצויר" })).toBeVisible();
@@ -94,7 +94,7 @@ test("the main background, beside the board or at its foot, and a shape dragged 
   expect(["side", "page"]).toContain(place);
 
   // A shape dragged onto the board: a container where it fell.
-  await panel.getByRole("tab", { name: "הוספת קונטיינר" }).click();
+  await panel.getByRole("tab", { name: "הוספה" }).click();
   const root = page.locator("[data-board-preview] .tv-frame .tv-root").first();
   const box = (await root.boundingBox())!;
   await panel.getByRole("button", { name: "קונטיינר חדש: כיפה" }).dragTo(root, { targetPosition: { x: box.width * 0.2, y: box.height * 0.5 } });
