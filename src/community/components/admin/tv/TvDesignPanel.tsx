@@ -25,7 +25,8 @@ import { useLocation } from 'react-router-dom';
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { EDITOR_NAV_KEY, EditorMenu, EditorSearch, readEditorNav, type EditorNav, type EditorTab } from "./EditorNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -462,6 +463,12 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const setLayout = (next: "side" | "top") => {
     setLayoutState(next);
     writeStored(LAYOUT_KEY, next);
+  };
+  /** How one goes around the editor (EditorNav.tsx): the tabs, a menu of all of it down the side, or a search. Remembered here. */
+  const [nav, setNavState] = useState<EditorNav>(() => readEditorNav(readStored(EDITOR_NAV_KEY)));
+  const setNav = (next: EditorNav) => {
+    setNavState(next);
+    writeStored(EDITOR_NAV_KEY, next);
   };
   const [sideShare, setSideShareState] = useState(() => clampShare(Number(readStored(SIDE_KEY)) || SIDE_SHARE_DEFAULT));
   const setSideShare = (v: number) => {
@@ -1177,6 +1184,70 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const occasionKit = occasionScope ? findDesign(state.present, readOccasions(state.present).find((o) => o.id === occasionScope)?.design) : null;
   const occasionKitName = occasionKit?.name ?? null;
 
+  /** The editor's tabs and what is in them; how one goes between them is `nav`. */
+  const editorTabs = (
+    <Tabs value={tab} onValueChange={setTab} className="w-full">
+      {/* One way between the tabs at a time: the row of them, or the search (the menu stands beside). */}
+      {nav === "search" && <EditorSearch tab={tab} setTab={(t: EditorTab) => setTab(t)} partsBoard={view.screenLayout === "composition"} />}
+      <TabsList className={nav === "tabs" ? "grid w-full grid-cols-5" : "hidden"}>
+        <TabsTrigger value="design">עיצוב</TabsTrigger>
+        <TabsTrigger value="layout">פריסה</TabsTrigger>
+        <TabsTrigger value="content">תוכן</TabsTrigger>
+        <TabsTrigger value="occasions">מועדים</TabsTrigger>
+        <TabsTrigger value="tools">כלים</TabsTrigger>
+      </TabsList>
+      <TabsContent value="occasions" className="mt-3">
+        <Section
+          id="occasions"
+          title="שבת, חגים ומועדים"
+          hint="מה מופיע על הלוח בשבת, בחגים ובימים שלכם - לכל מועד בנפרד, ובאיזה סדר חשיבות."
+        >
+          <OccasionsEditor
+            config={draft}
+            onEdit={edit}
+            onPreview={(at, occasionId) => {
+              // Its day, on its own screen - and in sight: the list is far
+              // below the preview, and the eye seemed to do nothing at all.
+              previewAt(at);
+              setPreviewScreen(at && occasionId ? `occasion:${occasionId}` : null);
+              if (at) showPreview();
+            }}
+            onDesign={(occasionId) => {
+              setOccasionScope(occasionId);
+              setTab("design");
+              // Again once the tab has changed: switching it scrolls the page to the tabs.
+              window.setTimeout(showPreview, 200);
+            }}
+          />
+        </Section>
+      </TabsContent>
+      <TabsContent
+        value="design"
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+      >
+        <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={Boolean(partText)} topicsNav={nav === "tabs"} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
+      </TabsContent>
+      <TabsContent
+        value="layout"
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+      >
+        <LayoutTab scoped={scoped} view={view} edit={edit} openPartsList={openPartsList} composerScreen={composerScreen} setComposerScreen={setComposerScreen} setPreviewScreen={setPreviewScreen} previewAt={previewAt} />
+      </TabsContent>
+      <TabsContent
+        value="content"
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+      >
+        <ContentTab scoped={scoped} edit={edit} simulation={simulation} simulationScreens={simulationScreens} sendSimulation={sendSimulation} />
+      </TabsContent>
+      <TabsContent
+        value="tools"
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
+      >
+        <ToolsTab draft={draft} view={view} edit={edit} dispatch={dispatch} shownVersion={shownVersion} setShownVersion={setShownVersion} setBeforeAfter={setBeforeAfter} showPreview={showPreview} doExport={doExport} doImport={doImport} figmaHandoff={figmaHandoff} />
+      </TabsContent>
+    </Tabs>
+  );
+
   const controls = (
     <>
       {/* The live window puts the bar first in its panel, above the preview's buttons. */}
@@ -1262,85 +1333,12 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         />
       )}
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="design">עיצוב</TabsTrigger>
-          <TabsTrigger value="layout">פריסה</TabsTrigger>
-          <TabsTrigger value="content">תוכן</TabsTrigger>
-          <TabsTrigger value="occasions">מועדים</TabsTrigger>
-          <TabsTrigger value="tools">כלים</TabsTrigger>
-        </TabsList>
-        {/* Moving the board in a file lives in "כלים"; the way there stays in sight from every tab. */}
-        {tab !== "tools" && (
-          <div className="mt-1 flex justify-end">
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-7 px-1 text-xs"
-              onClick={() => {
-                setTab("tools");
-                requestAnimationFrame(() =>
-                  requestAnimationFrame(() => {
-                    document.querySelector('[data-testid="board-transfer-section"]')?.scrollIntoView({ block: "start" });
-                    document.querySelector<HTMLElement>('[data-testid="board-transfer-section"] h2')?.focus();
-                  }),
-                );
-              }}
-            >
-              ייבוא וייצוא
-            </Button>
-          </div>
-        )}
-        <TabsContent value="occasions" className="mt-3">
-          <Section
-            title="שבת, חגים ומועדים"
-            hint="מה מופיע על הלוח בשבת, בחגים ובימים שלכם - לכל מועד בנפרד, ובאיזה סדר חשיבות."
-          >
-            <OccasionsEditor
-              config={draft}
-              onEdit={edit}
-              onPreview={(at, occasionId) => {
-                // Its day, on its own screen - and in sight: the list is far
-                // below the preview, and the eye seemed to do nothing at all.
-                previewAt(at);
-                setPreviewScreen(at && occasionId ? `occasion:${occasionId}` : null);
-                if (at) showPreview();
-              }}
-              onDesign={(occasionId) => {
-                setOccasionScope(occasionId);
-                setTab("design");
-                // Again once the tab has changed: switching it scrolls the page to the tabs.
-                window.setTimeout(showPreview, 200);
-              }}
-            />
-          </Section>
-        </TabsContent>
-        <TabsContent
-          value="design"
-          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
-        >
-          <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={Boolean(partText)} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
-        </TabsContent>
-        <TabsContent
-          value="layout"
-          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
-        >
-          <LayoutTab scoped={scoped} view={view} edit={edit} openPartsList={openPartsList} composerScreen={composerScreen} setComposerScreen={setComposerScreen} setPreviewScreen={setPreviewScreen} previewAt={previewAt} />
-        </TabsContent>
-        <TabsContent
-          value="content"
-          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
-        >
-          <ContentTab scoped={scoped} edit={edit} simulation={simulation} simulationScreens={simulationScreens} sendSimulation={sendSimulation} />
-        </TabsContent>
-        <TabsContent
-          value="tools"
-          className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
-        >
-          <ToolsTab draft={draft} view={view} edit={edit} dispatch={dispatch} shownVersion={shownVersion} setShownVersion={setShownVersion} setBeforeAfter={setBeforeAfter} showPreview={showPreview} doExport={doExport} doImport={doImport} figmaHandoff={figmaHandoff} />
-        </TabsContent>
-      </Tabs>
+      {nav === "menu" ? (
+        <div className="flex items-start gap-3">
+          <EditorMenu tab={tab} setTab={(t: EditorTab) => setTab(t)} partsBoard={view.screenLayout === "composition"} />
+          <div className="min-w-0 flex-1">{editorTabs}</div>
+        </div>
+      ) : editorTabs}
     </>
   );
 
@@ -1400,7 +1398,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                 onSelect={setSelected}
               />
             )}
-            {editing && partKinds}
+            {/* Choosing by kind: here on the other tabs; on "עיצוב" it is the list of parts' own. */}
+            {editing && tab !== "design" && partKinds}
             {editing && partText}
             {controls}
           </div>
@@ -1421,34 +1420,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     <>
       {/* What is on the board, kept as a kit without scrolling to "ערכות" - the same form and the same save. */}
       <SaveKitButton config={view} onEdit={edit} />
-      <div className="col-span-2 hidden rounded-md border p-0.5 sm:inline-flex" role="group" aria-label="פריסת העורך">
-        <Button
-          type="button"
-          variant={layout === "side" ? "default" : "ghost"}
-          size="sm"
-          className="h-7"
-          aria-pressed={layout === "side"}
-          onClick={() => setLayout("side")}
-          title="הבקרות והתצוגה זו לצד זו, עם ידית ביניהן לשינוי הרוחב"
-        >
-          <Columns2 className="size-4" /> זה לצד זה
-        </Button>
-        <Button
-          type="button"
-          variant={layout === "top" ? "default" : "ghost"}
-          size="sm"
-          className="h-7"
-          aria-pressed={layout === "top"}
-          onClick={() => setLayout("top")}
-          title="התצוגה למעלה ונשארת במקום, הבקרות מתחתיה נגללות, עם ידית לשינוי הגובה"
-        >
-          <Rows2 className="size-4" /> תצוגה למעלה
-        </Button>
-      </div>
       <DropdownMenu dir="rtl" modal={false}>
         <DropdownMenuTrigger asChild>
           <Button type="button" variant={fullscreen || focus || beforeMax || bare ? "default" : "outline"} size="sm" data-testid="view-menu">
-            <Scaling className="size-4" aria-hidden /> גודל ותצוגה <ChevronDown className="size-3.5" aria-hidden />
+            <Scaling className="size-4" aria-hidden /> פריסה ותצוגה <ChevronDown className="size-3.5" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
         {/* In full screen only the board's column is on the screen: the menu opens inside it, or it would not be seen. */}
@@ -1456,8 +1431,27 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           <DropdownMenuPrimitive.Content
             align="end"
             sideOffset={4}
-            className="z-[100] min-w-[14rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+            className="z-[100] min-w-[16rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
           >
+            {/* Everything about how the editor is laid out, in one menu: where the board stands, how one goes around, and its size. */}
+            <DropdownMenuLabel className="text-xs text-muted-foreground">איפה הלוח</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={layout} onValueChange={(v) => setLayout(v as "side" | "top")}>
+              <DropdownMenuRadioItem className={viewItem} value="side" title="הבקרות והתצוגה זו לצד זו, עם ידית ביניהן לשינוי הרוחב">
+                <Columns2 className="size-4" aria-hidden /> זה לצד זה
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem className={viewItem} value="top" title="התצוגה למעלה ונשארת במקום, הבקרות מתחתיה נגללות, עם ידית לשינוי הגובה">
+                <Rows2 className="size-4" aria-hidden /> תצוגה למעלה
+              </DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground">איך עוברים בין הנושאים</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={nav} onValueChange={(v) => setNav(v as EditorNav)}>
+              <DropdownMenuRadioItem className={viewItem} value="tabs" title="שורת הלשוניות למעלה, ובעיצוב - שורת הנושאים">לשוניות</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem className={viewItem} value="menu" title="כל העורך בתפריט אחד בצד: כל לשונית והסעיפים שבה">תפריט נושאים בצד</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem className={viewItem} value="search" title="כותבים מה לשנות - ומגיעים לסעיף">חיפוש</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel className="text-xs text-muted-foreground">גודל</DropdownMenuLabel>
             <DropdownMenuCheckboxItem className={viewItem} checked={fullscreen} onCheckedChange={toggleFullscreen} title="התצוגה והעורך על כל המסך (Esc ליציאה)">
               מסך מלא לעריכה
             </DropdownMenuCheckboxItem>
@@ -1607,7 +1601,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           />
         </div>
       )}
-      {editing && partKinds && <div className="mt-3">{partKinds}</div>}
+      {/* Choosing by kind: here on the other tabs; on "עיצוב" it is the list of parts' own - one at a time, never two. */}
+      {editing && tab !== "design" && partKinds && <div className="mt-3">{partKinds}</div>}
       {/* The texts' letters are in the chosen part's panel ("טקסט"), not in a bar here as well. */}
       {/* Under the board, one row that fills as it wraps: editing, the day shown, then the screens, the layout and the
           windows - no group pushed to the far side leaving a hole, the two "separate window" buttons one menu. */}

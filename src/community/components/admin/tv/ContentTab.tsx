@@ -38,6 +38,7 @@ export function ContentTab({ scoped, edit, simulation, simulationScreens, sendSi
   return (
     <>
       <Section
+        id="content-slideshow"
         title="מצגת תמונות"
         hint="תמונות מאירועים, מודעות מעוצבות, תרומות. יוצגו כמסך נפרד. כל תמונה מותאמת אוטומטית לחדות מרבית בטלוויזיה; מודעות עם טקסט עדיף לשמור כתמונה בלי דחיסה (כשמורידים אותה, לבחור &quot;איכות מלאה&quot; ולא &quot;דחוסה&quot;), כדי שהאותיות יישארו חדות."
       >
@@ -113,6 +114,7 @@ export function ContentTab({ scoped, edit, simulation, simulationScreens, sendSi
       </Section>
 
       <Section
+        id="content-ticker"
         title="סרגל הודעה רץ"
         hint="טקסט שנע בתחתית המסך. שימו לב: אנימציה רציפה - בטלוויזיה החלשה נמדדה צריכת מעבד גבוהה (כ-45%) כל עוד הסרגל פעיל."
       >
@@ -133,6 +135,7 @@ export function ContentTab({ scoped, edit, simulation, simulationScreens, sendSi
       </Section>
 
       <Section
+        id="content-reminders"
         title="תזכורות וספירה לאחור"
         hint="תזכורות לפני סוף זמן קריאת שמע, סוף זמן תפילה, שקיעה ועוד: מתי הן מופיעות, באילו שלבים, ואיך הן נראות - צבעים, צורה, גודל ומיקום. ובסוף - ספירה לתפילה הבאה."
       >

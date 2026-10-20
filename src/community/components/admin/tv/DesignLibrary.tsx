@@ -8,7 +8,7 @@ import { ofParts } from '@/tv/designs';
 import { FolderedLibrary, type FixedFolder, type LibraryItem } from './FolderedLibrary';
 import { useState, type ReactNode } from "react";
 import { SubPart } from "./Parts";
-import { BookmarkPlus, Plus } from "lucide-react";
+import { BookmarkPlus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -172,7 +172,7 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
    */
   onWearFor?: (occasionId: string, kit: SavedDesign) => void;
 }) {
-  const [form, setForm] = useState<{ mode: "new" | "rename"; id?: string; name: string } | null>(null);
+  const [form, setForm] = useState<{ mode: "rename"; id?: string; name: string } | null>(null);
   const designs = config.designs;
   // An occasion's own kit is edited on its page (its 🎨), not listed among the gabbai's kits.
   const mine = designs.filter((d) => !isOccasionKit(config, d));
@@ -378,9 +378,7 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
       </SubPart>
       <SubPart title="הערכות שלי" hint='ערכות ששמרתם נמצאות למעלה, בתיקייה "הערכות שלי" (או בתיקייה שהעברתם אליה): לחיצה מלבישה; אפשר לשנות שם, לעדכן למה שעל הלוח עכשיו, ולמחוק.'>
 
-      {form?.mode === "new" ? (
-        <KitSaveForm config={config} onEdit={onEdit} onDone={() => setForm(null)} />
-      ) : form ? (
+      {form ? (
         <NameForm
           label="שם הערכה"
           value={form.name}
@@ -392,21 +390,11 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
           saveLabel="שינוי השם"
         />
       ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={designs.length >= MAX_DESIGNS}
-            onClick={() => setForm({ mode: "new", name: "" })}
-          >
-            <Plus className="size-4" /> שמירה כערכה חדשה
-          </Button>
-          <span className="text-xs text-muted-foreground">
-            שומר את מה שעל הלוח עכשיו - כולו או רק החלקים שתבחרו.
-            {designs.length >= MAX_DESIGNS ? ` הגעתם למספר הערכות המרבי (${MAX_DESIGNS}).` : ""}
-          </span>
-        </div>
+        // Saving what is on the board as a kit is one button, beside the board (SaveKitButton) - not a second one here.
+        <p className="text-xs text-muted-foreground" data-testid="kit-save-where">
+          לשמירת מה שעל הלוח כערכה חדשה - הכפתור "שמירה כערכה חדשה" ליד הלוח, בשורת הכפתורים שמתחת לתצוגה.
+          {designs.length >= MAX_DESIGNS ? ` הגעתם למספר הערכות המרבי (${MAX_DESIGNS}).` : ""}
+        </p>
       )}
       </SubPart>
     </div>

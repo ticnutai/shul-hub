@@ -30,6 +30,7 @@ export function ToolsTab({ draft, view, edit, dispatch, shownVersion, setShownVe
   return (
     <>
       <Section
+        id="tools-versions"
         title="גרסאות קודמות"
         hint="כל שמירה שומרת כאן את מה שהיה על המסכים לפניה (40 האחרונות). אפשר להציג גרסה בתצוגה המקדימה, ולהחזיר אותה כטיוטה - ואז 'שמור ושדר' מעלה אותה למסכים."
       >
@@ -62,7 +63,7 @@ export function ToolsTab({ draft, view, edit, dispatch, shownVersion, setShownVe
         list of parts, in the same words.)
       */}
       <div data-testid="board-transfer-section" className="scroll-mt-24">
-        <Section title="ייבוא וייצוא" hint="קובץ אחד עם כל הלוח - לגיבוי או להעברה; קובץ צבעים ישן; וצבעים מעיצוב בפיגמה. כל ייבוא נכנס לטיוטה עד &quot;שמור ושדר&quot;.">
+        <Section id="tools-transfer" title="ייבוא וייצוא" hint="קובץ אחד עם כל הלוח - לגיבוי או להעברה; קובץ צבעים ישן; וצבעים מעיצוב בפיגמה. כל ייבוא נכנס לטיוטה עד &quot;שמור ושדר&quot;.">
           <h2 tabIndex={-1} className="sr-only">ייבוא וייצוא</h2>
           <WorkspaceTransfer config={draft} onImport={(config) => dispatch({ type: "edit", key: "workspace-import", update: () => config })} />
           <Folded label="קובץ ישן - צבעי בסיס, מעברי צבע ומבנה הלוח" testId="old-transfer">

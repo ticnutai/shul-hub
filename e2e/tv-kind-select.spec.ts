@@ -79,7 +79,8 @@ test("under the preview too: all the texts of the board edited directly, some ta
   const start = JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit)));
   const server = await serveEditor(page, start);
   await page.goto("/e2e/harness/editor.html");
-  await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
+  // Under the board on the other tabs: on "עיצוב" choosing by kind is the list of parts' own.
+  await page.getByRole("tab", { name: "פריסה", exact: true }).click();
   await page.getByRole("button", { name: "עריכה ישירה בלוח" }).click();
 
   const tools = page.getByTestId("preview-kind-tools");

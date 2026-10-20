@@ -324,11 +324,13 @@ test.describe("TV editor", () => {
     // A background only.
     await page.getByTestId("background-gallery").getByRole("button", { name: "זרקור זהב", exact: true }).click();
     await expect(root).toHaveClass(/has-bg-gradient/);
-    await library.getByRole("button", { name: "שמירה כערכה חדשה" }).click();
-    await library.getByLabel("שם הערכה").fill("רקע ירוק");
-    await library.getByRole("checkbox", { name: "מסגרות" }).uncheck();
-    await library.getByRole("checkbox", { name: "טקסט" }).uncheck();
-    await library.getByRole("button", { name: "שמירת הערכה" }).click();
+    // Saved from the one button beside the board (the library has no second one).
+    await page.getByTestId("toolbar-save-kit").first().click();
+    const form = page.getByTestId("toolbar-kit-form");
+    await form.getByLabel("שם הערכה").fill("רקע ירוק");
+    await form.getByRole("checkbox", { name: "מסגרות" }).uncheck();
+    await form.getByRole("checkbox", { name: "טקסט" }).uncheck();
+    await form.getByRole("button", { name: "שמירת הערכה" }).click();
     await expect(library.getByRole("button", { name: /^החלת ערכה רקע ירוק/ })).toBeVisible();
     // The kit says what it fills, as every kit tile does: "ממלא: רקע" (a background only).
     await expect(library.getByText("ממלא: רקע", { exact: true })).toBeVisible();

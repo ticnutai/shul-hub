@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { serveEditor } from "./support/tvEditor";
+import { serveEditor, editorLayout } from "./support/tvEditor";
 import { BUILTIN_DESIGNS, applyDesign } from "../src/tv/designs";
 import { DEFAULT_TV_CONFIG } from "../src/tv/config";
 
@@ -14,7 +14,7 @@ test("full screen for editing: the board pinned at the top, the controls scrolli
   const kit = BUILTIN_DESIGNS.find((d) => d.id === "d_sapphirelayers")!;
   await serveEditor(page, JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit))));
   await page.goto("/e2e/harness/editor.html");
-  await page.getByRole("button", { name: "תצוגה למעלה" }).first().click();
+  await editorLayout(page, "תצוגה למעלה");
   await page.getByTestId("view-menu").click();
   await page.getByRole("menuitemcheckbox", { name: "מסך מלא לעריכה" }).click();
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);

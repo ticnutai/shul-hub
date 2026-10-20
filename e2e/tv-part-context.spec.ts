@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "@playwright/test";
-import { serveEditor } from "./support/tvEditor";
+import { serveEditor, editorLayout } from "./support/tvEditor";
 import { applyDesign, type SavedDesign } from "../src/tv/designs";
 import { DEFAULT_TV_CONFIG, normalizeTvConfig } from "../src/tv/config";
 import { containersOf, roleOf } from "../src/tv/containerParts";
@@ -89,7 +89,7 @@ test("the main background, beside the board or at its foot, and a shape dragged 
 
   // At the board's foot side by side; beside it when the board is above.
   const place = await panel.getAttribute("data-place");
-  await page.getByRole("button", { name: "תצוגה למעלה" }).first().click();
+  await editorLayout(page, "תצוגה למעלה");
   await expect(panel).toHaveAttribute("data-place", "side");
   expect(["side", "page"]).toContain(place);
 
@@ -118,7 +118,7 @@ test("no room beside the board: the panel in its own place under it; dragged, it
   const kit = catalog.designs.find((d) => d.id === "d_shabbatpeace")!;
   await serveEditor(page, JSON.parse(JSON.stringify(applyDesign(structuredClone(DEFAULT_TV_CONFIG), kit))));
   await page.goto("/e2e/harness/editor.html");
-  await page.getByRole("button", { name: "זה לצד זה" }).first().click();
+  await editorLayout(page, "זה לצד זה");
   await page.getByRole("tab", { name: "עיצוב", exact: true }).click();
   const pick = async () => {
     await page.getByTestId("container-layers").scrollIntoViewIfNeeded();

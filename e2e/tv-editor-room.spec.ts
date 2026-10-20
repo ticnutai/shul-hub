@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectNotFrozen, serveEditor } from "./support/tvEditor";
+import { expectNotFrozen, serveEditor, editorLayout } from "./support/tvEditor";
 
 /**
  * The editor's room: handles on every side of the preview, the largest board
@@ -27,7 +27,7 @@ test.describe("TV editor, the preview's room", () => {
 
   test("a handle on any side makes the board bigger, and a double click puts it back", async ({ page }) => {
     for (const layout of ["זה לצד זה", "תצוגה למעלה"]) {
-      await page.getByRole("button", { name: layout }).click();
+      await editorLayout(page, layout);
       const before = await boardBox(page);
       const handle = page.locator('[data-resize="sw"]').first();
       const h = (await handle.boundingBox())!;
@@ -44,7 +44,7 @@ test.describe("TV editor, the preview's room", () => {
   });
 
   test("מקסימום makes the board as big as it goes, and gives back the size it had", async ({ page }) => {
-    await page.getByRole("button", { name: "זה לצד זה" }).click();
+    await editorLayout(page, "זה לצד זה");
     const before = await boardBox(page);
     await viewOption(page, "הגדלה למקסימום");
     const max = await boardBox(page);
@@ -55,7 +55,7 @@ test.describe("TV editor, the preview's room", () => {
   });
 
   test("without the drawn TV the board takes its room; work mode hides what stands above", async ({ page }) => {
-    await page.getByRole("button", { name: "תצוגה למעלה" }).click();
+    await editorLayout(page, "תצוגה למעלה");
     const framed = await boardBox(page);
     await viewOption(page, "בלי מסגרת טלוויזיה");
     const bare = await boardBox(page);

@@ -21,11 +21,10 @@ import type { DraftAction } from "./draftState";
 import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section } from "./editorParts";
 import { showDesignTopic, useDesignTopics } from "./designTopics";
 import { useElementEditing } from "@/tv/elementEditing";
-import { KindPicker } from "./KindPicker";
 import { Notice } from "./Notice";
 import { isPartsBoard } from "./PartLooks";
 
-export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [], onWearFor }: {
+export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [], onWearFor, topicsNav = true }: {
   draft: TvConfig;
   scoped: TvConfig;
   view: TvConfig;
@@ -42,6 +41,8 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   todayOccasions?: string[];
   /** A kit of an occasion's folder made that occasion's, and its page opened (DesignLibrary). */
   onWearFor?: (occasionId: string, kit: SavedDesign) => void;
+  /** The row of topics here: only when the editor goes around by tabs (a menu or a search has them already). */
+  topicsNav?: boolean;
 }) {
   const { view: topicsView, topic } = useDesignTopics();
   // A board of parts: the topics dress the parts chosen on it, not the boxes of an ordinary board.
@@ -68,14 +69,18 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         className="space-y-2 rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur sm:sticky sm:top-16 sm:z-[5] min-[1700px]:col-span-2"
         data-testid="parts-scope"
       >
-        <DesignTopics />
+        {topicsNav && <DesignTopics />}
         {parts ? (
-          <div className="space-y-1" data-testid="parts-scope-kinds">
-            <p className="text-xs">
-              <span className="font-semibold">הלוח בנוי מחלקים:</span> התיבות, המסגרות והטקסט כאן חלים על החלקים שבוחרים בלוח, או על כל החלקים מסוג אחד:
-            </p>
-            <KindPicker elements={view.elements} selected={selected} select={(ids) => editing?.select(ids)} onKind={() => {}} testId="scope-by-kind" />
-          </div>
+          // Choosing all of one kind is the list of parts' own (one row of it, not one here as well): a way there.
+          <p className="text-xs" data-testid="parts-scope-kinds">
+            <span className="font-semibold">הלוח בנוי מחלקים:</span> התיבות, המסגרות והטקסט כאן חלים על החלקים שבוחרים בלוח
+            {selected.length ? ` (נבחרו ${selected.length})` : ""}, או על כל החלקים מסוג אחד -{" "}
+            <button type="button" className="font-medium text-primary underline underline-offset-2"
+              onClick={() => { showDesignTopic("design-elements"); window.setTimeout(() => document.querySelector('[data-testid="elements-by-kind"]')?.scrollIntoView({ block: "center" }), 120); }}>
+              בחירה לפי סוג
+            </button>
+            .
+          </p>
         ) : (<>
         <label className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-semibold">התיבות, המסגרות והטקסט של:</span>

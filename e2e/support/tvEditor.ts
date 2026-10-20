@@ -1,4 +1,4 @@
-import type { Page, Route } from "@playwright/test";
+import { expect, type Page, type Route } from "@playwright/test";
 
 /**
  * The editor, with its database answered from here.
@@ -331,4 +331,15 @@ export async function movePanelAside(page: Page) {
   await page.mouse.down();
   await page.mouse.move(size.width, size.height, { steps: 4 });
   await page.mouse.up();
+}
+
+/**
+ * A choice of the editor's one menu of its layout ("פריסה ותצוגה"): where the
+ * board stands ("זה לצד זה", "תצוגה למעלה") or how one goes around it
+ * ("לשוניות", "תפריט נושאים בצד", "חיפוש").
+ */
+export async function editorLayout(page: Page, name: string) {
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await page.getByTestId("view-menu").first().click();
+  await page.getByRole("menuitemradio", { name, exact: true }).click();
 }
