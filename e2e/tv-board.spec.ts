@@ -187,7 +187,7 @@ test.describe("administrator", () => {
     const original = await field.inputValue();
     await field.fill("בדיקת E2E");
     await expect(page.locator(BOARD_NAME).filter({ hasText: "בדיקת E2E" })).toHaveCount(5);
-    await expect(page.getByText("יש שינויים שלא נשמרו").first()).toBeVisible();
+    await expect(page.getByText("לא נשמר", { exact: true }).first()).toBeVisible();
 
     // Move: clock and name swap sides. Only the layouts with a header bar
     // have sides to swap - the painted board draws the name into the picture -

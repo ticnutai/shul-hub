@@ -58,7 +58,7 @@ export function DeviceScopeBanner({
         data-scope={scope}
       >
         <Icon className="size-3.5" aria-hidden />
-        עורך עכשיו: {editingOne ? DEVICE_CLASS_LABELS[scope as DeviceClass] : "כל המסכים"}
+        עורך: {editingOne ? DEVICE_CLASS_LABELS[scope as DeviceClass] : "כל המסכים"}
         <InfoTip>{explain}</InfoTip>
         {custom.length > 0 && <span className="font-normal text-muted-foreground">מוגדר בנפרד:</span>}
         {custom.map((d) => (

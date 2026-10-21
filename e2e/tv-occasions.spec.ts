@@ -26,7 +26,7 @@ test.describe("TV editor, the screen builder and the preview", () => {
     await page.getByTestId("screen-composer").getByRole("button", { name: /מסך ב/ }).first().click();
     await expect(chips.getByRole("tab", { selected: true })).toContainText("מסך ב");
     // Looking is not changing: nothing waits to be saved.
-    await expect(page.getByText("יש שינויים שלא נשמרו")).toHaveCount(0);
+    await expect(page.getByText("לא נשמר", { exact: true })).toHaveCount(0);
     await expectNotFrozen(page, "screen chosen");
   });
 });

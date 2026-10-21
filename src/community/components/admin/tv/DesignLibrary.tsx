@@ -134,9 +134,10 @@ export function SaveKitButton({ config, onEdit }: { config: TvConfig; onEdit: Ed
           size="sm"
           disabled={full}
           data-testid="toolbar-save-kit"
+          aria-label="שמירה כערכה חדשה"
           title={full ? `הגעתם למספר הערכות המרבי (${MAX_DESIGNS})` : 'שומר את מה שעל הלוח עכשיו כערכה משלכם - תופיע ב"הערכות שלי"'}
         >
-          <BookmarkPlus className="size-4" aria-hidden /> שמירה כערכה חדשה
+          <BookmarkPlus className="size-4" aria-hidden /> שמירה כערכה
         </Button>
       </PopoverTrigger>
       <PopoverContent dir="rtl" align="end" className="w-96 max-w-[calc(100vw-1rem)] space-y-2 p-3 text-right">

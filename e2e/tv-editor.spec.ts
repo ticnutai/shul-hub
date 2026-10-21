@@ -261,7 +261,7 @@ test.describe("TV editor", () => {
     await expect.poll(() => root(page).getAttribute("class")).toContain("has-bg-image");
     await expect.poll(bgImage).not.toBe(before);
     // On the board in the editor; on the screens only after "שמור ושדר".
-    await expect(page.getByText("יש שינויים שלא נשמרו").first()).toBeVisible();
+    await expect(page.getByText("לא נשמר", { exact: true }).first()).toBeVisible();
 
     // It stays when the control is left: it is the draft's now.
     await page.getByRole("tab", { name: "תוכן" }).click();
@@ -681,7 +681,7 @@ test.describe("TV editor", () => {
     // Looking at the phone is editing the phone - no second control.
     await look("מובייל");
     await expect(banner).toHaveAttribute("data-scope", "mobile");
-    await expect(banner).toContainText("עורך עכשיו: מובייל");
+    await expect(banner).toContainText("עורך: מובייל");
     const shared = await frameOf();
 
     await page.getByRole("tab", { name: "עיצוב" }).click();

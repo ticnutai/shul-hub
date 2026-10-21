@@ -15,7 +15,7 @@ test("the save bar floats, stays in sight, is dragged and kept; explanations ope
   const bar = page.getByTestId("save-bar");
   await expect(bar).toBeInViewport();
   await expect(bar).toContainText("הכול שמור");
-  await expect(bar.getByTestId("device-scope")).toContainText("עורך עכשיו: כל המסכים");
+  await expect(bar.getByTestId("device-scope")).toContainText("עורך: כל המסכים");
 
   // In sight as the page scrolls.
   await page.mouse.wheel(0, 1500);

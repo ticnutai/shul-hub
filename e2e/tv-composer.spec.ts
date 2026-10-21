@@ -91,7 +91,7 @@ test.describe("the composer on תורה ואהבתה", () => {
     await composer.locator("#block-shiurim").click();
     await expect(sketch).not.toContainText("שיעורים");
     // A change in the editor is a draft until somebody broadcasts it.
-    await expect(page.getByText("יש שינויים שלא נשמרו").first()).toBeVisible();
+    await expect(page.getByText("לא נשמר", { exact: true }).first()).toBeVisible();
 
     // Put it back, so nothing is left half-changed in the draft.
     await composer.locator("#block-shiurim").click();

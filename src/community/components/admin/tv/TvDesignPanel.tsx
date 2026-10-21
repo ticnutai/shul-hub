@@ -986,13 +986,15 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         variant={editing ? "default" : "outline"}
         size="sm"
         aria-pressed={editing}
+        aria-label={editing ? "סיום עריכה בלוח" : "עריכה ישירה בלוח"}
+        title={editing ? "סיום עריכה בלוח" : "עריכה ישירה בלוח - לחיצה על חלק בלוח בוחרת אותו"}
         onClick={() => {
           setEditing((v) => !v);
           setSelected(null);
           setAutoplay(false);
         }}
       >
-        <Pencil className="size-4" /> {editing ? "סיום עריכה בלוח" : "עריכה ישירה בלוח"}
+        <Pencil className="size-4" /> {editing ? "סיום עריכה" : "עריכה ישירה"}
       </Button>
       {/* What is on the screens now against the draft - while there is a difference to see. */}
       <Button
@@ -1053,7 +1055,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {/* "תצוגה בתאריך": the one control for the day the preview shows - any date, or the coming Shabbat - and the way back. */}
       <span className="flex flex-wrap items-center gap-1.5" role="group" aria-label="יום בתצוגה" data-testid="preview-date">
         <label className="flex items-center gap-1.5 text-xs">
-          תצוגה בתאריך
+          תאריך
           <input
             type="date"
             aria-label="תצוגה בתאריך"
@@ -1065,8 +1067,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             }}
           />
         </label>
-        <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} onClick={toggleShabbatPreview}>
-          🕯️ תצוגת מסך שבת
+        <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} aria-label="תצוגת מסך שבת" title="תצוגת מסך שבת" onClick={toggleShabbatPreview}>
+          🕯️ תצוגת שבת
         </Button>
         {simulatedNow && (
           <Button type="button" variant="ghost" size="sm" onClick={() => previewAt(null)}>
@@ -1153,17 +1155,17 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         disabled={!state.future.length} onClick={() => dispatch({ type: "redo" })}>
         <Redo2 className="size-4" />
       </Button>
-      <Button type="button" variant="ghost" size="sm" className="h-8 rounded-full px-2 text-xs" disabled={!dirty} onClick={() => void discard()} title="ביטול כל השינויים שלא נשמרו">
-        ביטול שינויים
+      <Button type="button" variant="ghost" size="sm" className="h-8 rounded-full px-2 text-xs" disabled={!dirty} onClick={() => void discard()} aria-label="ביטול שינויים" title="ביטול כל השינויים שלא נשמרו">
+        ביטול
       </Button>
       {!occasionScope && <DeviceScopeBanner compact scope={scope} config={state.present} onClear={clearDevice} />}
       <span className={`flex items-center gap-1 px-1 text-xs ${dirty ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
         <span className={`size-2 rounded-full ${dirty ? "bg-amber-500" : "bg-emerald-500"}`} aria-hidden />
-        {dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}
+        <span title={dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}>{dirty ? "לא נשמר" : "הכול שמור"}</span>
       </span>
-      <Button type="button" size="sm" className="h-8 rounded-full" onClick={save} disabled={!dirty || saving} title="שמירה ושידור לכל המסכים (Ctrl+S)">
+      <Button type="button" size="sm" className="h-8 rounded-full" onClick={save} disabled={!dirty || saving} aria-label={saving ? "שומר…" : "שמור ושדר למסכים"} title="שמירה ושידור לכל המסכים (Ctrl+S)">
         {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
-        {saving ? "שומר…" : "שמור ושדר למסכים"}
+        {saving ? "שומר…" : "שמור ושדר"}
       </Button>
     </FloatingBar>
   );
@@ -1202,15 +1204,15 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         >
           <Redo2 className="size-4" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" disabled={!dirty} onClick={() => void discard()}>
-          ביטול שינויים
+        <Button type="button" variant="ghost" size="sm" disabled={!dirty} onClick={() => void discard()} aria-label="ביטול שינויים" title="ביטול כל השינויים שלא נשמרו">
+          ביטול
         </Button>
         <span className="ms-auto text-xs text-muted-foreground">
           {dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}
         </span>
-        <Button type="button" size="sm" onClick={save} disabled={!dirty || saving} title="שמירה ושידור לכל המסכים (Ctrl+S)">
+        <Button type="button" size="sm" onClick={save} disabled={!dirty || saving} aria-label={saving ? "שומר…" : "שמור ושדר למסכים"} title="שמירה ושידור לכל המסכים (Ctrl+S)">
           {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
-          {saving ? "שומר…" : "שמור ושדר למסכים"}
+          {saving ? "שומר…" : "שמור ושדר"}
         </Button>
       </div>
   );
