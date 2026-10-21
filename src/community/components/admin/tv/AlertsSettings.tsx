@@ -6,6 +6,7 @@
  * the next minyan beside them. A picture of the card stands at the side and
  * changes with every choice.
  */
+import { Hint } from "@/components/InfoTip";
 import { useState, type CSSProperties } from "react";
 import { Pause, Play, Send } from "lucide-react";
 
@@ -225,8 +226,8 @@ export function AlertsSettings({ config, countdown, edit, simulation, screens = 
                 </div>
               </div>
             </div>
-            {colours && <p className="text-[11px] text-muted-foreground">גם הספירה במקום התפילות והפס הקטן מקבלים את אותם צבעים.</p>}
-            <p className="text-[11px] text-muted-foreground">את התזכורת על הלוח עצמו, בכל שלב, רואים בהדמיה שבקטע "מתי".</p>
+            {colours && <Hint>גם הספירה במקום התפילות והפס הקטן מקבלים את אותם צבעים.</Hint>}
+            <Hint>את התזכורת על הלוח עצמו, בכל שלב, רואים בהדמיה שבקטע "מתי".</Hint>
           </div>
         </div>
       </section>

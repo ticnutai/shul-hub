@@ -12,6 +12,7 @@
  * So: a name. The numbers follow, and stay editable underneath for the
  * places not on the list and for a shul whose luach says otherwise.
  */
+import { Hint } from "@/components/InfoTip";
 import { useMemo, useState } from "react";
 import { Check, MapPin, Search } from "lucide-react";
 
@@ -47,10 +48,10 @@ export function PlacePicker({
         <Label className="font-semibold">מיקום בית הכנסת</Label>
       </div>
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <Hint>
         כל זמני היום מחושבים מהמיקום: הנץ, סוף זמן ק״ש, פלג המנחה, השקיעה, צאת הכוכבים והדלקת
         הנרות - וגם כל מניין שמוגדר ביחס לאחד מהם. בחירת עיר ממלאת את הכול.
-      </p>
+      </Hint>
 
       {here ? (
         <p className="flex items-center gap-1.5 text-sm">
@@ -62,9 +63,9 @@ export function PlacePicker({
           </span>
         </p>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <Hint>
           המיקום מוגדר בקואורדינטות שאינן אחת הערים שברשימה. אפשר לבחור עיר, או להשאיר כפי שהוא.
-        </p>
+        </Hint>
       )}
 
       <div className="space-y-2">
@@ -110,11 +111,11 @@ export function PlacePicker({
         )}
       </div>
 
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
+      <Hint>
         דקות הדלקת הנרות הן <strong>מנהג המקום</strong> ולא חישוב - ירושלים 40, חיפה וצפת 30, רוב
         הארץ 20. המספרים כאן הם המנהג הרווח והם נקודת פתיחה: אם הלוח של בית הכנסת אומר אחרת, הוא
         הקובע, ואפשר לשנות בשדה למטה.
-      </p>
+      </Hint>
     </div>
   );
 }

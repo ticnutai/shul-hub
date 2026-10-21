@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/InfoTip";
 import type { ReactNode } from "react";
 
 /**
@@ -24,8 +25,11 @@ export function SubPart({
   if (bare) return <div className="space-y-2" data-testid={testId}>{children}</div>;
   return (
     <section className="space-y-2" data-testid={testId}>
-      <h4 className="border-b pb-1 text-sm font-semibold">{title}</h4>
-      {hint && <p className="text-[11px] leading-tight text-muted-foreground">{hint}</p>}
+      {/* The explanation behind an ⓘ beside the title: a line of the page less. */}
+      <div className="flex items-center gap-1.5 border-b pb-1">
+        <h4 className="text-sm font-semibold">{title}</h4>
+        {hint && <InfoTip>{hint}</InfoTip>}
+      </div>
       {children}
     </section>
   );

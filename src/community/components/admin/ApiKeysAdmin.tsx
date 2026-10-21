@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useState } from "react";
 import { CheckCircle2, KeyRound, Loader2, ShieldCheck, Trash2, XCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -56,10 +57,10 @@ export function ApiKeysAdmin() {
         <KeyRound className="size-5 text-primary" />
         <h3 className="text-lg font-semibold">המפתח של העוזר החכם</h3>
       </div>
-      <p className="text-sm text-muted-foreground">
+      <Hint>
         המפתח שאיתו "עוזר חכם" קורא תמונות, הקלטות והודעות. מכניסים אותו פעם אחת והוא נשמר בחשבון שלכם - זמין בכל מחשב
         ובכל טלפון שנכנסים ממנו לחשבון, בלי להכניס שוב. השימוש מחויב בחשבון שלכם בחברת אנתרופיק.
-      </p>
+      </Hint>
       <p className="flex items-start gap-1.5 rounded-md bg-muted/50 p-2 text-xs">
         <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
         רק החשבון שלכם רואה את המפתח - לא גבאים אחרים ולא המתפללים. הוא נשלח רק לחברת אנתרופיק. מומלץ לקבוע לו תקרת
@@ -160,9 +161,9 @@ export function ApiKeysAdmin() {
                 />
                 <SaveButton pending={busy} disabled={!draft.trim()} />
               </div>
-              <p className="text-xs text-muted-foreground">
+              <Hint>
                 את המפתח יוצרים באתר של חברת אנתרופיק, בחשבון שלכם, בעמוד המפתחות (שם הוא נקרא <bdi dir="ltr">API Keys</bdi>). הוא מתחיל ב-<bdi dir="ltr">sk-ant-</bdi>.
-              </p>
+              </Hint>
             </form>
           )}
         </>

@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Download, FileJson, FileSpreadsheet, Upload } from "lucide-react";
@@ -95,10 +96,10 @@ export function DataExportImportAdmin() {
       <div className="card-elev space-y-4 p-6">
         <div>
           <h2 className="font-semibold">ייצוא נתונים</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <Hint>
             הורדת כל תוכן האתר - הגדרות, מניינים, מודעות, שיעורים, חברותות, בקשות חברותא והודעות -
             לקובץ אחד. ניתן להשתמש כגיבוי או לעריכה חיצונית לפני ייבוא חוזר.
-          </p>
+          </Hint>
         </div>
         <div className="flex flex-wrap gap-3">
           <Button onClick={() => handleExport("excel")} disabled={exporting !== null}>
@@ -119,11 +120,11 @@ export function DataExportImportAdmin() {
       <div className="card-elev space-y-4 p-6">
         <div>
           <h2 className="font-semibold">ייבוא נתונים</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <Hint>
             העלאת גיליון אלקטרוני או קובץ גיבוי שיוצאו מהאתר (או שנערכו לפי אותו מבנה). רשומות
             שיש להן מזהה קיים יעודכנו; רשומות חדשות בלי מזהה ידלגו. אין מחיקה או יצירה של רשומות
             חדשות - הייבוא מעדכן וממזג רשומות מזוהות בלבד.
-          </p>
+          </Hint>
         </div>
         <div>
           <input

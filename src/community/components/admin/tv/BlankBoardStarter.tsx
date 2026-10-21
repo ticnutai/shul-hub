@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useState } from "react";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
@@ -64,7 +65,7 @@ export function BlankBoardStarter({
         <Button type="button" variant="ghost" className="text-destructive" onClick={() => setOpen("wipe")}>
           מחיקה - בוחרים מה למחוק
         </Button>
-        <p className="w-full text-[11px] text-muted-foreground">הכול טיוטה עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר.</p>
+        <Hint>הכול טיוטה עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר.</Hint>
       </div>
     );
 
@@ -117,9 +118,9 @@ export function BlankBoardStarter({
           ביטול
         </Button>
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <Hint>
         העיצוב והסידור מתאפסים; הנוסחים, הלוגואים, המועדים והגלריות שלכם נשארים. שום דבר לא נשמר עד "שמור ושדר".
-      </p>
+      </Hint>
     </div>
   );
 }
@@ -168,7 +169,7 @@ function WipeChooser({ onWipe, onClose }: { onWipe: (groups: WipeGroup[]) => voi
         </Button>
         <Button type="button" variant="ghost" onClick={onClose}>ביטול</Button>
       </div>
-      <p className="text-[11px] text-muted-foreground">המניינים, ההודעות והשיעורים לא נמחקים אף פעם מכאן.</p>
+      <Hint>המניינים, ההודעות והשיעורים לא נמחקים אף פעם מכאן.</Hint>
     </div>
   );
 }

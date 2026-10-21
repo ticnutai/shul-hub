@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { Download, Smartphone, Tv } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/button";
@@ -51,9 +52,9 @@ export function AppDownloadsAdmin() {
   return (
     <div ref={focusRef} className="scroll-mt-24 space-y-4" data-testid="app-downloads">
       <h3 className="text-lg font-semibold">התקנת האפליקציות</h3>
-      <p className="text-sm text-muted-foreground">
+      <Hint>
         קבצי ההתקנה העדכניים. ההורדה היא מאתר שמירת הקבצים של הפרויקט, כדי שהטלפון יוריד את הקובץ ולא יפתח את האתר.
-      </p>
+      </Hint>
       <div className="grid gap-4 md:grid-cols-2">
         {APPS.map((app) => {
           const url = latest(app.file);

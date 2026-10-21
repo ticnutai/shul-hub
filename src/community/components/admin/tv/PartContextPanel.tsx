@@ -9,6 +9,7 @@
  * colour or a background of the gallery, the frame is replaced, and the shape
  * changes the board and the frame together.
  */
+import { Hint } from "@/components/InfoTip";
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PART_PANEL_SLOT } from "../adminPath";
@@ -312,7 +313,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
         <div data-testid="preview-text-tools">
           <ElementTextTools elements={config.elements} ids={texts.map((e) => e.id)} withNextMark={false}
             onPatch={(ids, p, what) => onEdit(`element-text:${ids.join(",")}:${what}`, (c) => ({ ...c, elements: c.elements.map((e) => (ids.includes(e.id) && !e.locked ? { ...e, ...p } : e)) }))} />
-          <p className="mt-1 text-[11px] text-muted-foreground">לחיצה כפולה על טקסט בלוח - כותבים בו ישירות. Enter לסיום, Esc לביטול.</p>
+          <Hint>לחיצה כפולה על טקסט בלוח - כותבים בו ישירות. Enter לסיום, Esc לביטול.</Hint>
         </div>
       )}
 
@@ -347,7 +348,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               </button>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground">התמונה נעשית התוכן של הקונטיינר: ממלאת אותו בצורה שלו, וזזה וגדלה יחד איתו - כמו תוכן חי. מה שהיה בו (כתוב וקישוטים) מוסתר, ואפשר להחזיר אותו.</p>
+          <Hint>התמונה נעשית התוכן של הקונטיינר: ממלאת אותו בצורה שלו, וזזה וגדלה יחד איתו - כמו תוכן חי. מה שהיה בו (כתוב וקישוטים) מוסתר, ואפשר להחזיר אותו.</Hint>
         </div>
       )}
 
@@ -378,7 +379,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           )}
           <div className="space-y-1">
             <p className="text-xs font-medium">קונטיינר חדש</p>
-            <p className="text-[11px] text-muted-foreground">גוררים צורה אל הלוח - ונוצר שם קונטיינר שלם (לוח, מסגרת וכותרת) בצורה הזאת. לחיצה מוסיפה אותו באמצע.</p>
+            <Hint>גוררים צורה אל הלוח - ונוצר שם קונטיינר שלם (לוח, מסגרת וכותרת) בצורה הזאת. לחיצה מוסיפה אותו באמצע.</Hint>
             <div className="flex flex-wrap gap-1.5">
               {PART_SHAPES.map((s) => (
                 <button key={s.id} type="button" draggable aria-label={`קונטיינר חדש: ${s.name}`} title={`גרירה ללוח: קונטיינר ב${s.name}`}
@@ -399,7 +400,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               <ImagePick label="תמונה לבד" what="תמונה לבד" onPick={pictureAlone} />
             </span>
           </div>
-          <p className="text-[11px] text-muted-foreground">כל תמונה שמעלים נשמרת ב"התמונות שלי". כדי לשמור קונטיינר שלם או תמונה - בוחרים אותם ולוחצים "שמירה בחלקים שלי" למעלה.</p>
+          <Hint>כל תמונה שמעלים נשמרת ב"התמונות שלי". כדי לשמור קונטיינר שלם או תמונה - בוחרים אותם ולוחצים "שמירה בחלקים שלי" למעלה.</Hint>
         </div>
       )}
 

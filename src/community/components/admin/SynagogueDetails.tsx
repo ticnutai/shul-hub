@@ -14,6 +14,7 @@
  * the synagogue's settings - and it is one field here, written to both, so
  * the switcher and the site can never disagree about what a shul is called.
  */
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ImagePlus, Loader2, LocateFixed, Trash2 } from "lucide-react";
@@ -265,9 +266,9 @@ export function SynagogueDetailsDialog({
                   {field("tzeit_offset_minutes", "צאת הכוכבים - דקות אחרי השקיעה", "number")}
                   {field("shabbat_end_minutes", "צאת שבת וחג - דקות אחרי השקיעה (40 מקובל, 72 ר״ת)", "number")}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <Hint>
                   קווי האורך והרוחב קובעים את חישוב זמני היום באתר ובלוח. ברירת המחדל היא בני ברק.
-                </p>
+                </Hint>
               </Collapsible>
             </section>
 
@@ -297,9 +298,9 @@ export function SynagogueDetailsDialog({
                 testId="go-header-logo"
               />
               {logos.length === 0 ? (
-                <p className="rounded-xl border border-dashed p-4 text-center text-sm text-muted-foreground">
+                <Hint>
                   עדיין אין לוגואים. בכותרת אפשר להציג את לוגו קרובים המובנה.
-                </p>
+                </Hint>
               ) : (
                 <ul className="grid gap-3 sm:grid-cols-3">
                   {logos.map((logo) => (
@@ -342,9 +343,9 @@ export function SynagogueDetailsDialog({
                 ביטול
               </Button>
               {!canRename && (
-                <p className="ms-auto self-center text-[11px] text-muted-foreground">
+                <Hint>
                   השם נשמר לאתר; שם בית הכנסת ברשימה משתנה על ידי מנהל המערכת.
-                </p>
+                </Hint>
               )}
             </div>
           </div>

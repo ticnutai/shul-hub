@@ -2,6 +2,7 @@
  * The design tab: kits, background, boxes, frames, text and free parts - for the whole board or one box chosen at its top.
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
  */
+import { Hint } from "@/components/InfoTip";
 import type { Dispatch } from "react";
 import { toast } from "sonner";
 import type { TvConfig } from "@/tv/config";
@@ -102,7 +103,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
             </optgroup>
           </select>
         </label>
-        <p className="text-[11px] text-muted-foreground">"•" - לתיבה יש עיצוב משלה.</p>
+        <Hint>"•" - לתיבה יש עיצוב משלה.</Hint>
         </>)}
         {!parts && partTarget.startsWith("frame:") && (
           <CopyBoxLook

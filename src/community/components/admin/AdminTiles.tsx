@@ -10,6 +10,7 @@
  * only is never shown - it is taken. The tabs stay, as they were; which of
  * the two is up is the gabbai's choice (adminLayout.ts).
  */
+import { Hint } from "@/components/InfoTip";
 import type { ReactNode } from "react";
 import { PATH_BESIDE_ID, PATH_END_ID } from "./adminPath";
 import { useMemo } from "react";
@@ -138,7 +139,7 @@ export function AdminTiles({ sections, badges, renderSection }: {
   if (!section) {
     return (
       <div className="mt-5 space-y-3" data-testid="admin-home">
-        <p className="text-sm text-muted-foreground">בחרו מה לנהל. כל לחיצה פותחת את השלב הבא; למעלה תמיד אפשר לחזור.</p>
+        <Hint>בחרו מה לנהל. כל לחיצה פותחת את השלב הבא; למעלה תמיד אפשר לחזור.</Hint>
         <TileGrid label="מדורי ניהול">
           {sections.map((s) => (
             <Tile

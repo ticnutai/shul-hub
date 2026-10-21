@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { Button } from "@/components/ui/button";
 import {
   FRAME_RADIUS_MAX,
@@ -358,9 +359,9 @@ export function FrameCorners({
         />
       ))}
       {!compact && (
-        <p className="text-[11px] text-muted-foreground">
+        <Hint>
           כמה מעוגלות הפינות למעלה ולמטה. בצורות חתוכות (כיפה, משושה, מסולסל...) הצורה עצמה קובעת.
-        </p>
+        </Hint>
       )}
     </div>
   );
@@ -398,10 +399,10 @@ export function FrameSpacing({
       ))}
 
       {compact ? null : (
-        <p className="text-[11px] text-muted-foreground">
+        <Hint>
           חל על כל התיבות בכל הפריסות - בטלוויזיה, בלפטופ ובנייד. מרווח קטן יותר מגביה את
           התיבות, ולפעמים מכניס שורה נוספת. אפשר לשנות אותם גם בגרירה בשרטוט שב"מסכים ומה עליהם".
-        </p>
+        </Hint>
       )}
     </div>
   );

@@ -15,6 +15,7 @@
  * With `anyCode`, a colour that is not a plain #rrggbb (one with transparency,
  * rgba(...)) can be typed there too, and its swatch shows it as it is.
  */
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Pipette, X } from 'lucide-react';
@@ -259,7 +260,7 @@ function Panel({ label, value, code, anyCode, onChange, onClose }: {
         ) : null,
       )}
       <div className="flex items-center justify-between gap-2 pt-1">
-        <p className="text-[11px] text-muted-foreground">אפשר לגלול את העמוד - החלון נשאר פתוח, והלוח משתנה בזמן הבחירה.</p>
+        <Hint>אפשר לגלול את העמוד - החלון נשאר פתוח, והלוח משתנה בזמן הבחירה.</Hint>
         <button type="button" onClick={onClose} className="flex h-8 shrink-0 items-center gap-1 rounded bg-primary px-3 text-xs text-primary-foreground"><Check className="size-4" aria-hidden /> סיום</button>
       </div>
     </div>

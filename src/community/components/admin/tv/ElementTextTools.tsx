@@ -8,6 +8,7 @@
  * for the part clicked on the board itself, and in the list of parts. It is
  * the same component in both, so the two never offer different things.
  */
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useState } from 'react';
 import { AlignCenter, AlignLeft, AlignRight, Bold, Italic, WrapText } from 'lucide-react';
 
@@ -82,9 +83,9 @@ export function ElementTextTools({ elements, ids, onPatch, withColor = true, wit
           </div>
         )}
       </div>
-      <p className="text-[11px] text-muted-foreground">
+      <Hint>
         {wrapping ? 'טקסט ארוך נשבר לשורות ושומר על הגודל שלו.' : 'טקסט ארוך נשאר בשורה אחת ומוקטן כדי שייכנס.'}
-      </p>
+      </Hint>
       {texts.some(e => cut[e.id]) && (
         <Notice variant="warning" className="p-2 text-xs" role="status" data-testid="text-cut"
           actions={

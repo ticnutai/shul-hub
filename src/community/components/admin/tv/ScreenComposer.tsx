@@ -20,6 +20,7 @@
  * fall out of step with the first, because pinned and automatic are the same
  * field present or absent.
  */
+import { Hint } from "@/components/InfoTip";
 import { spacingFallback } from "./BoardLook";
 import { Fragment, useMemo, useState } from "react";
 import { BookmarkPlus, CalendarDays, Plus, RotateCcw } from "lucide-react";
@@ -100,9 +101,9 @@ function CustomBoxEditor({
           className="mt-1 w-full rounded-md border bg-background p-2 text-sm"
         />
       </label>
-      <p className="text-[11px] text-muted-foreground">
+      <Hint>
         את המראה שלה - צורה, רקע, מסגרת, צבע וגודל הטקסט - בוחרים בלשונית "עיצוב", כשבוחרים אותה למעלה ב"התיבות, המסגרות והטקסט של".
-      </p>
+      </Hint>
       <div className="flex gap-2">
         <Button type="button" size="sm" variant="outline" className="h-8" onClick={onClose}>
           סגירה
@@ -744,11 +745,11 @@ export function ScreenComposer({
             </button>
           )}
         </div>
-        <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+        <Hint>
           בלי מיקום - הפריסה מסדרת לבד לפי מה שסומן. עם מיקום - נעוץ שם, והשאר מסתדרים סביבו.
           {screen.grid &&
             " המסך הזה מסודר ביד בשרטוט; בחירת מיקום כאן מחזירה אותו לסידור האוטומטי."}
-        </p>
+        </Hint>
       </div>
     </div>
   );

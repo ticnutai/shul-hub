@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Move } from 'lucide-react';
@@ -198,10 +199,10 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     {first && <SubPart title="החלק שנבחר">
       <fieldset disabled={first.locked} className="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-3">
         <p className="col-span-full text-[11px] text-muted-foreground" data-testid="selected-layer-type">סוג החלק: {first.sourceMask ? 'חלק מהציור עם מסכה שקופה' : first.crop ? 'אזור מתוך תמונה' : first.binding ? 'תוכן חי נפרד' : ELEMENT_NAMES[first.kind]}</p>
-        {['prayers', 'lessons', 'zmanim'].includes(first.binding ?? '') && <div className="text-xs">שורות בכל עמוד<div className="mt-1"><Stepper label="שורות בכל עמוד בחלק" value={first.rowsPerPage ?? 3} min={1} max={30} step={1} onChange={v => patch({ rowsPerPage: v })} /></div><p className="mt-1 text-[11px] text-muted-foreground">לחלק הזה בלבד. בלוח הרגיל, כמה מניינים בכל מסך נקבע בלשונית "פריסה", תחת "זמני התפילות בלוח".</p></div>}
-        {SCROLLABLE.includes(first.binding as ElementBinding) && <div className="col-span-full space-y-1 text-xs">כשהתוכן לא נכנס<Segments label="כשהתוכן לא נכנס בחלק" value={first.scroll ?? ''} onChange={v => patch({ scroll: (v || undefined) as BoardElement['scroll'] })} options={FIT_CHOICES(first.binding as ElementBinding)} /><p className="text-[11px] text-muted-foreground">לחלק הזה בלבד. לתיבות של הלוח הרגיל - בלשונית "פריסה", תחת "כשהתוכן לא נכנס לתיבה".</p></div>}
+        {['prayers', 'lessons', 'zmanim'].includes(first.binding ?? '') && <div className="text-xs">שורות בכל עמוד<div className="mt-1"><Stepper label="שורות בכל עמוד בחלק" value={first.rowsPerPage ?? 3} min={1} max={30} step={1} onChange={v => patch({ rowsPerPage: v })} /></div><Hint>לחלק הזה בלבד. בלוח הרגיל, כמה מניינים בכל מסך נקבע בלשונית "פריסה", תחת "זמני התפילות בלוח".</Hint></div>}
+        {SCROLLABLE.includes(first.binding as ElementBinding) && <div className="col-span-full space-y-1 text-xs">כשהתוכן לא נכנס<Segments label="כשהתוכן לא נכנס בחלק" value={first.scroll ?? ''} onChange={v => patch({ scroll: (v || undefined) as BoardElement['scroll'] })} options={FIT_CHOICES(first.binding as ElementBinding)} /><Hint>לחלק הזה בלבד. לתיבות של הלוח הרגיל - בלשונית "פריסה", תחת "כשהתוכן לא נכנס לתיבה".</Hint></div>}
         {first.binding === 'zmanim' && <div className="col-span-full space-y-2" data-testid="element-zmanim-picker">
-          <p className="text-[11px] text-muted-foreground">מג״א מחושב לפי 72 דקות קבועות לפני הנץ ואחרי השקיעה. הגר״א מחושב מהנץ לשקיעה. ברירת המחדל: הזמנים שלא הוסתרו בלוח (בעריכה ישירה בלוח).</p>
+          <Hint>מג״א מחושב לפי 72 דקות קבועות לפני הנץ ואחרי השקיעה. הגר״א מחושב מהנץ לשקיעה. ברירת המחדל: הזמנים שלא הוסתרו בלוח (בעריכה ישירה בלוח).</Hint>
           <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => patch({ zmanKeys: [...ZMAN_DISPLAY_KEYS], rowsPerPage: ZMAN_DISPLAY_KEYS.length, fontSize: Math.min(first.fontSize, first.height / (ZMAN_DISPLAY_KEYS.length * 2.2)) })}>הצגת כל זמני היום יחד</Button>
           {/* Several to pick: tick boxes. */}
           <div className="grid gap-2 sm:grid-cols-2">{ZMAN_DISPLAY_KEYS.map(key => <label key={key} className="flex gap-2 text-xs"><input type="checkbox" checked={(first.zmanKeys ?? ZMAN_DISPLAY_KEYS.filter(k => !config.hidden.includes(`zman.${k}`))).includes(key)} onChange={ev => { const keys = first.zmanKeys ?? ZMAN_DISPLAY_KEYS.filter(k => !config.hidden.includes(`zman.${k}`)); patch({ zmanKeys: ev.target.checked ? [...keys, key] : keys.filter(k => k !== key) }); }} />{ZMAN_DISPLAY_LABELS[key]}</label>)}</div>
@@ -223,7 +224,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
                 {Object.entries(SECTION_SHAPES).map(([key, name]) => <option key={key} value={key}>{name}</option>)}
               </select>
             </label>
-            <p className="text-[11px] text-muted-foreground">הצורה חלה על המסגרת, המילוי ומקום התוכן יחד. מסגרת מצולמת מתחלפת במסגרת מצוירת; אפשר לחזור בצעד אחורה.</p>
+            <Hint>הצורה חלה על המסגרת, המילוי ומקום התוכן יחד. מסגרת מצולמת מתחלפת במסגרת מצוירת; אפשר לחזור בצעד אחורה.</Hint>
           </div>
         )}
         {first.kind === 'box' && !first.shape && <div className="col-span-full"><SwitchRow label="מילוי בצורת קשת" ariaLabel="מילוי בצורת קשת" checked={first.archFill ?? false} onChange={(on) => patch({ archFill: on })} /></div>}
@@ -250,7 +251,7 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
           // The whole picture's colours - a background, a frame or an ornament - not one carving in it.
           <div className="col-span-full space-y-2 rounded-md border p-3" data-testid="image-colour-tools">
             <p className="text-sm font-medium">צבעוניות התמונה</p>
-            <p className="text-[11px] text-muted-foreground">משנה את כל התמונה שנבחרה - רקע, מסגרת או קישוט. לא צובע גילוף מסוים בתוך התמונה.</p>
+            <Hint>משנה את כל התמונה שנבחרה - רקע, מסגרת או קישוט. לא צובע גילוף מסוים בתוך התמונה.</Hint>
             {([['hue', 'גוון התמונה', -180, 180, 1, 0], ['saturation', 'רוויה בתמונה', 0, 2, 0.05, 1], ['brightness', 'בהירות התמונה', 0.2, 2, 0.05, 1]] as const).map(([key, label, min, max, step, base]) => (
               <Range key={key} label={label} min={min} max={max} step={step} value={first.imageTune?.[key] ?? base}
                 show={(v) => (key === 'hue' ? `${Math.round(v)}°` : `${Math.round(v * 100)}%`)}
@@ -310,6 +311,6 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     </SubPart>
 
     <ElementLibrary config={config} selected={selected} onEdit={onEdit} onSelect={select} />
-    <p className="text-[11px] text-muted-foreground">השינויים מופיעים גם בתצוגת הלוח. שמירה וביטול משתמשים בכפתורי העורך הראשיים.</p>
+    <Hint>השינויים מופיעים גם בתצוגת הלוח. שמירה וביטול משתמשים בכפתורי העורך הראשיים.</Hint>
   </div>;
 }

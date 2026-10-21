@@ -3,6 +3,7 @@
  * with − and +, a colour with its value, the design tab's topics, copying
  * one box's design to others, and the choices of layout and clock.
  */
+import { InfoTip } from "@/components/InfoTip";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
@@ -100,8 +101,11 @@ export function Section({ title, hint, children, id, hidden }: { title: string; 
   return (
     // Hidden, not removed: what was typed in a topic stays when another is shown.
     <section id={id} hidden={hidden} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
-      <h3 className="text-base font-semibold">{title}</h3>
-      {hint && <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{hint}</p>}
+      {/* The explanation behind an ⓘ beside the title: a line of the page less. */}
+      <div className="flex items-center gap-1.5">
+        <h3 className="text-base font-semibold">{title}</h3>
+        {hint && <InfoTip>{hint}</InfoTip>}
+      </div>
       <div className="mt-3 space-y-3">{children}</div>
     </section>
   );

@@ -13,6 +13,7 @@
  *
  * Nothing here is required. No rows is the ordinary state of this panel.
  */
+import { Hint } from "@/components/InfoTip";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Loader2, Trash2, TriangleAlert } from "lucide-react";
@@ -151,9 +152,9 @@ export function MinyanOverridesAdmin() {
         overrides.length > 0 ? (overrides.length === 1 ? "שינוי קרוב אחד" : `${overrides.length} שינויים קרובים`) : undefined
       }
     >
-          <p className="text-sm text-muted-foreground">
+          <Hint>
             להזיז או לבטל מניין ביום מסוים, בלי לשנות את הלוח הקבוע. אחרי אותו יום הכול חוזר מעצמו.
-          </p>
+          </Hint>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <div className="lg:col-span-2">
               <Label className="text-sm">המניין</Label>
@@ -207,7 +208,7 @@ export function MinyanOverridesAdmin() {
                 disabled={cancelled && !time}
                 onChange={(e) => setTime(e.target.value)}
               />
-              <p className="mt-1 text-[11px] text-muted-foreground">ריק = נשארת השעה הרגילה</p>
+              <Hint>ריק = נשארת השעה הרגילה</Hint>
             </div>
           </div>
 

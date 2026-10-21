@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import type { BoardElement } from '@/tv/elements';
 import { DEFAULT_NEXT_MARK, NEXT_SHAPES, NEXT_SHAPE_NAMES, markAlpha, marksNext, type NextMark } from '@/tv/nextMark';
 import { ColourRow, Range, Segments } from './editorParts';
@@ -21,7 +22,7 @@ export function NextMarkTools({ elements, texts, onPatch }: {
   return (
     <div className="space-y-2 rounded-md border border-dashed p-2" role="group" aria-label="סימון הבא בתור" data-testid="next-mark-tools">
       <p className="text-xs font-semibold">סימון "הבא בתור"</p>
-      <p className="text-[11px] text-muted-foreground">המניין, השיעור או הזמן הבא מסומן. ברגע שהזמן שלו עובר, הסימון עובר לבא אחריו.</p>
+      <Hint>המניין, השיעור או הזמן הבא מסומן. ברגע שהזמן שלו עובר, הסימון עובר לבא אחריו.</Hint>
       <Segments label="צורת הסימון" value={mark.shape} onChange={shape => set({ ...mark, shape })}
         options={NEXT_SHAPES.map(id => ({ id, name: NEXT_SHAPE_NAMES[id] }))} />
       {mark.shape !== 'none' && (

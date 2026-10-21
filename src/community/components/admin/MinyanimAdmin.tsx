@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { CalendarRange, MonitorSmartphone, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
@@ -374,10 +375,10 @@ export function MinyanimAdmin({
           <div className="space-y-3 rounded-lg border border-border p-4">
             <div>
               <h4 className="font-medium">תפילות בלשונית (רשות)</h4>
-              <p className="text-xs text-muted-foreground">
+              <Hint>
                 אפשר להשאיר ריק ולהוסיף מניינים ישירות ללשונית, או ליצור שמות חופשיים כגון שחרית,
                 מנחה, ערבית או סליחות א׳.
-              </p>
+              </Hint>
             </div>
             <div className="space-y-2" data-testid="minyan-subcategory-editor">
               {prayerOrder.ordered.map((subcategory, index) => (
@@ -480,9 +481,9 @@ export function MinyanimAdmin({
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">
+            <Hint>
               בלי תאריכים הלשונית מוצגת תמיד. עם תאריכים - רק בתקופה הזו, למשל סליחות.
-            </p>
+            </Hint>
           </Collapsible>
           <div className="flex flex-wrap items-center gap-3">
             <Switch

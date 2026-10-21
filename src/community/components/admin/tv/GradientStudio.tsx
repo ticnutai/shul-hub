@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useMemo, useState } from "react";
 import { Check, Download, Upload, X } from "lucide-react";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -115,7 +116,7 @@ export function GradientStudio({
           style={{ backgroundImage: valid ? built : undefined }}
         />
         {previewing && (
-          <p className="text-[11px] leading-tight text-muted-foreground">
+          <p className="text-[11px] text-muted-foreground">
             כך זה נראה על הלוח עכשיו. עוד לא נשמר - ״{applyLabel}״ מקבע, ויציאה מכאן מחזירה את
             הקודם.
           </p>
@@ -198,9 +199,9 @@ export function GradientStudio({
           }`}
           aria-label={of ? `מעבר הצבעים של ${of} (קוד)` : "קוד מעבר הצבעים"}
         />
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <Hint>
           מה שנכתב כאן נשמר בדיוק כפי שהוא. שינוי של אחד הבקרים שלמעלה מחליף אותו במעבר צבעים פשוט.
-        </p>
+        </Hint>
       </details>
     </div>
   );

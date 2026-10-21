@@ -17,6 +17,7 @@
  * flicking one switch, so the switch says so before it is flicked - in the
  * same window as every other "בטוח?" on the site (confirmAction).
  */
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -259,9 +260,9 @@ export function CommunitiesAdmin() {
           <Button type="submit" disabled={!newName.trim() || create.isPending}>
             <Plus className="size-4" /> הוספה
           </Button>
-          <p className="w-full text-[11px] text-muted-foreground">
+          <Hint>
             נוצר כבוי. אפשר להכין אותו, לצמד לו מסך ולראות אותו על הקיר - ורק אז לפתוח לציבור.
-          </p>
+          </Hint>
         </form>
       )}
 

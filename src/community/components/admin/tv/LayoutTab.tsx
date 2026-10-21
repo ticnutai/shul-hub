@@ -4,6 +4,7 @@
  * Every value here is read from `scoped` - the board as the screen or page being worked on has it,
  * where the edits go too - not from the main board: what is shown is what is changed.
  */
+import { Hint } from "@/components/InfoTip";
 import { Button } from "@/components/ui/button";
 import { PRAYER_DAYS, PRAYER_DAYS_LABELS, SLIDE_KIND_LABELS, SLIDE_LAYOUTS, type TvConfig } from "@/tv/config";
 import { readOccasions } from "@/tv/occasions";
@@ -176,7 +177,7 @@ export function LayoutTab({ scoped, view, edit, openPartsList, composerScreen, s
             />
           </div>
         )}
-        <p className="text-[11px] text-muted-foreground">זו ברירת המחדל לכל התיבות. חלק אחד יכול לבחור אחרת - ברשימת החלקים (לשונית עיצוב).</p>
+        <Hint>זו ברירת המחדל לכל התיבות. חלק אחד יכול לבחור אחרת - ברשימת החלקים (לשונית עיצוב).</Hint>
       </Section>
 
       <Section id="layout-logos" title="5. לוגואים" hint="הלוגו של בית הכנסת, של תורמים - מספרייה משותפת לכל בתי הכנסת.">

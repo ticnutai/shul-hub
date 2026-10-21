@@ -7,6 +7,7 @@
  * The header shows the name and address or one of the synagogue's logos
  * (uploaded in those details), and is chosen here.
  */
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useRef, useState, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, BookOpen, Building2, LogIn, Megaphone, MessageSquareText, Palette, ScrollText, Users, WandSparkles } from "lucide-react";
@@ -193,7 +194,7 @@ export function SiteHeaderSettings() {
     >
       <div>
         <h3 className="text-base font-semibold">הכותרת העליונה של האתר</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">שם בית הכנסת והכתובת, או לוגו בלי שורת הכתובת.</p>
+        <Hint>שם בית הכנסת והכתובת, או לוגו בלי שורת הכתובת.</Hint>
         <SectionLink
           hint="את הלוגואים עצמם מעלים בפרטי בית הכנסת."
           label="העלאת לוגואים"
@@ -252,9 +253,9 @@ export function SiteHeaderSettings() {
         >
           <div>
             <h3 id="karovim-logo-size-title" className="font-semibold">גודל הלוגו</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <Hint>
               המידות נשמרות באתר וחלות על כל המשתמשים. הלוגו נשאר ממורכז ומתאים את עצמו לרוחב המסך.
-            </p>
+            </Hint>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <fieldset className="grid gap-3 rounded-xl border border-border bg-background/80 p-3">
@@ -299,9 +300,9 @@ export function SiteDesignShortcuts() {
     <section className="card-elev space-y-4 p-3.5 sm:p-5" aria-labelledby="community-themes-title">
       <div>
         <h3 id="community-themes-title" className="text-base font-semibold">ערכות נושא ועיצוב חי של האתר</h3>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        <Hint>
           הצבעים והעיצוב של האתר. ללוחות הטלוויזיה יש ערכות משלהן, במדור "תצוגות".
-        </p>
+        </Hint>
       </div>
       <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
         <Button

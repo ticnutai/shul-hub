@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useMemo, useState } from "react";
 import { Eye, Palette, Plus, Settings2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -325,7 +326,7 @@ function OccasionDialog({
           {!o.screen && o.blocks.length > 0 && config.screenLayout !== "composition" && (
           <section className="space-y-2" data-testid="occasion-screens">
             <h3 className="font-medium">המסך הנוסף מהלוח</h3>
-            <p className="text-[11px] text-muted-foreground">אפשר להסתיר אותו ולהחזיר מתי שרוצים, בלי למחוק את מה שהוגדר בו.</p>
+            <Hint>אפשר להסתיר אותו ולהחזיר מתי שרוצים, בלי למחוק את מה שהוגדר בו.</Hint>
               <SwitchRow
                 label={<b>{o.name} · מהלוח</b>}
                 note={o.blocksOff ? "מוסתר - מה שסימנתם בו נשמר להחזרה" : "המסך הנוסף עם מה שסימנתם מהלוח הרגיל"}
@@ -429,9 +430,9 @@ function OccasionDialog({
                   ))}
                 </select>
               )}
-              <p className="text-[11px] text-muted-foreground">
+              <Hint>
                 יום שחל בשלושים לחודש שיש בו השנה רק 29 ימים - יופיע בכ״ט. אדר ב׳ בשנה רגילה - באדר.
-              </p>
+              </Hint>
             </section>
           )}
 
@@ -449,7 +450,7 @@ function OccasionDialog({
 
           <section className="space-y-1">
             <h3 className="font-medium">איך מוצג</h3>
-            <p className="text-[11px] text-muted-foreground">"בלי מסך משלו" מסתיר את מסך המועד; מה שהוגדר בו נשמר להחזרה.</p>
+            <Hint>"בלי מסך משלו" מסתיר את מסך המועד; מה שהוגדר בו נשמר להחזרה.</Hint>
             <div role="radiogroup" aria-label="איך מוצג" className="space-y-1">
             {(Object.keys(DISPLAY_LABELS) as Occasion["display"][]).map((d) => (
               <label key={d} className="flex items-center gap-2">
@@ -483,7 +484,7 @@ function OccasionDialog({
 
           <section className="space-y-1">
             <h3 className="font-medium">כשהוא חל יחד עם מועד אחר</h3>
-            <p className="text-[11px] text-muted-foreground">קובע כשהמועד הזה גבוה יותר ברשימה מהמועד השני.</p>
+            <Hint>קובע כשהמועד הזה גבוה יותר ברשימה מהמועד השני.</Hint>
             {(Object.keys(OVERLAP_LABELS) as Occasion["overlap"][]).map((v) => (
               <label key={v} className="flex items-center gap-2">
                 <input type="radio" name="overlap" checked={o.overlap === v} onChange={() => onPatch({ overlap: v })} />
@@ -534,18 +535,18 @@ function OccasionDialog({
                 </label>
               ))}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <Hint>
               לסידור חופשי - הכרטיס ליד תפילות, זמנים והודעות, כל אחד במקום שתבחרו - פתחו את המועד בלשונית <b>פריסה</b>.
-            </p>
+            </Hint>
             </>
             )}
           </section>
 
           <section className="space-y-2">
             <h3 className="font-medium">שורות משלכם</h3>
-            <p className="text-[11px] text-muted-foreground">
+            <Hint>
               טקסט (ברכה, הודעה) או שעה עם כותרת (סעודה שלישית, שיעור מיוחד). מופיעות כשמסומן "השורות שהוספתם".
-            </p>
+            </Hint>
             {o.items.map((it) => (
               <div key={it.id} className="flex items-center gap-2">
                 <Input
@@ -601,9 +602,9 @@ function OccasionDialog({
 
           <section className="space-y-2">
             <h3 className="font-medium">תמונות ברקע</h3>
-            <p className="text-[11px] text-muted-foreground">
+            <Hint>
               מתחלפות לפי הסדר. לחיצה מוסיפה או מסירה מהמסך; תמונה שהעליתם נשארת כאן גם כשהיא לא מוצגת, ו-✕ מוחק אותה מהגלריה.
-            </p>
+            </Hint>
             {/* The one gallery of the editor: the upload first, the size of the tiles beside it. */}
             <GalleryGrid testId="occasion-pictures">
               <UploadTile label="העלאת תמונה" multiple uploading={uploading} onFiles={(files) => void upload(files)} hint="תמונה משלכם - נשמרת בגלריה של המועד" />
@@ -674,9 +675,9 @@ function OccasionDialog({
                 </Button>
               )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <Hint>
               הערכה נבחרת ומשתנה בעמוד של המועד (כפתור הפלטה בשורה שלו, או הלשונית שלו ליד "עמוד 1") - שם גם ערכות מהאוסף המשותף. כל שינוי נשמר לערכה של המועד בלבד.
-            </p>
+            </Hint>
             {o.design && (
               <div className="space-y-1 text-sm" role="radiogroup" aria-label="איפה העיצוב חל" data-testid="occasion-design-on">
                 <label className="flex items-start gap-2">

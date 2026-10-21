@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { CatalogPreview } from './CatalogPreview';
 import { useSharedCatalog } from '@/tv/sharedCatalog';
 import { CATALOG_CATEGORIES, catalogCategory } from '@/tv/catalogCategories';
@@ -110,10 +111,10 @@ export function KitSaveForm({ config, onEdit, onDone, testId }: { config: TvConf
               </label>
             ))}
           </div>
-          <p className="text-[11px] text-muted-foreground">
+          <Hint>
             כשמפעילים את הערכה, רק החלקים המסומנים משתנים בלוח. השאר נשאר כמו שהוא.
             {kept.length > 0 && " בלוח מחלקים, המסגרות והפריסה תמיד נשמרות - בלעדיהן לא יהיה אפשר לערוך את הערכה חלק אחרי חלק."}
-          </p>
+          </Hint>
         </fieldset>
       }
     />
@@ -345,7 +346,7 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
         title="ערכות מוכנות"
         hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
       >
-      <p className="text-[11px] text-muted-foreground">כל הערכות בתיקיות לפי נושא, וגם הערכות שלכם. גוררים ערכה לתיקייה (או "העברה לתיקייה" שמתחתיה), פותחים וסוגרים תיקיות, ומחפשים לפי שם או תגית. שינוי עותק לא משנה ערכות בלוחות אחרים.</p>
+      <Hint>כל הערכות בתיקיות לפי נושא, וגם הערכות שלכם. גוררים ערכה לתיקייה (או "העברה לתיקייה" שמתחתיה), פותחים וסוגרים תיקיות, ומחפשים לפי שם או תגית. שינוי עותק לא משנה ערכות בלוחות אחרים.</Hint>
       {catalogError && <CatalogNotice onRetry={retry} />}
       <div className="space-y-4" data-testid="builtin-designs">
       <FolderedLibrary

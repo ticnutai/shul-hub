@@ -13,6 +13,7 @@
  * frame is deleted in one place, its tile's ✕ in "החלקים והתיבות שלי"
  * (ElementLibrary), not here as well.
  */
+import { Hint } from "@/components/InfoTip";
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -169,7 +170,7 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults }
             </label>
           </div>
           {customised && <ResetButton onClick={() => onDefaults(DEFAULT_ELEMENT_DEFAULTS)}>חזרה להגדרות הערכה</ResetButton>}
-          <p className="text-[11px] text-muted-foreground">חל על כל תוכן שמוסיפים מעכשיו - במסגרת חדשה ובתוך מסגרת. מה שכבר על הלוח לא משתנה.</p>
+          <Hint>חל על כל תוכן שמוסיפים מעכשיו - במסגרת חדשה ובתוך מסגרת. מה שכבר על הלוח לא משתנה.</Hint>
         </div>
       </Folded>
     </div>

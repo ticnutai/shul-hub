@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { Star } from 'lucide-react';
 import { toast } from 'sonner';
 import { putInFolder, toggleFavorite } from '@/tv/library';
@@ -75,7 +76,7 @@ export function SharedCatalogLibrary({ config, onEdit, onSelect }: {
 
   return (
     <div className="space-y-3" dir="rtl">
-      <p className="text-[11px] text-muted-foreground">הנושאים מסננים את האוסף בלבד; כל חלק אפשר להוסיף בכל יום.</p>
+      <Hint>הנושאים מסננים את האוסף בלבד; כל חלק אפשר להוסיף בכל יום.</Hint>
       {!catalog && !error && <p role="status" className="text-sm text-muted-foreground">טוען את האוסף המשותף…</p>}
       {error && <CatalogNotice onRetry={retry} />}
       {catalog && (

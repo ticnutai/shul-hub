@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import {
   ArrowDown,
   ArrowLeft,
@@ -392,11 +393,11 @@ export function BoardBackground({ config, onEdit }: { config: TvConfig; onEdit: 
             ))}
           </GalleryGrid>
         </div>
-        <p className="text-[11px] leading-tight text-muted-foreground">
+        <Hint>
           {onParts
             ? "לחיצה מלבישה את הרקע רק על הלוחות שנבחרו. כל לוח אחר נשאר כמו שהוא."
             : 'כמו בחלק "רקע" בלשונית העיצוב: לחיצה מלבישה את הרקע על הלוח כולו. שכבה מעל תמונה, מחוונים ושמירה בגלריה - בלשונית "עיצוב".'}
-        </p>
+        </Hint>
       </div>
     </div>
   );
@@ -551,9 +552,9 @@ export function ElementLook({
             <span className="text-muted-foreground">(חלק יחיד בלוח - אין חלקים דומים)</span>
           )}
         </div>
-        <p className="text-[11px] leading-tight text-muted-foreground">
+        <Hint>
           השינוי מוחל על המסכים שנבחרו בפס למעלה ("כל המסכים", או סוג מסך אחד) - ובכל הפריסות.
-        </p>
+        </Hint>
         {inherited && (
           <Notice variant="warning" className="p-2 text-[11px]">
             לחלק הזה יש גם עיצוב מ״{inherited}״. מה שנקבע כאן גובר עליו.

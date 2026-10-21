@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useQueryClient } from "@tanstack/react-query";
 import { setListPaging, useListPaging } from "@/tv/listPaging";
 import { marksNext } from "@/tv/nextMark";
@@ -26,6 +27,7 @@ import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { FloatingBar } from "./FloatingBar";
 import { EDITOR_NAV_KEY, EditorMenu, EditorSearch, readEditorNav, type EditorNav, type EditorTab } from "./EditorNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -840,7 +842,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           edit(`element-text:${ids.join(",")}:${what}`, (c) => ({ ...c, elements: normalizeElements(c.elements.map((x) => (ids.includes(x.id) && !x.locked ? { ...x, ...p } : x))) }))
         }
       />
-      <p className="text-[11px] text-muted-foreground">לחיצה כפולה על טקסט בלוח - כותבים בו ישירות. Enter לסיום, Esc לביטול.</p>
+      <Hint>לחיצה כפולה על טקסט בלוח - כותבים בו ישירות. Enter לסיום, Esc לביטול.</Hint>
     </div>
   ) : null;
   const layerProps: LayerProps = {
@@ -1135,6 +1137,39 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       ? headerOffset + (topPinned || topHeight + 16) + 8
       : headerOffset;
 
+  /**
+   * The save bar floating over the page (FloatingBar): small, always in sight,
+   * where the gabbai dragged it - undo, redo, throw away, what is being edited
+   * (the screens), whether all is kept, and "שמור ושדר". It was a whole row of
+   * the page, with a second row under it saying which screens are edited.
+   */
+  const floatingSaveBar = (
+    <FloatingBar storageKey="tv-save-bar-spot" testId="save-bar" label="שמירה ושינויים">
+      <Button type="button" variant="ghost" size="sm" className="size-8 rounded-full p-0" aria-label="צעד אחורה (Ctrl+Z)" title="צעד אחורה (Ctrl+Z)"
+        disabled={!state.past.length} onClick={() => dispatch({ type: "undo" })}>
+        <Undo2 className="size-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="sm" className="size-8 rounded-full p-0" aria-label="צעד קדימה (Ctrl+Y)" title="צעד קדימה (Ctrl+Y)"
+        disabled={!state.future.length} onClick={() => dispatch({ type: "redo" })}>
+        <Redo2 className="size-4" />
+      </Button>
+      <Button type="button" variant="ghost" size="sm" className="h-8 rounded-full px-2 text-xs" disabled={!dirty} onClick={() => void discard()} title="ביטול כל השינויים שלא נשמרו">
+        ביטול שינויים
+      </Button>
+      {!occasionScope && <DeviceScopeBanner compact scope={scope} config={state.present} onClear={clearDevice} />}
+      <span className={`flex items-center gap-1 px-1 text-xs ${dirty ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
+        <span className={`size-2 rounded-full ${dirty ? "bg-amber-500" : "bg-emerald-500"}`} aria-hidden />
+        {dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}
+      </span>
+      <Button type="button" size="sm" className="h-8 rounded-full" onClick={save} disabled={!dirty || saving} title="שמירה ושידור לכל המסכים (Ctrl+S)">
+        {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
+        {saving ? "שומר…" : "שמור ושדר למסכים"}
+      </Button>
+    </FloatingBar>
+  );
+  /** Floating on the page; in the live window and in full screen (only the board's column is on the screen there), in the controls as before. */
+  const floatSave = !studio && !fullscreen;
+
   // Every design control, shared by the admin page and the live window's panel.
   /** The one save bar: first in every layout, and in the live window too, pinned while all else scrolls. */
   const saveBar = (
@@ -1251,7 +1286,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const controls = (
     <>
       {/* The live window puts the bar first in its panel, above the preview's buttons. */}
-      {!studio && saveBar}
+      {!studio && !floatSave && saveBar}
       {occasionScope ? (
         <Notice
           variant="info"
@@ -1290,7 +1325,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           שינוי כאן (רקע ותמונות, צבעים, מסגרות, גופן) נשמר לערכה שלו בלבד. הלוח הרגיל לא משתנה.
         </Notice>
       ) : (
-        <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
+        !floatSave && <DeviceScopeBanner scope={scope} config={state.present} onClear={clearDevice} />
       )}
 
       {guide && <BuildGuide done={guide} onStep={goToStep} onClose={() => setGuide(null)} />}
@@ -1372,10 +1407,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           <div className="space-y-3">
             {saveBar}
             {/* One line only: the click-to-edit guidance lives in the inspector below. */}
-            <p className="text-[11px] leading-tight text-muted-foreground">
+            <Hint>
               <b>Alt + לחיצה</b> = לחיצה רגילה על הלוח · <b>Esc</b> = ביטול הבחירה · <b>Ctrl+S</b> = שמירה · הכול
               בטיוטה עד "שמור ושדר", ומתעדכן גם בעורך שבעמוד הניהול.
-            </p>
+            </Hint>
             <div className="flex flex-wrap items-center gap-2">
               {previewActions}
               <SaveKitButton config={view} onEdit={edit} />
@@ -1644,7 +1679,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
 
   if (top)
     return (
-      <div className="space-y-4">
+      <div className={`space-y-4 ${floatSave ? "pb-16" : ""}`}>
+        {floatSave && floatingSaveBar}
         {/* The board stays under the site's header while the controls
             scroll beneath it; the bar under it sets how much of the screen
             it takes. The column is the fullscreen target, as in "side". */}
@@ -1676,13 +1712,14 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   return (
     <div
       ref={splitBox}
-      className={`min-w-0 grid-cols-[minmax(0,1fr)] gap-2 ${side ? "grid lg:gap-2" : "grid gap-5"}`}
+      className={`min-w-0 grid-cols-[minmax(0,1fr)] gap-2 ${side ? "grid lg:gap-2" : "grid gap-5"} ${floatSave ? "pb-16" : ""}`}
       style={
         side && isLarge
           ? { gridTemplateColumns: `minmax(0, ${1 - sideShare}fr) auto minmax(0, ${sideShare}fr)` }
           : undefined
       }
     >
+      {floatSave && floatingSaveBar}
       {/* ------------------------------------------------ preview column -- */}
       <div
         ref={previewColumn}

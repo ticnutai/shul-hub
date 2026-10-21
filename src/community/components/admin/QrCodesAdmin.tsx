@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useRef } from "react";
 import { Copy, Download, Globe2, Smartphone, type LucideIcon } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -84,9 +85,9 @@ export function QrCodesAdmin() {
   return (
     <section dir="rtl" className="space-y-4 text-right" data-testid="qr-codes">
       {/* No heading of its own: the section's name is on its tab or tile, as for every section. */}
-      <p className="text-sm text-muted-foreground">
+      <Hint>
         קודים להדפסה ולתלייה: סריקה מהטלפון תפתח ישירות את האתר של בית הכנסת, או את דף האפליקציה בחנות של גוגל.
-      </p>
+      </Hint>
       <div className="grid gap-4 md:grid-cols-2">
         {targets.map((target) => (
           <QrCard key={target.id} target={target} />

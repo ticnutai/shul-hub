@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { SpeechRecognition as NativeSpeech } from "@capacitor-community/speech-recognition";
@@ -464,10 +465,10 @@ export function AiIntakeAdmin() {
           <Sparkles className="size-5 text-primary" />
           <h3 className="text-lg font-semibold">עוזר חכם</h3>
         </div>
-        <p className="text-sm text-muted-foreground">
+        <Hint>
           מצלמים לוח זמנים או מודעה, אומרים בקול, או מדביקים הודעה. העוזר מציע מה להכניס ולאן - ושום דבר
           לא נשמר עד שמאשרים.
-        </p>
+        </Hint>
 
         <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/30 p-3 text-sm" data-testid="ai-personal-key">
           <KeyRound className="size-4" />

@@ -8,6 +8,7 @@
  * changes no other. The board's ordinary screens are not offered on a board
  * of parts at all, so there is one list of what takes turns, not two.
  */
+import { InfoTip } from "@/components/InfoTip";
 import { toast } from 'sonner';
 import { CalendarDays, Copy, Pause, Play, Trash2 } from 'lucide-react';
 
@@ -80,15 +81,16 @@ export function PartPagesBar({ config, current, onSelect, onEdit, playing = null
   };
 
   return (
-    <div className="space-y-2 rounded-xl border border-primary/40 bg-primary/5 p-3" data-testid="part-pages">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold">עמודי הלוח</span>
-        <span className="text-xs text-muted-foreground">
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-primary/40 bg-primary/5 px-3 py-2" data-testid="part-pages">
+      {/* The title and its explanation behind an ⓘ, on the line of the pages themselves: one row, not two. */}
+      <span className="flex items-center gap-1 text-sm font-semibold">
+        עמודי הלוח
+        <InfoTip>
           {pages.length > 1
             ? `${pages.length} עמודים - הלוח מתחלף ביניהם, סיבוב שלם כל ${total} שניות. כל המסכים מראים את אותו עמוד באותו רגע.`
             : 'עמוד אחד - הלוח עומד. אפשר להוסיף עמודים שמתחלפים, כל אחד עם ערכה ותוכן משלו.'}
-        </span>
-      </div>
+        </InfoTip>
+      </span>
       <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="עמודי הלוח">
         {pages.map((p, i) => (
           <button

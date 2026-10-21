@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderPlus, ImagePlus, Loader2, Palette, Pencil, Plus, RotateCcw, Tags, Trash2, X } from "lucide-react";
@@ -101,7 +102,7 @@ function AnnouncementDesignEditor({
         </Button>
         <div className="text-right">
           <h3 className="flex items-center justify-end gap-2 font-semibold"><Palette className="size-4 text-primary" /> עיצוב המודעה</h3>
-          <p className="text-xs text-muted-foreground">בחרו תבנית או התאימו צבעים, טקסט ומסגרת.</p>
+          <Hint>בחרו תבנית או התאימו צבעים, טקסט ומסגרת.</Hint>
         </div>
       </div>
 
@@ -250,9 +251,9 @@ export function AnnouncementsAdmin() {
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground">
+      <Hint>
         גררו את הידית שליד מודעה כדי לקבוע מה תופיע ראשונה, שנייה וכן הלאה. הסדר נשמר מיד.
-      </p>
+      </Hint>
       <div className="card-elev divide-y divide-border" data-testid="announcements-sort-list">
         <ListState isLoading={isLoading} isError={isError} empty={ordered.length === 0} what="המודעות" emptyText="אין מודעות." onRetry={() => void refetch()} />
         {ordered.map((announcement, index) => (
@@ -442,7 +443,7 @@ export function AnnouncementsAdmin() {
                   <SelectItem value="half">חצי שורה - שתי מודעות זו לצד זו</SelectItem>
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">בטלפון המודעה תמיד תיפרס לרוחב המסך, לקריאה נוחה.</p>
+              <Hint>בטלפון המודעה תמיד תיפרס לרוחב המסך, לקריאה נוחה.</Hint>
             </div>
           )}
           <div className="flex items-center gap-3">
@@ -519,7 +520,7 @@ function ShiurCategoriesPanel({ categories, shiurim }: { categories: ShiurCatego
       summary={categories.length ? `${categories.length} קטגוריות` : "אין עדיין"}
       testId="shiur-categories"
     >
-      <p className="text-xs text-muted-foreground">גררו לשינוי הסדר, לחצו על שם כדי לתקן אותו. הסדר נשמר מיד.</p>
+      <Hint>גררו לשינוי הסדר, לחצו על שם כדי לתקן אותו. הסדר נשמר מיד.</Hint>
       {ordered.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border">
           {ordered.map((category) => (
@@ -609,9 +610,9 @@ export function ShiurimAdmin() {
 
       <ShiurCategoriesPanel categories={categories} shiurim={data} />
 
-      <p className="text-sm text-muted-foreground">
+      <Hint>
         גררו את הידית שליד שיעור כדי לקבוע את הסדר באתר. הסדר נשמר מיד.
-      </p>
+      </Hint>
       <div className="card-elev divide-y divide-border" data-testid="shiurim-sort-list">
         <ListState isLoading={isLoading} isError={isError} empty={ordered.length === 0} what="השיעורים" emptyText="אין שיעורים." onRetry={() => void refetch()} />
         {ordered.map((s) => (
@@ -824,9 +825,9 @@ export function ChavrutotAdmin() {
         </Button>
       </div>
 
-      <p className="text-sm text-muted-foreground">
+      <Hint>
         גררו את הידית שליד חברותא כדי לקבוע את הסדר באתר. הסדר נשמר מיד.
-      </p>
+      </Hint>
       <div className="card-elev divide-y divide-border" data-testid="chavrutot-sort-list">
         <ListState isLoading={isLoading} isError={isError} empty={ordered.length === 0} what="החברותות" emptyText="אין חברותות." onRetry={() => void refetch()} />
         {ordered.map((c) => (

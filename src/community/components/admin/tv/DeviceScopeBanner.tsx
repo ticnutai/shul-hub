@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { deviceHasOverrides, type TvConfig } from "@/tv/config";
 import { DEVICE_CLASSES, DEVICE_CLASS_LABELS, type DeviceClass } from "@/tv/devices";
 import { Notice } from "./Notice";
+import { InfoTip } from "@/components/InfoTip";
 
 export type DeviceScope = DeviceClass | "all";
 
@@ -33,15 +34,41 @@ export function DeviceScopeBanner({
   scope,
   config,
   onClear,
+  compact = false,
 }: {
   scope: DeviceScope;
   config: TvConfig;
   /** Put one screen back to following the board. */
   onClear: (device: DeviceClass) => void;
+  /** A small label in the floating save bar: the words behind its ⓘ. */
+  compact?: boolean;
 }) {
   const custom = DEVICE_CLASSES.filter((d) => deviceHasOverrides(config, d));
   const Icon = ICONS[scope];
   const editingOne = scope !== "all";
+  const explain = editingOne
+    ? `השינויים יחולו על ${DEVICE_CLASS_LABELS[scope as DeviceClass]} בלבד. כל דבר שלא תשנו כאן ממשיך לעקוב אחרי שאר התצוגות.`
+    : "כל שינוי חל על הטלוויזיה, על המחשב ועל הנייד יחד. להתאמה לתצוגה אחת - בחרו אותה בתפריט המכשיר שמתחת ללוח.";
+
+  if (compact)
+    return (
+      <span
+        className={`inline-flex h-7 items-center gap-1 rounded-full px-2 text-xs ${editingOne ? "bg-primary/10 font-semibold text-primary" : "bg-muted text-muted-foreground"}`}
+        data-testid="device-scope"
+        data-scope={scope}
+      >
+        <Icon className="size-3.5" aria-hidden />
+        עורך עכשיו: {editingOne ? DEVICE_CLASS_LABELS[scope as DeviceClass] : "כל המסכים"}
+        <InfoTip>{explain}</InfoTip>
+        {custom.length > 0 && <span className="font-normal text-muted-foreground">מוגדר בנפרד:</span>}
+        {custom.map((d) => (
+          <Button key={d} type="button" size="sm" variant="outline" className="h-6 gap-1 rounded-full px-2 text-[11px]" onClick={() => onClear(d)}
+            title={`${DEVICE_CLASS_LABELS[d]} מוגדר בנפרד - לחיצה מבטלת את ההתאמות שלו, והוא חוזר לעקוב אחרי כל התצוגות`}>
+            {DEVICE_CLASS_LABELS[d]} <RotateCcw className="size-3" />
+          </Button>
+        ))}
+      </span>
+    );
 
   return (
     <Notice

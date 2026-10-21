@@ -3,6 +3,7 @@
  * and what it shows - with the strip itself drawn underneath, today's date
  * and times in it, so what is chosen is seen before it is saved.
  */
+import { Hint } from "@/components/InfoTip";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { ImagePlus, Trash2 } from "lucide-react";
@@ -117,9 +118,9 @@ export function HomeHeroSettings() {
     >
       <div>
         <h3 className="text-base font-semibold">הרצועה בראש דף הבית</h3>
-        <p className="mt-0.5 text-xs text-muted-foreground">
+        <Hint>
           איך נראית הרצועה שמתחת לכותרת העליונה, באתר ובאפליקציה: הפריסה, הצבעים, ומה מופיע בה. התצוגה למטה מראה בדיוק מה יופיע.
-        </p>
+        </Hint>
       </div>
 
       <section className="space-y-2" aria-label="פריסה">
@@ -232,7 +233,7 @@ export function HomeHeroSettings() {
             </SelectContent>
           </Select>
         </div>
-        <p className="text-xs text-muted-foreground">למשל רצועה דקה בטלפון, כדי שזמני התפילות יופיעו מיד בפתיחת האפליקציה.</p>
+        <Hint>למשל רצועה דקה בטלפון, כדי שזמני התפילות יופיעו מיד בפתיחת האפליקציה.</Hint>
       </section>
 
       <section className="space-y-2" aria-label="תצוגה מקדימה">

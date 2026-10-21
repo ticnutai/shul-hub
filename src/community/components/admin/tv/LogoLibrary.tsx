@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -140,10 +141,10 @@ export function LogoLibrary({ chosen, onChange }: { chosen: BoardLogo[]; onChang
   const logos = library.data ?? [];
   return (
     <div className="space-y-3" data-testid="logo-library">
-      <p className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+      <Hint>
         <SavedNowTag title="העלאה ומחיקה בספרייה נשמרות מיד, בלי &quot;שמור ושדר&quot;. מה שהלוח הזה מציג - נשמר ב&quot;שמור ושדר&quot;." />
         ספרייה אחת לכל בתי הכנסת. סמנו אילו לוגואים יופיעו בלוח הזה; בכל מסך מדליקים או מכבים אותם במתג "לוגואים" (בפריסה).
-      </p>
+      </Hint>
       {library.isLoading && <p className="text-sm text-muted-foreground">טוען…</p>}
       {library.isError && <p className="text-sm text-destructive">לא ניתן לטעון את ספריית הלוגואים</p>}
       {!library.isLoading && logos.length === 0 && <p className="text-sm text-muted-foreground">אין עדיין לוגואים בספרייה.</p>}

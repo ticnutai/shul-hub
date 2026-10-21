@@ -1,3 +1,4 @@
+import { Hint } from "@/components/InfoTip";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldCheck, UserPlus, Users } from "lucide-react";
@@ -60,9 +61,9 @@ export function UsersAdmin() {
             <h2 id="add-user-title" className="text-lg font-bold">
               הוספת משתמש
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <Hint>
               המשתמש יוכל להתחבר מיד עם הסיסמה הזמנית.
-            </p>
+            </Hint>
           </div>
         </div>
         <form
