@@ -4,8 +4,23 @@
     {
       "name": "shul-hub",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "--port", "8080"],
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "8080"
+      ],
       "port": 8080
+    },
+    {
+      "name": "shul-hub-8082",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "--port",
+        "8082",
+        "--strictPort"
+      ],
+      "port": 8082
     }
   ]
 }
