@@ -18,7 +18,7 @@ import { ElementsEditor } from "./ElementsEditor";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
 import { Folded, SubPart } from "./Parts";
 import type { DraftAction } from "./draftState";
-import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section } from "./editorParts";
+import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section, EditorViewBar } from "./editorParts";
 import { showDesignTopic, useDesignTopics } from "./designTopics";
 import { useElementEditing } from "@/tv/elementEditing";
 import { Notice } from "./Notice";
@@ -70,6 +70,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         data-testid="parts-scope"
       >
         {topicsNav && <DesignTopics />}
+        <EditorViewBar />
         {parts ? (
           // Choosing all of one kind is the list of parts' own (one row of it, not one here as well): a way there.
           <p className="text-xs" data-testid="parts-scope-kinds">

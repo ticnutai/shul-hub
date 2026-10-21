@@ -29,6 +29,7 @@ import type { BoardElement } from "@/tv/elements";
 import { toast } from "sonner";
 import { ColorPick } from "./ColorPick";
 import { BackgroundTile } from "./LayerEditors";
+import { GalleryGrid, GalleryTile } from "./GalleryTile";
 import { NextMarkTools } from "./NextMarkTools";
 import { ElementTextTools } from "./ElementTextTools";
 import { marksNext } from "@/tv/nextMark";
@@ -414,15 +415,14 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               בלי רקע מהגלריה
             </button>
           </div>
-          <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto" data-testid="ctx-board-gallery">
-            {galleryOf(config).map((b) => (
-              <button key={b.id} type="button" aria-label={b.name} title={b.name} aria-pressed={Boolean(board && wearsPaint(board, b))}
-                className={`${tile} ${board && wearsPaint(board, b) ? "ring-2 ring-primary" : ""}`}
-                onClick={() => editEls("board-paint", (all) => paintBoards(all, chosen, b))}>
-                <span className="relative block h-8 w-14 overflow-hidden rounded"><BackgroundTile b={b} /></span>
-                <span className="w-full truncate">{b.name}</span>
-              </button>
-            ))}
+          {/* The gallery's own tiles, in the size chosen for every gallery. */}
+          <div className="max-h-56 overflow-y-auto p-0.5">
+            <GalleryGrid testId="ctx-board-gallery" compact>
+              {galleryOf(config).map((b) => (
+                <GalleryTile key={b.id} compact name={b.name} on={Boolean(board && wearsPaint(board, b))}
+                  onPick={() => editEls("board-paint", (all) => paintBoards(all, chosen, b))} preview={<BackgroundTile b={b} />} />
+              ))}
+            </GalleryGrid>
           </div>
         </div>
       )}
@@ -443,22 +443,20 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               </button>
             )}
           </div>
-          <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto" data-testid="ctx-frame-gallery">
-            <button type="button" className={tile} aria-label="קו מצויר" onClick={() => editEls("frame-line", (all) => wearFrame(all, chosen, null).elements)}>
-              <span className="h-7 w-10 rounded-sm border-2 border-current" />
-              קו מצויר
-            </button>
-            {FRAME_PICTURES.map((f) => {
-              const ref = FRAME_PICTURE_PREFIX + f.id;
-              return (
-                <button key={f.id} type="button" aria-label={f.name} title={f.name} aria-pressed={frame?.image === ref}
-                  className={`${tile} ${frame?.image === ref ? "ring-2 ring-primary" : ""}`}
-                  onClick={() => editEls("frame-picture", (all) => wearFrame(all, chosen, ref).elements)}>
-                  <span className="h-8 w-12" style={{ border: "7px solid transparent", borderImage: `url("${framePictureUrl(ref)}") ${f.slice}% / 7px stretch` }} />
-                  <span className="w-full truncate">{f.name}</span>
-                </button>
-              );
-            })}
+          <div className="max-h-56 overflow-y-auto p-0.5">
+            <GalleryGrid testId="ctx-frame-gallery" compact>
+              <GalleryTile compact name="קו מצויר" on={Boolean(frame && frame.kind === "frame" && !frame.image)}
+                onPick={() => editEls("frame-line", (all) => wearFrame(all, chosen, null).elements)}
+                preview={<span className="absolute inset-[18%] rounded-sm border-2 border-[#c9a24a]" />} />
+              {FRAME_PICTURES.map((f) => {
+                const ref = FRAME_PICTURE_PREFIX + f.id;
+                return (
+                  <GalleryTile key={f.id} compact name={f.name} on={frame?.image === ref}
+                    onPick={() => editEls("frame-picture", (all) => wearFrame(all, chosen, ref).elements)}
+                    preview={<span className="absolute inset-[12%]" style={{ border: "7px solid transparent", borderImage: `url("${framePictureUrl(ref)}") ${f.slice}% / 7px stretch` }} />} />
+                );
+              })}
+            </GalleryGrid>
           </div>
         </div>
       )}

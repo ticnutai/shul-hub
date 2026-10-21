@@ -68,7 +68,7 @@ export const builtinBackgrounds = (): SavedBackground[] => (builtins ??= [
   plain("x_c_forest", "ירוק עמוק", "#0f2a1d"),
   plain("x_c_charcoal", "פחם", "#1d1f24"),
   plain("x_c_stone", "אבן חמה", "#e8dcc4"),
-  plain("x_c_parchment", "קלף", "#f7f1e3"),
+  plain("x_c_parchment", "צבע קלף", "#f7f1e3"),
   ...TV_GRADIENTS.map((g) => fromGradient(g)),
   ...TV_BACKDROPS.map((b) => picture(`x_p_${b.id}`, b.name, b.id)),
   picture("x_m_sky_night", "שמיים בערב", "sky", "linear-gradient(180deg, #0b1628, #1b3054)", 0.55),

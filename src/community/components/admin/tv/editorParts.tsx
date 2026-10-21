@@ -5,7 +5,7 @@
  */
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
+import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -485,50 +485,98 @@ export function ColourChoice({
  * the slider rests until "רגיל" is let go.
  */
 /**
- * How the sliders stand: each under its name ("stack"), or the name, the slider and
- * its value in one line ("row") - half the height. The gabbai's choice, kept in this
+ * How the sliders stand: each under its name ("stack"), the name, the slider and
+ * its value in one line ("row") - half the height, or upright side by side
+ * ("vertical") - a few in the width of one. The gabbai's choice, kept in this
  * browser and the same for every slider of the editor (SliderLayoutToggle).
  */
-type SliderLayout = "stack" | "row";
-const SLIDER_LAYOUT_KEY = "tv-slider-layout";
-const readSliderLayout = (): SliderLayout => {
-  try {
-    return localStorage.getItem(SLIDER_LAYOUT_KEY) === "row" ? "row" : "stack";
-  } catch {
-    return "stack";
-  }
-};
-function useSliderLayout(): [SliderLayout, (l: SliderLayout) => void] {
-  const [layout, setLayout] = useState<SliderLayout>(readSliderLayout);
-  useEffect(() => {
-    const on = () => setLayout(readSliderLayout());
-    window.addEventListener(SLIDER_LAYOUT_KEY, on);
-    return () => window.removeEventListener(SLIDER_LAYOUT_KEY, on);
-  }, []);
-  const set = (l: SliderLayout) => {
+type SliderLayout = "stack" | "row" | "vertical";
+const SLIDER_LAYOUTS: SliderLayout[] = ["stack", "row", "vertical"];
+
+/**
+ * A choice of how the editor looks to this gabbai (the sliders, the size of the
+ * galleries' tiles): kept in this browser, the same everywhere in the editor,
+ * and changed in every place at once when changed in one.
+ */
+function useViewChoice<T extends string>(key: string, values: readonly T[], fallback: T): [T, (v: T) => void] {
+  const read = (): T => {
     try {
-      localStorage.setItem(SLIDER_LAYOUT_KEY, l);
+      const v = localStorage.getItem(key);
+      return values.includes(v as T) ? (v as T) : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+  const [value, setValue] = useState<T>(read);
+  useEffect(() => {
+    const on = () => setValue(read());
+    window.addEventListener(key, on);
+    return () => window.removeEventListener(key, on);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const set = (v: T) => {
+    try {
+      localStorage.setItem(key, v);
     } catch {
       /* a private window: for this visit only */
     }
-    setLayout(l);
-    window.dispatchEvent(new Event(SLIDER_LAYOUT_KEY));
+    setValue(v);
+    window.dispatchEvent(new Event(key));
   };
-  return [layout, set];
+  return [value, set];
 }
+const useSliderLayout = () => useViewChoice<SliderLayout>("tv-slider-layout", SLIDER_LAYOUTS, "stack");
 
-/** The small switch between sliders under their names and in one line each. */
+/** How big the tiles of every gallery are (GalleryGrid): small ones fit many in a row. */
+export type TileSize = "small" | "medium" | "large";
+const TILE_SIZES: TileSize[] = ["small", "medium", "large"];
+export const useTileSize = () => useViewChoice<TileSize>("tv-tile-size", TILE_SIZES, "medium");
+
+/** The small switch of how the sliders stand: three, side by side - under the name, in one line, upright. */
 export function SliderLayoutToggle() {
   const [layout, setLayout] = useSliderLayout();
-  const row = layout === "row";
+  const choices = [
+    ["stack", Rows3, "כל סליידר מתחת לשם שלו"],
+    ["row", StretchHorizontal, "השם, הסליידר והערך בשורה אחת"],
+    ["vertical", Columns3, "סליידרים עומדים, זה לצד זה - הכי מעט מקום"],
+  ] as const;
   return (
-    <button type="button" aria-pressed={row} data-testid="slider-layout"
-      aria-label={row ? "סליידרים אחד מתחת לשני" : "סליידרים בשורה אחת"}
-      title={row ? "כל סליידר מתחת לשם שלו" : "השם, הסליידר והערך בשורה אחת - פחות מקום"}
-      onClick={() => setLayout(row ? "stack" : "row")}
-      className="inline-flex size-7 items-center justify-center rounded-md border text-muted-foreground hover:border-primary/50 hover:text-foreground">
-      {row ? <Rows3 className="size-4" aria-hidden /> : <StretchHorizontal className="size-4" aria-hidden />}
-    </button>
+    <span className="inline-flex rounded-md border p-0.5" role="radiogroup" aria-label="פריסת הסליידרים" data-testid="slider-layout">
+      {choices.map(([id, Icon, label]) => (
+        <button key={id} type="button" role="radio" aria-checked={layout === id} aria-label={label} title={label}
+          onClick={() => setLayout(id)}
+          className={`inline-flex size-6 items-center justify-center rounded ${layout === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <Icon className="size-3.5" aria-hidden />
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/** The size of the galleries' tiles - backgrounds, frames, shapes, pictures - three, side by side. */
+export function TileSizeToggle() {
+  const [size, setSize] = useTileSize();
+  const choices = [["small", "משבצות קטנות", "ק"], ["medium", "משבצות בינוניות", "ב"], ["large", "משבצות גדולות", "ג"]] as const;
+  return (
+    <span className="inline-flex rounded-md border p-0.5" role="radiogroup" aria-label="גודל המשבצות בגלריות" data-testid="tile-size">
+      {choices.map(([id, label, short]) => (
+        <button key={id} type="button" role="radio" aria-checked={size === id} aria-label={label} title={label}
+          onClick={() => setSize(id)}
+          className={`inline-flex h-6 min-w-6 items-center justify-center rounded px-1 text-[11px] font-medium ${size === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          {short}
+        </button>
+      ))}
+    </span>
+  );
+}
+
+/** How the editor looks, in one line - the galleries' tiles and the sliders - wherever it stands, once. */
+export function EditorViewBar() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid="editor-view-bar">
+      <span className="flex items-center gap-1.5">גלריות: <TileSizeToggle /></span>
+      <span className="flex items-center gap-1.5">סליידרים: <SliderLayoutToggle /></span>
+    </div>
   );
 }
 
@@ -584,6 +632,35 @@ export function Range({
       )}
     </span>
   );
+  // Upright, side by side with the next ones: the name over it, the value under it.
+  if (layout === "vertical")
+    return (
+      <div className="me-3 mb-2 !mt-0 inline-flex w-[4.75rem] flex-col items-center gap-1 align-top text-[11px]" title={hint} data-slider-layout="vertical">
+        <span className="line-clamp-2 h-[2.5em] text-center leading-tight">{label}</span>
+        <input
+          type="range"
+          aria-label={label}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={resting}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{ writingMode: "vertical-lr", direction: "rtl" }}
+          className="h-24 w-5 accent-primary disabled:opacity-40"
+        />
+        {/* Its value, or - left to the board - only the "רגיל" that says so and lets go of it. */}
+        <span className="flex flex-col items-center gap-1">
+          {!resting && <span className="tabular-nums text-muted-foreground">{show(value)}</span>}
+          {auto ? (
+            <button type="button" aria-pressed={resting} title={resting ? "כרגע לפי הלוח - לחיצה מאפשרת לכוונן" : "חזרה למה שהלוח קובע"} onClick={auto.onToggle}
+              className={`h-6 rounded-md border px-2 text-[11px] ${resting ? "border-primary bg-primary text-primary-foreground" : "hover:border-primary/50"}`}>
+              רגיל
+            </button>
+          ) : resting && <span className="text-muted-foreground">רגיל</span>}
+        </span>
+      </div>
+    );
   // One line: the name, the slider, its value.
   if (layout === "row")
     return (

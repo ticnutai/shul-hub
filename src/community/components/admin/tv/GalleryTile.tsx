@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { BoardElements } from "@/tv/BoardElements";
 import type { BoardElement } from "@/tv/elements";
 import { TileRemove } from "./ReadyShelf";
+import { useTileSize } from "./editorParts";
 
 /**
  * One tile for every gallery of the design tab - backgrounds, the boxes'
@@ -16,6 +17,19 @@ import { TileRemove } from "./ReadyShelf";
  * first in one and last in another, and a second click on the worn frame
  * took it off.
  */
+
+const COLUMNS = {
+  small: "grid-cols-5 gap-1.5 sm:grid-cols-7 xl:grid-cols-8",
+  medium: "grid-cols-4 gap-2 sm:grid-cols-5 xl:grid-cols-6",
+  large: "grid-cols-3 gap-2 sm:grid-cols-4",
+} as const;
+
+/** In the panel by the board: as many as fit its width, never wider than the size chosen (it is wide when it stands in the page). */
+const COMPACT = {
+  small: "grid-cols-[repeat(auto-fill,minmax(4rem,1fr))] gap-1",
+  medium: "grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-1.5",
+  large: "grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-1.5",
+} as const;
 
 /** The grid the tiles stand in; `compact` is the floating panel on the board. */
 export function GalleryGrid({
@@ -30,10 +44,13 @@ export function GalleryGrid({
   /** A long gallery scrolls inside itself rather than pushing the page. */
   scroll?: boolean;
 }) {
+  // The gabbai's size of the tiles (the line of "גלריות" at the top of the design tab), in the panel by the board too.
+  const [size] = useTileSize();
   return (
     <div
       data-testid={testId}
-      className={`grid ${compact ? "grid-cols-4 gap-1.5" : "grid-cols-3 gap-2 sm:grid-cols-4"} ${scroll ? "max-h-96 overflow-y-auto p-1" : ""}`}
+      data-tile-size={size}
+      className={`grid ${compact ? COMPACT[size] : COLUMNS[size]} ${scroll ? "max-h-96 overflow-y-auto p-1" : ""}`}
     >
       {children}
     </div>

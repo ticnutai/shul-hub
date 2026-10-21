@@ -339,7 +339,7 @@ export const TV_GRADIENTS: TvGradient[] = [
   { id: "g_forest", name: "ירוק יער", value: "linear-gradient(160deg, #07170f 0%, #143d29 60%, #0c2a1c 100%)" },
   { id: "g_dawn", name: "שחר", value: "linear-gradient(160deg, #142542 0%, #6d4b7a 60%, #d8ab35 100%)" },
   { id: "g_gold", name: "זהב רך", value: "linear-gradient(125deg, #fffaf0 0%, #ecd393 100%)" },
-  { id: "g_stone", name: "אבן ירושלים", value: "linear-gradient(125deg, #ece2cf 0%, #ddcdae 100%)" },
+  { id: "g_stone", name: "מעבר אבן", value: "linear-gradient(125deg, #ece2cf 0%, #ddcdae 100%)" },
   { id: "g_glow", name: "הילה מרכזית", value: "radial-gradient(ellipse at 50% 30%, #1b3054 0%, #0b1628 70%)" },
   { id: "g_spot", name: "זרקור זהב", value: "radial-gradient(ellipse at 50% 20%, #d8ab35 0%, #14080b 65%)" },
 ];
