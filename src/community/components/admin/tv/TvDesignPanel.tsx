@@ -1389,7 +1389,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
                 setCycle((c) => c + 1);
               }}
             />}
-            {editing && (
+            {editing && (view.screenLayout !== "composition" || selected) && (
               <TvEditInspector
                 selected={selected}
                 config={view}
@@ -1590,7 +1590,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     <>
       {/* The panel of what was chosen, in the page when there is no room beside the board (PartContextPanel). */}
       <div id={PART_PANEL_SLOT} />
-      {editing && (
+      {/* A board of parts is edited in the chosen part's panel: this one only for the classic board (or a key clicked on it). */}
+      {editing && (view.screenLayout !== "composition" || selected) && (
         <div className="mt-3">
           <TvEditInspector
             selected={selected}

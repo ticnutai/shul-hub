@@ -489,7 +489,8 @@ function usePauseChip(paused: boolean): "paused" | "resumed" | null {
   useEffect(() => {
     const initial = first.current;
     first.current = false;
-    if (initial && !paused) return;
+    // Only a change says so: a board that starts paused (the editor's preview, drawn again with every layout) does not.
+    if (initial) return;
     setChip(paused ? "paused" : "resumed");
     const id = window.setTimeout(() => setChip(null), PAUSE_CHIP_MS);
     return () => window.clearTimeout(id);

@@ -113,7 +113,7 @@ export function TvEditInspector({
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <MousePointerClick className="size-4 shrink-0" />
           לחצו על כל טקסט או אזור בלוח כדי לערוך, להסתיר או להזיז אותו. זה עובד בכל אחד מהמכשירים
-          שלמעלה.
+          שבתפריט המכשיר.
         </p>
       )}
 
