@@ -11,6 +11,7 @@ import { TvDevicesPanel } from "./TvDevicesPanel";
 import { TvLogsPanel } from "./TvLogsPanel";
 import { deviceHealth, useTvDevices } from "./tvAdminData";
 import { noticeClass } from "./Notice";
+import { useEditorPrefsSync } from "./editorPrefs";
 
 /**
  * "לוח תצוגה" admin tab: screens (live mirror + remote), design (live editor)
@@ -24,6 +25,8 @@ export default function TvAdmin() {
   // question, asked far less often, and one that has its own alert above.
   // "מועדים ואירועים" was a tab of its own; it is the board editor's "מועדים" now.
   const tab = params.get("tvTab") === "events" ? "design" : params.get("tvTab") ?? "design";
+  // How the editor looks to this gabbai, kept with the account - the same on every computer (editorPrefs.ts).
+  useEditorPrefsSync();
   const devices = useTvDevices();
   const now = useNow(15_000).getTime();
   const offline = (devices.data ?? []).filter((d) => d.approved && !deviceHealth(d, now).online);

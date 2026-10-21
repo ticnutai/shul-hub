@@ -48,4 +48,6 @@ export function writeStored(key: string, value: string) {
   } catch {
     /* private mode: it simply is not remembered */
   }
+  // Said aloud, for what keeps it with the gabbai's account too (editorPrefs.ts).
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(key));
 }

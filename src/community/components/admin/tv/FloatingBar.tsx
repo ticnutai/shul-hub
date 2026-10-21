@@ -37,7 +37,15 @@ export function FloatingBar({ children, storageKey, testId, label }: { children:
     } catch {
       /* a private window: for this visit only */
     }
+    // Said aloud, for what keeps it with the gabbai's account too (editorPrefs.ts).
+    window.dispatchEvent(new Event(storageKey));
   };
+  // Brought from the gabbai's account (another computer moved it): taken here too.
+  useEffect(() => {
+    const on = () => setSpot(read(storageKey));
+    window.addEventListener(`${storageKey}:from-account`, on);
+    return () => window.removeEventListener(`${storageKey}:from-account`, on);
+  }, [storageKey]);
   /** In pixels, kept inside the window whatever was stored. */
   const place = () => {
     const el = box.current;

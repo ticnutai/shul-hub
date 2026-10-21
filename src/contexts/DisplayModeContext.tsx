@@ -22,6 +22,8 @@ export interface DisplaySettings {
   adminButtons?: unknown;
   /** The gabbai's area laid out as tabs or as tiles, step by step (src/community/lib/adminLayout.ts). */
   adminLayout?: unknown;
+  /** How the board editor looks to this gabbai - where the save bar stands, the galleries' tiles, the sliders, its layout (editorPrefs.ts). */
+  editorPrefs?: unknown;
 }
 
 interface DisplayModeContextType {
@@ -112,6 +114,7 @@ export const DisplayModeProvider = ({ children }: { children: ReactNode }) => {
     // Checked where it is read (normalizeAdminButtons); kept here, or it is dropped on every read.
     adminButtons: displaySettings?.adminButtons,
     adminLayout: displaySettings?.adminLayout,
+    editorPrefs: displaySettings?.editorPrefs,
   }), [displaySettings]);
 
   const value = useMemo(() => ({ displaySettings: safeDisplaySettings, updateDisplaySettings, syncStatus: status }), [safeDisplaySettings, updateDisplaySettings, status]);
