@@ -20,6 +20,8 @@ export const EDITOR_PREF_KEYS = [
   "tv-save-bar-spot",
   "tv-tile-size",
   "tv-slider-layout",
+  "tv-part-panel-pos",
+  "tv-part-panel-size",
   EDITOR_NAV_KEY,
   LAYOUT_KEY,
   SIDE_KEY,

@@ -34,6 +34,8 @@ export interface BoardElement {
   ratio?: boolean;
   binding?: ElementBinding;
   rowsPerPage?: number;
+  /** A list that does not fit, in pages: how long each page shows, in seconds (absent: 15). */
+  pageSeconds?: number;
   /** The next minyan, lesson or time of the day marked on this list: its shape and colour (nextMark.ts). Absent: a highlighted row. */
   nextMark?: NextMark;
   zmanKeys?: (typeof ZMAN_DISPLAY_KEYS)[number][];
@@ -161,6 +163,7 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...((v.kind === 'image' || v.kind === 'frame') && v.imageTune && typeof v.imageTune === 'object' ? {imageTune:{hue:n(v.imageTune.hue,0,-180,180),saturation:n(v.imageTune.saturation,1,0,2),brightness:n(v.imageTune.brightness,1,.2,2)}} : {}),
       ...(ELEMENT_BINDINGS.includes(v.binding) ? { binding: v.binding } : {}),
       ...(typeof v.rowsPerPage === 'number' ? { rowsPerPage: Math.round(n(v.rowsPerPage, 3, 1, 30)) } : {}),
+      ...(typeof v.pageSeconds === 'number' ? { pageSeconds: Math.round(n(v.pageSeconds, 15, 3, 600)) } : {}),
       ...(normalizeNextMark(v.nextMark) ? { nextMark: normalizeNextMark(v.nextMark) } : {}),
       ...(v.scroll === 'pause' || v.scroll === 'loop' ? { scroll: v.scroll as ElementScroll } : {}),
       ...(v.backdrop === true ? { backdrop: true } : {}),

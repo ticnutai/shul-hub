@@ -15,14 +15,13 @@ import { useElementEditing } from '@/tv/elementEditing';
 import { ElementLibrary } from './ElementLibrary';
 import { exportElementSet, importElementSet } from '@/tv/elements';
 import { downloadFile } from '@/tv/workspaceTransfer';
-import { ZMAN_DISPLAY_KEYS, ZMAN_DISPLAY_LABELS } from '@/community/lib/zmanim';
 import { SubPart } from './Parts';
 import { Notice } from './Notice';
 import { KindPicker, kindName, ofKind } from './KindPicker';
 import { ContainerLayers, type Board } from './ContainerLayers';
 import { useTvLibraryItems } from './useTvLibrary';
 import { FileButton, useFileTask, useUpload } from './Upload';
-import { ColourRow, FIT_CHOICES, HideToggle, INPUT_CLASS, LockToggle, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
+import { ColourRow, HideToggle, INPUT_CLASS, LockToggle, Range, ResetButton, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 
 /** A field of the chosen part: the editor's one height and border. */
 const FIELD = `mt-1 block w-full ${INPUT_CLASS}`;
@@ -199,14 +198,8 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     {first && <SubPart title="החלק שנבחר">
       <fieldset disabled={first.locked} className="grid grid-cols-2 gap-2 rounded-lg border p-3 sm:grid-cols-3">
         <p className="col-span-full text-[11px] text-muted-foreground" data-testid="selected-layer-type">סוג החלק: {first.sourceMask ? 'חלק מהציור עם מסכה שקופה' : first.crop ? 'אזור מתוך תמונה' : first.binding ? 'תוכן חי נפרד' : ELEMENT_NAMES[first.kind]}</p>
-        {['prayers', 'lessons', 'zmanim'].includes(first.binding ?? '') && <div className="text-xs">שורות בכל עמוד<div className="mt-1"><Stepper label="שורות בכל עמוד בחלק" value={first.rowsPerPage ?? 3} min={1} max={30} step={1} onChange={v => patch({ rowsPerPage: v })} /></div><Hint>לחלק הזה בלבד. בלוח הרגיל, כמה מניינים בכל מסך נקבע בלשונית "פריסה", תחת "זמני התפילות בלוח".</Hint></div>}
-        {SCROLLABLE.includes(first.binding as ElementBinding) && <div className="col-span-full space-y-1 text-xs">כשהתוכן לא נכנס<Segments label="כשהתוכן לא נכנס בחלק" value={first.scroll ?? ''} onChange={v => patch({ scroll: (v || undefined) as BoardElement['scroll'] })} options={FIT_CHOICES(first.binding as ElementBinding)} /><Hint>לחלק הזה בלבד. לתיבות של הלוח הרגיל - בלשונית "פריסה", תחת "כשהתוכן לא נכנס לתיבה".</Hint></div>}
-        {first.binding === 'zmanim' && <div className="col-span-full space-y-2" data-testid="element-zmanim-picker">
-          <Hint>מג״א מחושב לפי 72 דקות קבועות לפני הנץ ואחרי השקיעה. הגר״א מחושב מהנץ לשקיעה. ברירת המחדל: הזמנים שלא הוסתרו בלוח (בעריכה ישירה בלוח).</Hint>
-          <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => patch({ zmanKeys: [...ZMAN_DISPLAY_KEYS], rowsPerPage: ZMAN_DISPLAY_KEYS.length, fontSize: Math.min(first.fontSize, first.height / (ZMAN_DISPLAY_KEYS.length * 2.2)) })}>הצגת כל זמני היום יחד</Button>
-          {/* Several to pick: tick boxes. */}
-          <div className="grid gap-2 sm:grid-cols-2">{ZMAN_DISPLAY_KEYS.map(key => <label key={key} className="flex gap-2 text-xs"><input type="checkbox" checked={(first.zmanKeys ?? ZMAN_DISPLAY_KEYS.filter(k => !config.hidden.includes(`zman.${k}`))).includes(key)} onChange={ev => { const keys = first.zmanKeys ?? ZMAN_DISPLAY_KEYS.filter(k => !config.hidden.includes(`zman.${k}`)); patch({ zmanKeys: ev.target.checked ? [...keys, key] : keys.filter(k => k !== key) }); }} />{ZMAN_DISPLAY_LABELS[key]}</label>)}</div>
-        </div>}
+        {/* Its rows, its turns and their seconds, the times shown: the chosen part's panel, "התוכן" - one place, not here as well. */}
+        {SCROLLABLE.includes(first.binding as ElementBinding) && <p className="col-span-full text-xs" data-testid="content-in-panel">שורות בעמוד, החלפת עמודים וזמנים - בלשונית <b>"התוכן"</b> בחלון שליד הלוח.</p>}
         <label className="text-xs">שם החלק<input className={FIELD} aria-label="שם החלק" value={first.name} onChange={e => patch({ name: e.target.value })} /></label>
         {PLACE.map(([key, label, min, max, step]) => <div className="space-y-1 text-xs" key={key}>{label}<Stepper label={label} value={Number(first[key].toFixed(2))} min={min} max={max} step={step} format={(v) => key === 'rotation' ? `${v}°` : `${v}%`} onChange={v => patch({ [key]: v })} /></div>)}
         {/* See-through, as everywhere in the editor: a share, 100% hides what is under it. */}

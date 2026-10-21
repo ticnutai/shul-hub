@@ -10,7 +10,7 @@
  * changes the board and the frame together.
  */
 import { Hint } from "@/components/InfoTip";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PART_PANEL_SLOT } from "../adminPath";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, GripVertical, X } from "lucide-react";
@@ -32,18 +32,36 @@ import { ColorPick } from "./ColorPick";
 import { BackgroundTile } from "./LayerEditors";
 import { GalleryGrid, GalleryTile } from "./GalleryTile";
 import { NextMarkTools } from "./NextMarkTools";
+import { LiveListTools, liveParts } from "./LiveListTools";
 import { ElementTextTools } from "./ElementTextTools";
 import { marksNext } from "@/tv/nextMark";
 import { ImagePick, InsideButtons, SaveToParts, type Picture } from "./ContainerAdd";
 
 type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
-type Tab = "background" | "board" | "frame" | "shape" | "text" | "ornament" | "next" | "add";
+type Tab = "background" | "board" | "frame" | "shape" | "text" | "content" | "ornament" | "next" | "add";
 
 const TAB_NAMES: Record<Tab, string> = {
-  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "טקסט", ornament: "העיטור", next: "סימון הבא", add: "הוספה",
+  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "טקסט", content: "התוכן", ornament: "העיטור", next: "סימון הבא", add: "הוספה",
 };
 /** Where the panel was dragged to, for next time (this browser). */
 const PANEL_POS_KEY = "tv-part-panel-pos";
+/** Its size, once resized by its handles (this browser, and the gabbai's account - editorPrefs.ts). */
+const PANEL_SIZE_KEY = "tv-part-panel-size";
+const readSize = (): { w: number; h: number } | null => {
+  try {
+    const v = JSON.parse(localStorage.getItem(PANEL_SIZE_KEY) ?? "null");
+    return v && Number.isFinite(v.w) && Number.isFinite(v.h) ? v : null;
+  } catch {
+    return null;
+  }
+};
+/** The handles round the panel: its four sides and four corners. */
+const HANDLES = [
+  ["n", "inset-x-3 top-0 h-1.5 cursor-ns-resize"], ["s", "inset-x-3 bottom-0 h-1.5 cursor-ns-resize"],
+  ["e", "inset-y-3 right-0 w-1.5 cursor-ew-resize"], ["w", "inset-y-3 left-0 w-1.5 cursor-ew-resize"],
+  ["ne", "right-0 top-0 size-3 cursor-nesw-resize"], ["nw", "left-0 top-0 size-3 cursor-nwse-resize"],
+  ["se", "right-0 bottom-0 size-3 cursor-nwse-resize"], ["sw", "left-0 bottom-0 size-3 cursor-nesw-resize"],
+] as const;
 /** A shape dragged from the panel onto the board: a new container there. */
 const DRAG_TYPE = "application/x-shul-container";
 const tile = "flex h-14 w-16 flex-col items-center justify-center gap-0.5 rounded-md border text-[10px] leading-tight hover:border-primary/60";
@@ -80,6 +98,75 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
     } catch {
       /* private window: it stays where it is for this visit */
     }
+    window.dispatchEvent(new Event(PANEL_POS_KEY));
+  };
+  const [size, setSize] = useState<{ w: number; h: number } | null>(readSize);
+  const keepSize = (v: { w: number; h: number } | null) => {
+    setSize(v);
+    try {
+      if (v) localStorage.setItem(PANEL_SIZE_KEY, JSON.stringify(v));
+      else localStorage.removeItem(PANEL_SIZE_KEY);
+    } catch {
+      /* private window */
+    }
+    window.dispatchEvent(new Event(PANEL_SIZE_KEY));
+  };
+  // Brought from the gabbai's account (another computer): taken here too.
+  useEffect(() => {
+    const pos = () => {
+      try {
+        const v = JSON.parse(localStorage.getItem(PANEL_POS_KEY) ?? "null");
+        setMoved(v && Number.isFinite(v.x) && Number.isFinite(v.y) ? v : null);
+      } catch {
+        /* storage unavailable */
+      }
+    };
+    const sz = () => setSize(readSize());
+    window.addEventListener(`${PANEL_POS_KEY}:from-account`, pos);
+    window.addEventListener(`${PANEL_SIZE_KEY}:from-account`, sz);
+    return () => {
+      window.removeEventListener(`${PANEL_POS_KEY}:from-account`, pos);
+      window.removeEventListener(`${PANEL_SIZE_KEY}:from-account`, sz);
+    };
+  }, []);
+  /**
+   * A handle dragged: wider, narrower, taller, shorter - from any side or
+   * corner. Where it stood beside the board or in the page, it comes out to
+   * float where it is, and is then sized; both kept for next time.
+   */
+  const resize = (dir: string) => (e: React.PointerEvent) => {
+    const el = ref.current;
+    if (!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const r = el.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
+    let last = { x: r.left, y: r.top, w: r.width, h: r.height };
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      let { x, y, w, h } = { x: r.left, y: r.top, w: r.width, h: r.height };
+      if (dir.includes("e")) w = r.width + dx;
+      if (dir.includes("w")) w = r.width - dx;
+      if (dir.includes("s")) h = r.height + dy;
+      if (dir.includes("n")) h = r.height - dy;
+      w = Math.min(Math.max(280, w), window.innerWidth - 8);
+      h = Math.min(Math.max(120, h), window.innerHeight - 8);
+      // The side dragged moves; the one across from it stays.
+      if (dir.includes("w")) x = r.right - w;
+      if (dir.includes("n")) y = r.bottom - h;
+      x = Math.min(Math.max(0, x), window.innerWidth - w);
+      y = Math.min(Math.max(0, y), window.innerHeight - 60);
+      last = { x, y, w, h };
+      setMoved({ x, y });
+      setSize({ w, h });
+    };
+    const up = () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      keep({ x: last.x, y: last.y });
+      keepSize({ w: last.w, h: last.h });
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
   };
   /** Kept on the screen: dragged too far, it stops at the edge. */
   const clamp = (x: number, y: number, el: HTMLElement | null) => {
@@ -189,16 +276,21 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   // The texts its "טקסט" edits: those chosen, else the container's own (its heading and its content).
   const texts = config.elements.filter((e) => e.kind === "text" && !e.locked && (chosen.includes(e.id) || (!onlyTexts && own.some((o) => o.id === e.id))));
   const textTab: Tab[] = texts.length ? ["text"] : [];
+  // A live list or paragraph chosen (or in the container chosen): its content - rows, turns, seconds, the times shown, where its words come from.
+  const live = liveParts(config.elements.filter((e) => chosen.includes(e.id) || (!onlyTexts && own.some((o) => o.id === e.id))));
+  const contentTab: Tab[] = live.length ? ["content"] : [];
   const nextTab: Tab[] = lists.length ? ["next"] : [];
   const tabs: Tab[] =
     role === "backdrop"
       ? ["background", "add"]
       : onlyTexts
-        ? [...textTab, ...nextTab, ...(board || frame ? (["board", "frame", "shape"] as Tab[]) : []), "add"]
+        ? [...contentTab, ...textTab, ...nextTab, ...(board || frame ? (["board", "frame", "shape"] as Tab[]) : []), "add"]
         : decor && !board && !frame
           ? ["ornament", "add"]
-          : ["board", "frame", "shape", ...textTab, ...(decor ? (["ornament"] as Tab[]) : []), ...nextTab, "add"];
-  const natural: Tab = role === "backdrop" ? "background" : onlyTexts || (role === "text" && texts.length) ? tabs.includes("text") ? "text" : tabs[0] : role === "frame" ? "frame" : decor ? "ornament" : tabs[0];
+          : ["board", "frame", "shape", ...contentTab, ...textTab, ...(decor ? (["ornament"] as Tab[]) : []), ...nextTab, "add"];
+  // A live list clicked opens on its content (the rows and the turns); any other text on its letters.
+  const liveChosen = chosen.length > 0 && chosen.every((id) => live.some((e) => e.id === id));
+  const natural: Tab = role === "backdrop" ? "background" : liveChosen ? "content" : onlyTexts || (role === "text" && texts.length) ? tabs.includes("text") ? "text" : tabs[0] : role === "frame" ? "frame" : decor ? "ornament" : tabs[0];
   const tab: Tab = tabFor?.key === key && tabs.includes(tabFor.tab) ? tabFor.tab : natural;
   const title = role === "backdrop" ? "הרקע הראשי" : many ? `${containers.length} קונטיינרים` : decor && !board && !frame ? first.name : containerName(config, own);
   /** The painted decorations of the main container: pieces of the kit's picture that are no container's board or frame. */
@@ -251,13 +343,18 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const panel = (
     <div
       ref={ref}
-      className={`overflow-y-auto rounded-lg border bg-card p-2 text-sm ${docked ? "absolute z-50 shadow-xl" : inPage ? "mt-2 shadow-sm" : "fixed z-50 max-h-[45vh] w-[min(440px,calc(100vw-32px))] shadow-xl"}`}
-      style={docked ? { top: place.top, height: folded ? undefined : place.height, width: place.width, ...(place.left ? { left: 6 } : { right: 6 }) } : inPage ? undefined : { left: moved!.x, top: moved!.y }}
+      className={`flex flex-col rounded-lg border bg-card text-sm ${docked ? "absolute z-50 shadow-xl" : inPage ? "relative mt-2 shadow-sm" : "fixed z-50 max-h-[45vh] w-[min(440px,calc(100vw-32px))] shadow-xl"}`}
+      style={docked ? { top: place.top, height: folded ? undefined : place.height, width: place.width, ...(place.left ? { left: 6 } : { right: 6 }) } : inPage ? undefined : { left: moved!.x, top: moved!.y, ...(size ? { width: size.w, height: folded ? undefined : size.h, maxHeight: "none" } : {}) }}
       dir="rtl"
       data-testid="part-context-panel"
       data-place={docked ? "side" : inPage ? "page" : "float"}
     >
-      <div className="mb-2 flex cursor-move flex-wrap items-center gap-1.5 select-none" onPointerDown={drag} onDoubleClick={() => keep(null)}
+      {/* Its handles, on the frame and not in what scrolls: wider, narrower, taller, shorter, from any side. */}
+      {!folded && HANDLES.map(([dir, at]) => (
+        <span key={dir} aria-hidden data-resize-panel={dir} onPointerDown={resize(dir)} className={`absolute z-10 touch-none ${at}`} title="גרירה משנה את גודל החלון" />
+      ))}
+      <div className="min-h-0 flex-1 overflow-y-auto p-2">
+      <div className="mb-2 flex cursor-move flex-wrap items-center gap-1.5 select-none" onPointerDown={drag} onDoubleClick={() => { keep(null); keepSize(null); }}
         title="גרירה מזיזה את החלון; לחיצה כפולה מחזירה אותו למקומו" data-testid="part-context-handle">
         <GripVertical className="size-4 text-muted-foreground" aria-hidden />
         <span className="font-semibold">נבחר: {title}</span>
@@ -315,6 +412,11 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
             onPatch={(ids, p, what) => onEdit(`element-text:${ids.join(",")}:${what}`, (c) => ({ ...c, elements: c.elements.map((e) => (ids.includes(e.id) && !e.locked ? { ...e, ...p } : e)) }))} />
           <Hint>לחיצה כפולה על טקסט בלוח - כותבים בו ישירות. Enter לסיום, Esc לביטול.</Hint>
         </div>
+      )}
+
+      {tab === "content" && (
+        <LiveListTools parts={live} config={config}
+          onPatch={(id, p, what) => onEdit(`ctx:content:${what}:${id}`, (c) => ({ ...c, elements: c.elements.map((e) => (e.id === id && !e.locked ? { ...e, ...p } : e)) }))} />
       )}
 
       {tab === "next" && (
@@ -478,6 +580,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
         </div>
       )}
       </>}
+      </div>
     </div>
   );
   return inPage ? createPortal(panel, inPage) : panel;

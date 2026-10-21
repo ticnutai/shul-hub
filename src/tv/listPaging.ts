@@ -32,9 +32,9 @@ export function useListPaging(): ListPaging {
   );
 }
 
-/** Which page a list shows: turning by the clock, or held on the page of "הבא" and turned by hand. */
-export function listPage(pages: number, per: number, next: number, now: Date, paging: ListPaging): number {
-  if (!paging.paused) return Math.floor(now.getTime() / 15000) % pages;
+/** Which page a list shows: turning by the clock (every `seconds`, the part's own), or held on the page of "הבא" and turned by hand. */
+export function listPage(pages: number, per: number, next: number, now: Date, paging: ListPaging, seconds = 15): number {
+  if (!paging.paused) return Math.floor(now.getTime() / (Math.max(3, seconds) * 1000)) % pages;
   const base = next >= 0 ? Math.floor(next / per) : 0;
   return (((base + paging.shift) % pages) + pages) % pages;
 }

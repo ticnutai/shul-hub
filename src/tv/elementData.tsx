@@ -56,7 +56,7 @@ export function BoundElement({ element }: { element: BoardElement }) {
   const nowMin = jerusalemMinutes(data.now);
   const next = mark.shape === 'none' ? -1 : nextRow(rows.map(r => r[1]), nowMin);
   // Held in the editor: the page of "הבא", turned by hand (listPaging.ts).
-  const page = scrolling ? 0 : listPage(pages, per, next, data.now, paging);
+  const page = scrolling ? 0 : listPage(pages, per, next, data.now, paging, e.pageSeconds ?? 15);
   const dim = mark.shape !== 'none' && mark.dimPast !== false;
   const list = <div data-content-binding={e.binding} dir="rtl" style={{ ...style, display: 'flex', flexDirection: 'column', ...(scrolling ? { height: 'auto' } : {}) }}>
     {(scrolling ? rows : rows.slice(page * per, page * per + per)).map((row, i) => { const [label,time]=row; const at = scrolling ? i : page * per + i; const isNext = at === next; const key=e.binding==='zmanim'?data.zmanKeys?.[data.zmanim!.indexOf(row)]:undefined; return <div key={key??i} data-zman={key} data-next={isNext || undefined} className={deadlines.some(a=>a.event===key)?'tv-zman-warning':undefined} style={{ flex: scrolling ? `0 0 ${e.height / count}cqh` : `0 0 ${100/count}%`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1cqw', lineHeight: 1.2, position: 'relative', ...(isNext ? nextRowStyle(mark, e.color) : dim && rowPast(time, nowMin) ? { opacity: 0.55 } : {}) }}>
