@@ -17,11 +17,11 @@
  * flicking one switch, so the switch says so before it is flicked - in the
  * same window as every other "בטוח?" on the site (confirmAction).
  */
-import { Hint } from "@/components/InfoTip";
+import { Hint, InfoTip } from "@/components/InfoTip";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Building2, Eye, EyeOff, Loader2, MonitorSmartphone, Pencil, Plus, ScrollText } from "lucide-react";
+import { ArrowLeftRight, Building2, Eye, EyeOff, Loader2, MonitorSmartphone, Pencil, Plus, ScrollText, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -103,6 +103,34 @@ export function CommunitiesAdmin() {
     onError: (e: Error) => toast.error(hebrewError(e, "הפעולה נכשלה")),
   });
 
+  /**
+   * Deleting a synagogue: everything in it goes with it (its minyanim,
+   * lessons, notices, screens and board - the database removes them with it).
+   * Not the one being edited, not the last one, and only after its name is
+   * typed: it cannot be undone.
+   */
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("communities").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("בית הכנסת נמחק");
+      void refresh();
+      void queryClient.invalidateQueries({ queryKey: ["my-communities"] });
+    },
+    onError: (e: Error) => toast.error(hebrewError(e, "המחיקה נכשלה")),
+  });
+  async function deleteCommunity(c: Overview) {
+    const ok = await confirmAction({
+      title: `למחוק את ${c.name}?`,
+      description: `נמחק הכול: ${c.minyanim} מניינים, ${c.announcements} מודעות, השיעורים, ${c.screens} מסכים מחוברים והלוח. אי אפשר לבטל את זה. אם רק צריך להסתיר אותו מהציבור - "סגירה".`,
+      confirmLabel: "מחיקה לצמיתות",
+      typeToConfirm: c.name,
+    });
+    if (ok) remove.mutate(c.id);
+  }
+
   const live = all.filter((c) => c.active).length;
 
   const manage = (c: Overview) =>
@@ -133,10 +161,13 @@ export function CommunitiesAdmin() {
   return (
     <div className="space-y-5">
       {/* No heading of its own: the section's name is on its tab or tile, as for every section. */}
-      <p className="text-sm text-muted-foreground">
-        {live === 1
-          ? "בית כנסת אחד פתוח לציבור, ולכן האתר הוא בית הכנסת הזה. ברגע שייפתח שני, כל מבקר יישאל לאיזה בית כנסת הוא הגיע."
-          : `${live} בתי כנסת פתוחים לציבור, ולכן האתר מציג בחירה לכל מבקר.`}
+      <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        {live === 1 ? "בית כנסת אחד פתוח לציבור" : `${live} בתי כנסת פתוחים לציבור`}
+        <InfoTip>
+          {live === 1
+            ? "בית כנסת אחד פתוח לציבור, ולכן האתר הוא בית הכנסת הזה. ברגע שייפתח שני, כל מבקר יישאל לאיזה בית כנסת הוא הגיע."
+            : "כמה בתי כנסת פתוחים לציבור, ולכן האתר מציג בחירה לכל מבקר."}
+        </InfoTip>
       </p>
 
       {isError ? (
@@ -153,68 +184,68 @@ export function CommunitiesAdmin() {
             const here = c.id === currentId;
             const emptyButOpen = c.active && c.minyanim === 0;
             return (
+              // On a phone as on a wide screen: the name and its state on top, the numbers under them,
+              // and the actions in a row of their own that fills its width - never squeezing the name into a column.
               <li
                 key={c.id}
-                className={`card-elev flex flex-wrap items-center gap-3 p-3 sm:p-4 ${
-                  here ? "ring-2 ring-primary" : ""
-                }`}
+                className={`card-elev space-y-2 p-3 sm:p-4 ${here ? "ring-2 ring-primary" : ""}`}
+                data-testid="community-row"
               >
-                <Building2 className="size-5 shrink-0 text-muted-foreground" />
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      className="truncate text-right font-semibold hover:underline"
-                      onClick={() => setDetails(c)}
-                      title="פרטי בית הכנסת, מיקום ולוגואים"
-                    >
-                      {c.name}
-                    </button>
-                    {here && (
-                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                        בעריכה עכשיו
+                <div className="flex min-w-0 items-start gap-2">
+                  <Building2 className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <button
+                        type="button"
+                        className="min-w-0 break-words text-right font-semibold hover:underline"
+                        onClick={() => setDetails(c)}
+                        title="פרטי בית הכנסת, מיקום ולוגואים"
+                      >
+                        {c.name}
+                      </button>
+                      {here && (
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                          בעריכה עכשיו
+                        </span>
+                      )}
+                      {c.active ? (
+                        <span className="flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400">
+                          <Eye className="size-3" /> פתוח לציבור
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <EyeOff className="size-3" /> כבוי
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
+                      <span dir="ltr">{c.slug}</span>
+                      <span className="flex items-center gap-1">
+                        <MonitorSmartphone className="size-3" /> {c.screens} מסכים
                       </span>
-                    )}
-                    {c.active ? (
-                      <span className="flex items-center gap-1 text-[11px] text-emerald-700 dark:text-emerald-400">
-                        <Eye className="size-3" /> פתוח לציבור
+                      <span className="flex items-center gap-1">
+                        <ScrollText className="size-3" /> {c.minyanim} מניינים
                       </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                        <EyeOff className="size-3" /> כבוי
-                      </span>
+                    </div>
+                    {emptyButOpen && (
+                      <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
+                        פתוח לציבור ואין בו מניינים - הלוח שלו יראה ״לא הוגדרו מניינים להיום״.
+                      </p>
                     )}
                   </div>
-
-                  <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
-                    <span>{c.slug}</span>
-                    <span className="flex items-center gap-1">
-                      <MonitorSmartphone className="size-3" /> {c.screens} מסכים
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ScrollText className="size-3" /> {c.minyanim} מניינים
-                    </span>
-                  </div>
-
-                  {emptyButOpen && (
-                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-400">
-                      פתוח לציבור ואין בו מניינים - הלוח שלו יראה ״לא הוגדרו מניינים להיום״.
-                    </p>
-                  )}
                 </div>
 
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex flex-wrap gap-2" data-fill-row>
                   <Button size="sm" variant="outline" onClick={() => setDetails(c)} aria-label={`פרטי ${c.name}`}>
                     <Pencil className="size-3.5" /> פרטים
                   </Button>
-                  <Button size="sm" variant={here ? "secondary" : "outline"} disabled={here} onClick={() => manage(c)}>
-                    {here ? "נערך כאן" : "לערוך את זה"}
+                  <Button size="sm" variant={here ? "secondary" : "default"} disabled={here} onClick={() => manage(c)}>
+                    <ArrowLeftRight className="size-3.5" /> {here ? "נערך כאן" : "מעבר לעריכה"}
                   </Button>
                   {isPlatformAdmin && (
                     <Button
                       size="sm"
-                      variant="ghost"
+                      variant="outline"
                       onClick={async () => {
                         if (!c.active) return void openToPublic(c);
                         // Closing is asked as opening is: visitors stop seeing it at once.
@@ -227,7 +258,14 @@ export function CommunitiesAdmin() {
                         if (ok) setActive.mutate({ id: c.id, active: false });
                       }}
                     >
-                      {c.active ? "לסגור" : "לפתוח לציבור"}
+                      {c.active ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+                      {c.active ? "סגירה" : "פתיחה לציבור"}
+                    </Button>
+                  )}
+                  {/* Not the one being edited (switch to another first), and never the last. */}
+                  {isPlatformAdmin && !here && all.length > 1 && (
+                    <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => void deleteCommunity(c)} aria-label={`מחיקת ${c.name}`}>
+                      <Trash2 className="size-3.5" /> מחיקה
                     </Button>
                   )}
                 </div>

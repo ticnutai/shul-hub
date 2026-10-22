@@ -33,6 +33,8 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   /** Red, for what removes something. Default true. */
   destructive?: boolean;
+  /** For what cannot be undone at all: the action waits until these words are typed (a synagogue's name). */
+  typeToConfirm?: string;
 }
 
 type Pending = ConfirmOptions & { resolve: (ok: boolean) => void };
@@ -49,8 +51,12 @@ export function confirmAction(options: ConfirmOptions): Promise<boolean> {
 
 export function ConfirmProvider() {
   const [pending, setPending] = useState<Pending | null>(null);
+  const [typed, setTyped] = useState("");
   useEffect(() => {
-    open = (p) => setPending(p);
+    open = (p) => {
+      setTyped("");
+      setPending(p);
+    };
     return () => {
       open = null;
     };
@@ -60,6 +66,7 @@ export function ConfirmProvider() {
     setPending(null);
   };
   const destructive = pending?.destructive !== false;
+  const blocked = Boolean(pending?.typeToConfirm) && typed.trim() !== pending?.typeToConfirm?.trim();
   return (
     <AlertDialog open={Boolean(pending)} onOpenChange={(v) => !v && close(false)}>
       <AlertDialogContent dir="rtl" data-testid="confirm-dialog">
@@ -67,11 +74,27 @@ export function ConfirmProvider() {
           <AlertDialogTitle>{pending?.title}</AlertDialogTitle>
           {pending?.description && <AlertDialogDescription>{pending.description}</AlertDialogDescription>}
         </AlertDialogHeader>
+        {pending?.typeToConfirm && (
+          <label className="space-y-1 text-sm">
+            <span className="block">כדי לאשר, כתבו: <b>{pending.typeToConfirm}</b></span>
+            <input
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              aria-label="אישור בכתיבה"
+              data-testid="confirm-type"
+              className="h-9 w-full rounded-md border bg-background px-2"
+            />
+          </label>
+        )}
         <AlertDialogFooter>
           <AlertDialogCancel onClick={() => close(false)}>ביטול</AlertDialogCancel>
           <AlertDialogAction
             className={destructive ? buttonVariants({ variant: "destructive" }) : undefined}
-            onClick={() => close(true)}
+            disabled={blocked}
+            onClick={(e) => {
+              if (blocked) return e.preventDefault();
+              close(true);
+            }}
           >
             {pending?.confirmLabel ?? "אישור"}
           </AlertDialogAction>

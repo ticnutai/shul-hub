@@ -92,7 +92,8 @@ test("the kit the board wears, made Shabbat's: its page is the kit of parts - ch
 
   // "תצוגת מסך שבת" from the board: the Shabbat kit, as the screens show it - not the card.
   await page.getByTestId("occasion-design-banner").getByRole("button", { name: "חזרה לעיצוב הלוח" }).click();
-  await page.getByRole("button", { name: /תצוגת מסך שבת/ }).click();
+  await page.getByTestId("occasion-preview-menu").click();
+  await page.getByRole("menuitemradio", { name: "תצוגת מסך שבת" }).click();
   await expect(preview.locator(".tv-occasion")).toHaveCount(0);
   await expect(preview.locator("[data-part-paint]").first()).toBeVisible();
   expect(errors).toEqual([]);

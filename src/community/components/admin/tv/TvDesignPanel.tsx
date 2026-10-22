@@ -52,7 +52,7 @@ import {
   type PortableIllustration,
 } from "@/tv/illustrated";
 import { editOccasionDesign, occasionLook, wearForOccasion } from "@/tv/occasionDesign";
-import { nextDateOf, occasionPagesNow, readOccasions } from "@/tv/occasions";
+import { SHABBAT_ID, nextDateOf, occasionPagesNow, readOccasions } from "@/tv/occasions";
 import { editPage, pageAt, pageLook, readPages } from "@/tv/partPages";
 import { isAllowedEdit } from "@/tv/records";
 import { nextCandleLighting } from "@/tv/shabbat";
@@ -650,10 +650,13 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     setShabbatPreview(false);
     setSimulatedNow(at);
   });
+  /** The occasion the preview shows, chosen from "מועד" under the board: its id, or null for the real day. */
+  const [shownOccasion, setShownOccasion] = useState<string | null>(null);
   const previewAt = (at: Date | null) => {
     simulation.halt();
     setDayPreview(Boolean(at));
     setShabbatPreview(false);
+    setShownOccasion(null);
     setSimulatedNow(at);
     setPreviewIndex(0);
   };
@@ -716,7 +719,30 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     if (!candle) return toast.error("חישוב זמן הדלקת הנרות נכשל");
     previewAt(new Date(candle.getTime() + 20 * 60_000));
     setShabbatPreview(true);
+    setShownOccasion(SHABBAT_ID);
   };
+  /**
+   * "מועד" under the board: any occasion - Shabbat, a festival, Rosh Chodesh,
+   * the shul's own - on its next day, on its own screen, as the screens will
+   * show it; and back to the real day. Shabbat as it always was: its eve,
+   * just after the candles.
+   */
+  const previewOccasion = (id: string) => {
+    if (id === SHABBAT_ID) {
+      if (shownOccasion !== SHABBAT_ID) toggleShabbatPreview();
+      return;
+    }
+    const o = readOccasions(state.present).find((x) => x.id === id);
+    if (!o) return;
+    const day = nextDateOf(o, new Date());
+    if (!day) return toast.error("לא נמצא תאריך קרוב למועד הזה");
+    previewAt(new Date(Date.parse(`${jerusalemDateKey(day)}T11:00:00+03:00`)));
+    setPreviewScreen(`occasion:${id}`);
+    setShownOccasion(id);
+    if (!o.enabled) toast.warning(occasionOffNote(o.name));
+  };
+  const occasionChoices = readOccasions(state.present);
+  const shownOccasionName = occasionChoices.find((o) => o.id === shownOccasion)?.name;
 
   /* -------------------------------------------------------------- save -- */
 
@@ -1077,9 +1103,26 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             }}
           />
         </label>
-        <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} aria-label="תצוגת מסך שבת" title="תצוגת מסך שבת" onClick={toggleShabbatPreview}>
-          🕯️ שבת
-        </Button>
+        {/* One button for every occasion: Shabbat, the festivals, Rosh Chodesh, the shul's own days. */}
+        <DropdownMenu dir="rtl" modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant={shownOccasion ? "default" : "outline"} size="sm" aria-label="תצוגת מועד" data-testid="occasion-preview-menu">
+              🕯️ {shownOccasionName ?? "מועד"} <ChevronDown className="size-3.5" aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-80 min-w-[13rem] overflow-y-auto">
+            <DropdownMenuLabel className="text-xs text-muted-foreground">איך הלוח נראה ב…</DropdownMenuLabel>
+            <DropdownMenuRadioGroup value={shownOccasion ?? ""} onValueChange={(id) => (id ? previewOccasion(id) : previewAt(null))}>
+              <DropdownMenuRadioItem className="cursor-pointer" value="">היום - זמן אמת</DropdownMenuRadioItem>
+              {occasionChoices.map((o) => (
+                <DropdownMenuRadioItem key={o.id} className="cursor-pointer" value={o.id}
+                  aria-label={o.id === SHABBAT_ID ? "תצוגת מסך שבת" : `תצוגת ${o.name}`}>
+                  {o.name}{!o.enabled && <span className="ms-1 text-[11px] text-muted-foreground">(כבוי)</span>}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {simulatedNow && (
           <Button type="button" variant="ghost" size="sm" onClick={() => previewAt(null)}>
             חזרה לזמן אמת

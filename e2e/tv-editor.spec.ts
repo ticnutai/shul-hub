@@ -418,7 +418,8 @@ test.describe("TV editor", () => {
     await expect(page.locator(".tv-frame .tv-root").first()).toHaveClass(/has-bg-gradient/);
     await expectNotFrozen(page, "gradient");
 
-    await page.getByRole("button", { name: /תצוגת מסך שבת/ }).click();
+    await page.getByTestId("occasion-preview-menu").click();
+    await page.getByRole("menuitemradio", { name: "תצוגת מסך שבת" }).click();
     await expect(page.locator('.tv-frame .tv-occasion').first()).toBeVisible({ timeout: 10_000 });
     await expectNotFrozen(page, "shabbat preview");
     // The same button now offers the way back.
