@@ -1,5 +1,10 @@
 # Roadmap
 
+## Organized display editor
+- [ ] Add an optional organized layout with a single topic selector and one visible settings section.
+- [ ] Avoid duplicate navigation and preserve existing draft/save behavior.
+- [ ] Verify the organized editor on mobile and desktop.
+
 - [ ] Add admin-selectable prayer layouts: tabs, sequential list, compact table.
 - [ ] Make every prayer layout fully usable on mobile without horizontal scrolling.
 - [ ] Verify desktop and mobile display plus admin-only saving.
