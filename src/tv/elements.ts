@@ -2,6 +2,7 @@ import { isPartShape, type PartShape } from './partShapes';
 import { normalizeNextMark, type NextMark } from './nextMark';
 import type { CSSProperties } from 'react';
 import type { ElementDefaults } from './config';
+import { contrast, MIN_CONTRAST, parseColour, type Rgba } from './readability';
 import { ZMAN_DISPLAY_KEYS } from '@/community/lib/zmanim';
 /** Free elements share the board's config, undo history and renderer. Coordinates are percentages. */
 export const ELEMENT_KINDS = ['column', 'ornament', 'frame', 'box', 'text', 'image'] as const;
@@ -680,6 +681,44 @@ export function swapContent(all: BoardElement[], aId: string, bId: string): Boar
     : pa.own && x.id === pa.frame?.id ? { ...x, name: `מסגרת ${BINDING_LABELS[newA.binding!]}` }
     : pb.own && x.id === pb.frame?.id ? { ...x, name: `מסגרת ${BINDING_LABELS[newB.binding!]}` }
     : x);
+}
+
+const LIGHT_INK = '#fff5de';
+const DARK_INK = '#2b2118';
+
+/**
+ * New text that could not be read where it stands - black letters, or a
+ * light board's brown, put on a dark board - in letters that can: the
+ * board's own when they read there, else plain light or dark. What is behind
+ * it is the nearest coloured box under it; on a picture or the board's
+ * background, the board's own letters tell (light letters, a dark board).
+ * A part with its own panel behind it (backdrop) is always read; untouched.
+ */
+export function readableInk(added: BoardElement[], all: BoardElement[]): BoardElement[] {
+  const fresh = new Set(added.map(e => e.id));
+  const ink = boardInk(all.filter(e => !fresh.has(e.id)));
+  const black: Rgba = [0, 0, 0, 1], white: Rgba = [255, 255, 255, 1];
+  const isLight = (c: Rgba) => contrast(c, black) > contrast(c, white);
+  return added.map(e => {
+    const fg = e.kind === 'text' && !e.backdrop ? parseColour(e.color) : null;
+    if (!fg || fg[3] === 0) return e;
+    const at = all.findIndex(x => x.id === e.id);
+    const below = at >= 0 ? all.slice(0, at) : all.filter(x => !fresh.has(x.id));
+    const [cx, cy] = [e.x + e.width / 2, e.y + e.height / 2];
+    let bg: Rgba | null = null;
+    for (const x of [...below].reverse()) {
+      if (x.hidden || cx < x.x || cx > x.x + x.width || cy < x.y || cy > x.y + x.height) continue;
+      if (x.kind === 'image') break;
+      const fill = x.kind === 'box' ? parseColour(x.fill) : null;
+      if (fill && fill[3] * x.opacity >= 0.6) { bg = fill; break; }
+    }
+    const boardInkRgba = ink ? parseColour(ink.color) : null;
+    // Nothing coloured under it: the board is dark when its own letters are light.
+    const behind = bg ?? (boardInkRgba && boardInkRgba[3] > 0 ? (isLight(boardInkRgba) ? [20, 30, 46, 1] as Rgba : [243, 234, 216, 1] as Rgba) : null);
+    if (!behind || contrast(fg, behind) >= MIN_CONTRAST) return e;
+    const color = boardInkRgba && contrast(boardInkRgba, behind) >= MIN_CONTRAST ? ink!.color : isLight(behind) ? DARK_INK : LIGHT_INK;
+    return { ...e, color };
+  });
 }
 
 /** New content in the gabbai's own letters, where set ("ברירת מחדל לתוכן חדש"): the text of what was added, not its frame. */

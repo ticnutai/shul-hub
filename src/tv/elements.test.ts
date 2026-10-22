@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, addIntoFrame, swapContent, styleSources, withDefaults, liveBox, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
+import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, addIntoFrame, swapContent, styleSources, withDefaults, readableInk, liveBox, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
 import { kitOf, resetToKit } from './kitReset';
 import { BUILTIN_DESIGNS, applyDesign } from './designs';
 import { setSymbol, symbolChoices } from './artSymbols';
@@ -401,5 +401,19 @@ describe('frames exchanging what they show, a frame in the middle\'s style, and 
     }
     expect(withDefaults(added, DEFAULT_ELEMENT_DEFAULTS)).toEqual(added);
     expect(normalizeTvConfig({ elementDefaults: { color: 'red', font: 'comic', weight: 'heavy', scale: 9 } }).elementDefaults).toEqual({ color: null, font: null, weight: null, scale: 1.6 });
+  });
+  it("gives new letters that cannot be read where they stand the board's own", () => {
+    const t = (id: string, color: string, more: Partial<BoardElement> = {}): BoardElement => ({ ...newElement('text'), id, color, x: 40, y: 40, width: 20, height: 20, ...more });
+    // A dark board: its letters are light, a picture under the new part.
+    const board = [{ ...newElement('image'), id: 'art', x: 0, y: 0, width: 100, height: 100 }, t('a', '#ffe9af'), t('b', '#ffe9af', { x: 5 })];
+    const black = t('zmanim', '#000000', { binding: 'zmanim' });
+    expect(readableInk([black], [...board, black])[0].color).toBe('#ffe9af');
+    // Light letters there stay as they are; so does a part with its own panel.
+    expect(readableInk([t('n', '#fff5de')], board)[0].color).toBe('#fff5de');
+    expect(readableInk([t('p', '#000000', { backdrop: true })], board)[0].color).toBe('#000000');
+    // On a light box of its own the board's light letters do not read: dark ones.
+    const cream = { ...newElement('box'), id: 'cream', fill: '#fff5dc', x: 30, y: 30, width: 40, height: 40 };
+    const gold = t('g', '#ffe9af');
+    expect(readableInk([gold], [...board, cream, gold])[0].color).toBe('#2b2118');
   });
 });

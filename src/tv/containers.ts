@@ -13,7 +13,7 @@
  * names of a frame and its fill), and that reading is written down the first
  * time a container is changed, so from then on nothing is guessed.
  */
-import { BINDING_LABELS, boundsOf, elementId, newElement, normalizeElements, sideOf, type BoardElement } from './elements';
+import { BINDING_LABELS, boundsOf, elementId, newElement, normalizeElements, readableInk, sideOf, type BoardElement } from './elements';
 import { isPartShape, type PartShape } from './partShapes';
 import { linkedSection } from './sectionGeometry';
 import { roleOf } from './containerParts';
@@ -308,7 +308,8 @@ export function addInside(board: Board, containerId: string, id: string, kind: I
   const elements = (kind === 'frame' || kind === 'image') && backing
     ? w.elements.flatMap(x => (x.id === backing.id ? [x, part] : [x]))
     : [...w.elements.slice(0, at + 1), part, ...w.elements.slice(at + 1)];
-  return { elements, containers: w.containers };
+  // Written where it can be read: dark letters on a dark board get the board's own.
+  return { elements: elements.map(x => (x.id === id ? readableInk([x], elements)[0] : x)), containers: w.containers };
 }
 
 /** A picture on its own, on the main background - no board and no frame - to drag into place. */

@@ -20,7 +20,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { DEFAULT_ELEMENT_DEFAULTS, type ElementDefaults } from '@/tv/config';
 import {
-  BINDING_LABELS, ELEMENT_BINDINGS, ELEMENT_FONTS, MAX_ELEMENTS, addContent, withDefaults, addIntoFrame, boundsOf, elementId, importElementSet,
+  BINDING_LABELS, ELEMENT_BINDINGS, ELEMENT_FONTS, MAX_ELEMENTS, addContent, withDefaults, readableInk, addIntoFrame, boundsOf, elementId, importElementSet,
   exportElementSet, liveFrames, setContent, styleSources, type BoardElement, type ElementBinding, type ElementFont, type SavedElementSet,
 } from '@/tv/elements';
 import { Folded } from './Parts';
@@ -58,14 +58,17 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults }
       if (elements.length + copies.length > MAX_ELEMENTS) return void toast.error('עד 80 חלקים בלוח');
       const b = boundsOf(copies, copies.map(e => e.id));
       const group = elementId();
-      const placed = copies.map(e => ({ ...e, x: e.x + (50 - b.width / 2 - b.x), group }));
+      const moved = copies.map(e => ({ ...e, x: e.x + (50 - b.width / 2 - b.x), group }));
+      // A box kept from a light board, put on a dark one: its letters made readable here.
+      const placed = readableInk(moved, [...elements, ...moved]);
       onCommit([...elements, ...placed], `add-content:box:${box.id}`, placed.map(e => e.id));
       return void toast.success(`"${box.name}" נוספה באמצע הלוח. בחרו לה צד ברשימה.`);
     }
     if (!binding) return;
     const name = BINDING_LABELS[binding];
     if (where === 'new') {
-      const added = withDefaults(addContent(elements, binding, like || undefined), defaults);
+      const made = withDefaults(addContent(elements, binding, like || undefined), defaults);
+      const added = readableInk(made, [...elements, ...made]);
       if (elements.length + added.length > MAX_ELEMENTS) return void toast.error('עד 80 חלקים בלוח');
       onCommit([...elements, ...added], `add-content:new:${binding}`, added.map(e => e.id));
       return void toast.success(`נוספה מסגרת "${name}" באמצע הלוח, בסגנון של הלוח. בחרו לה צד ברשימה.`);
@@ -78,7 +81,8 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults }
     if (elements.length + 1 > MAX_ELEMENTS) return void toast.error('עד 80 חלקים בלוח');
     if (chosen.e.locked) return void toast.error(`"${chosen.title}" נעול. שחררו אותו קודם.`);
     const before = new Set(elements.map(e => e.id));
-    const next = addIntoFrame(elements, chosen.e.id, binding).map(e => before.has(e.id) ? e : withDefaults([e], defaults)[0]);
+    const placed = addIntoFrame(elements, chosen.e.id, binding);
+    const next = placed.map(e => before.has(e.id) ? e : readableInk(withDefaults([e], defaults), placed)[0]);
     const added = next.find(e => !before.has(e.id));
     onCommit(next, `add-content:into:${chosen.e.id}`, added ? [added.id] : []);
     toast.success(`${name} נוסף בתוך "${chosen.title}", מתחת למה שהיה בה.`);
