@@ -12,7 +12,7 @@
 <!-- LOVABLE:END -->
 
 ## Admin presentation
-- Organized TV editor navigation filters the existing section tree through context; never duplicate draft controls or save actions for a presentation mode.
+- The TV editor keeps every section reachable: never add a navigation mode that hides sections, parts or backgrounds behind a single-topic picker (one was removed after it hid the editor on every device of the gabbai's account).
 - Keep mobile touch-target and form sizing scoped to the gabbai admin surface and quick-add dialog; public reading pages must retain their own sizing.
 - Mobile admin section selection and desktop tabs share the existing URL-selected section, so navigation never changes saving or permissions.
 

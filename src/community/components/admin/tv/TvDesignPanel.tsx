@@ -28,8 +28,7 @@ import { confirmAction } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { FloatingBar } from "./FloatingBar";
-import { EDITOR_NAV_KEY, EditorMenu, EditorSearch, EditorOrganized, editorPlaces, readEditorNav, type EditorNav, type EditorTab } from "./EditorNav";
-import { OrganizedSectionContext } from "./organizedEditor";
+import { EDITOR_NAV_KEY, EditorMenu, EditorSearch, readEditorNav, type EditorNav, type EditorTab } from "./EditorNav";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 import {
@@ -72,7 +71,7 @@ import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/mi
 import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { ContentTab } from "./ContentTab";
 import { DesignTab } from "./DesignTab";
-import { isDesignTopic, showDesignTopic, useDesignTopics } from "./designTopics";
+import { isDesignTopic, showDesignTopic } from "./designTopics";
 import { KindChecklist, KindPicker } from "./KindPicker";
 import { SaveKitButton } from "./DesignLibrary";
 import type { DeviceMode } from "./devices";
@@ -469,8 +468,6 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   };
   /** How one goes around the editor (EditorNav.tsx): the tabs, a menu of all of it down the side, or a search. Remembered here. */
   const [nav, setNavState] = useState<EditorNav>(() => readEditorNav(readStored(EDITOR_NAV_KEY)));
-  const { topic: currentDesignTopic } = useDesignTopics();
-  const [organizedSections, setOrganizedSections] = useState<Record<string, string>>({});
   const setNav = (next: EditorNav) => {
     setNavState(next);
     writeStored(EDITOR_NAV_KEY, next);
@@ -1225,20 +1222,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   const occasionKitName = occasionKit?.name ?? null;
 
   /** The editor's tabs and what is in them; how one goes between them is `nav`. */
-  const organizedGroup = editorPlaces(view.screenLayout === "composition").find((g) => g.tab === tab);
-  const rememberedSection = organizedSections[tab];
-  const organizedSection = tab === "design" ? currentDesignTopic
-    : organizedGroup?.places.find((p) => p.id === rememberedSection)?.id ?? organizedGroup?.places[0]?.id ?? "design-sets";
-  const settingsGrid = nav === "organized" ? "mt-3 grid min-w-0 grid-cols-1 items-start gap-4 [&>*]:min-w-0"
-    : "mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2";
   const editorTabs = (
-    <OrganizedSectionContext.Provider value={nav === "organized" ? organizedSection : null}>
     <Tabs value={tab} onValueChange={setTab} className="w-full">
-      {nav === "organized" && <EditorOrganized section={organizedSection}
-        setSection={(id) => {
-          const group = editorPlaces(view.screenLayout === "composition").find((g) => g.places.some((p) => p.id === id));
-          if (group) setOrganizedSections((prev) => ({ ...prev, [group.tab]: id }));
-        }} setTab={setTab} partsBoard={view.screenLayout === "composition"} />}
       {/* One way between the tabs at a time: the row of them, or the search (the menu stands beside). */}
       {nav === "search" && <EditorSearch tab={tab} setTab={(t: EditorTab) => setTab(t)} partsBoard={view.screenLayout === "composition"} />}
       <TabsList className={nav === "tabs" ? "grid w-full grid-cols-5" : "hidden"}>
@@ -1275,30 +1260,29 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       </TabsContent>
       <TabsContent
         value="design"
-        className={settingsGrid}
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
       >
-        <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={Boolean(partText)} topicsNav={nav === "tabs"} organized={nav === "organized"} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
+        <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={Boolean(partText)} topicsNav={nav === "tabs"} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
       </TabsContent>
       <TabsContent
         value="layout"
-        className={settingsGrid}
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
       >
         <LayoutTab scoped={scoped} view={view} edit={edit} openPartsList={openPartsList} composerScreen={composerScreen} setComposerScreen={setComposerScreen} setPreviewScreen={setPreviewScreen} previewAt={previewAt} />
       </TabsContent>
       <TabsContent
         value="content"
-        className={settingsGrid}
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
       >
         <ContentTab scoped={scoped} edit={edit} simulation={simulation} simulationScreens={simulationScreens} sendSimulation={sendSimulation} />
       </TabsContent>
       <TabsContent
         value="tools"
-        className={settingsGrid}
+        className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
       >
         <ToolsTab draft={draft} view={view} edit={edit} dispatch={dispatch} shownVersion={shownVersion} setShownVersion={setShownVersion} setBeforeAfter={setBeforeAfter} showPreview={showPreview} doExport={doExport} doImport={doImport} figmaHandoff={figmaHandoff} />
       </TabsContent>
     </Tabs>
-    </OrganizedSectionContext.Provider>
   );
 
   const controls = (
@@ -1499,7 +1483,6 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs text-muted-foreground">איך עוברים בין הנושאים</DropdownMenuLabel>
             <DropdownMenuRadioGroup value={nav} onValueChange={(v) => setNav(v as EditorNav)}>
-              <DropdownMenuRadioItem className={viewItem} value="organized" title="בחירת נושא אחד בכל פעם, בלי שורות ניווט כפולות">פריסה מסודרת · נושא אחד</DropdownMenuRadioItem>
               <DropdownMenuRadioItem className={viewItem} value="tabs" title="שורת הלשוניות למעלה, ובעיצוב - שורת הנושאים">לשוניות</DropdownMenuRadioItem>
               <DropdownMenuRadioItem className={viewItem} value="menu" title="כל העורך בתפריט אחד בצד: כל לשונית והסעיפים שבה">תפריט נושאים בצד</DropdownMenuRadioItem>
               <DropdownMenuRadioItem className={viewItem} value="search" title="כותבים מה לשנות - ומגיעים לסעיף">חיפוש</DropdownMenuRadioItem>

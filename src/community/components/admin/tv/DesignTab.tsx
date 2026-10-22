@@ -25,7 +25,7 @@ import { useElementEditing } from "@/tv/elementEditing";
 import { Notice } from "./Notice";
 import { isPartsBoard } from "./PartLooks";
 
-export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [], onWearFor, topicsNav = true, organized = false }: {
+export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [], onWearFor, topicsNav = true }: {
   draft: TvConfig;
   scoped: TvConfig;
   view: TvConfig;
@@ -44,7 +44,6 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   onWearFor?: (occasionId: string, kit: SavedDesign) => void;
   /** The row of topics here: only when the editor goes around by tabs (a menu or a search has them already). */
   topicsNav?: boolean;
-  organized?: boolean;
 }) {
   const { view: topicsView, topic } = useDesignTopics();
   // A board of parts: the topics dress the parts chosen on it, not the boxes of an ordinary board.
@@ -52,7 +51,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   const editing = useElementEditing();
   const selected = editing?.selected ?? [];
   /** One topic at a time: the others stay drawn (what was typed in them stays), only hidden. */
-  const away = (id: string) => (organized || topicsView === "switch") && topic !== id;
+  const away = (id: string) => topicsView === "switch" && topic !== id;
   // The library's order is the gabbai's, on every board (written at once); until it is read, the board's own.
   const libraryOrder = useTvLibraryOrder();
   const library = libraryOrder.order ?? draft.library;
@@ -72,7 +71,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         data-testid="parts-scope"
       >
         {topicsNav && <DesignTopics />}
-        {!organized && <EditorViewBar />}
+        <EditorViewBar />
         {parts ? (
           // Choosing all of one kind is the list of parts' own (one row of it, not one here as well): a way there.
           <p className="text-xs" data-testid="parts-scope-kinds">

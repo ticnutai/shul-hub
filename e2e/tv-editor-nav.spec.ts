@@ -51,27 +51,3 @@ test("the editor gone around by a menu of all of it, and by a search", async ({ 
   await expect(page.getByTestId("editor-search")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
-
-test("organized navigation opens each settings topic without duplicate navigation", async ({ page, isMobile }) => {
-  await page.setViewportSize(isMobile ? { width: 360, height: 800 } : { width: 1280, height: 1800 });
-  await serveEditor(page, JSON.parse(JSON.stringify(DEFAULT_TV_CONFIG)));
-  await page.goto("/e2e/harness/editor.html");
-  await editorLayout(page, "פריסה מסודרת · נושא אחד");
-  const picker = page.getByRole("combobox", { name: "נושא לעריכה", exact: true });
-  await picker.click();
-  await page.getByRole("option", { name: "עיצוב · רקע", exact: true }).click();
-  await expect(page.locator("#design-background")).toBeVisible();
-  await expect(page.locator("#design-sets")).toBeHidden();
-  await expect(page.getByTestId("design-topics")).toHaveCount(0);
-  await picker.click();
-  await page.getByRole("option", { name: "תוכן · סרגל הודעה רץ", exact: true }).click();
-  await expect(page.locator("#content-ticker")).toBeVisible();
-  await expect(page.locator("#content-slideshow")).toBeHidden();
-  await picker.click();
-  await page.getByRole("option", { name: "כלים · ייבוא וייצוא", exact: true }).click();
-  await expect(page.locator("#tools-transfer")).toBeVisible();
-  await expect(page.locator("#tools-versions")).toBeHidden();
-  await page.reload();
-  await expect(page.getByTestId("editor-organized")).toBeVisible();
-  await expect(page.getByTestId("save-bar")).toHaveCount(1);
-});
