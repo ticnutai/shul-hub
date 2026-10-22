@@ -71,14 +71,14 @@ import { jerusalemDateKey, jerusalemWeekday, zmanimFor } from "@community/lib/mi
 import { BuildGuide, type BuildStep } from "./BlankBoardStarter";
 import { ContentTab } from "./ContentTab";
 import { DesignTab } from "./DesignTab";
-import { isDesignTopic, showDesignTopic } from "./designTopics";
+import { isDesignTopic, showDesignTopic, useDesignTopics } from "./designTopics";
 import { KindChecklist, KindPicker } from "./KindPicker";
 import { SaveKitButton } from "./DesignLibrary";
 import type { DeviceMode } from "./devices";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { draftReducer } from "./draftState";
-import { BARE_KEY, FOCUS_KEY, LAYOUT_KEY, SIDE_H_KEY, SIDE_HEIGHT_DEFAULT, SIDE_KEY, SIDE_SHARE_DEFAULT, STUDIO_CHROME, TOP_HEIGHT_DEFAULT, TOP_KEY, clampHeight, clampShare, clampSideHeight, readStored, writeStored } from "./editorLayout";
-import { ColorField, INPUT_CLASS, Section } from "./editorParts";
+import { BARE_KEY, FOCUS_KEY, LAYOUT_KEY, readPlacement, type EditorPlacement, SIDE_H_KEY, SIDE_HEIGHT_DEFAULT, SIDE_KEY, SIDE_SHARE_DEFAULT, STUDIO_CHROME, TOP_HEIGHT_DEFAULT, TOP_KEY, clampHeight, clampShare, clampSideHeight, readStored, writeStored } from "./editorLayout";
+import { ColorField, FoldedSections, INPUT_CLASS, Section } from "./editorParts";
 import { ElementEditingProvider } from "./ElementEditingProvider";
 import { ElementTextTools } from "./ElementTextTools";
 import { type LayerProps } from "./LayerEditors";
@@ -461,13 +461,23 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
    * to make it taller or shorter. Both, and the sizes, are remembered in
    * this browser. Fullscreen still puts the board column alone on the screen.
    */
-  const [layout, setLayoutState] = useState<"side" | "top">(() => (readStored(LAYOUT_KEY) === "top" ? "top" : "side"));
-  const setLayout = (next: "side" | "top") => {
+  const [layout, setLayoutState] = useState<EditorPlacement>(() => readPlacement(readStored(LAYOUT_KEY)));
+  const setLayout = (next: EditorPlacement) => {
     setLayoutState(next);
     writeStored(LAYOUT_KEY, next);
   };
   /** How one goes around the editor (EditorNav.tsx): the tabs, a menu of all of it down the side, or a search. Remembered here. */
   const [nav, setNavState] = useState<EditorNav>(() => readEditorNav(readStored(EDITOR_NAV_KEY)));
+  /** The folded layout's open sections; a topic gone to from elsewhere (a link, a note) opens. */
+  const [openSections, setOpenSections] = useState<string[]>(["design-sets"]);
+  const folded = useMemo(() => ({
+    open: openSections,
+    toggle: (id: string) => setOpenSections((o) => (o.includes(id) ? o.filter((x) => x !== id) : [...o, id])),
+  }), [openSections]);
+  const { topic: shownTopic } = useDesignTopics();
+  useEffect(() => {
+    if (shownTopic) setOpenSections((o) => (o.includes(shownTopic) ? o : [...o, shownTopic]));
+  }, [shownTopic]);
   const setNav = (next: EditorNav) => {
     setNavState(next);
     writeStored(EDITOR_NAV_KEY, next);
@@ -1223,10 +1233,11 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
 
   /** The editor's tabs and what is in them; how one goes between them is `nav`. */
   const editorTabs = (
+    <FoldedSections.Provider value={nav === "folded" ? folded : null}>
     <Tabs value={tab} onValueChange={setTab} className="w-full">
       {/* One way between the tabs at a time: the row of them, or the search (the menu stands beside). */}
       {nav === "search" && <EditorSearch tab={tab} setTab={(t: EditorTab) => setTab(t)} partsBoard={view.screenLayout === "composition"} />}
-      <TabsList className={nav === "tabs" ? "grid w-full grid-cols-5" : "hidden"}>
+      <TabsList className={nav === "tabs" || nav === "folded" ? "grid w-full grid-cols-5" : "hidden"}>
         <TabsTrigger value="design">עיצוב</TabsTrigger>
         <TabsTrigger value="layout">פריסה</TabsTrigger>
         <TabsTrigger value="content">תוכן</TabsTrigger>
@@ -1262,7 +1273,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         value="design"
         className="mt-3 grid grid-cols-1 items-start gap-4 [&>*]:min-w-0 min-[1700px]:grid-cols-2"
       >
-        <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={Boolean(partText)} topicsNav={nav === "tabs"} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
+        <DesignTab draft={draft} scoped={scoped} view={view} edit={edit} dispatch={dispatch} partTarget={partTarget} setPartTarget={setPartTarget} wholeBoardOnly={Boolean(occasionScope) || scope !== "all"} setComposerScreen={setComposerScreen} setGuide={setGuide} layerProps={layerProps} textToolsElsewhere={Boolean(partText)} topicsNav={nav === "tabs"} allTopics={nav === "folded"} onWearFor={wearFor} todayOccasions={occasionScope ? [readOccasions(state.present).find((o) => o.id === occasionScope)?.name ?? ""] : occasionTabs.filter((t) => t.on).map((t) => t.name)} />
       </TabsContent>
       <TabsContent
         value="layout"
@@ -1283,6 +1294,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         <ToolsTab draft={draft} view={view} edit={edit} dispatch={dispatch} shownVersion={shownVersion} setShownVersion={setShownVersion} setBeforeAfter={setBeforeAfter} showPreview={showPreview} doExport={doExport} doImport={doImport} figmaHandoff={figmaHandoff} />
       </TabsContent>
     </Tabs>
+    </FoldedSections.Provider>
   );
 
   const controls = (
@@ -1446,7 +1458,10 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
   }
 
   const top = layout === "top" && !fullscreen && isLarge;
-  const side = layout === "side" && !fullscreen;
+  /** Side by side, either way round: "flip" puts the board on the right and the controls on the left. */
+  const sideBySide = layout === "side" || layout === "flip";
+  const flip = layout === "flip";
+  const side = sideBySide && !fullscreen;
 
   // On the studio's own toolbar row, beside the device menu: one row above
   // the board, not three. The two layouts stay in sight; the rest of how big
@@ -1472,9 +1487,12 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           >
             {/* Everything about how the editor is laid out, in one menu: where the board stands, how one goes around, and its size. */}
             <DropdownMenuLabel className="text-xs text-muted-foreground">איפה הלוח</DropdownMenuLabel>
-            <DropdownMenuRadioGroup value={layout} onValueChange={(v) => setLayout(v as "side" | "top")}>
+            <DropdownMenuRadioGroup value={layout} onValueChange={(v) => setLayout(readPlacement(v))}>
               <DropdownMenuRadioItem className={viewItem} value="side" title="הבקרות והתצוגה זו לצד זו, עם ידית ביניהן לשינוי הרוחב">
                 <Columns2 className="size-4" aria-hidden /> זה לצד זה
+              </DropdownMenuRadioItem>
+              <DropdownMenuRadioItem className={viewItem} value="flip" title="כמו זה לצד זה, אבל הלוח מימין והבקרות משמאל">
+                <Columns2 className="size-4 -scale-x-100" aria-hidden /> הלוח מימין
               </DropdownMenuRadioItem>
               <DropdownMenuRadioItem className={viewItem} value="top" title="התצוגה למעלה ונשארת במקום, הבקרות מתחתיה נגללות, עם ידית לשינוי הגובה">
                 <Rows2 className="size-4" aria-hidden /> תצוגה למעלה
@@ -1486,6 +1504,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
               <DropdownMenuRadioItem className={viewItem} value="tabs" title="שורת הלשוניות למעלה, ובעיצוב - שורת הנושאים">לשוניות</DropdownMenuRadioItem>
               <DropdownMenuRadioItem className={viewItem} value="menu" title="כל העורך בתפריט אחד בצד: כל לשונית והסעיפים שבה">תפריט נושאים בצד</DropdownMenuRadioItem>
               <DropdownMenuRadioItem className={viewItem} value="search" title="כותבים מה לשנות - ומגיעים לסעיף">חיפוש</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem className={viewItem} value="folded" title="הלשוניות למעלה, וכל סעיף מוצג ככותרת בלבד ונפתח בלחיצה - רואים את כל הסעיפים בבת אחת">כותרות מתקפלות</DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-xs text-muted-foreground">גודל</DropdownMenuLabel>
@@ -1718,7 +1737,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       className={`min-w-0 grid-cols-[minmax(0,1fr)] gap-2 ${side ? "grid lg:gap-2" : "grid gap-5"} ${floatSave ? "pb-16" : ""}`}
       style={
         side && isLarge
-          ? { gridTemplateColumns: `minmax(0, ${1 - sideShare}fr) auto minmax(0, ${sideShare}fr)` }
+          ? { gridTemplateColumns: flip ? `minmax(0, ${sideShare}fr) auto minmax(0, ${1 - sideShare}fr)` : `minmax(0, ${1 - sideShare}fr) auto minmax(0, ${sideShare}fr)` }
           : undefined
       }
     >
@@ -1726,13 +1745,13 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {/* ------------------------------------------------ preview column -- */}
       <div
         ref={previewColumn}
-        className={`order-1 min-w-0 space-y-3 lg:order-3 ${fullscreen ? "overflow-auto bg-background p-4" : ""}`}
+        className={`order-1 min-w-0 space-y-3 ${flip ? "lg:order-1" : "lg:order-3"} ${fullscreen ? "overflow-auto bg-background p-4" : ""}`}
       >
         {/* Pinned while the controls scroll. It is capped to the window
             height and scrolls inside itself, because a sticky block taller
             than the window simply scrolls away - which left the whole left
             side of a wide screen empty. */}
-        {fullscreen && layout === "side" && isLarge ? (
+        {fullscreen && sideBySide && isLarge ? (
           // Full screen, side by side: the controls on one side, the board on
           // the other, each scrolling on its own - editing while looking.
           <div
@@ -1789,8 +1808,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             label="רוחב התצוגה מול הבקרות"
             onDrag={(x) => {
               const box = splitBox.current?.getBoundingClientRect();
-              // The preview is the left column (the page is right to left).
-              if (box) setSideShare((x - box.left) / box.width);
+              // The preview is the left column (the page is right to left); turned round, the right one.
+              if (box) setSideShare(flip ? (box.right - x) / box.width : (x - box.left) / box.width);
             }}
             onStep={(d) => setSideShare(sideShare + d * 0.05)}
             onReset={() => setSideShare(SIDE_SHARE_DEFAULT)}
@@ -1799,7 +1818,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       )}
 
       {/* ----------------------------------------------- controls column -- */}
-      <div className="order-3 min-w-0 space-y-4 lg:order-1">{!fullscreen && controls}</div>
+      <div className={`order-3 min-w-0 space-y-4 ${flip ? "lg:order-3" : "lg:order-1"}`}>{!fullscreen && controls}</div>
     </div>
   );
 }

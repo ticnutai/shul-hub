@@ -345,9 +345,9 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
     <div className="space-y-5" data-testid="design-library">
       <SubPart
         title="ערכות מוכנות"
-        hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם.'}
+        // One ⓘ for the kits: what a click does, and how the folders work - two of them, one under the other, were one too many.
+        hint={'לחיצה ממלאת את החלקים שכתובים מתחת לערכה - ואחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם. כל הערכות בתיקיות לפי נושא, וגם הערכות שלכם: גוררים ערכה לתיקייה (או "העברה לתיקייה" שמתחתיה), פותחים וסוגרים תיקיות, ומחפשים לפי שם או תגית. שינוי עותק לא משנה ערכות בלוחות אחרים.'}
       >
-      <Hint>כל הערכות בתיקיות לפי נושא, וגם הערכות שלכם. גוררים ערכה לתיקייה (או "העברה לתיקייה" שמתחתיה), פותחים וסוגרים תיקיות, ומחפשים לפי שם או תגית. שינוי עותק לא משנה ערכות בלוחות אחרים.</Hint>
       {catalogError && <CatalogNotice onRetry={retry} />}
       <div className="space-y-4" data-testid="builtin-designs">
       <FolderedLibrary

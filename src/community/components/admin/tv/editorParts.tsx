@@ -4,9 +4,9 @@
  * one box's design to others, and the choices of layout and clock.
  */
 import { InfoTip } from "@/components/InfoTip";
-import { useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Columns3, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -97,16 +97,35 @@ export const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> 
 
 /* --------------------------------------------------------- small inputs -- */
 
+/**
+ * The folded layout ("כותרות מתקפלות"): every section of a tab a title in
+ * sight, opened and closed by a click - which are open, kept by the editor.
+ * Null in the other layouts: every section open as always.
+ */
+export const FoldedSections = createContext<{ open: string[]; toggle: (id: string) => void } | null>(null);
+
 export function Section({ title, hint, children, id, hidden }: { title: string; hint?: string; children: ReactNode; id?: string; hidden?: boolean }) {
+  const fold = useContext(FoldedSections);
+  const folded = Boolean(fold && id);
+  const open = !folded || fold!.open.includes(id!);
   return (
     // Hidden, not removed: what was typed in a topic stays when another is shown.
-    <section id={id} hidden={hidden} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
+    <section id={id} hidden={hidden} data-folded={folded ? (open ? "open" : "closed") : undefined}
+      className={`scroll-mt-44 rounded-xl border bg-card shadow-sm ${folded ? "p-0" : "p-4"}`}>
       {/* The explanation behind an ⓘ beside the title: a line of the page less. */}
-      <div className="flex items-center gap-1.5">
-        <h3 className="text-base font-semibold">{title}</h3>
+      <div className={`flex items-center gap-1.5 ${folded ? "px-4 py-2.5" : ""}`}>
+        {folded ? (
+          <button type="button" aria-expanded={open} onClick={() => fold!.toggle(id!)}
+            className="flex flex-1 items-center gap-1.5 text-start">
+            <ChevronDown className={`size-4 shrink-0 transition ${open ? "rotate-180" : ""}`} aria-hidden />
+            <h3 className="text-base font-semibold">{title}</h3>
+          </button>
+        ) : (
+          <h3 className="text-base font-semibold">{title}</h3>
+        )}
         {hint && <InfoTip>{hint}</InfoTip>}
       </div>
-      <div className="mt-3 space-y-3">{children}</div>
+      <div className={folded ? "space-y-3 px-4 pb-4" : "mt-3 space-y-3"} hidden={!open}>{children}</div>
     </section>
   );
 }

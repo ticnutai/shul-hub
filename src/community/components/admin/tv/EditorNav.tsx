@@ -11,10 +11,10 @@ import { useState } from "react";
 import { Search, X } from "lucide-react";
 import { DESIGN_TOPICS, showDesignTopic, useDesignTopics, type DesignTopicId } from "./designTopics";
 
-export type EditorNav = "tabs" | "menu" | "search";
+export type EditorNav = "tabs" | "menu" | "search" | "folded";
 export const EDITOR_NAV_KEY = "shul-hub.tv-editor.nav";
 export function readEditorNav(v: unknown): EditorNav {
-  return v === "menu" || v === "search" ? v : "tabs";
+  return v === "menu" || v === "search" || v === "folded" ? v : "tabs";
 }
 
 export type EditorTab = "design" | "layout" | "content" | "occasions" | "tools";

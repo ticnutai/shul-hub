@@ -25,7 +25,7 @@ import { useElementEditing } from "@/tv/elementEditing";
 import { Notice } from "./Notice";
 import { isPartsBoard } from "./PartLooks";
 
-export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [], onWearFor, topicsNav = true }: {
+export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, setPartTarget, wholeBoardOnly, setComposerScreen, setGuide, layerProps, textToolsElsewhere, todayOccasions = [], onWearFor, topicsNav = true, allTopics = false }: {
   draft: TvConfig;
   scoped: TvConfig;
   view: TvConfig;
@@ -44,6 +44,8 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   onWearFor?: (occasionId: string, kit: SavedDesign) => void;
   /** The row of topics here: only when the editor goes around by tabs (a menu or a search has them already). */
   topicsNav?: boolean;
+  /** Every topic in sight, each a title that opens (the folded layout): none hidden for another. */
+  allTopics?: boolean;
 }) {
   const { view: topicsView, topic } = useDesignTopics();
   // A board of parts: the topics dress the parts chosen on it, not the boxes of an ordinary board.
@@ -51,7 +53,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
   const editing = useElementEditing();
   const selected = editing?.selected ?? [];
   /** One topic at a time: the others stay drawn (what was typed in them stays), only hidden. */
-  const away = (id: string) => topicsView === "switch" && topic !== id;
+  const away = (id: string) => !allTopics && topicsView === "switch" && topic !== id;
   // The library's order is the gabbai's, on every board (written at once); until it is read, the board's own.
   const libraryOrder = useTvLibraryOrder();
   const library = libraryOrder.order ?? draft.library;

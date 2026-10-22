@@ -4,6 +4,11 @@
  * remembered in this browser between visits.
  */
 export const LAYOUT_KEY = "shul-hub.tv-editor.layout";
+/** Where the board stands: beside the controls (on the left, or turned round on the right), or above them. */
+export type EditorPlacement = "side" | "flip" | "top";
+export function readPlacement(v: unknown): EditorPlacement {
+  return v === "top" || v === "flip" ? v : "side";
+}
 export const SIDE_KEY = "shul-hub.tv-editor.side-share";
 export const TOP_KEY = "shul-hub.tv-editor.top-height";
 /** The board's share of the width, side by side - what the page gave it before. */
