@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.15"
   }
   public: {
     Tables: {
@@ -1349,6 +1349,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tv_library_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          data: Json
+          id: string
+          kind: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          data: Json
+          id?: string
+          kind: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          data?: Json
+          id?: string
+          kind?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tv_library_order: {
+        Row: {
+          library: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          library?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          library?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       tv_snapshots: {
         Row: {
