@@ -4,7 +4,8 @@
  * one box's design to others, and the choices of layout and clock.
  */
 import { InfoTip } from "@/components/InfoTip";
-import { useEffect, useState, type ReactNode } from "react";
+import { useContext, useEffect, useState, type ReactNode } from "react";
+import { OrganizedSectionContext } from "./organizedEditor";
 import { toast } from "sonner";
 import { ArrowDown, ArrowUp, Columns3, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -98,9 +99,10 @@ export const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> 
 /* --------------------------------------------------------- small inputs -- */
 
 export function Section({ title, hint, children, id, hidden }: { title: string; hint?: string; children: ReactNode; id?: string; hidden?: boolean }) {
+  const organizedSection = useContext(OrganizedSectionContext);
   return (
     // Hidden, not removed: what was typed in a topic stays when another is shown.
-    <section id={id} hidden={hidden} className="scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm">
+    <section id={id} hidden={hidden || Boolean(organizedSection && id && organizedSection !== id)} className={organizedSection ? "min-w-0 scroll-mt-24 py-3" : "scroll-mt-44 rounded-xl border bg-card p-4 shadow-sm"}>
       {/* The explanation behind an ⓘ beside the title: a line of the page less. */}
       <div className="flex items-center gap-1.5">
         <h3 className="text-base font-semibold">{title}</h3>

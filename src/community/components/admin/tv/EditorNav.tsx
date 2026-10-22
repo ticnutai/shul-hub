@@ -9,12 +9,13 @@
  */
 import { useState } from "react";
 import { Search, X } from "lucide-react";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DESIGN_TOPICS, showDesignTopic, useDesignTopics, type DesignTopicId } from "./designTopics";
 
-export type EditorNav = "tabs" | "menu" | "search";
+export type EditorNav = "tabs" | "menu" | "search" | "organized";
 export const EDITOR_NAV_KEY = "shul-hub.tv-editor.nav";
 export function readEditorNav(v: unknown): EditorNav {
-  return v === "menu" || v === "search" ? v : "tabs";
+  return v === "menu" || v === "search" || v === "organized" ? v : "tabs";
 }
 
 export type EditorTab = "design" | "layout" | "content" | "occasions" | "tools";
@@ -76,6 +77,41 @@ export function goToPlace(setTab: (t: EditorTab) => void, tab: EditorTab, id: st
   setTab(tab);
   if (tab === "design") return showDesignTopic(id as DesignTopicId);
   window.setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: "start" }), 80);
+}
+
+/** A single grouped selector instead of stacked tab bars and repeated topic controls. */
+export function EditorOrganized({ section, setSection, setTab, partsBoard }: {
+  section: string;
+  setSection: (id: string) => void;
+  setTab: (tab: EditorTab) => void;
+  partsBoard: boolean;
+}) {
+  const groups = editorPlaces(partsBoard);
+  return (
+    <nav aria-label="פריסה מסודרת" data-testid="editor-organized" className="min-w-0 border-b pb-3">
+      <Select value={section} onValueChange={(id) => {
+        const group = groups.find((g) => g.places.some((p) => p.id === id));
+        if (!group) return;
+        setSection(id);
+        setTab(group.tab);
+        if (group.tab === "design") showDesignTopic(id as DesignTopicId);
+      }}>
+        <SelectTrigger aria-label="נושא לעריכה" className="h-11 w-full min-w-0 text-sm">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent dir="rtl" className="max-h-80">
+          {groups.map((group) => (
+            <SelectGroup key={group.tab}>
+              <SelectLabel>{group.label}</SelectLabel>
+              {group.places.map((place) => (
+                <SelectItem key={place.id} value={place.id}>{group.label} · {place.label}</SelectItem>
+              ))}
+            </SelectGroup>
+          ))}
+        </SelectContent>
+      </Select>
+    </nav>
+  );
 }
 
 /** The place being worked on: the design topic shown, else the last one gone to on that tab. */
