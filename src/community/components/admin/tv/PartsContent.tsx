@@ -25,18 +25,16 @@ import { kitOf, resetToKit } from '@/tv/kitReset';
 import type { TvConfig } from '@/tv/config';
 import { useElementEditing } from '@/tv/elementEditing';
 import {
-  BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, liveFrames, normalizeElements, placeSection,
-  setAlternates, setContent, type BoardElement, type ElementBinding, type ElementScroll, type ElementSide,
+  BINDING_LABELS, ELEMENT_BINDINGS, liveFrames, normalizeElements, placeSection,
+  setAlternates, setContent, type BoardElement, type ElementBinding, type ElementSide,
 } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
 import { swapContent } from '@/tv/elements';
-import { DESIGN_PARTS } from '@/tv/designs';
 import { Folded, SubPart } from './Parts';
 import { Notice, itemChipClass } from './Notice';
 import { ChipRemove, HiddenShelf } from './ReadyShelf';
-import { FIT_CHOICES, HideToggle, NameForm, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, SPEED_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
+import { HideToggle, NameForm, SELECT_CLASS, SIDE_BUTTON, SIDE_CHOICES, SPEED_CHOICES, Segments, Stepper, SwitchRow, sideButtonClass } from './editorParts';
 import { saveToLibrary } from './ElementLibrary';
-import { saveKitAs } from './DesignLibrary';
 
 const SELECT = `${SELECT_CLASS} text-foreground`;
 
@@ -121,25 +119,12 @@ export function PartsContent({ config, onEdit, onManual }: {
     }
   };
 
-  /**
-   * The board as it stands now, kept as a kit of one's own: in "הערכות שלי"
-   * in the design tab, put back on this page or any other with a click, and
-   * the kit "איפוס הכול" goes back to. Everything a kit carries, its layout
-   * too - without it a kit of parts came back as an ordinary board.
-   */
-  const [kitName, setKitName] = useState<string | null>(null);
-  const saveKit = async () => {
-    if (await saveKitAs(config, onEdit, kitName ?? '', [...DESIGN_PARTS])) setKitName(null);
-  };
-
   return (
     <div className="space-y-5" data-testid="parts-content">
       <SubPart title="המסגרות שעל הלוח" hint="בכל מסגרת בוחרים מה היא מציגה - המסגרת והסגנון נשארים, והכותרת מתחלפת. ימין, אמצע או שמאל מזיזים אותה, ואם בצד הזה כבר עומדת מסגרת אחרת, השתיים מתחלפות.">
         <div className="flex flex-wrap items-center gap-2">
-          <Button type="button" size="sm" variant="outline" className="h-8" onClick={() => setKitName(kitName === null ? '' : null)} data-testid="parts-save-kit"
-            title="שומר את הלוח כמו שהוא עכשיו כערכה משלכם - תופיע ב'הערכות שלי'">
-            <Save className="size-4" aria-hidden /> שמירה כערכה
-          </Button>
+          {/* Kept as a kit of one's own: one button for it, beside the board (SaveKitButton) - not a second one here. */}
+          <span className="text-xs text-muted-foreground" data-testid="parts-save-kit-pointer">שמירת הלוח כערכה - בכפתור "שמירה כערכה" שמתחת ללוח.</span>
           {/* Not the start over of the design tab ("התחלה מחדש" - a blank board, the system's own): this kit's parts only. */}
           {kit && (
             <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => void reset()} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של „${kit.name}”. ללוח ריק או ללוח הבסיסי של המערכת - "התחלה מחדש" בלשונית עיצוב.`} data-testid="parts-reset">
@@ -147,18 +132,6 @@ export function PartsContent({ config, onEdit, onManual }: {
             </Button>
           )}
         </div>
-        {kitName !== null && (
-          <NameForm
-            testId="parts-kit-form"
-            label="שם הערכה החדשה"
-            value={kitName}
-            placeholder="למשל: אבן ירושלים - ארבע קשתות"
-            onChange={setKitName}
-            onSave={() => void saveKit()}
-            onCancel={() => setKitName(null)}
-            hint="נשמר הכול: המסגרות, מה שהן מציגות, המיקום, הצבעים והרקע. עם אותו שם - שואלים, ואז מחליפים את הערכה הקודמת."
-          />
-        )}
         {/* Several at once: tick, then show or hide them all. */}
         <div className="flex flex-wrap items-center gap-2 rounded-md bg-muted/40 px-2 py-1.5 text-xs" role="group" aria-label="בחירה מרובה" data-testid="parts-bulk">
           <label className="flex items-center gap-1.5">
@@ -267,13 +240,7 @@ export function PartsContent({ config, onEdit, onManual }: {
               </select>
             </label>
           )}
-          {SCROLLABLE.includes(f.binding) && (
-            <div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground" title="מה קורה כשהתוכן ארוך מהמסגרת. תוכן שנכנס לא זז.">
-              כשהתוכן לא נכנס
-              <Segments label={`כשלא נכנס - ${f.title}`} value={f.e.scroll ?? ''}
-                onChange={v => patch(f, { scroll: (v || undefined) as ElementScroll | undefined }, 'scroll')} options={FIT_CHOICES(f.binding)} />
-            </div>
-          )}
+          {/* What happens when the content does not fit: one place for it, the panel by the board ("התוכן") - not a second here. */}
         </div>
         <Folded label={`עוד אפשרויות${more ? ` (${more})` : ''}`} testId="frame-more">
           <div className="space-y-3 text-xs">

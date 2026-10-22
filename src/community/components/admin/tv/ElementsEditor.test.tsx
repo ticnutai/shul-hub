@@ -9,11 +9,13 @@ import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DEFAULT_TV_CONFIG, type TvConfig } from "@/tv/config";
-import { BINDING_LABELS, ELEMENT_BINDINGS, boundsOf, liveFrames, normalizeElements, sectionOf, sideOf } from "@/tv/elements";
+import { BINDING_LABELS, ELEMENT_BINDINGS, boundsOf, liveBox, liveFrames, normalizeElements, sectionOf, sideOf } from "@/tv/elements";
+import { LiveListTools, liveParts } from "./LiveListTools";
 import { PREMIUM_DESIGNS } from "@/tv/premiumDesigns";
 import { ElementEditingProvider } from "./ElementEditingProvider";
 import { ElementsEditor } from "./ElementsEditor";
 import { PartsContent } from "./PartsContent";
+import { KitSaveForm } from "./DesignLibrary";
 import { kitOf } from "@/tv/kitReset";
 import { Toaster } from "sonner";
 
@@ -82,7 +84,7 @@ describe("ElementsEditor - sides and live content", () => {
   });
 });
 
-function PartsHarness({ start, layoutOnly = false }: { start: TvConfig; layoutOnly?: boolean }) {
+function PartsHarness({ start, layoutOnly = false, withKitForm = false }: { start: TvConfig; layoutOnly?: boolean; withKitForm?: boolean }) {
   const [config, setConfig] = useState(start);
   latest = config;
   return (
@@ -90,6 +92,8 @@ function PartsHarness({ start, layoutOnly = false }: { start: TvConfig; layoutOn
     <QueryClientProvider client={queryClient}><ElementEditingProvider>
       <PartsContent config={config} onEdit={(_key, update) => setConfig((c) => update(c))} onManual={() => {}} />
       {!layoutOnly && <ElementsEditor config={config} onEdit={(_key, update) => setConfig((c) => update(c))} />}
+      {/* Saving the board as a kit: the one form, of the button beside the board (SaveKitButton). */}
+      {withKitForm && <KitSaveForm config={config} onEdit={(_key, update) => setConfig((c) => update(c))} onDone={() => {}} />}
     </ElementEditingProvider></QueryClientProvider>
   );
 }
@@ -160,11 +164,19 @@ describe("PartsContent - the layout tab of a board of parts", () => {
 });
 
 describe("a long notice: shrunk, or the moving curtain", () => {
+  // One place for it: the panel by the board, "התוכן" (LiveListTools) - the list of frames no longer asks it too.
+  function ContentHarness({ start }: { start: TvConfig }) {
+    const [config, setConfig] = useState(start);
+    latest = config;
+    return <LiveListTools parts={liveParts(config.elements)} config={config}
+      onPatch={(id, patch) => setConfig((c) => ({ ...c, elements: c.elements.map((e) => (e.id === id ? { ...e, ...patch } : e)) }))} />;
+  }
   it("is chosen per frame, kept through saving, and offered only where content can move", () => {
-    render(<PartsHarness start={board()} />);
-    fireEvent.change(screen.getByRole("combobox", { name: "איזה תוכן להוסיף" }), { target: { value: "announcements" } });
-    fireEvent.click(screen.getByRole("button", { name: "הוספה" }));
-    const fit = screen.getByRole("radiogroup", { name: "כשלא נכנס - הודעות" });
+    const start = board();
+    start.elements = [...start.elements, ...liveBox("announcements")];
+    render(<ContentHarness start={start} />);
+    expect(screen.queryByRole("radiogroup", { name: /שורות בעמוד|כשלא נכנס - / })).toBeNull();
+    const fit = screen.getByRole("radiogroup", { name: `כשהתוכן לא נכנס ב${BINDING_LABELS.announcements}` });
     const choice = (name: string) => within(fit).getByRole("radio", { name });
     expect(choice("בלי גלילה").getAttribute("aria-checked")).toBe("true");
     // One name for not moving, wherever it is asked; what it does here is in its hint.
@@ -174,12 +186,15 @@ describe("a long notice: shrunk, or the moving curtain", () => {
     const notice = latest.elements.find((e) => e.binding === "announcements")!;
     expect(notice.scroll).toBe("loop");
     expect(normalizeElements(latest.elements).find((e) => e.id === notice.id)!.scroll).toBe("loop");
-    expect(screen.getByRole("radiogroup", { name: "מהירות הגלילה" })).toBeTruthy();
     // A list pages by default; a clock has nothing to move.
-    expect(within(screen.getByRole("radiogroup", { name: "כשלא נכנס - שיעורי תורה" })).getByRole("radio", { name: "בלי גלילה" }).getAttribute("title")).toBe("הרשימה מתחלקת לעמודים שמתחלפים");
-    expect(screen.queryByRole("radiogroup", { name: "כשלא נכנס - שעון מחוגים" })).toBeNull();
+    expect(within(screen.getByRole("radiogroup", { name: `כשהתוכן לא נכנס ב${BINDING_LABELS.lessons}` })).getByRole("radio", { name: "בלי גלילה" }).getAttribute("title")).toBe("הרשימה מתחלקת לעמודים שמתחלפים");
+    expect(screen.queryByRole("radiogroup", { name: new RegExp(`לא נכנס ב${BINDING_LABELS.analog}`) })).toBeNull();
     fireEvent.click(choice("בלי גלילה"));
     expect(latest.elements.find((e) => e.id === notice.id)!.scroll).toBeUndefined();
+  });
+  it("is not asked a second time in the list of frames", () => {
+    render(<PartsHarness start={board()} />);
+    expect(screen.queryByRole("radiogroup", { name: /^כשלא נכנס - / })).toBeNull();
   });
 });
 
@@ -362,11 +377,13 @@ describe("adding content: where it goes, in the kit's look", () => {
 describe("the board kept as a kit of one's own", () => {
   it("is saved whole - its layout too - and shows among one's kits; the same name replaces it", async () => {
     const start = { ...structuredClone(DEFAULT_TV_CONFIG), ...structuredClone(PREMIUM_DESIGNS[0].values) } as TvConfig;
-    render(<PartsHarness start={start} />);
+    render(<PartsHarness start={start} withKitForm />);
+    // The list of frames has no save of its own: it points to the one beside the board.
+    expect(screen.queryByTestId("parts-save-kit")).toBeNull();
+    expect(screen.getByTestId("parts-save-kit-pointer")).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox", { name: "מה מציגה זמני תפילות" }), { target: { value: "zmanim" } });
-    fireEvent.click(screen.getByTestId("parts-save-kit"));
-    fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה החדשה" }), { target: { value: "ארבע קשתות" } });
-    fireEvent.click(screen.getByRole("button", { name: /^שמירה$/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה" }), { target: { value: "ארבע קשתות" } });
+    fireEvent.click(screen.getByRole("button", { name: "שמירת הערכה" }));
     await waitFor(() => expect(latest.designs).toHaveLength(1));
     const kit = latest.designs[0];
     expect(kit.name).toBe("ארבע קשתות");
@@ -378,9 +395,8 @@ describe("the board kept as a kit of one's own", () => {
     // Saved again under the same name, after asking: replaced, not doubled.
     const ask = vi.spyOn(window, "confirm").mockReturnValue(true);
     fireEvent.click(screen.getByRole("button", { name: "הסתרת שיעורי תורה" }));
-    fireEvent.click(screen.getByTestId("parts-save-kit"));
-    fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה החדשה" }), { target: { value: "ארבע קשתות" } });
-    fireEvent.click(screen.getByRole("button", { name: /^שמירה$/ }));
+    fireEvent.change(screen.getByRole("textbox", { name: "שם הערכה" }), { target: { value: "ארבע קשתות" } });
+    fireEvent.click(screen.getByRole("button", { name: "שמירת הערכה" }));
     await waitFor(() => expect(ask).toHaveBeenCalled());
     await waitFor(() => expect(latest.designs[0].values.elements!.some((e) => e.hidden)).toBe(true));
     expect(latest.designs).toHaveLength(1);

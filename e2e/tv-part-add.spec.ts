@@ -52,9 +52,11 @@ test("content added where it is wanted, and the board kept as a kit", async ({ p
   expect(middle.width).toBeGreaterThan(frame.width * 0.3);
 
   // Kept as a kit of one's own.
-  await page.getByTestId("parts-save-kit").click();
-  await page.getByLabel("שם הערכה החדשה").fill("אבן ירושלים - שלי");
-  await page.getByTestId("parts-kit-form").getByRole("button", { name: "שמירה", exact: true }).click();
+  // One button for it, beside the board; the list of frames points there.
+  await expect(page.getByTestId("parts-save-kit-pointer")).toBeVisible();
+  await page.getByTestId("toolbar-save-kit").click();
+  await page.getByTestId("toolbar-kit-form").getByLabel("שם הערכה").fill("אבן ירושלים - שלי");
+  await page.getByTestId("toolbar-kit-form").getByRole("button", { name: "שמירת הערכה", exact: true }).click();
   await page.getByRole("tab", { name: "עיצוב" }).click();
   const mine = page.getByText("אבן ירושלים - שלי", { exact: true });
   await mine.scrollIntoViewIfNeeded();
