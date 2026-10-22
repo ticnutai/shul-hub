@@ -6,6 +6,7 @@
  * label follows the hand, saying what goes where - or by its "העברה לתיקייה"
  * menu, the way on a phone; several chosen go together.
  */
+import { InfoTip } from "@/components/InfoTip";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronLeft, FolderPlus, Pencil, Search, Star, Tag, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -269,7 +270,7 @@ export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra,
         {shownOpen && (
           list.length
             ? <div className={`${PART_GRID} px-2 pb-2`}>{list.map((i) => itemCard(i, folder.id))}</div>
-            : <p className="px-3 pb-2 text-[11px] text-muted-foreground">{folder.id === FAVORITES ? "לוחצים על הכוכב שליד ערכה כדי שתופיע כאן." : `התיקייה ריקה - גוררים לכאן ${what.one}, או "העברה לתיקייה" שמתחתיה.`}</p>
+            : <p className="flex items-center gap-1 px-3 pb-2 text-[11px] text-muted-foreground">{folder.id === FAVORITES ? "אין עדיין מועדפים" : "התיקייה ריקה"}<InfoTip>{folder.id === FAVORITES ? "לוחצים על הכוכב שליד ערכה כדי שתופיע כאן." : `גוררים לכאן ${what.one}, או "העברה לתיקייה" שמתחתיה.`}</InfoTip></p>
         )}
       </section>
     );

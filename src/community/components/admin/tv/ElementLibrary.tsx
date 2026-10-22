@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { Hint } from "@/components/InfoTip";
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
 import { elementId, exportElementSet, importElementSet, MAX_ELEMENTS, MAX_ELEMENT_SETS, newElement, normalizeElementLibrary } from '@/tv/elements';
@@ -191,7 +192,7 @@ export function ElementLibrary({ config, selected, onEdit, onSelect }: {
             {chosen.length ? `נבחרו ${chosen.length} חלקים` : 'בוחרים קונטיינר, תמונה או חלק - בלוח או ברשימה למעלה. אותו כפתור נמצא גם בחלון שנפתח ליד הלוח.'}
           </span>
         </div>
-        {config.elementLibrary.length > 0 && <p className="text-[11px] text-muted-foreground">החלקים ששמרתם ({config.elementLibrary.length}) נמצאים למעלה, בתיקייה "החלקים שלי" או בתיקייה שהעברתם אליה.</p>}
+        {config.elementLibrary.length > 0 && <Hint>החלקים ששמרתם ({config.elementLibrary.length}) נמצאים למעלה, בתיקייה "החלקים שלי" או בתיקייה שהעברתם אליה.</Hint>}
       </SubPart>
     </div>
   );

@@ -1,4 +1,4 @@
-import { Hint } from "@/components/InfoTip";
+import { Hint, InfoTip } from "@/components/InfoTip";
 import {
   ArrowDown,
   ArrowLeft,
@@ -111,11 +111,11 @@ export function TvEditInspector({
           onClose={() => onSelect(null)}
         />
       ) : (
-        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Hint>
           <MousePointerClick className="size-4 shrink-0" />
           לחצו על כל טקסט או אזור בלוח כדי לערוך, להסתיר או להזיז אותו. זה עובד בכל אחד מהמכשירים
           שבתפריט המכשיר.
-        </p>
+        </Hint>
       )}
 
       {/* What was taken off the board: on the one shelf every list keeps its hidden ones on. */}
@@ -236,10 +236,9 @@ function PrayerPanelElement({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        כל לוח ה{category ? `״${category.name}״` : "תפילות"} - {rows} מניינים. הסתרה מורידה את
-        הלוח כולו מהמסך, והלוחות שנשארו מתרחבים למלא את מקומו. באתר עצמו שום דבר לא משתנה, ואפשר
-        להחזיר בכל רגע.
+      <p className="flex items-center gap-1 text-xs text-muted-foreground">
+        כל לוח ה{category ? `״${category.name}״` : "תפילות"} - {rows} מניינים.
+        <InfoTip>הסתרה מורידה את הלוח כולו מהמסך, והלוחות שנשארו מתרחבים למלא את מקומו. באתר עצמו שום דבר לא משתנה, ואפשר להחזיר בכל רגע.</InfoTip>
       </p>
       <Button
         type="button"
@@ -670,11 +669,11 @@ export function ElementLook({
               ]}
             />
           </div>
-          <p className="max-w-56 text-xs text-muted-foreground">
+          <Hint>
             גררו את הכפתור שבמרכז חצי ההזזה (רחוק יותר = מהר יותר), לחצו על החצים, השתמשו בחצי
             המקלדת (Shift = צעד גדול) או גררו את החלק עצמו בלוח. ההזזה באחוזי מסך, כך שהיא נכונה
             בכל גודל מסך.
-          </p>
+          </Hint>
         </div>
       </div>
       )}
@@ -851,7 +850,7 @@ function BoardElement({
             onChange={(e: { target: { value: string } }) => change(e.target.value)}
             className={spec.multiline ? "min-h-20" : undefined}
           />
-          <p className="text-xs text-muted-foreground">
+          <Hint>
             {spec.hint
               ? spec.hint
               : spec.siteField
@@ -859,7 +858,7 @@ function BoardElement({
               : isTicker
               ? "שורה שרצה בתחתית המסך. (התנועה הרציפה מעמיסה על מעבד הקופסה.)"
               : "משנה את הנוסח בלוח בלבד."}
-          </p>
+          </Hint>
         </div>
       )}
       <div className="flex flex-wrap gap-2">
@@ -980,9 +979,9 @@ function RecordElement({
             }
             className={multiline ? "min-h-28" : undefined}
           />
-          <p className="text-xs text-muted-foreground">
+          <Hint>
             זה אותו {KIND_LABELS[kind]} שמופיע באתר: השינוי יחול גם שם, בלחיצה על "שמור ושדר".
-          </p>
+          </Hint>
         </div>
       )}
       <div className="flex flex-wrap gap-2">
@@ -1026,9 +1025,9 @@ function RecordElement({
         )}
       </div>
       {kind === "minyan" && (
-        <p className="text-xs text-muted-foreground">
+        <Hint>
           שעות המניין נקבעות בלשונית "מניינים" (שעה קבועה או לפי זמני היום).
-        </p>
+        </Hint>
       )}
     </div>
   );

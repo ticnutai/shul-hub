@@ -167,7 +167,7 @@ export function AlertsSettings({ config, countdown, edit, simulation, screens = 
               <Minutes label="1. סימון הזמן ברשימה" value={mins.stages.highlight} onChange={(v) => setStage("highlight", v)} hint="דקות לפני: הזמן מודגש בזמני היום" />
               <Minutes label="2. ספירה במקום התפילות" value={mins.stages.panel} onChange={(v) => setStage("panel", v)} hint="דקות לפני: ספירה לאחור במקום רשימת התפילות" />
               <Minutes label="3. ספירה על כל הלוח" value={mins.stages.board} onChange={(v) => setStage("board", v)} hint="דקות לפני: כרטיס גדול על הלוח, עד שהזמן מגיע" />
-              <p className="text-xs text-muted-foreground">0 מדלג על השלב. השלבים תמיד בסדר: הסימון קודם, אחר כך הספירה במקום התפילות, ובסוף הספירה על כל הלוח.</p>
+              <Hint>0 מדלג על השלב. השלבים תמיד בסדר: הסימון קודם, אחר כך הספירה במקום התפילות, ובסוף הספירה על כל הלוח.</Hint>
             </div>
           ) : (
             <LeadMinutes value={mins.leadMinutes} onChange={(leads) => setMins("leads", { leadMinutes: leads })} />
@@ -241,7 +241,7 @@ export function AlertsSettings({ config, countdown, edit, simulation, screens = 
           checked={countdown}
           onChange={(on) => edit("cd-on", (c) => ({ ...c, countdown: { ...c.countdown, enabled: on } }))}
         />
-        <p className="text-xs text-muted-foreground">פועלת בפריסת "לוח מלא". זו לא תזכורת לסוף זמן - רק ספירה למניין הבא, בשורה קטנה.</p>
+        <Hint>פועלת בפריסת "לוח מלא". זו לא תזכורת לסוף זמן - רק ספירה למניין הבא, בשורה קטנה.</Hint>
       </section>
     </div>
   );

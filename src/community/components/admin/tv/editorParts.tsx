@@ -760,12 +760,14 @@ export function SwitchRow({
   id?: string;
 }) {
   return (
-    <label className={`flex items-center gap-2 text-sm ${disabled ? "" : "cursor-pointer"}`} title={hint}>
+    <label className={`flex items-center gap-2 text-sm ${disabled ? "" : "cursor-pointer"}`}>
       <Switch id={id} checked={checked} onCheckedChange={onChange} aria-label={ariaLabel} disabled={disabled} />
       <span className="min-w-0">
         {label}
         {note && <span className="block text-[11px] leading-tight text-muted-foreground">{note}</span>}
       </span>
+      {/* What it does, behind an ⓘ - a hover title is never seen on a phone. */}
+      {hint && <InfoTip>{hint}</InfoTip>}
     </label>
   );
 }
@@ -910,7 +912,7 @@ export function NameForm({
       <Button type="button" size="sm" variant="ghost" className="h-8" onClick={onCancel}>
         ביטול
       </Button>
-      {hint && <p className="w-full text-[11px] text-muted-foreground">{hint}</p>}
+      {hint && <InfoTip>{hint}</InfoTip>}
     </form>
   );
 }

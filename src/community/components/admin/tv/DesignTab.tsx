@@ -2,7 +2,7 @@
  * The design tab: kits, background, boxes, frames, text and free parts - for the whole board or one box chosen at its top.
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
  */
-import { Hint } from "@/components/InfoTip";
+import { Hint, InfoTip } from "@/components/InfoTip";
 import type { Dispatch } from "react";
 import { toast } from "sonner";
 import type { TvConfig } from "@/tv/config";
@@ -76,14 +76,13 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         <EditorViewBar />
         {parts ? (
           // Choosing all of one kind is the list of parts' own (one row of it, not one here as well): a way there.
-          <p className="text-xs" data-testid="parts-scope-kinds">
-            <span className="font-semibold">הלוח בנוי מחלקים:</span> התיבות, המסגרות והטקסט כאן חלים על החלקים שבוחרים בלוח
-            {selected.length ? ` (נבחרו ${selected.length})` : ""}, או על כל החלקים מסוג אחד -{" "}
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" data-testid="parts-scope-kinds">
+            <span className="font-semibold">חל על: {selected.length ? `${selected.length} שנבחרו בלוח` : "מה שנבחר בלוח"}</span>
             <button type="button" className="font-medium text-primary underline underline-offset-2"
               onClick={() => { showDesignTopic("design-elements"); window.setTimeout(() => document.querySelector('[data-testid="elements-by-kind"]')?.scrollIntoView({ block: "center" }), 120); }}>
               בחירה לפי סוג
             </button>
-            .
+            <InfoTip>הלוח בנוי מחלקים: התיבות, המסגרות והטקסט כאן חלים על החלקים שבוחרים בלוח, או על כל החלקים מסוג אחד ("בחירה לפי סוג").</InfoTip>
           </p>
         ) : (<>
         <label className="flex flex-wrap items-center gap-2 text-sm">

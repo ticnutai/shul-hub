@@ -1,3 +1,4 @@
+import { InfoTip } from "@/components/InfoTip";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, RotateCcw } from "lucide-react";
@@ -50,7 +51,7 @@ export function TvVersions({
   if (!list.length)
     return (
       <p className="text-sm text-muted-foreground" data-testid="tv-versions">
-        עוד אין גרסאות קודמות. מהשמירה הבאה, כל "שמור ושדר" ישמור כאן את מה שהיה לפניו.
+        עוד אין גרסאות קודמות. <InfoTip>מהשמירה הבאה, כל "שמור ושדר" ישמור כאן את מה שהיה לפניו.</InfoTip>
       </p>
     );
 

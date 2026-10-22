@@ -124,7 +124,7 @@ export function PartsContent({ config, onEdit, onManual }: {
       <SubPart title="המסגרות שעל הלוח" hint="בכל מסגרת בוחרים מה היא מציגה - המסגרת והסגנון נשארים, והכותרת מתחלפת. ימין, אמצע או שמאל מזיזים אותה, ואם בצד הזה כבר עומדת מסגרת אחרת, השתיים מתחלפות.">
         <div className="flex flex-wrap items-center gap-2">
           {/* Kept as a kit of one's own: one button for it, beside the board (SaveKitButton) - not a second one here. */}
-          <span className="text-xs text-muted-foreground" data-testid="parts-save-kit-pointer">שמירת הלוח כערכה - בכפתור "שמירה כערכה" שמתחת ללוח.</span>
+          <span className="text-xs text-muted-foreground" data-testid="parts-save-kit-pointer">שמירת הלוח כערכה - בכפתור "ערכה חדשה" שמתחת ללוח.</span>
           {/* Not the start over of the design tab ("התחלה מחדש" - a blank board, the system's own): this kit's parts only. */}
           {kit && (
             <Button type="button" size="sm" variant="ghost" className="h-8" onClick={() => void reset()} title={`כל החלקים חוזרים למקום, לגודל ולתוכן של „${kit.name}”. ללוח ריק או ללוח הבסיסי של המערכת - "התחלה מחדש" בלשונית עיצוב.`} data-testid="parts-reset">

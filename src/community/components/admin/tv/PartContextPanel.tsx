@@ -566,7 +566,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
 
       {tab === "shape" && (
         <div className="space-y-1" data-testid="ctx-shape">
-          <p className="text-xs text-muted-foreground">הצורה של הקונטיינר כולו: הלוח, המסגרת והטקסט משתנים יחד.</p>
+          <Hint>הצורה של הקונטיינר כולו: הלוח, המסגרת והטקסט משתנים יחד.</Hint>
           <div className="flex flex-wrap gap-1.5">
             {PART_SHAPES.map((s) => (
               <button key={s.id} type="button" aria-label={`צורה: ${s.name}`} title={s.name}

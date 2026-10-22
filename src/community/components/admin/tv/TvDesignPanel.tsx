@@ -1078,7 +1078,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           />
         </label>
         <Button type="button" variant={shabbatPreview ? "default" : "outline"} size="sm" aria-pressed={shabbatPreview} aria-label="תצוגת מסך שבת" title="תצוגת מסך שבת" onClick={toggleShabbatPreview}>
-          🕯️ תצוגת שבת
+          🕯️ שבת
         </Button>
         {simulatedNow && (
           <Button type="button" variant="ghost" size="sm" onClick={() => previewAt(null)}>
@@ -1474,8 +1474,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       <SaveKitButton config={view} onEdit={edit} />
       <DropdownMenu dir="rtl" modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant={fullscreen || focus || beforeMax || bare ? "default" : "outline"} size="sm" data-testid="view-menu">
-            <Scaling className="size-4" aria-hidden /> פריסה ותצוגה <ChevronDown className="size-3.5" aria-hidden />
+          <Button type="button" variant={fullscreen || focus || beforeMax || bare ? "default" : "outline"} size="sm" data-testid="view-menu" aria-label="פריסה ותצוגה">
+            <Scaling className="size-4" aria-hidden /> פריסה <ChevronDown className="size-3.5" aria-hidden />
           </Button>
         </DropdownMenuTrigger>
         {/* In full screen only the board's column is on the screen: the menu opens inside it, or it would not be seen. */}
@@ -1664,13 +1664,14 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {/* The texts' letters are in the chosen part's panel ("טקסט"), not in a bar here as well. */}
       {/* Under the board, one row that fills as it wraps: editing, the day shown, then the screens, the layout and the
           windows - no group pushed to the far side leaving a hole, the two "separate window" buttons one menu. */}
-      <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="preview-bottom-row">
+      {/* data-fill-row: every row of buttons filled to its end (index.css), on a phone as on a wide screen - no row left half empty. */}
+      <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="preview-bottom-row" data-fill-row>
         {previewActions}
         <span id={PREVIEW_TOOLBAR_SLOT} className="contents" />
         <DropdownMenu dir="rtl" modal={false}>
           <DropdownMenuTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <ExternalLink className="size-4" aria-hidden /> חלון נפרד <ChevronDown className="size-3.5" aria-hidden />
+            <Button type="button" variant="outline" size="sm" aria-label="חלון נפרד">
+              <ExternalLink className="size-4" aria-hidden /> חלון <ChevronDown className="size-3.5" aria-hidden />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[16rem]">

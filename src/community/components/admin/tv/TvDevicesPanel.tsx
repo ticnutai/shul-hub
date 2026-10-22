@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Hint } from "@/components/InfoTip";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -145,9 +146,9 @@ function PairCard() {
       <h3 className="flex items-center gap-2 text-base font-semibold">
         <Link2 className="size-4" /> צימוד מסך חדש
       </h3>
-      <p className="mt-0.5 text-xs text-muted-foreground">
+      <Hint className="mt-0.5">
         בטלוויזיה מופיע בפינה קוד בן 6 ספרות. הקוד מבטיח שרק מסך שאתם רואים מולכם יתחבר למערכת.
-      </p>
+      </Hint>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <div dir="ltr">
           <InputOTP maxLength={6} value={code} onChange={setCode} inputMode="numeric" pattern="^[0-9]*$" aria-label="קוד צימוד">

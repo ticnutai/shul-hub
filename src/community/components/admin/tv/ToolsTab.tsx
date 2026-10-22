@@ -2,6 +2,7 @@
  * The tools tab: earlier versions, import and export, and import from Figma.
  * Part of the board editor (TvDesignPanel), which owns the draft and passes in what this tab needs.
  */
+import { Hint } from "@/components/InfoTip";
 import type { ComponentProps, Dispatch } from "react";
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -71,7 +72,7 @@ export function ToolsTab({ draft, view, edit, dispatch, shownVersion, setShownVe
           </Folded>
           <div className="space-y-2 rounded-xl border p-4" data-testid="figma-section">
             <h3 className="font-semibold">צבעים מפיגמה</h3>
-            <p className="text-sm text-muted-foreground">קובץ הצבעים שמייצאים מפיגמה (תוכנת העיצוב) הופך לצבעי הבסיס של הלוח. בלי מפתח גישה ובלי חשבון - הקובץ נקרא כאן בדפדפן.</p>
+            <Hint>קובץ הצבעים שמייצאים מפיגמה (תוכנת העיצוב) הופך לצבעי הבסיס של הלוח. בלי מפתח גישה ובלי חשבון - הקובץ נקרא כאן בדפדפן.</Hint>
             <FigmaImport config={view} onEdit={edit} handoff={figmaHandoff} />
           </div>
         </Section>

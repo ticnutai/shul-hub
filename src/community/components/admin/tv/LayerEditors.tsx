@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Hint } from "@/components/InfoTip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -239,7 +240,7 @@ export function BackgroundLayer({
             {picture && shown ? (
               <img src={shown} alt="" className="h-16 w-28 rounded object-cover" />
             ) : (
-              <p className="text-xs text-muted-foreground">בחרו תמונה בגלריה למעלה, או העלו תמונה משלכם - היא נשמרת בגלריה.</p>
+              <Hint>בחרו תמונה בגלריה למעלה, או העלו תמונה משלכם - היא נשמרת בגלריה.</Hint>
             )}
             {onBoard && picture && <PictureLayer saved={saved} onEdit={onEdit} />}
           </div>

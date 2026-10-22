@@ -9,7 +9,7 @@ import { ofParts } from '@/tv/designs';
 import { FolderedLibrary, type FixedFolder, type LibraryItem } from './FolderedLibrary';
 import { useState, type ReactNode } from "react";
 import { SubPart } from "./Parts";
-import { BookmarkPlus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 import { confirmAction } from "@/components/ConfirmDialog";
@@ -137,7 +137,7 @@ export function SaveKitButton({ config, onEdit }: { config: TvConfig; onEdit: Ed
           aria-label="שמירה כערכה חדשה"
           title={full ? `הגעתם למספר הערכות המרבי (${MAX_DESIGNS})` : 'שומר את מה שעל הלוח עכשיו כערכה משלכם - תופיע ב"הערכות שלי"'}
         >
-          <BookmarkPlus className="size-4" aria-hidden /> שמירה כערכה
+          <Plus className="size-4" aria-hidden /> ערכה חדשה
         </Button>
       </PopoverTrigger>
       <PopoverContent dir="rtl" align="end" className="w-96 max-w-[calc(100vw-1rem)] space-y-2 p-3 text-right">
@@ -393,10 +393,11 @@ export function DesignLibrary({ config, onEdit, todayTopics = [], onWearFor }: {
         />
       ) : (
         // Saving what is on the board as a kit is one button, beside the board (SaveKitButton) - not a second one here.
-        <p className="text-xs text-muted-foreground" data-testid="kit-save-where">
-          לשמירת מה שעל הלוח כערכה חדשה - הכפתור "שמירה כערכה חדשה" ליד הלוח, בשורת הכפתורים שמתחת לתצוגה.
-          {designs.length >= MAX_DESIGNS ? ` הגעתם למספר הערכות המרבי (${MAX_DESIGNS}).` : ""}
-        </p>
+        <>
+          <Hint data-testid="kit-save-where">לשמירת מה שעל הלוח כערכה - הכפתור "ערכה חדשה" בשורת הכפתורים שמתחת ללוח.</Hint>
+          {/* A state, not an explanation: in sight. */}
+          {designs.length >= MAX_DESIGNS && <p className="text-xs text-muted-foreground">הגעתם למספר הערכות המרבי ({MAX_DESIGNS}).</p>}
+        </>
       )}
       </SubPart>
     </div>

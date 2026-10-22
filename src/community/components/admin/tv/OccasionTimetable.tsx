@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Hint } from "@/components/InfoTip";
 import { useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { ChevronLeft, Clock, Copy, Plus } from "lucide-react";
@@ -159,11 +160,11 @@ export function TimetableSection({ def }: { def: SpecialDayDef }) {
       <h3 className="flex items-center gap-2 font-medium">
         זמני תפילה <SavedNowTag title='זמני התפילה של המועד נשמרים מיד, בלי "שמור ושדר" - הם של האתר כולו' />
       </h3>
-      <p className="text-xs text-muted-foreground">
+      <Hint>
         זמני תפילות משלו: ביום עצמו הם מחליפים באתר ובלוח את זמני ימות החול או השבת. התאריכים מחושבים מהלוח העברי, כך שמה
         שמגדירים השנה חוזר בשנה הבאה.
         {def.national && " ימים לאומיים לא מוצגים באתר ובלוח; אפשר להכין זמנים מראש."}
-      </p>
+      </Hint>
       {t.cat ? (
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-2 text-sm">

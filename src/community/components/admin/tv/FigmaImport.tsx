@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Hint } from "@/components/InfoTip";
 import { Palette, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -152,11 +153,11 @@ export function FigmaImport({
             e.target.value = "";
           }}
         />
-        <p className="text-xs leading-relaxed text-muted-foreground">
+        <Hint>
           בפיגמה: פותחים את לוח המשתנים (בתפריט של פיגמה, באנגלית, הוא נקרא "משתנים" - <span dir="ltr">Variables</span>) ובוחרים
           ייצוא לקובץ נתונים (סיומת json), או משתמשים בתוסף חינמי לייצוא צבעים. אין צורך בחשבון, במפתח
           גישה או בחיבור לאינטרנט - הקובץ נקרא כאן בדפדפן.
-        </p>
+        </Hint>
       </div>
     );
   }
@@ -219,10 +220,10 @@ export function FigmaImport({
         ))}
       </div>
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
+      <Hint>
         הצבעים כבר מוצגים בתצוגה המקדימה ובחלון החי. תפקיד שלא נבחר לו צבע לוקח את צבע הבסיס
         הרגיל. בסיום: <span className="font-medium">שמור ושדר</span>.
-      </p>
+      </Hint>
     </div>
   );
 }

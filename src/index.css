@@ -1168,3 +1168,15 @@ html.custom button.rounded-md {
   font-display: block;
   size-adjust: 90.8%;
 }
+
+/*
+ * A row of buttons that wraps, each row filled to its end: the buttons share
+ * the room left over, so no row stands half empty (the editor's row under the
+ * board). Through display: contents wrappers, to the buttons themselves.
+ */
+[data-fill-row] > :not(.contents),
+[data-fill-row] > .contents > :not(.contents),
+[data-fill-row] > .contents > .contents > :not(.contents) {
+  flex: 1 1 auto;
+  justify-content: center;
+}

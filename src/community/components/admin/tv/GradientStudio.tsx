@@ -116,6 +116,7 @@ export function GradientStudio({
           style={{ backgroundImage: valid ? built : undefined }}
         />
         {previewing && (
+          // A state, not an explanation: in sight while it lasts.
           <p className="text-[11px] text-muted-foreground">
             כך זה נראה על הלוח עכשיו. עוד לא נשמר - ״{applyLabel}״ מקבע, ויציאה מכאן מחזירה את
             הקודם.
@@ -273,10 +274,10 @@ export function TransferPanel({
 
       <div className="space-y-1.5">
         <div className="text-xs font-medium text-muted-foreground">ייבוא קובץ ישן</div>
-        <p className="text-xs text-muted-foreground">
+        <Hint>
           קובץ מעורך לוחות הברית מביא גם את מבנה הלוח: קשת או פינות, רקע, מרווחים, גודל טקסט ושם
           בית הכנסת. הכול נכנס לטיוטה עד "שמור ושדר".
-        </p>
+        </Hint>
         <div className="flex flex-wrap items-center gap-2">
           <FileButton
             label="ייבוא קובץ ישן"

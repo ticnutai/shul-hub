@@ -13,7 +13,7 @@
  * frame is deleted in one place, its tile's ✕ in "החלקים והתיבות שלי"
  * (ElementLibrary), not here as well.
  */
-import { Hint } from "@/components/InfoTip";
+import { Hint, InfoTip } from "@/components/InfoTip";
 import { useState } from 'react';
 import { toast } from 'sonner';
 
@@ -105,9 +105,9 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults }
         )}
       </select>
       {box ? (
-        <p className="text-xs text-muted-foreground">
+        <Hint>
           שמרתם אותה: נוספת כמו שנשמרה, באמצע הלוח. מחיקה - ב-✕ שלה ב"החלקים והתיבות שלי" (לשונית עיצוב, חלקים חופשיים).
-        </p>
+        </Hint>
       ) : (
         <>
           <div className="space-y-1.5 text-sm" role="radiogroup" aria-label="איפה להוסיף">
@@ -143,7 +143,7 @@ export function AddContent({ elements, library, defaults, onCommit, onDefaults }
       )}
       <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" className="h-8" onClick={add} disabled={!box && where !== 'new' && !frames.length}>הוספה</Button>
-        <span className="text-[11px] text-muted-foreground">בלי רקע מאחורי הטקסט. צבע, גופן ורקע - משנים אחר כך, או קובעים למטה לכל תוכן חדש.</span>
+        <InfoTip>בלי רקע מאחורי הטקסט. צבע, גופן ורקע - משנים אחר כך, או קובעים למטה לכל תוכן חדש.</InfoTip>
       </div>
 
       {/* Once, for everything added from now on. */}

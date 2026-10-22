@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Hint } from "@/components/InfoTip";
 import { getFontEmbedCSS, toPng } from 'html-to-image';
 import { toast } from 'sonner';
 import { Upload } from 'lucide-react';
@@ -45,10 +46,10 @@ export function WorkspaceTransfer({ config, onImport }: { config: TvConfig; onIm
   return (
     <div data-testid="workspace-transfer" className="space-y-3 rounded-xl border p-4">
       <h3 className="font-semibold">העברת לוח בקובץ</h3>
-      <p className="text-sm text-muted-foreground">
+      <Hint>
         קובץ אחד עם ההגדרות, החלקים וכל התמונות - לגיבוי, או להעברה לבית כנסת אחר. זמני התפילות והמודעות עצמם לא בקובץ:
         הם של כל בית כנסת.
-      </p>
+      </Hint>
       <div className="flex flex-wrap items-center gap-2">
         <Button disabled={busy} onClick={() => run(async () => { downloadFile(await exportAppearance(config), 'עיצוב-הלוח.zip'); toast.success('קובץ העיצוב מוכן'); })}>
           ייצוא העיצוב בלבד

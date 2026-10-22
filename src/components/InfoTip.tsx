@@ -4,7 +4,7 @@
  * words stay in the page while closed - hidden, not removed - so what reads
  * the page aloud still has them.
  */
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type HTMLAttributes, type ReactNode } from "react";
 import { Info } from "lucide-react";
 
 export function InfoTip({ children, label = "הסבר", className = "" }: { children: ReactNode; label?: string; className?: string }) {
@@ -50,9 +50,9 @@ export function InfoTip({ children, label = "הסבר", className = "" }: { chil
 }
 
 /** A line of explanation on its own: the ⓘ alone, where the line was. */
-export function Hint({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Hint({ children, className = "", ...rest }: { children: ReactNode; className?: string } & Omit<HTMLAttributes<HTMLDivElement>, "children">) {
   return (
-    <div className={`flex ${className}`} data-hint>
+    <div {...rest} className={`flex ${className}`} data-hint>
       <InfoTip>{children}</InfoTip>
     </div>
   );

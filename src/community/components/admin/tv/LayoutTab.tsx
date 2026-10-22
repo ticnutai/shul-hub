@@ -33,9 +33,9 @@ export function LayoutTab({ scoped, view, edit, openPartsList, composerScreen, s
         title="1. מה יופיע על הלוח, ובאיזה צד"
         hint="בערכה מחלקים, כל תוכן עומד במסגרת משלו: מדליקים מה שרוצים להציג, ובוחרים לו צד."
       >
-        <p className="text-[11px] text-muted-foreground" data-testid="composition-layout-notice">
+        <Hint data-testid="composition-layout-notice">
           כאן קובעים מה מופיע בעמוד שנבחר למעלה ב"עמודי הלוח", ובאיזה צד. כל עמוד מסודר בנפרד, והלוח מתחלף בין העמודים לפי השניות של כל אחד. לשינוי גודל ולהזזה מדויקת - רשימת החלקים.
-        </p>
+        </Hint>
         <PartsContent config={view} onEdit={edit} onManual={openPartsList} />
         <Button type="button" size="sm" variant="outline" className="h-8" onClick={openPartsList}>
           לרשימת החלקים
@@ -95,10 +95,10 @@ export function LayoutTab({ scoped, view, edit, openPartsList, composerScreen, s
             </button>
           ))}
         </div>
-        <p className="mb-2 text-xs text-muted-foreground">
+        <Hint className="mb-2">
           כל השבוע: כל יום מוצג בתורו - במסגרת התפילות של המדליון, או כמסך תפילות משלו. "הבא" ו"עבר" מסומנים רק
           בתפילות של היום. איך התפילות של יום מסודרות - בפריסת מסך התפילות, תחת "איך מוצג כל סוג תוכן".
-        </p>
+        </Hint>
         <div className="flex flex-wrap items-center gap-3">
           <div className="space-y-1 text-xs">
             <span className="block font-medium text-muted-foreground">מניינים במסך</span>
@@ -111,11 +111,11 @@ export function LayoutTab({ scoped, view, edit, openPartsList, composerScreen, s
               onChange={(v) => edit("rowsPerScreen", (c) => ({ ...c, prayerRowsPerScreen: v }))}
             />
           </div>
-          <p className="flex-1 text-xs text-muted-foreground">
+          <Hint>
             יום עם הרבה מניינים לא נכנס במסך אחד: הלוח לוקח עוד מסך במקום להקטין את הטקסט. התשובה
             תלויה במסך - טלוויזיה מעל ארון הקודש מחזיקה יותר ממסך קטן על מדף. השבירה תמיד במעבר בין
             תפילות, שחרית לא תיחתך באמצע.
-          </p>
+          </Hint>
         </div>
         {scoped.screenLayout === "medallion" && <MedallionRows config={scoped} onEdit={edit} />}
       </Section>

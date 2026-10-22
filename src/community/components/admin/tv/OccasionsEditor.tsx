@@ -1,4 +1,4 @@
-import { Hint } from "@/components/InfoTip";
+import { Hint, InfoTip } from "@/components/InfoTip";
 import { useMemo, useState } from "react";
 import { Eye, Palette, Plus, Settings2, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
@@ -157,10 +157,10 @@ export function OccasionsEditor({
 
   return (
     <div className="space-y-3" data-testid="occasions">
-      <p className="text-xs text-muted-foreground">
+      <Hint>
         שבת, החגים וימים משלכם - מערכת אחת. מועד פעיל מופיע לבד כשהיום שלו מגיע. הסדר ברשימה הוא סדר החשיבות: כששני
         מועדים חלים יחד, ההגדרה של הגבוה מביניהם קובעת אם יוצג רק הוא, שניהם במסך אחד או כל אחד במסך משלו.
-      </p>
+      </Hint>
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" size="sm" onClick={add}>
           <Plus className="size-4" /> הוספת מועד משלכם
@@ -689,8 +689,7 @@ function OccasionDialog({
                     className="mt-1"
                   />
                   <span>
-                    רק על המסך של המועד
-                    <span className="block text-[11px] text-muted-foreground">המסכים הרגילים נשארים בעיצוב שלהם, גם ביום הזה.</span>
+                    רק על המסך של המועד <InfoTip>המסכים הרגילים נשארים בעיצוב שלהם, גם ביום הזה.</InfoTip>
                   </span>
                 </label>
                 <label className="flex items-start gap-2">
@@ -702,8 +701,7 @@ function OccasionDialog({
                     className="mt-1"
                   />
                   <span>
-                    על כל הלוח בזמן המועד
-                    <span className="block text-[11px] text-muted-foreground">גם המסכים הרגילים לובשים אותו עד שהמועד נגמר.</span>
+                    על כל הלוח בזמן המועד <InfoTip>גם המסכים הרגילים לובשים אותו עד שהמועד נגמר.</InfoTip>
                   </span>
                 </label>
               </div>
