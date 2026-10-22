@@ -87,7 +87,7 @@ import { LayoutTab } from "./LayoutTab";
 import { Notice } from "./Notice";
 import { OccasionsEditor, occasionOffNote } from "./OccasionsEditor";
 import { PartPagesBar, type OccasionTab } from "./PartPagesBar";
-import { ReadabilityNote } from "./ReadabilityNote";
+import { PartsReadability, ReadabilityNote } from "./ReadabilityNote";
 import { SplitHandle } from "./SplitHandle";
 import { StudioPanel } from "./StudioPanel";
 import { ToolsTab } from "./ToolsTab";
@@ -1625,6 +1625,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       />
       {/* What was chosen on the board, with its own choices only: a container's board, frame, shape or text. */}
       {!comparing && <PartContextPanel config={view} onEdit={edit} />}
+      {!comparing && <PartsReadability config={view} onEdit={edit} />}
       {!comparing && (
         <ReadabilityNote
           watch={state.present}

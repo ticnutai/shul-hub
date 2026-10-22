@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, addIntoFrame, swapContent, styleSources, withDefaults, readableInk, liveBox, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
+import { newElement, normalizeElements, moveElements, alignElements, normalizeElementLibrary, exportElementSet, importElementSet, placeSection, sectionOf, sideOf, boundsOf, styledBox, setContent, addContent, addIntoFrame, swapContent, styleSources, withDefaults, readableInk, unreadableParts, liveBox, setAlternates, turnOf, resizeElements, fitContent, textLook, wraps, type BoardElement } from './elements';
 import { kitOf, resetToKit } from './kitReset';
 import { BUILTIN_DESIGNS, applyDesign } from './designs';
 import { setSymbol, symbolChoices } from './artSymbols';
@@ -10,6 +10,8 @@ import { workspaceDocument, parseWorkspace, type StoreImage } from './workspaceT
 const STORED = 'https://bfiayuuhjtyccqobsjvl.supabase.co/storage/v1/object/public/community-media/tv/stored.png';
 const store: StoreImage = async () => STORED;
 import { PREMIUM_DESIGNS } from './premiumDesigns';
+import { INDEPENDENT_DESIGNS } from './independentDesigns';
+import { ORIGINAL_LAYER_DESIGNS } from './originalLayerDesigns';
 import {elementStyle} from './elements';
 
 it('preserves bounded image colour adjustments through part export/import and reset',()=>{
@@ -415,5 +417,20 @@ describe('frames exchanging what they show, a frame in the middle\'s style, and 
     const cream = { ...newElement('box'), id: 'cream', fill: '#fff5dc', x: 30, y: 30, width: 40, height: 40 };
     const gold = t('g', '#ffe9af');
     expect(readableInk([gold], [...board, cream, gold])[0].color).toBe('#2b2118');
+  });
+  it('names no part of any kit as unread, and names black letters put on a dark one', () => {
+    for (const d of [...BUILTIN_DESIGNS, ...PREMIUM_DESIGNS, ...INDEPENDENT_DESIGNS, ...ORIGINAL_LAYER_DESIGNS]) {
+      const els = (d.values as { elements?: BoardElement[] }).elements ?? [];
+      expect(unreadableParts(els).map(b => b.e.name), d.name).toEqual([]);
+    }
+    const sapphire = (ORIGINAL_LAYER_DESIGNS.find(d => d.name.startsWith('ספיר'))!.values as { elements: BoardElement[] }).elements;
+    // Black, and a light board's brown: both named, both given the board's light letters.
+    for (const color of ['#000000', '#49341b']) {
+      const z = { ...newElement('text'), id: 'z', name: 'זמני היום', binding: 'zmanim' as const, text: '', color, x: 40, y: 30, width: 22, height: 30 };
+      const [bad] = unreadableParts([...sapphire, z]);
+      expect(bad.e.id).toBe('z');
+      expect(readableInk([z], [...sapphire, z])[0].color).toBe(bad.color);
+      expect(unreadableParts([...sapphire, { ...z, color: bad.color }])).toEqual([]);
+    }
   });
 });

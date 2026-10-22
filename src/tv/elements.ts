@@ -688,36 +688,73 @@ const DARK_INK = '#2b2118';
 
 /**
  * New text that could not be read where it stands - black letters, or a
- * light board's brown, put on a dark board - in letters that can: the
- * board's own when they read there, else plain light or dark. What is behind
- * it is the nearest coloured box under it; on a picture or the board's
- * background, the board's own letters tell (light letters, a dark board).
- * A part with its own panel behind it (backdrop) is always read; untouched.
+ * light board's brown, put on a dark board - in letters that can. What is
+ * behind it: the nearest coloured box under it; on a picture, the letters
+ * already written on that picture tell its tone (light letters, a dark
+ * picture), else the board's own. It gets those letters when they read
+ * there, else plain light or dark. A part with its own panel behind it
+ * (backdrop) is always read; untouched.
  */
 export function readableInk(added: BoardElement[], all: BoardElement[]): BoardElement[] {
   const fresh = new Set(added.map(e => e.id));
-  const ink = boardInk(all.filter(e => !fresh.has(e.id)));
-  const black: Rgba = [0, 0, 0, 1], white: Rgba = [255, 255, 255, 1];
-  const isLight = (c: Rgba) => contrast(c, black) > contrast(c, white);
   return added.map(e => {
-    const fg = e.kind === 'text' && !e.backdrop ? parseColour(e.color) : null;
-    if (!fg || fg[3] === 0) return e;
-    const at = all.findIndex(x => x.id === e.id);
-    const below = at >= 0 ? all.slice(0, at) : all.filter(x => !fresh.has(x.id));
-    const [cx, cy] = [e.x + e.width / 2, e.y + e.height / 2];
-    let bg: Rgba | null = null;
-    for (const x of [...below].reverse()) {
-      if (x.hidden || cx < x.x || cx > x.x + x.width || cy < x.y || cy > x.y + x.height) continue;
-      if (x.kind === 'image') break;
-      const fill = x.kind === 'box' ? parseColour(x.fill) : null;
-      if (fill && fill[3] * x.opacity >= 0.6) { bg = fill; break; }
+    const fix = inkFor(e, all, fresh);
+    return fix ? { ...e, color: fix.color } : e;
+  });
+}
+
+const BLACK: Rgba = [0, 0, 0, 1], WHITE: Rgba = [255, 255, 255, 1];
+const isLight = (c: Rgba) => contrast(c, BLACK) > contrast(c, WHITE);
+const covers = (x: BoardElement, px: number, py: number) => px >= x.x && px <= x.x + x.width && py >= x.y && py <= x.y + x.height;
+const centre = (x: BoardElement) => [x.x + x.width / 2, x.y + x.height / 2] as const;
+const written = (x: BoardElement) => x.kind === 'text' && !x.hidden && !x.backdrop && parseColour(x.color)?.[3] !== 0;
+
+/**
+ * The letters a text would read in where it stands, when its own do not;
+ * null when they do. `sure`: what is behind it is known - a coloured box, or
+ * a picture with two or more texts on it in one tone - not only guessed
+ * from the board's letters as a whole.
+ */
+function inkFor(e: BoardElement, all: BoardElement[], fresh: Set<string>): { color: string; sure: boolean } | null {
+  const fg = e.kind === 'text' && !e.backdrop ? parseColour(e.color) : null;
+  if (!fg || fg[3] === 0) return null;
+  const others = all.filter(x => !fresh.has(x.id));
+  const at = all.findIndex(x => x.id === e.id);
+  const below = (at >= 0 ? all.slice(0, at) : all).filter(x => !fresh.has(x.id) || x.kind !== 'text');
+  const [cx, cy] = centre(e);
+  let bg: Rgba | null = null;
+  let ink = boardInk(others.filter(written))?.color ?? null;
+  let sure = false;
+  for (const x of [...below].reverse()) {
+    if (x.hidden || !covers(x, cx, cy)) continue;
+    if (x.kind === 'image') {
+      const on = others.filter(t => written(t) && covers(x, ...centre(t)));
+      const local = boardInk(on);
+      if (local) {
+        ink = local.color;
+        sure = on.filter(t => t.color === local.color).length >= 2;
+      }
+      break;
     }
-    const boardInkRgba = ink ? parseColour(ink.color) : null;
-    // Nothing coloured under it: the board is dark when its own letters are light.
-    const behind = bg ?? (boardInkRgba && boardInkRgba[3] > 0 ? (isLight(boardInkRgba) ? [20, 30, 46, 1] as Rgba : [243, 234, 216, 1] as Rgba) : null);
-    if (!behind || contrast(fg, behind) >= MIN_CONTRAST) return e;
-    const color = boardInkRgba && contrast(boardInkRgba, behind) >= MIN_CONTRAST ? ink!.color : isLight(behind) ? DARK_INK : LIGHT_INK;
-    return { ...e, color };
+    const fill = x.kind === 'box' ? parseColour(x.fill) : null;
+    if (fill && fill[3] * x.opacity >= 0.6) { bg = fill; sure = true; break; }
+  }
+  const inkRgba = ink ? parseColour(ink) : null;
+  // Nothing coloured under it: dark where the letters around are light.
+  const behind = bg ?? (inkRgba && inkRgba[3] > 0 ? (isLight(inkRgba) ? [20, 30, 46, 1] as Rgba : [243, 234, 216, 1] as Rgba) : null);
+  if (!behind || contrast(fg, behind) >= MIN_CONTRAST) return null;
+  return { color: inkRgba && contrast(inkRgba, behind) >= MIN_CONTRAST ? ink! : isLight(behind) ? DARK_INK : LIGHT_INK, sure };
+}
+
+/** What only the board's own art can show - its name, its clocks - is not judged among the others: it stands on plaques of its own. */
+const OWN_PLAQUE: ElementBinding[] = ['title', 'clock', 'analog', 'footer', 'logos'];
+
+/** The live parts and texts already on the board that surely cannot be read where they stand, each with the letters it would read in. */
+export function unreadableParts(all: BoardElement[]): Array<{ e: BoardElement; color: string }> {
+  return all.flatMap(e => {
+    if (e.kind !== 'text' || e.hidden || e.locked || (!e.binding && !e.text.trim()) || (e.binding && OWN_PLAQUE.includes(e.binding))) return [];
+    const fix = inkFor(e, all, new Set([e.id]));
+    return fix?.sure ? [{ e, color: fix.color }] : [];
   });
 }
 

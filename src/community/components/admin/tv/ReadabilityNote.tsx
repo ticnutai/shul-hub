@@ -3,7 +3,8 @@ import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "./Notice";
 import { frameLabel, type FrameId } from "@/tv/frameLooks";
-import type { CustomBox } from "@/tv/config";
+import type { CustomBox, TvConfig } from "@/tv/config";
+import { unreadableParts } from "@/tv/elements";
 import { readabilityIssues, type ReadabilityIssue } from "@/tv/readability";
 
 
@@ -55,6 +56,33 @@ export function ReadabilityNote({
           ))}
         </ul>
       )}
+    </Notice>
+  );
+}
+
+/**
+ * Under the preview, on a board of parts: the parts already on it whose
+ * letters surely cannot be read where they stand (black on a dark board), and
+ * one click that gives each the letters it reads in (unreadableParts).
+ */
+export function PartsReadability({ config, onEdit }: { config: TvConfig; onEdit: (key: string, update: (c: TvConfig) => TvConfig) => void }) {
+  const bad = config.screenLayout === "composition" ? unreadableParts(config.elements) : [];
+  if (!bad.length) return null;
+  const fix = () =>
+    onEdit("readable-parts", (c) => {
+      const colours = new Map(unreadableParts(c.elements).map((b) => [b.e.id, b.color]));
+      return { ...c, elements: c.elements.map((e) => (colours.has(e.id) ? { ...e, color: colours.get(e.id)! } : e)) };
+    });
+  return (
+    <Notice variant="warning" className="mt-2" data-testid="parts-readability">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex-1">
+          הכתב של {bad.map((b) => `"${b.e.name}"`).join(", ")} כמעט לא נראה על מה שמאחוריו
+        </span>
+        <Button type="button" size="sm" className="h-7" onClick={fix} data-testid="parts-readability-fix">
+          תיקון הצבע
+        </Button>
+      </div>
     </Notice>
   );
 }
