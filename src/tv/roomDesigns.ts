@@ -124,6 +124,88 @@ const ROOMS: Room[] = [
       { key: 'date', name: 'תאריך עברי', rect: [36, 80, 28, 4], binding: 'date', size: 2 },
     ],
   },
+  {
+    id: 'walnutmedallion', name: 'היכל אגוז ומדליון', picture: '/new-shul-assets/room-walnut-medallion.webp', theme: 'stone',
+    ink: '#3a2412', accent: '#8a5a1c', board: '#fffaf0b3',
+    panels: [
+      { key: 'prayers', name: 'זמני תפילות', rect: [71.8, 20, 20.6, 60.5], binding: 'prayers', shape: 'arch', rows: 7, size: 2.3 },
+      { key: 'zmanim', name: 'זמני היום', rect: [7.8, 20, 20.6, 60.5], binding: 'zmanim', shape: 'arch', rows: 11, size: 1.6 },
+      // The middle arch, above the candles and the book on the shelf.
+      { key: 'lessons', name: 'שיעורי תורה', rect: [36, 39, 28, 23], binding: 'lessons', shape: 'rounded', rows: 3, size: 1.9 },
+      // The wooden plaque under the medallion.
+      { key: 'parasha', name: 'פרשת השבוע', rect: [44.2, 31, 12.6, 6.5], binding: 'parasha', shape: 'pill', bare: true, size: 1.6 },
+    ],
+    free: [
+      { key: 'title', name: 'שם בית הכנסת', rect: [36, 1.5, 28, 6], binding: 'title', size: 3.2, accent: true },
+      { key: 'clock', name: 'שעון חי', rect: [45, 13, 10, 15], binding: 'clock', size: 4.6, accent: true },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [20, 89.5, 60, 5], binding: 'footer', size: 1.8 },
+      { key: 'date', name: 'תאריך עברי', rect: [70, 90, 20, 4], binding: 'date', size: 1.7 },
+    ],
+  },
+  {
+    id: 'olivemosaic', name: 'שיש ופסיפס זית', picture: '/new-shul-assets/room-olive-mosaic.webp', theme: 'stone',
+    ink: '#33301c', accent: '#7d6418', board: '#fffbf2c7',
+    panels: [
+      { key: 'prayers', name: 'זמני תפילות', rect: [71, 31, 17.4, 48], binding: 'prayers', shape: 'rounded', rows: 7, size: 2.1 },
+      { key: 'zmanim', name: 'זמני היום', rect: [11.8, 31, 17.4, 48], binding: 'zmanim', shape: 'rounded', rows: 11, size: 1.5 },
+      { key: 'notices', name: 'הודעות', rect: [33.5, 35, 33, 19], binding: 'announcements', shape: 'rounded', rows: 3, size: 1.8 },
+      // The name on the long plaque under the medallion.
+      { key: 'title', name: 'שם בית הכנסת', rect: [32.5, 21.5, 35, 8], binding: 'title', shape: 'pill', bare: true, size: 3 },
+    ],
+    free: [
+      { key: 'clock', name: 'שעון חי', rect: [45, 4, 10, 14], binding: 'clock', size: 4.4, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [36, 55, 28, 3.5], binding: 'date', size: 1.6, accent: true },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [14, 93.5, 72, 4.5], binding: 'footer', size: 1.6 },
+    ],
+  },
+  {
+    id: 'blackmarble', name: 'שיש שחור וזהב', picture: '/new-shul-assets/room-black-marble.webp', theme: 'navy',
+    ink: '#f6e8c6', accent: '#e4ba5c', board: '#0b090799',
+    panels: [
+      { key: 'prayers', name: 'זמני תפילות', rect: [71.4, 31.5, 17, 47.5], binding: 'prayers', shape: 'rounded', rows: 7, size: 2.1 },
+      { key: 'zmanim', name: 'זמני היום', rect: [11.8, 31.5, 17, 47.5], binding: 'zmanim', shape: 'rounded', rows: 11, size: 1.5 },
+      { key: 'lessons', name: 'שיעורי תורה', rect: [33.5, 35, 33, 19], binding: 'lessons', shape: 'rounded', rows: 3, size: 1.8 },
+      { key: 'title', name: 'שם בית הכנסת', rect: [32.5, 21, 35, 9], binding: 'title', shape: 'pill', bare: true, size: 3 },
+      // The marble band at the foot.
+      { key: 'notices', name: 'הודעות', rect: [20, 88.5, 60, 6], binding: 'announcements', shape: 'rectangle', bare: true, size: 1.7 },
+    ],
+    free: [
+      { key: 'clock', name: 'שעון חי', rect: [45, 4, 10, 14], binding: 'clock', size: 4.4, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [36, 55, 28, 3.5], binding: 'date', size: 1.6, accent: true },
+    ],
+  },
+  {
+    id: 'stonelight', name: 'אבן ואור יום', picture: '/new-shul-assets/room-stone-light.webp', theme: 'stone',
+    ink: '#3a2b1a', accent: '#8a5a24', board: '#fffaf2d4',
+    panels: [
+      { key: 'prayers', name: 'זמני תפילות', rect: [61, 15, 30, 57], binding: 'prayers', shape: 'rounded', rows: 8, size: 2.4 },
+      { key: 'zmanim', name: 'זמני היום', rect: [37, 15, 22, 57], binding: 'zmanim', shape: 'rounded', rows: 12, size: 1.6 },
+      { key: 'lessons', name: 'שיעורי תורה', rect: [11, 15, 24, 27.5], binding: 'lessons', shape: 'rounded', rows: 3, size: 1.8 },
+      { key: 'notices', name: 'הודעות', rect: [11, 44.5, 24, 27.5], binding: 'announcements', shape: 'rounded', rows: 3, size: 1.7 },
+    ],
+    free: [
+      { key: 'title', name: 'שם בית הכנסת', rect: [25, 2.5, 50, 7], binding: 'title', size: 4, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [32, 9.3, 36, 4], binding: 'date', size: 1.9 },
+      { key: 'clock', name: 'שעון חי', rect: [78, 2.5, 13, 10], binding: 'clock', size: 5.5, accent: true },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 80, 76, 5], binding: 'footer', size: 1.9 },
+    ],
+  },
+  {
+    id: 'walnutwall', name: 'קיר אגוז וארונות ספרים', picture: '/new-shul-assets/room-walnut-wall.webp', theme: 'stone',
+    ink: '#fff3dc', accent: '#f0c77a', board: '#1a0d0680',
+    panels: [
+      { key: 'prayers', name: 'זמני תפילות', rect: [63, 22, 23.5, 52], binding: 'prayers', shape: 'rounded', rows: 7, size: 2.3 },
+      { key: 'zmanim', name: 'זמני היום', rect: [39, 22, 22, 52], binding: 'zmanim', shape: 'rounded', rows: 11, size: 1.6 },
+      { key: 'lessons', name: 'שיעורי תורה', rect: [13.5, 22, 23.5, 25], binding: 'lessons', shape: 'rounded', rows: 3, size: 1.8 },
+      { key: 'notices', name: 'הודעות', rect: [13.5, 49, 23.5, 25], binding: 'announcements', shape: 'rounded', rows: 3, size: 1.7 },
+    ],
+    free: [
+      { key: 'title', name: 'שם בית הכנסת', rect: [28, 9, 44, 7], binding: 'title', size: 4, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [36, 16, 28, 4], binding: 'date', size: 1.9 },
+      { key: 'clock', name: 'שעון חי', rect: [14, 9, 13, 10], binding: 'clock', size: 5.5, accent: true },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 85, 76, 5], binding: 'footer', size: 1.9 },
+    ],
+  },
 ];
 
 function make(r: Room): SavedDesign {
