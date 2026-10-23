@@ -35,7 +35,7 @@ test("the design topics: one at a time, or all down the page", async ({ page, is
   const view = page.getByRole("radiogroup", { name: "הצגת הנושאים" });
 
   // By default one at a time: each topic alone, and the page does not run down to it.
-  await expect(view.getByRole("radio", { name: "נושא אחד בכל פעם" })).toHaveAttribute("aria-checked", "true");
+  await expect(view.getByRole("radio", { name: "נושא אחד" })).toHaveAttribute("aria-checked", "true");
   for (const [label, id] of TOPICS) {
     const before = await page.evaluate(() => window.scrollY);
     await topics.getByRole("button", { name: label, exact: true }).click();

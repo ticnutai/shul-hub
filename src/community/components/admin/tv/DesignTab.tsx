@@ -19,7 +19,7 @@ import { ElementsEditor } from "./ElementsEditor";
 import { BackgroundLayer, FramesLayer, TextLayer, type LayerProps } from "./LayerEditors";
 import { Folded, SubPart } from "./Parts";
 import type { DraftAction } from "./draftState";
-import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section, EditorViewBar } from "./editorParts";
+import { CopyBoxLook, DesignTopics, SELECT_CLASS, Section, EditorViewBar, TopicsViewToggle } from "./editorParts";
 import { showDesignTopic, useDesignTopics } from "./designTopics";
 import { useElementEditing } from "@/tv/elementEditing";
 import { Notice } from "./Notice";
@@ -72,19 +72,25 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         className="space-y-2 rounded-xl border-2 border-primary/40 bg-background/95 p-3 shadow-sm backdrop-blur sm:sticky sm:top-16 sm:z-[5] min-[1700px]:col-span-2"
         data-testid="parts-scope"
       >
-        {topicsNav && <DesignTopics />}
-        <EditorViewBar />
-        {parts ? (
-          // Choosing all of one kind is the list of parts' own (one row of it, not one here as well): a way there.
-          <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs" data-testid="parts-scope-kinds">
-            <span className="font-semibold">חל על: {selected.length ? `${selected.length} שנבחרו בלוח` : "מה שנבחר בלוח"}</span>
-            <button type="button" className="font-medium text-primary underline underline-offset-2"
-              onClick={() => { showDesignTopic("design-elements"); window.setTimeout(() => document.querySelector('[data-testid="elements-by-kind"]')?.scrollIntoView({ block: "center" }), 120); }}>
-              בחירה לפי סוג
-            </button>
-            <InfoTip>הלוח בנוי מחלקים: התיבות, המסגרות והטקסט כאן חלים על החלקים שבוחרים בלוח, או על כל החלקים מסוג אחד ("בחירה לפי סוג").</InfoTip>
-          </p>
-        ) : (<>
+        {topicsNav && <DesignTopics withView={false} />}
+        {/* How the editor looks, and what the topics apply to: one quiet line, not three. */}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-lg bg-muted/40 px-2.5 py-1.5 text-[11px] text-muted-foreground" data-testid="design-view-line">
+          {topicsNav && <TopicsViewToggle />}
+          <EditorViewBar />
+          {parts && (
+            // Choosing all of one kind is the list of parts' own (one row of it, not one here as well): a way there.
+            <span className="flex flex-wrap items-center gap-x-1.5 sm:ms-auto" data-testid="parts-scope-kinds">
+              <span className="font-semibold text-foreground">חל על: {selected.length ? `${selected.length} שנבחרו בלוח` : "מה שנבחר בלוח"}</span>
+              ·
+              <button type="button" className="font-medium text-primary underline underline-offset-2"
+                onClick={() => { showDesignTopic("design-elements"); window.setTimeout(() => document.querySelector('[data-testid="elements-by-kind"]')?.scrollIntoView({ block: "center" }), 120); }}>
+                בחירה לפי סוג
+              </button>
+              <InfoTip>הלוח בנוי מחלקים: התיבות, המסגרות והטקסט כאן חלים על החלקים שבוחרים בלוח, או על כל החלקים מסוג אחד ("בחירה לפי סוג").</InfoTip>
+            </span>
+          )}
+        </div>
+        {parts ? null : (<>
         <label className="flex flex-wrap items-center gap-2 text-sm">
           <span className="font-semibold">התיבות, המסגרות והטקסט של:</span>
           <select
@@ -133,13 +139,16 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
       >
         <div className="space-y-5">
-          <SubPart title="התחלה מחדש" hint='לוח ריק שבונים צעד אחרי צעד (הבחירה הרגילה מסומנת מראש), או מחיקה של מה שבוחרים. כל לוח חדש בנוי מחלקים - כל תוכן בקונטיינר משלו. (יש גם "איפוס הערכה הנוכחית" - בלשונית פריסה.)'>
-            <BlankBoardStarter
-              unavailable={
-                wholeBoardOnly
-                  ? 'התחלה מחדש היא ללוח כולו: בחרו למעלה "כל המסכים", וצאו מעיצוב המועד, כדי להשתמש בה.'
-                  : null
-              }
+          <SubPart title="התחלה מחדש" hint='לוח ריק שבונים צעד אחרי צעד (הבחירה הרגילה מסומנת מראש), או מחיקה של מה שבוחרים. כל לוח חדש בנוי מחלקים - כל תוכן בקונטיינר משלו. (יש גם "איפוס הערכה הנוכחית" - בלשונית פריסה.)'
+            // Not here (a screen or an occasion is being edited): said on the title's line, not in a box of its own under it.
+            aside={wholeBoardOnly && (
+              <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground" data-testid="blank-board">
+                · ללוח כולו בלבד
+                <InfoTip>התחלה מחדש היא ללוח כולו: בחרו למעלה "כל המסכים", וצאו מעיצוב המועד, כדי להשתמש בה.</InfoTip>
+              </span>
+            )}>
+            {!wholeBoardOnly && <BlankBoardStarter
+              unavailable={null}
               // Straight onto the board, past the scope: starting over is the whole board's.
               onCreate={(blocks) => {
                 dispatch({ type: "edit", key: "start-over:blank", update: (c) => blankBoard(c, blocks) });
@@ -150,7 +159,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
                 dispatch({ type: "edit", key: `start-over:wipe:${groups.join(",")}`, update: (c) => wipeGroups(c, groups) });
                 toast.success(`נמחקו: ${WIPE_GROUPS.filter((g) => groups.includes(g.id)).map((g) => g.name).join(", ")}. זו טיוטה עד "שמור ושדר".`);
               }}
-            />
+            />}
           </SubPart>
           <DesignLibrary
             config={view}

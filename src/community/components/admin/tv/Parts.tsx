@@ -14,6 +14,7 @@ export function SubPart({
   children,
   testId,
   bare = false,
+  aside,
 }: {
   title: string;
   hint?: ReactNode;
@@ -21,6 +22,8 @@ export function SubPart({
   testId?: string;
   /** Inside another part: its controls only, without a second title. */
   bare?: boolean;
+  /** A short word on the title's own line - a state, not a line of its own under it. */
+  aside?: ReactNode;
 }) {
   if (bare) return <div className="space-y-2" data-testid={testId}>{children}</div>;
   return (
@@ -29,6 +32,7 @@ export function SubPart({
       <div className="flex items-center gap-1.5 border-b pb-1">
         <h4 className="text-sm font-semibold">{title}</h4>
         {hint && <InfoTip>{hint}</InfoTip>}
+        {aside}
       </div>
       {children}
     </section>
