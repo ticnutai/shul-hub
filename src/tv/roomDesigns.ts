@@ -207,6 +207,69 @@ const ROOMS: Room[] = [
       { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 85, 76, 5], binding: 'footer', size: 1.9 },
     ],
   },
+  {
+    id: 'navyvelvet', name: 'קטיפה כחולה וזהב', picture: '/new-shul-assets/room-navy-2.webp', theme: 'navy',
+    ink: '#f3e6c4', accent: '#e8c46a', board: '#06103066',
+    panels: [
+      { key: 'prayers', name: 'זמני תפילות', rect: [71.2, 17, 15.6, 64], binding: 'prayers', shape: 'arch', rows: 7, size: 2.1 },
+      { key: 'zmanim', name: 'זמני היום', rect: [38.5, 29.5, 23, 51.5], binding: 'zmanim', shape: 'rounded', rows: 10, size: 1.7 },
+      { key: 'lessons', name: 'שיעורי תורה', rect: [13.2, 17, 15.6, 64], binding: 'lessons', shape: 'arch', rows: 4, size: 1.8 },
+      { key: 'title', name: 'שם בית הכנסת', rect: [43.8, 20.8, 12.8, 6.5], binding: 'title', shape: 'pill', bare: true, size: 1.9 },
+    ],
+    free: [
+      { key: 'clock', name: 'שעון חי', rect: [45.5, 5, 9, 14.5], binding: 'clock', size: 4, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [36, 85.5, 28, 4], binding: 'date', size: 1.8, accent: true },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 92, 76, 5], binding: 'footer', size: 1.7 },
+    ],
+  },
+  {
+    id: 'stonebronze', name: 'אבן זהובה וארד', picture: '/new-shul-assets/room-stone-2.webp', theme: 'stone',
+    ink: '#3a2a16', accent: '#7d5418', board: '#fff8eacc',
+    panels: [
+      { key: 'zmanim', name: 'זמני היום', rect: [80.3, 24.5, 14.6, 48.5], binding: 'zmanim', shape: 'rounded', rows: 11, size: 1.5 },
+      { key: 'prayers', name: 'זמני תפילות', rect: [29.6, 30.5, 41, 42.5], binding: 'prayers', shape: 'rounded', rows: 6, size: 2.4 },
+      { key: 'lessons', name: 'שיעורי תורה', rect: [5.2, 24.5, 14.6, 48.5], binding: 'lessons', shape: 'rounded', rows: 4, size: 1.7 },
+    ],
+    free: [
+      { key: 'clock', name: 'שעון חי', rect: [43.8, 7, 13, 18], binding: 'clock', size: 5, accent: true },
+      { key: 'title', name: 'שם בית הכנסת', rect: [28, 77, 44, 6], binding: 'title', size: 3, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [35, 83.5, 30, 4], binding: 'date', size: 1.8 },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 92, 76, 5], binding: 'footer', size: 1.7 },
+    ],
+  },
+  {
+    id: 'emeraldgold', name: 'שיש ירוק וזהב', picture: '/new-shul-assets/room-emerald-2.webp', theme: 'navy',
+    ink: '#f4ead0', accent: '#e6c46a', board: '#03140c80',
+    panels: [
+      { key: 'prayers', name: 'זמני תפילות', rect: [74.5, 22.8, 15, 54], binding: 'prayers', shape: 'arch', rows: 7, size: 2 },
+      { key: 'zmanim', name: 'זמני היום', rect: [53.2, 22.8, 15, 54], binding: 'zmanim', shape: 'arch', rows: 10, size: 1.5 },
+      { key: 'lessons', name: 'שיעורי תורה', rect: [31.9, 22.8, 15, 54], binding: 'lessons', shape: 'arch', rows: 4, size: 1.7 },
+      { key: 'notices', name: 'הודעות', rect: [10.5, 22.8, 15, 54], binding: 'announcements', shape: 'arch', rows: 4, size: 1.6 },
+      // The long gold plaque on either side of the medallion.
+      { key: 'title', name: 'שם בית הכנסת', rect: [55.5, 6.5, 33, 10.5], binding: 'title', shape: 'rectangle', bare: true, size: 3 },
+      { key: 'parasha', name: 'פרשת השבוע', rect: [11.5, 6.5, 33, 10.5], binding: 'parasha', shape: 'rectangle', bare: true, size: 2.2 },
+    ],
+    free: [
+      { key: 'clock', name: 'שעון חי', rect: [44.8, 3, 9.6, 16.5], binding: 'clock', size: 4, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [36, 85, 28, 4], binding: 'date', size: 1.8, accent: true },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 91, 76, 5], binding: 'footer', size: 1.7 },
+    ],
+  },
+  {
+    id: 'silvercrown', name: 'שיש לבן וכתר כסף', picture: '/new-shul-assets/room-silver-2.webp', theme: 'stone',
+    ink: '#2f3238', accent: '#5f6774', board: '#ffffffb3',
+    panels: [
+      { key: 'zmanim', name: 'זמני היום', rect: [77.8, 20, 12.6, 59.5], binding: 'zmanim', shape: 'rectangle', rows: 12, size: 1.4 },
+      { key: 'prayers', name: 'זמני תפילות', rect: [29.7, 29.5, 40.6, 50], binding: 'prayers', shape: 'rectangle', rows: 7, size: 2.4 },
+      { key: 'lessons', name: 'שיעורי תורה', rect: [9.6, 20, 12.3, 59.5], binding: 'lessons', shape: 'rectangle', rows: 4, size: 1.6 },
+      { key: 'title', name: 'שם בית הכנסת', rect: [38.5, 2.8, 23, 7], binding: 'title', shape: 'pill', bare: true, size: 2.6 },
+    ],
+    free: [
+      { key: 'clock', name: 'שעון חי', rect: [77.5, 2.5, 13.5, 8], binding: 'clock', size: 4, accent: true },
+      { key: 'date', name: 'תאריך עברי', rect: [9, 4, 14, 5], binding: 'date', size: 1.6, accent: true },
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 90, 76, 5], binding: 'footer', size: 1.7 },
+    ],
+  },
 ];
 
 function make(r: Room): SavedDesign {
