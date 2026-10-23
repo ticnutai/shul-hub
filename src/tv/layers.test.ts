@@ -81,6 +81,10 @@ describe("ready-made frame pictures", () => {
   it("are stored by name and resolve to the shipped file", async () => {
     const { FRAME_PICTURES, framePictureRef, framePictureUrl } = await import("./framePictures");
     expect(FRAME_PICTURES.map((f) => f.id)).toEqual([
+      "kit-gold-acanthus",
+      "kit-walnut-bead",
+      "kit-stone-olive",
+      "kit-black-marble",
       "silver-acanthus",
       "walnut-vine",
       "gold-ornate",

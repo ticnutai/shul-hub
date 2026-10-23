@@ -68,3 +68,11 @@ describe('pressSelection', () => {
     expect(pressSelection('moon', ['moon'], ['other'], true)).toEqual(['other', 'moon']);
   });
 });
+
+import { partsInBox as boxHits } from './elementHits';
+describe('a box drawn with the mouse', () => {
+  const part = (id: string, x: number, y: number, hidden = false) => ({ id, x, y, width: 10, height: 10, hidden }) as never;
+  it('takes every part it touches, not the ones outside or hidden', () => {
+    expect(boxHits([part('a', 0, 0), part('b', 15, 15), part('c', 50, 50), part('d', 5, 5, true)], { x: 8, y: 8, width: 10, height: 10 })).toEqual(['a', 'b']);
+  });
+});
