@@ -13,7 +13,7 @@
  */
 import { useEffect, useRef } from "react";
 import { useDisplayMode } from "@/contexts/DisplayModeContext";
-import { BARE_KEY, LAYOUT_KEY, SIDE_H_KEY, SIDE_KEY, TOP_KEY } from "./editorLayout";
+import { BARE_KEY, BUTTONS_FOLDED_KEY, LAYOUT_KEY, SIDE_H_KEY, SIDE_KEY, TOP_KEY } from "./editorLayout";
 import { EDITOR_NAV_KEY } from "./EditorNav";
 
 export const EDITOR_PREF_KEYS = [
@@ -28,6 +28,7 @@ export const EDITOR_PREF_KEYS = [
   TOP_KEY,
   SIDE_H_KEY,
   BARE_KEY,
+  BUTTONS_FOLDED_KEY,
 ] as const;
 
 type Prefs = Record<string, string>;

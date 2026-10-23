@@ -20,6 +20,8 @@ import {
   Undo2,
   Scaling,
   Settings2,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -78,7 +80,7 @@ import { SaveKitButton } from "./DesignLibrary";
 import type { DeviceMode } from "./devices";
 import { DeviceScopeBanner, type DeviceScope } from "./DeviceScopeBanner";
 import { draftReducer } from "./draftState";
-import { BARE_KEY, FOCUS_KEY, LAYOUT_KEY, readPlacement, type EditorPlacement, SIDE_H_KEY, SIDE_HEIGHT_DEFAULT, SIDE_KEY, SIDE_SHARE_DEFAULT, STUDIO_CHROME, TOP_HEIGHT_DEFAULT, TOP_KEY, clampHeight, clampShare, clampSideHeight, readStored, writeStored } from "./editorLayout";
+import { BARE_KEY, BUTTONS_FOLDED_KEY, FOCUS_KEY, LAYOUT_KEY, readPlacement, type EditorPlacement, SIDE_H_KEY, SIDE_HEIGHT_DEFAULT, SIDE_KEY, SIDE_SHARE_DEFAULT, STUDIO_CHROME, TOP_HEIGHT_DEFAULT, TOP_KEY, clampHeight, clampShare, clampSideHeight, readStored, writeStored } from "./editorLayout";
 import { ColorField, FoldedSections, INPUT_CLASS, Section } from "./editorParts";
 import { ElementEditingProvider } from "./ElementEditingProvider";
 import { ElementTextTools } from "./ElementTextTools";
@@ -468,6 +470,12 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     writeStored(LAYOUT_KEY, next);
   };
   /** How one goes around the editor (EditorNav.tsx): the tabs, a menu of all of it down the side, or a search. Remembered here. */
+  /** The column beside the board folded away to one small button, the board taking its room - kept for next time. */
+  const [buttonsFolded, setButtonsFoldedState] = useState(() => readStored(BUTTONS_FOLDED_KEY) === "1");
+  const setButtonsFolded = (on: boolean) => {
+    setButtonsFoldedState(on);
+    writeStored(BUTTONS_FOLDED_KEY, on ? "1" : "0");
+  };
   const [nav, setNavState] = useState<EditorNav>(() => readEditorNav(readStored(EDITOR_NAV_KEY)));
   /** The folded layout's open sections; a topic gone to from elsewhere (a link, a note) opens. */
   const [openSections, setOpenSections] = useState<string[]>(["design-sets"]);
@@ -1233,7 +1241,8 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {!occasionScope && <DeviceScopeBanner compact scope={scope} config={state.present} onClear={clearDevice} />}
       <span className={`flex items-center gap-1 px-1 text-xs ${dirty ? "text-amber-700 dark:text-amber-400" : "text-muted-foreground"}`}>
         <span className={`size-2 rounded-full ${dirty ? "bg-amber-500" : "bg-emerald-500"}`} aria-hidden />
-        <span title={dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"}>{dirty ? "לא נשמר" : "הכול שמור"}</span>
+        {/* Saved is the usual case: the green dot says it (and the words are read aloud); unsaved is said in words. */}
+        <span title={dirty ? "יש שינויים שלא נשמרו" : "הכול שמור"} className={dirty ? undefined : "sr-only"}>{dirty ? "לא נשמר" : "הכול שמור"}</span>
       </span>
       <Button type="button" size="sm" className="h-8 rounded-full" onClick={save} disabled={!dirty || saving} aria-label={saving ? "שומר…" : "שמור ושדר למסכים"} title="שמירה ושידור לכל המסכים (Ctrl+S)">
         {dirty ? <Save className="size-4" /> : <Check className="size-4" />}
@@ -1716,7 +1725,9 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
       {/* Under the board, one row that fills as it wraps: editing, the day shown, then the screens, the layout and the
           windows - no group pushed to the far side leaving a hole, the two "separate window" buttons one menu. */}
       {/* data-fill-row: every row of buttons filled to its end (index.css), on a phone as on a wide screen - no row left half empty. */}
-      <div className={`flex flex-wrap items-center gap-2 ${besideBoard ? "content-start" : "mt-3"}`} data-testid="preview-bottom-row" data-fill-row>
+      {/* Beside the board: two to a row (data-two-up, index.css); under it, rows that fill as they wrap. */}
+      <div className={besideBoard ? "grid grid-cols-2 content-start gap-2" : "mt-3 flex flex-wrap items-center gap-2"} data-testid="preview-bottom-row"
+        {...(besideBoard ? { "data-two-up": "" } : { "data-fill-row": "" })}>
         {previewActions}
         <span id={PREVIEW_TOOLBAR_SLOT} className="contents" />
         <DropdownMenu dir="rtl" modal={false}>
@@ -1791,8 +1802,16 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         >
           <div className={`overflow-hidden pt-1 ${besideBoard ? "flex gap-3" : ""}`} style={{ height: topHeight }}>
             {besideBoard && (
-              <div className="w-56 shrink-0 overflow-y-auto pe-1" data-testid="preview-buttons-beside">
-                {previewButtons}
+              <div className={`shrink-0 overflow-y-auto pe-1 ${buttonsFolded ? "w-9" : "w-80"}`} data-testid="preview-buttons-beside">
+                <div className="mb-1.5 flex justify-end">
+                  <Button type="button" variant="ghost" size="sm" className="size-7 p-0 text-muted-foreground"
+                    aria-label={buttonsFolded ? "פתיחת הכפתורים" : "קיפול הכפתורים"} title={buttonsFolded ? "פתיחת הכפתורים" : "קיפול הכפתורים - הלוח מקבל את המקום"}
+                    aria-expanded={!buttonsFolded} data-testid="preview-buttons-fold" onClick={() => setButtonsFolded(!buttonsFolded)}>
+                    {buttonsFolded ? <PanelRightOpen className="size-4" aria-hidden /> : <PanelRightClose className="size-4" aria-hidden />}
+                  </Button>
+                </div>
+                {/* Folded, hidden - not removed: the screens' menu and the rest keep their place in the page. */}
+                <div hidden={buttonsFolded}>{previewButtons}</div>
               </div>
             )}
             <div className="min-w-0 flex-1">{studioView}</div>

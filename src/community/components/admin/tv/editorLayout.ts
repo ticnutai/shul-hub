@@ -17,6 +17,8 @@ export const TOP_HEIGHT_DEFAULT = 440;
 export const SIDE_H_KEY = "shul-hub.tv-editor.side-height";
 export const FOCUS_KEY = "shul-hub.tv-editor.focus";
 export const BARE_KEY = "shul-hub.tv-editor.bare";
+/** The buttons beside the board ("תצוגה למעלה"), folded to one small button. */
+export const BUTTONS_FOLDED_KEY = "shul-hub.tv-editor.buttons-folded";
 /** Side by side, the board stopped at 520 px (with the studio's 72 around it): the same, until it is dragged. */
 export const SIDE_HEIGHT_DEFAULT = 592;
 /** The studio's toolbar row and padding around the frame (TvDeviceStudio's fitHeight). */

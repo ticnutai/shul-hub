@@ -120,7 +120,7 @@ test.describe("administrator", () => {
     await page.getByRole("tab", { name: /התצוגות והעיצוב/ }).click();
     await expect(page.getByRole("button", { name: /שמור ושדר/ }).first()).toBeVisible();
     await expect(page.locator(".tv-frame").first()).toBeVisible();
-    await expect(page.getByText("הכול שמור").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /שמור ושדר/ }).first()).toBeDisabled();
     await noHorizontalOverflow(page);
     expect(errors).toEqual([]);
   });
@@ -169,7 +169,7 @@ test.describe("administrator", () => {
   test("click-to-edit changes the draft on every screen and undoes cleanly", async ({ adminPage: page }) => {
     const errors = collectErrors(page);
     await page.goto("/community/admin?tab=tv&tvTab=design");
-    await expect(page.getByText("הכול שמור").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /שמור ושדר/ }).first()).toBeDisabled({ timeout: 20_000 });
     await chooseDevice(page, "כל המסכים");
     // "All screens" shows one board by default - the change applies to every
     // device - and only draws the five side by side once comparison is on.
@@ -213,7 +213,7 @@ test.describe("administrator", () => {
     // Undo everything: back to exactly what is saved.
     const undo = page.getByRole("button", { name: "צעד אחורה (Ctrl+Z)" });
     for (let i = 0; i < 30 && (await undo.isEnabled()); i++) await undo.click();
-    await expect(page.getByText("הכול שמור").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /שמור ושדר/ }).first()).toBeDisabled();
     await expect(page.locator(BOARD_NAME).first()).toContainText(original);
     if (hasHeader) await expect(page.locator(".tv-header.is-flipped")).toHaveCount(0);
 
@@ -225,7 +225,7 @@ test.describe("administrator", () => {
   test("editor controls: themes, fonts, slides, alert preview and undo", async ({ adminPage: page }) => {
     const errors = collectErrors(page);
     await page.goto("/community/admin?tab=tv&tvTab=design");
-    await expect(page.getByText("הכול שמור").first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: /שמור ושדר/ }).first()).toBeDisabled({ timeout: 20_000 });
     const root = page.locator(".tv-root").first();
     const accent = () => root.evaluate((el) => getComputedStyle(el).getPropertyValue("--tv-accent").trim());
     const before = await accent();
@@ -254,7 +254,7 @@ test.describe("administrator", () => {
 
     const undo = page.getByRole("button", { name: "צעד אחורה (Ctrl+Z)" });
     for (let i = 0; i < 30 && (await undo.isEnabled()); i++) await undo.click();
-    await expect(page.getByText("הכול שמור").first()).toBeVisible();
+    await expect(page.getByRole("button", { name: /שמור ושדר/ }).first()).toBeDisabled();
     expect(errors).toEqual([]);
   });
 

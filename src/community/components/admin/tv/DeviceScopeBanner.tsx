@@ -50,6 +50,9 @@ export function DeviceScopeBanner({
     ? `השינויים יחולו על ${DEVICE_CLASS_LABELS[scope as DeviceClass]} בלבד. כל דבר שלא תשנו כאן ממשיך לעקוב אחרי שאר התצוגות.`
     : "כל שינוי חל על הטלוויזיה, על המחשב ועל הנייד יחד. להתאמה לתצוגה אחת - בחרו אותה בתפריט המכשיר שמתחת ללוח.";
 
+  // Every screen together, none set apart: the usual case, nothing to say on the bar (read aloud only).
+  if (compact && !editingOne && !custom.length)
+    return <span className="sr-only" data-testid="device-scope" data-scope={scope}>עורך: כל המסכים</span>;
   if (compact)
     return (
       <span
