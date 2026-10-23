@@ -109,7 +109,7 @@ describe("ready-made frame pictures", () => {
       expect(decodeURIComponent(f.url)).toContain('fill="none"');
     }
     // The design frames are pictures this build ships, transparent in the middle.
-    for (const f of FRAME_PICTURES.slice(13)) expect(f.url).toMatch(/^\/new-shul-assets\/[\w-]+\.webp$/);
+    for (const f of FRAME_PICTURES.slice(17)) expect(f.url).toMatch(/^\/new-shul-assets\/[\w-]+\.webp$/);
     for (const f of FRAME_PICTURES.slice(0,2)) expect(framePictureUrl(framePictureRef(f.id))).toBe(f.url);
     const ref = framePictureRef("gold-ornate");
     expect(normalizeFrameStyle({ image: ref }).image).toBe(ref);
