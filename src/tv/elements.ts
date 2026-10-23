@@ -19,6 +19,8 @@ export interface BoardElement {
   sourceMask?: { width: number; height: number; path: string; holes: string[] };
   /** Non-destructive colour adjustment for image artwork, including image frames. */
   imageTune?: { hue: number; saturation: number; brightness: number };
+  /** A frame's thickness against its natural one (1): .25 thin to 4 heavy. */
+  frameWidth?: number;
   /** A colour-editable arched fill beneath an independent arched picture frame. */
   archFill?: boolean;
   /**
@@ -162,6 +164,7 @@ export function normalizeElements(raw: unknown): BoardElement[] {
       ...(v.kind==='image'&&v.fit==='cover'?{fit:'cover' as const}:{}),
       ...(v.kind==='image'&&v.ratio===true?{ratio:true}:{}),
       ...((v.kind === 'image' || v.kind === 'frame') && v.imageTune && typeof v.imageTune === 'object' ? {imageTune:{hue:n(v.imageTune.hue,0,-180,180),saturation:n(v.imageTune.saturation,1,0,2),brightness:n(v.imageTune.brightness,1,.2,2)}} : {}),
+      ...(v.kind==='frame'&&typeof v.frameWidth==='number'&&v.frameWidth!==1?{frameWidth:n(v.frameWidth,1,FRAME_WIDTH_MIN,FRAME_WIDTH_MAX)}:{}),
       ...(ELEMENT_BINDINGS.includes(v.binding) ? { binding: v.binding } : {}),
       ...(typeof v.rowsPerPage === 'number' ? { rowsPerPage: Math.round(n(v.rowsPerPage, 3, 1, 30)) } : {}),
       ...(typeof v.pageSeconds === 'number' ? { pageSeconds: Math.round(n(v.pageSeconds, 15, 3, 600)) } : {}),
@@ -818,4 +821,11 @@ export function withDefaults(added: BoardElement[], d: ElementDefaults): BoardEl
     ...(d.weight ? { weight: d.weight } : {}),
     ...(d.scale !== 1 ? { fontSize: Math.round(e.fontSize * d.scale * 100) / 100 } : {}),
   });
+}
+
+export const FRAME_WIDTH_MIN = .25, FRAME_WIDTH_MAX = 4;
+/** Set the thickness of these frames (1 = natural); other parts are untouched. */
+export function setFrameWidth(all: BoardElement[], ids: string[], width: number): BoardElement[] {
+  const w = Math.round(Math.min(FRAME_WIDTH_MAX, Math.max(FRAME_WIDTH_MIN, Number.isFinite(width) ? width : 1)) * 100) / 100;
+  return all.map(e => e.kind === 'frame' && ids.includes(e.id) ? (w === 1 ? (({ frameWidth: _, ...r }) => r)(e) : { ...e, frameWidth: w }) : e);
 }
