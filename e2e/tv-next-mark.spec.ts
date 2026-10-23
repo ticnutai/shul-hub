@@ -28,7 +28,7 @@ test("the next minyan marked, its shape and colour chosen", async ({ page, isMob
   await page.getByRole("button", { name: /עריכה ישירה בלוח/ }).first().click();
   await prayers.click();
   // "סימון הבא" has a tab of its own in the chosen part's panel.
-  await page.getByTestId("part-context-panel").getByRole("tab", { name: "סימון הבא" }).click();
+  await page.getByTestId("part-context-panel").getByRole("tab", { name: "הבא ומה שעבר" }).click();
   const tools = page.getByTestId("next-mark-tools");
   await expect(tools).toBeVisible();
   await tools.getByRole("radio", { name: "תווית \"הבא\"" }).click();
@@ -45,13 +45,25 @@ test("the next minyan marked, its shape and colour chosen", async ({ page, isMob
   await page.mouse.click(box.x + box.width / 2, box.y + box.height + 6);
   const panel = page.getByTestId("part-context-panel");
   await expect(panel).toBeVisible();
-  await panel.getByRole("tab", { name: "סימון הבא" }).click();
+  await panel.getByRole("tab", { name: "הבא ומה שעבר" }).click();
   await panel.getByTestId("ctx-next").getByRole("radio", { name: "פס בצד" }).click();
   await expect(prayers.locator("[data-next]")).toHaveCSS("box-shadow", /inset/);
   await panel.getByTestId("ctx-next").getByRole("radio", { name: "מסגרת" }).click();
   // Its solidity and saturation, from the same place.
   await panel.getByTestId("ctx-next").getByRole("slider", { name: "אטימות הסימון" }).fill("50");
   await expect(prayers.locator("[data-next]")).toHaveCSS("box-shadow", /0\.5\)/);
+
+  // What is over: its own part - with no mark at all it still fades, as much as chosen.
+  const next = panel.getByTestId("ctx-next");
+  await next.getByRole("radio", { name: "בלי סימון" }).click();
+  const past = next.getByTestId("past-tools");
+  const fade = past.getByRole("checkbox", { name: "עמעום מה שעבר" });
+  await expect(fade).not.toBeChecked();
+  await fade.check();
+  await past.getByRole("slider", { name: "כמה דהוי" }).fill("70");
+  const faded = prayers.locator(":scope > div").filter({ hasNot: page.locator("[data-next]") });
+  await expect.poll(async () => (await faded.evaluateAll((rows) => rows.map((r) => getComputedStyle(r).opacity))).includes("0.3")).toBe(true);
+  await next.getByRole("radio", { name: "מסגרת" }).click();
 
   // The lists held on the page of "הבא", and turned by hand - in the preview only.
   const paging = page.getByTestId("list-paging");

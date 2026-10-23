@@ -5,7 +5,7 @@ import { textLook, turnOf, wraps, type BoardElement, type ElementScroll } from '
 import {useDeadlines, DeadlineCard} from './DeadlineContext';
 import { useFitLine } from './useFitLine';
 import { useFitText } from './useFitText';
-import { DEFAULT_NEXT_MARK, inkOn, markAlpha, markColour, nextRow, tint, nextRowStyle, rowPast } from './nextMark';
+import { DEFAULT_NEXT_MARK, fadesPast, pastOpacity, inkOn, markAlpha, markColour, nextRow, tint, nextRowStyle, rowPast } from './nextMark';
 import { jerusalemMinutes } from './useBoardData';
 import { listPage, useListPaging } from './listPaging';
 
@@ -57,9 +57,10 @@ export function BoundElement({ element }: { element: BoardElement }) {
   const next = mark.shape === 'none' ? -1 : nextRow(rows.map(r => r[1]), nowMin);
   // Held in the editor: the page of "הבא", turned by hand (listPaging.ts).
   const page = scrolling ? 0 : listPage(pages, per, next, data.now, paging, e.pageSeconds ?? 15);
-  const dim = mark.shape !== 'none' && mark.dimPast !== false;
+  // What is over, faded - its own setting, apart from the mark (nextMark.ts fadesPast).
+  const dim = fadesPast(mark);
   const list = <div data-content-binding={e.binding} dir="rtl" style={{ ...style, display: 'flex', flexDirection: 'column', ...(scrolling ? { height: 'auto' } : {}) }}>
-    {(scrolling ? rows : rows.slice(page * per, page * per + per)).map((row, i) => { const [label,time]=row; const at = scrolling ? i : page * per + i; const isNext = at === next; const key=e.binding==='zmanim'?data.zmanKeys?.[data.zmanim!.indexOf(row)]:undefined; return <div key={key??i} data-zman={key} data-next={isNext || undefined} className={deadlines.some(a=>a.event===key)?'tv-zman-warning':undefined} style={{ flex: scrolling ? `0 0 ${e.height / count}cqh` : `0 0 ${100/count}%`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1cqw', lineHeight: 1.2, position: 'relative', ...(isNext ? nextRowStyle(mark, e.color) : dim && rowPast(time, nowMin) ? { opacity: 0.55 } : {}) }}>
+    {(scrolling ? rows : rows.slice(page * per, page * per + per)).map((row, i) => { const [label,time]=row; const at = scrolling ? i : page * per + i; const isNext = at === next; const key=e.binding==='zmanim'?data.zmanKeys?.[data.zmanim!.indexOf(row)]:undefined; return <div key={key??i} data-zman={key} data-next={isNext || undefined} className={deadlines.some(a=>a.event===key)?'tv-zman-warning':undefined} style={{ flex: scrolling ? `0 0 ${e.height / count}cqh` : `0 0 ${100/count}%`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1cqw', lineHeight: 1.2, position: 'relative', ...(isNext ? nextRowStyle(mark, e.color) : dim && rowPast(time, nowMin) ? { opacity: pastOpacity(mark) } : {}) }}>
       {isNext && mark.shape === 'badge' && <span data-next-badge style={{ flexShrink: 0, background: tint(markColour(mark, e.color), markAlpha(mark)), color: inkOn(markColour(mark, e.color)), borderRadius: '0.6cqh', padding: '0 0.6cqw', fontSize: '.6em', lineHeight: 1.5 }}>הבא</span>}
       {isNext && mark.shape === 'dot' && <span data-next-dot className="tv-next-dot" style={{ flexShrink: 0, width: '0.7em', height: '0.7em', borderRadius: '50%', background: tint(markColour(mark, e.color), markAlpha(mark)) }} />}
       {e.binding==='lessons' ? <><span style={{minWidth:0}}>{label.split(' · ')[0]}<small style={{display:'block',fontSize:'.72em',fontWeight:400,marginTop:'.4cqh'}}>{label.split(' · ').slice(1).join(' · ')}</small></span><span style={{flexShrink:0,textAlign:'left'}}><b dir="ltr">{time.split(' · ')[0]}</b><small style={{display:'block',fontSize:'.65em',fontWeight:400}}>{time.split(' · ').slice(1).join(' · ')}</small></span></> : <>{wraps(e) ? <span style={{ flex: '1 1 auto', minWidth: 0, overflowWrap: 'anywhere', lineHeight: 1.1 }}>{label}</span> : <FitLabel text={label} />}<b dir="ltr" style={{ whiteSpace: 'nowrap' }}>{time}</b></>}

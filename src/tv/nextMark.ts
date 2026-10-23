@@ -22,8 +22,14 @@ export interface NextMark {
   shape: NextShape;
   /** Absent: the part's own text colour. */
   color?: string;
-  /** What is over is a little faded (absent: yes). */
+  /**
+   * What is over faded: true or false as chosen; absent - faded beside a
+   * mark, not with none (as it always was). Its own setting, apart from the
+   * mark: a list can fade what is over and mark nothing.
+   */
   dimPast?: boolean;
+  /** How much of what is over is still seen, 0.15-0.9 (absent: 0.55). */
+  pastOpacity?: number;
   /** How solid the mark is, 0.05-1 (absent: the shape's own - a soft fill, a full line). */
   alpha?: number;
   /** Its colour's saturation, 0 (grey) - 2 (twice as vivid); absent: as chosen. */
@@ -33,6 +39,11 @@ export interface NextMark {
 /** Each shape's own solidity, when none was chosen: a fill is soft, a line is full. */
 export const SHAPE_ALPHA: Record<NextShape, number> = { fill: 0.28, frame: 1, bar: 1, badge: 1, dot: 1, none: 1 };
 export const markAlpha = (m: NextMark) => m.alpha ?? SHAPE_ALPHA[m.shape];
+
+/** Whether what is over is faded on a list with this mark. */
+export const fadesPast = (m: NextMark) => m.dimPast ?? m.shape !== 'none';
+export const DEFAULT_PAST_OPACITY = 0.55;
+export const pastOpacity = (m: NextMark) => m.pastOpacity ?? DEFAULT_PAST_OPACITY;
 
 /** The lists that have times, and so a "next". */
 export const MARKED_BINDINGS = ['prayers', 'lessons', 'zmanim'] as const;
@@ -48,7 +59,8 @@ export function normalizeNextMark(v: unknown): NextMark | undefined {
   return {
     shape: o.shape as NextShape,
     ...(typeof o.color === 'string' && /^#[\da-f]{3,8}$/i.test(o.color) ? { color: o.color } : {}),
-    ...(o.dimPast === false ? { dimPast: false } : {}),
+    ...(typeof o.dimPast === 'boolean' ? { dimPast: o.dimPast } : {}),
+    ...(typeof o.pastOpacity === 'number' && Number.isFinite(o.pastOpacity) ? { pastOpacity: Math.round(Math.min(0.9, Math.max(0.15, o.pastOpacity)) * 100) / 100 } : {}),
     ...(typeof o.alpha === 'number' && Number.isFinite(o.alpha) ? { alpha: Math.round(Math.min(1, Math.max(0.05, o.alpha)) * 100) / 100 } : {}),
     ...(typeof o.saturation === 'number' && Number.isFinite(o.saturation) && o.saturation !== 1 ? { saturation: Math.round(Math.min(2, Math.max(0, o.saturation)) * 100) / 100 } : {}),
   };

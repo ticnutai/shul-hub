@@ -41,7 +41,7 @@ type Edit = (key: string, update: (c: TvConfig) => TvConfig) => void;
 type Tab = "background" | "board" | "frame" | "shape" | "text" | "content" | "ornament" | "next" | "add";
 
 const TAB_NAMES: Record<Tab, string> = {
-  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "טקסט", content: "התוכן", ornament: "העיטור", next: "סימון הבא", add: "הוספה",
+  background: "הרקע", board: "הלוח", frame: "המסגרת", shape: "הצורה", text: "טקסט", content: "התוכן", ornament: "העיטור", next: "הבא ומה שעבר", add: "הוספה",
 };
 /** Where the panel was dragged to, for next time (this browser). */
 const PANEL_POS_KEY = "tv-part-panel-pos";

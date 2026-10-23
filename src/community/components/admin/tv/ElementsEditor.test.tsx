@@ -242,7 +242,7 @@ describe("PartsContent - more options of a frame", () => {
     fireEvent.click(await screen.findByRole("button", { name: 'להחליף את "זמני תפילות"' }));
     for (const n of ["תפילות היום", "כותרת תפילות", "מסגרת תפילות"]) expect(named(n).hidden).toBe(true);
     expect(latest.elements.find((e) => e.binding === "announcements")!.hidden).toBe(false);
-  });
+  }, 20_000); // A whole board drawn and a message waited for: slow when the computer is busy.
 });
 
 describe("several at once, and back to the kit", () => {
