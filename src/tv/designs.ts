@@ -2,6 +2,7 @@ import { PREMIUM_DESIGNS } from './premiumDesigns';
 import { EMERALD_COMPOSITION } from './emeraldComposition';
 import { ORIGINAL_LAYER_DESIGNS } from './originalLayerDesigns';
 import { INDEPENDENT_DESIGNS } from './independentDesigns';
+import { ROOM_DESIGNS } from './roomDesigns';
 import type { TvConfig } from "./config";
 import { getTheme, isSafeCssValue, THEME_VARS, THEME_VAR_LAYERS, type ThemeVar } from "./themes";
 
@@ -293,7 +294,8 @@ const tidyName = (d: SavedDesign): SavedDesign => ({
  * paintings separated by masks lead (the strongest separation), then the
  * pieces drawn apart, then the boards built from the system's own elements.
  */
-const PARTS_DESIGNS: SavedDesign[] = [...ORIGINAL_LAYER_DESIGNS, EMERALD_COMPOSITION, ...INDEPENDENT_DESIGNS].map(tidyName);
+// The rooms first: a whole painted room, each empty panel in it a container ready made (roomDesigns.ts).
+const PARTS_DESIGNS: SavedDesign[] = [...ROOM_DESIGNS, ...ORIGINAL_LAYER_DESIGNS, EMERALD_COMPOSITION, ...INDEPENDENT_DESIGNS].map(tidyName);
 /**
  * Whole paintings, cut into rectangles that move; the background stays inside
  * each. The ivory and sapphire paintings are offered as layers above instead -
