@@ -23,7 +23,7 @@ import type { PartShape } from "@/tv/partShapes";
 import { BoardBackground } from "./TvEditInspector";
 import { wearsPaint } from "@/tv/partPaint";
 import { galleryOf } from "@/tv/backgrounds";
-import { FRAME_PICTURES, FRAME_PICTURE_PREFIX, framePictureUrl } from "@/tv/framePictures";
+import { FRAME_PICTURE_PREFIX, framePictureUrl, framesByKit } from "@/tv/framePictures";
 import { PART_SHAPES } from "@/tv/partShapes";
 import { setSectionShape } from "@/tv/sectionGeometry";
 import type { BoardElement } from "@/tv/elements";
@@ -546,20 +546,27 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               </button>
             )}
           </div>
-          <div className="max-h-56 overflow-y-auto p-0.5">
-            <GalleryGrid testId="ctx-frame-gallery" compact>
+          <div className="max-h-72 space-y-2 overflow-y-auto p-0.5" data-testid="ctx-frame-gallery">
+            <GalleryGrid compact>
               <GalleryTile compact name="קו מצויר" on={Boolean(frame && frame.kind === "frame" && !frame.image)}
                 onPick={() => editEls("frame-line", (all) => wearFrame(all, chosen, null).elements)}
                 preview={<span className="absolute inset-[18%] rounded-sm border-2 border-[#c9a24a]" />} />
-              {FRAME_PICTURES.map((f) => {
-                const ref = FRAME_PICTURE_PREFIX + f.id;
-                return (
-                  <GalleryTile key={f.id} compact name={f.name} on={frame?.image === ref}
-                    onPick={() => editEls("frame-picture", (all) => wearFrame(all, chosen, ref).elements)}
-                    preview={<span className="absolute inset-[12%]" style={{ border: "7px solid transparent", borderImage: `url("${framePictureUrl(ref)}") ${f.slice}% / 7px stretch` }} />} />
-                );
-              })}
             </GalleryGrid>
+            {framesByKit().map((kit) => (
+              <div key={kit.name} className="space-y-1" data-testid="frame-kit">
+                <div className="text-xs font-semibold text-muted-foreground">{kit.name}</div>
+                <GalleryGrid compact>
+                  {kit.frames.map((f) => {
+                    const ref = FRAME_PICTURE_PREFIX + f.id;
+                    return (
+                      <GalleryTile key={f.id} compact name={f.name} on={frame?.image === ref}
+                        onPick={() => editEls("frame-picture", (all) => wearFrame(all, chosen, ref).elements)}
+                        preview={<span className="absolute inset-[12%]" style={{ border: "7px solid transparent", borderImage: `url("${framePictureUrl(ref)}") ${f.slice}% / 7px stretch` }} />} />
+                    );
+                  })}
+                </GalleryGrid>
+              </div>
+            ))}
           </div>
         </div>
       )}

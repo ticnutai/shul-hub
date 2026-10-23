@@ -113,6 +113,10 @@ const BRAID = svg(
 );
 
 export const FRAME_PICTURES: FramePicture[] = [
+  { id: "kit-gold-acanthus", name: "זהב מגולף ושושנות", url: "/new-shul-assets/frame-kit-gold-acanthus.webp", slice: 15, width: 3 },
+  { id: "kit-walnut-bead", name: "אגוז וחרוזי זהב", url: "/new-shul-assets/frame-kit-walnut-bead.webp", slice: 12, width: 2.6 },
+  { id: "kit-stone-olive", name: "אבן, זית ופסיפס", url: "/new-shul-assets/frame-kit-stone-olive.webp", slice: 16, width: 3 },
+  { id: "kit-black-marble", name: "שיש שחור ועלי זהב", url: "/new-shul-assets/frame-kit-black-marble.webp", slice: 11, width: 2.6 },
   {id:'silver-acanthus',name:'כסף וזהב - גילופי עלים',url:'/new-shul-assets/catalog-silver-acanthus-frame.png',slice:20,width:3},
   {id:'walnut-vine',name:'אגוז וברונזה - ענפי גפן',url:'/new-shul-assets/catalog-walnut-vine-frame.png',slice:20,width:3},
   { id: "gold-ornate", name: "זהב מעוטר", url: goldOrnate, slice: 32, width: 3 },
@@ -131,6 +135,28 @@ export const FRAME_PICTURES: FramePicture[] = [
   { id: "sapphire-silver", name: "כסף ואבני ספיר", url: "/new-shul-assets/sapphire-modular-panel-frame.webp", slice: 20, width: 2.5 },
   { id: "sapphire-royal", name: "כסף מלכותי", url: "/new-shul-assets/sapphire-modular-outer-frame.webp", slice: 20, width: 2.5 },
 ];
+
+/**
+ * Kits of frames: frames that belong together, to dress every container of a
+ * board alike. A frame not in any kit is shown under "more frames".
+ */
+export const FRAME_KITS: { name: string; ids: string[] }[] = [
+  { name: "ערכת היכל זהב", ids: ["kit-gold-acanthus", "gold-ornate", "carved-gold", "emerald-gold", "fan-corners"] },
+  { name: "ערכת עץ ואגוז", ids: ["kit-walnut-bead", "carved-wood", "walnut-vine", "rosette-corners"] },
+  { name: "ערכת אבן ירושלמית", ids: ["kit-stone-olive", "stepped", "rope", "ornate-corners"] },
+  { name: "ערכת שיש וזהב", ids: ["kit-black-marble", "double-gold", "braid", "sapphire-royal"] },
+  { name: "ערכת כסף", ids: ["silver-acanthus", "double-silver", "sapphire-silver"] },
+];
+
+/** The frames by kit, and those in none at the end. */
+export function framesByKit(): { name: string; frames: FramePicture[] }[] {
+  const inKit = new Set(FRAME_KITS.flatMap((k) => k.ids));
+  const rest = FRAME_PICTURES.filter((f) => !inKit.has(f.id));
+  return [
+    ...FRAME_KITS.map((k) => ({ name: k.name, frames: k.ids.map((id) => FRAME_PICTURES.find((f) => f.id === id)).filter((f): f is FramePicture => Boolean(f)) })),
+    ...(rest.length ? [{ name: "מסגרות נוספות", frames: rest }] : []),
+  ];
+}
 
 export const framePictureRef = (id: string) => FRAME_PICTURE_PREFIX + id;
 
