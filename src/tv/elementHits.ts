@@ -111,3 +111,11 @@ export function partSeenAt(all: readonly BoardElement[], p: BoardPoint): string 
   }
   return null;
 }
+
+
+/** The parts a box drawn on the board touches (hidden ones not), as a box of choice takes them. */
+export function partsInBox(elements: BoardElement[], box: { x: number; y: number; width: number; height: number }): string[] {
+  return elements
+    .filter((e) => !e.hidden && e.x < box.x + box.width && e.x + e.width > box.x && e.y < box.y + box.height && e.y + e.height > box.y)
+    .map((e) => e.id);
+}

@@ -5,7 +5,8 @@ import { useEffect, useRef, useId, useState, type PointerEvent as ReactPointerEv
 import { useElementEditing } from './elementEditing';
 import {gridDelta,linkedSection} from './sectionGeometry';
 import { ElementDataProvider, BoundElement, PlainText, type ElementData } from './elementData';
-import { partBelow, partSeenAt, partsAt, pressKind, pressSelection, type Press } from './elementHits';
+import { partBelow, partSeenAt, partsAt, partsInBox, pressKind, pressSelection, type Press } from './elementHits';
+import { isBackdrop } from './containerParts';
 import { PartPickMenu } from './PartPickMenu';
 import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, ratioResize, resizeElements, type BoardElement, type ResizeHandle } from './elements';
 
@@ -122,6 +123,13 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
   const [pickMenu, setPickMenu] = useState<{ x: number; y: number; ids: string[] } | null>(null);
   useEffect(() => { if (!enabled) setPickMenu(null); }, [enabled]);
   const boardRef = useRef<HTMLDivElement>(null);
+  /**
+   * A box drawn with the mouse from an empty place (or the main background),
+   * choosing every part it touches - as folders are chosen on a desktop.
+   * A press without a drag does what a press there always did (`click`).
+   */
+  const [band, setBand] = useState<{ x0: number; y0: number; x1: number; y1: number; add: boolean; base: string[]; click: () => void } | null>(null);
+  const bandBox = (b: NonNullable<typeof band>) => ({ x: Math.min(b.x0, b.x1), y: Math.min(b.y0, b.y1), width: Math.abs(b.x1 - b.x0), height: Math.abs(b.y1 - b.y0) });
   /** Where on the board (in its percent) the pointer stands. */
   const pointAt = (board: HTMLElement, clientX: number, clientY: number) => {
     const r = board.getBoundingClientRect();
@@ -168,6 +176,17 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       if (delta[ev.key]) { ev.preventDefault(); ev.stopPropagation(); api.commit(moveElements(elements, ids, ...delta[ev.key]), `element-nudge:${ids.join(',')}`); }
     } : undefined}
     onPointerMove={enabled ? ev => {
+      if (band) {
+        ev.stopPropagation();
+        const p = pointAt(ev.currentTarget, ev.clientX, ev.clientY), next = { ...band, x1: p.x, y1: p.y };
+        setBand(next);
+        const box = bandBox(next);
+        if (box.width > .6 || box.height > .6) {
+          const hit = partsInBox(elements.filter(e => !isBackdrop(e)), box);
+          editor.select(next.add ? [...new Set([...next.base, ...hit])] : hit);
+        }
+        return;
+      }
       const d = drag.current; if (!d) return;
       ev.stopPropagation();
       if (d.all !== editor.api.current?.elements || !editor.enabled && !surface) { stop(); return; }
@@ -181,6 +200,13 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       editor.setDraft(d.last);
     } : undefined}
     onPointerUp={enabled ? ev => {
+      if (band) {
+        ev.stopPropagation();
+        const box = bandBox(band);
+        if (box.width <= .6 && box.height <= .6) band.click();
+        setBand(null);
+        return;
+      }
       const d = drag.current; if (!d) return; ev.stopPropagation();
       // A part carried away: the next press there is a press of its own, not one part down.
       if (d.last) lastPress.current = null;
@@ -196,7 +222,7 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       ev.preventDefault(); ev.stopPropagation(); stop();
       setPickMenu({ x: ev.clientX, y: ev.clientY, ids });
     } : undefined}
-    onPointerCancel={stop} onLostPointerCapture={stop}
+    onPointerCancel={() => { setBand(null); stop(); }} onLostPointerCapture={() => { setBand(null); stop(); }}
     onPointerDown={enabled ? ev => {
       if (ev.button !== 0) return;
       // Inside the text being written: the caret moves, nothing is dragged.
@@ -213,12 +239,21 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
         return;
       }
       const node = (ev.target as Element).closest<HTMLElement>('[data-element-id]');
+      const startBand = (click: () => void) => {
+        const p = pointAt(ev.currentTarget, ev.clientX, ev.clientY);
+        ev.preventDefault(); ev.stopPropagation(); ev.currentTarget.focus({ preventScroll: true });
+        ev.currentTarget.setPointerCapture(ev.pointerId);
+        lastPress.current = null;
+        setBand({ x0: p.x, y0: p.y, x1: p.x, y1: p.y, add: ev.shiftKey, base: editor.selected, click });
+      };
       // Alt on the empty board: the board's ordinary click, as before.
-      if (!node) { lastPress.current = null; if (!ev.altKey) editor.select([]); return; }
+      if (!node) { lastPress.current = null; if (!ev.altKey) startBand(() => editor.select([])); return; }
       // The part pressed: the one seen at that place - a press on the see-through of a painted
       // piece goes on to what is seen under it (the main background, at last) - else the one on top.
       const seen = partSeenAt(elements, pointAt(ev.currentTarget, ev.clientX, ev.clientY));
       const e = elements.find(x => x.id === (seen ?? node.dataset.elementId)); if (!e) return;
+      // On the main background: a drag draws a box of choice; a press alone chooses the background.
+      if (!ev.altKey && isBackdrop(e)) { startBand(() => editor.select([e.id])); return; }
       const at = Date.now(), last = lastDown.current;
       lastDown.current = { id: e.id, at };
       if (!ev.altKey && last?.id === e.id && at - last.at < 450 && writable(e)) {
@@ -282,6 +317,7 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
       {enabled && editor.selected.includes(e.id) && <span data-edit-ui="true" style={{ position: 'absolute', inset: 0, outline: '2px solid #38bdf8', pointerEvents: 'none' }} />}
     </div>)}
     {enabled && <SelectionHandles elements={shown} ids={editor.selected} />}
+    {enabled && band && (() => { const b = bandBox(band); return b.width > .6 || b.height > .6 ? <div data-testid="selection-band" data-edit-ui="true" style={{ position: 'absolute', left: `${b.x}%`, top: `${b.y}%`, width: `${b.width}%`, height: `${b.height}%`, border: '1.5px dashed #38bdf8', background: '#38bdf822', pointerEvents: 'none', zIndex: 30 }} /> : null; })()}
     {enabled && pickMenu && <PartPickMenu x={pickMenu.x} y={pickMenu.y} current={editor.selected[0]}
       parts={pickMenu.ids.map(id => ({ id, name: elements.find(x => x.id === id)?.name ?? id }))}
       onClose={() => { setPickMenu(null); boardRef.current?.focus({ preventScroll: true }); }}
