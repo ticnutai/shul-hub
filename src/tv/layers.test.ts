@@ -104,7 +104,7 @@ describe("ready-made frame pictures", () => {
       "sapphire-royal",
     ]);
     // The drawn ones are pictures too: an SVG, transparent inside.
-    for (const f of FRAME_PICTURES.slice(4, 13)) {
+    for (const f of FRAME_PICTURES.slice(8, 17)) {
       expect(f.url).toMatch(/^data:image\/svg\+xml;utf8,/);
       expect(decodeURIComponent(f.url)).toContain('fill="none"');
     }
