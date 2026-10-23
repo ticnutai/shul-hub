@@ -6,7 +6,7 @@
 import { InfoTip } from "@/components/InfoTip";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, ChevronDown, Columns3, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Grid2x2, Grid3x3, LayoutGrid, Square, Columns3, Eye, EyeOff, Lock, Minus, PanelLeft, PanelRight, PanelsLeftRight, Plus, Rows3, RotateCcw, StretchHorizontal, Unlock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -568,6 +568,42 @@ const useSliderLayout = () => useViewChoice<SliderLayout>("tv-slider-layout", SL
 export type TileSize = "small" | "medium" | "large";
 const TILE_SIZES: TileSize[] = ["small", "medium", "large"];
 export const useTileSize = () => useViewChoice<TileSize>("tv-tile-size", TILE_SIZES, "medium");
+
+/**
+ * How big the kits and parts in a library are drawn: six to a row, four,
+ * three (as they were) or two - kept, the same in every library.
+ */
+export const LIBRARY_VIEWS = ["xs", "small", "medium", "large"] as const;
+export type LibraryView = (typeof LIBRARY_VIEWS)[number];
+export const useLibraryView = () => useViewChoice<LibraryView>("tv-library-view", LIBRARY_VIEWS, "medium");
+export const LIBRARY_GRID: Record<LibraryView, string> = {
+  xs: "grid grid-cols-3 gap-1.5 sm:grid-cols-6",
+  small: "grid grid-cols-2 gap-2 sm:grid-cols-4",
+  medium: "grid grid-cols-2 gap-2 sm:grid-cols-3",
+  large: "grid grid-cols-1 gap-3 sm:grid-cols-2",
+};
+
+/** The size of a library's kits and parts: one small button, its four choices in a row. */
+export function LibraryViewToggle() {
+  const [view, setView] = useLibraryView();
+  const choices = [
+    ["xs", Grid3x3, "קטן מאוד - שש בשורה"],
+    ["small", LayoutGrid, "קטן - ארבע בשורה"],
+    ["medium", Grid2x2, "בינוני - שלוש בשורה"],
+    ["large", Square, "גדול - שתיים בשורה"],
+  ] as const;
+  return (
+    <span className="inline-flex h-8 items-center rounded-md border bg-background p-0.5" role="radiogroup" aria-label="גודל התצוגה של הערכות" data-testid="library-view">
+      {choices.map(([id, Icon, label]) => (
+        <button key={id} type="button" role="radio" aria-checked={view === id} aria-label={label} title={label}
+          onClick={() => setView(id)}
+          className={`inline-flex size-7 items-center justify-center rounded ${view === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+          <Icon className="size-3.5" aria-hidden />
+        </button>
+      ))}
+    </span>
+  );
+}
 
 /** The small switch of how the sliders stand: three, side by side - under the name, in one line, upright. */
 export function SliderLayoutToggle() {

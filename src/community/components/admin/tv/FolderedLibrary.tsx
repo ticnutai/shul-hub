@@ -15,8 +15,7 @@ import {
   MAX_FOLDERS, addTag, allTags, folderOf, moveFolder, newFolderId, putInFolder, removeFolder, removeTag, toggleFavorite,
   type Library,
 } from "@/tv/library";
-import { PART_GRID } from "./GalleryTile";
-import { SELECT_CLASS } from "./editorParts";
+import { LIBRARY_GRID, LibraryViewToggle, SELECT_CLASS, useLibraryView } from "./editorParts";
 import { choiceChipClass } from "./Notice";
 
 export interface LibraryItem {
@@ -186,7 +185,7 @@ export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra,
             onChange={(e) => setPicked(e.target.checked ? [...picked, item.id] : picked.filter((x) => x !== item.id))} />
         )}
         {tile(item)}
-        <div className="mt-1 flex flex-wrap items-center gap-1 px-1 text-[11px]">
+        <div className="mt-1 flex flex-wrap items-center gap-1 px-1 text-[11px]" data-library-controls>
           <button type="button" className="rounded p-0.5 hover:bg-muted" aria-label={`${star ? "הסרה מהמועדפים" : "הוספה למועדפים"} ${item.name}`} aria-pressed={star}
             title={star ? "הסרה מהמועדפים" : "הוספה למועדפים - מופיע ראשון"}
             onClick={() => {
@@ -269,7 +268,7 @@ export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra,
         </div>
         {shownOpen && (
           list.length
-            ? <div className={`${PART_GRID} px-2 pb-2`}>{list.map((i) => itemCard(i, folder.id))}</div>
+            ? <div className={`${LIBRARY_GRID[libraryView]} px-2 pb-2`} data-library-view={libraryView}>{list.map((i) => itemCard(i, folder.id))}</div>
             : <p className="flex items-center gap-1 px-3 pb-2 text-[11px] text-muted-foreground">{folder.id === FAVORITES ? "אין עדיין מועדפים" : "התיקייה ריקה"}<InfoTip>{folder.id === FAVORITES ? "לוחצים על הכוכב שליד ערכה כדי שתופיע כאן." : `גוררים לכאן ${what.one}, או "העברה לתיקייה" שמתחתיה.`}</InfoTip></p>
         )}
       </section>
@@ -277,6 +276,7 @@ export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra,
   };
 
   const favorites = shown.filter((i) => library.favorites.includes(i.id));
+  const [libraryView] = useLibraryView();
   return (
     <div className="space-y-2" data-testid={testId}>
       <div className="flex flex-wrap items-center gap-1.5">
@@ -293,6 +293,7 @@ export function FolderedLibrary({ items, fixed, library, onLibrary, tile, extra,
         <button type="button" aria-pressed={picking} className={choiceChipClass(picking, "h-8 text-xs")} onClick={() => { setPicking(!picking); setPicked([]); }}>
           בחירה מרובה
         </button>
+        <LibraryViewToggle />
       </div>
       {naming && (
         <form className="flex flex-wrap items-center gap-1.5 rounded-md border bg-background p-2 text-sm" onSubmit={(e) => { e.preventDefault(); addFolder(); }}>

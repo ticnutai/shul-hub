@@ -19,6 +19,7 @@ import { EDITOR_NAV_KEY } from "./EditorNav";
 export const EDITOR_PREF_KEYS = [
   "tv-save-bar-spot",
   "tv-tile-size",
+  "tv-library-view",
   "tv-slider-layout",
   "tv-part-panel-pos",
   "tv-part-panel-size",

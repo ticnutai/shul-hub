@@ -1195,3 +1195,25 @@ html.custom button.rounded-md {
 [data-two-up] [role="group"] {
   grid-column: 1 / -1;
 }
+
+/*
+ * A library drawn small (LIBRARY_GRID "xs"): each kit its picture and its
+ * name only - what it fills and its buttons wait for a larger size.
+ */
+[data-library-view="xs"] [data-kit-fills],
+[data-library-view="xs"] [data-kit-actions],
+[data-library-view="xs"] [data-library-controls] {
+  display: none;
+}
+[data-library-view="xs"] [data-kit-name] {
+  font-size: 11px;
+  padding: 4px 4px 2px;
+}
+[data-library-view="small"] [data-kit-actions] {
+  font-size: 11px;
+}
+/* Small: the folder's two lists side by side would not fit - each takes the row. */
+[data-library-view="small"] [data-library-controls] select {
+  max-width: 100%;
+  flex: 1 1 100%;
+}

@@ -482,12 +482,12 @@ function KitTile({ design: d, config, thumb, onApply, onRemove, removeReady = fa
             ))}
           </span>
         )}
-        <span className="block px-2 pt-2 text-sm font-medium leading-snug">{d.name}</span>
-        <span className="block px-2 pb-1 text-[11px] leading-tight text-muted-foreground">
+        <span className="block px-2 pt-2 text-sm font-medium leading-snug" data-kit-name>{d.name}</span>
+        <span className="block px-2 pb-1 text-[11px] leading-tight text-muted-foreground" data-kit-fills>
           ממלא: {d.parts.map((x) => DESIGN_PART_LABELS[x]).join(" · ")}
         </span>
       </button>
-      {children && <div className="flex flex-wrap gap-1 px-1 pb-1">{children}</div>}
+      {children && <div className="flex flex-wrap gap-1 px-1 pb-1" data-kit-actions>{children}</div>}
     </div>
   );
 }
