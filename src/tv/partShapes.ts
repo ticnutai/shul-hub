@@ -23,6 +23,14 @@ export const PART_SHAPES = [
   { id: 'hexagon', name: 'משושה', path: 'M25 2H75L98 50L75 98H25L2 50Z' },
   { id: 'octagon', name: 'מתומן', path: 'M20 2H80L98 22V78L80 98H20L2 78V22Z' },
   { id: 'diamond', name: 'מעוין', path: 'M50 2L98 50L50 98L2 50Z' },
+  { id: 'shield', name: 'מגן', path: 'M2 2H98V50C98 76 76 92 50 98C24 92 2 76 2 50Z' },
+  { id: 'banner', name: 'סרט', path: 'M2 2H98L90 50L98 98H2L10 50Z' },
+  { id: 'ticket', name: 'כרטיס', path: 'M2 2H98V38A12 12 0 0 0 98 62V98H2V62A12 12 0 0 0 2 38Z' },
+  { id: 'trefoil', name: 'קשת תלתן', path: 'M2 98V40C2 28 10 22 20 22C20 8 34 2 50 2C66 2 80 8 80 22C90 22 98 28 98 40V98Z' },
+  { id: 'house', name: 'גמלון', path: 'M50 2L98 30V98H2V30Z' },
+  { id: 'tablets', name: 'לוחות הברית', path: 'M2 98V22C2 -4 48 -4 48 22V98ZM52 98V22C52 -4 98 -4 98 22V98Z' },
+  { id: 'slant', name: 'מקבילית', path: 'M14 2H98L86 98H2Z' },
+  { id: 'wave', name: 'גל', path: 'M2 8C18 0 34 0 50 8C66 16 82 16 98 8V92C82 100 66 100 50 92C34 84 18 84 2 92Z' },
 ] as const;
 
 export type PartShape = (typeof PART_SHAPES)[number]['id'];
