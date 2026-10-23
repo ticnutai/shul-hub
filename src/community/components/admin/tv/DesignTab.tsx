@@ -136,7 +136,7 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         id="design-sets"
         hidden={away("design-sets")}
         title="1. ערכות"
-        hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
+        hint={'ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. "שכפול לעריכה" יוצר עותק שלכם. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים. כל הערכות בתיקיות לפי נושא, וגם הערכות שלכם: גוררים ערכה לתיקייה (או "העברה לתיקייה" שמתחתיה), פותחים וסוגרים תיקיות, ומחפשים לפי שם או תגית. שינוי עותק לא משנה ערכות בלוחות אחרים.'}
         // "התחלה מחדש" on the title's own line: its two buttons at the far end, not a part of its own under it.
         aside={<>
           <span className="ms-auto flex items-center gap-1 text-xs font-medium text-muted-foreground">
