@@ -434,3 +434,16 @@ describe('frames exchanging what they show, a frame in the middle\'s style, and 
     }
   });
 });
+
+import { alignTogether, distributeElements } from './elements';
+describe('lining up and spacing chosen parts', () => {
+  const p = (id: string, x: number, y: number, w = 10, group?: string) => ({ ...newElement('box'), id, x, y, width: w, height: 10, ...(group ? { group } : {}) });
+  it('aligns to the top edge of them all, a container moving whole', () => {
+    const out = alignTogether([p('a', 0, 20), p('b', 30, 5), p('c1', 60, 40, 10, 'g'), p('c2', 62, 45, 5, 'g')], ['a', 'b', 'c1', 'c2'], 'top');
+    expect(out.map(e => e.y)).toEqual([5, 5, 5, 10]);
+  });
+  it('spaces three parts evenly, the ends staying put', () => {
+    const out = distributeElements([p('a', 0, 0), p('b', 15, 0), p('c', 80, 0)], ['a', 'b', 'c'], 'x');
+    expect(out.map(e => e.x)).toEqual([0, 40, 80]);
+  });
+});

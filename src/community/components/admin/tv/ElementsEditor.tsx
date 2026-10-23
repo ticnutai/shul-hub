@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { confirmAction } from '@/components/ConfirmDialog';
 import type { TvConfig } from '@/tv/config';
 import { SECTION_SHAPES, setSectionShape, sectionGeometry, linkedSection } from '@/tv/sectionGeometry';
-import { BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, ELEMENT_KINDS, ELEMENT_NAMES, MAX_ELEMENTS, alignElements, boundsOf, elementId, liveFrames, moveElements, newElement, normalizeElements, placeSection, sectionOf, sideOf, type BoardElement, type ElementBinding, type ElementSide } from '@/tv/elements';
+import { BINDING_LABELS, ELEMENT_BINDINGS, SCROLLABLE, ELEMENT_KINDS, ELEMENT_NAMES, MAX_ELEMENTS, alignElements, alignTogether, distributeElements, boundsOf, elementId, liveFrames, moveElements, newElement, normalizeElements, placeSection, sectionOf, sideOf, type BoardElement, type ElementBinding, type ElementSide } from '@/tv/elements';
 import { announcePlace } from './announcePlace';
 import { ElementTextTools } from './ElementTextTools';
 import { AddContent } from './AddContent';
@@ -183,6 +183,12 @@ export function ElementsEditor({ config, onEdit, textToolsElsewhere = false }: P
     <SubPart title="פעולות על הבחירה" hint="יישור, שכפול, קיבוץ, ייצוא וייבוא בקובץ. סדר השכבות - בחצים שבחלון שליד הלוח, ובחצים של כל קונטיינר ברשימה.">
       <div className="flex flex-wrap gap-2" role="group" aria-label="יישור הבחירה">
         {ALIGNMENTS.map(([alignment, label]) => <Button key={alignment} size="sm" variant="outline" className="h-8" disabled={!first || lockedInSelection} onClick={() => commit(alignElements(elements, selected, alignment))}>{label}</Button>)}
+      </div>
+      <div className="flex flex-wrap items-center gap-2" role="group" aria-label="יישור החלקים זה לזה">
+        <span className="text-xs text-muted-foreground">זה לזה:</span>
+        {ALIGNMENTS.map(([alignment, label]) => <Button key={alignment} size="sm" variant="outline" className="h-8" disabled={selected.length < 2 || lockedInSelection} onClick={() => commit(alignTogether(elements, selected, alignment))}>{label}</Button>)}
+        <Button size="sm" variant="outline" className="h-8" disabled={selected.length < 3 || lockedInSelection} title="רווחים שווים בין החלקים, משמאל לימין" onClick={() => commit(distributeElements(elements, selected, 'x'))}>רווח שווה לרוחב</Button>
+        <Button size="sm" variant="outline" className="h-8" disabled={selected.length < 3 || lockedInSelection} title="רווחים שווים בין החלקים, מלמעלה למטה" onClick={() => commit(distributeElements(elements, selected, 'y'))}>רווח שווה לגובה</Button>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" className="h-8" disabled={!first} onClick={duplicate}>שכפול החלק</Button>
