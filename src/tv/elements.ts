@@ -206,6 +206,57 @@ export function alignElements(all: BoardElement[], ids: string[], alignment: Ele
   return moveElements(all, ids, dx, dy);
 }
 
+/**
+ * The units of a selection: each container (its `group`) moves as one, every
+ * other part by itself - so lining up three containers lines up their frames,
+ * not each heading on its own.
+ */
+function selectionUnits(all: BoardElement[], ids: string[]) {
+  const units = new Map<string, BoardElement[]>();
+  for (const e of all) if (ids.includes(e.id)) { const k = e.group ?? `part:${e.id}`; units.set(k, [...(units.get(k) ?? []), e]); }
+  return [...units.values()].map(parts => ({
+    ids: parts.map(e => e.id),
+    x: Math.min(...parts.map(e => e.x)), y: Math.min(...parts.map(e => e.y)),
+    right: Math.max(...parts.map(e => e.x + e.width)), bottom: Math.max(...parts.map(e => e.y + e.height)),
+  }));
+}
+const shift = (all: BoardElement[], moves: Map<string, [number, number]>) =>
+  all.map(e => { const m = moves.get(e.id); return m ? { ...e, x: Math.round((e.x + m[0]) * 100) / 100, y: Math.round((e.y + m[1]) * 100) / 100 } : e; });
+
+/** Lines the chosen parts up with one another - by the edge or middle of all of them together. */
+export function alignTogether(all: BoardElement[], ids: string[], alignment: ElementAlignment) {
+  const units = selectionUnits(all, ids);
+  if (units.length < 2 || all.some(e => ids.includes(e.id) && e.locked)) return all;
+  const left = Math.min(...units.map(u => u.x)), right = Math.max(...units.map(u => u.right));
+  const top = Math.min(...units.map(u => u.y)), bottom = Math.max(...units.map(u => u.bottom));
+  const moves = new Map<string, [number, number]>();
+  for (const u of units) {
+    const dx = alignment === 'left' ? left - u.x : alignment === 'right' ? right - u.right : alignment === 'center-x' ? (left + right) / 2 - (u.x + u.right) / 2 : 0;
+    const dy = alignment === 'top' ? top - u.y : alignment === 'bottom' ? bottom - u.bottom : alignment === 'center-y' ? (top + bottom) / 2 - (u.y + u.bottom) / 2 : 0;
+    for (const id of u.ids) moves.set(id, [dx, dy]);
+  }
+  return shift(all, moves);
+}
+
+/** Even spaces between the chosen parts, the first and last staying where they are. */
+export function distributeElements(all: BoardElement[], ids: string[], axis: 'x' | 'y') {
+  const units = selectionUnits(all, ids);
+  if (units.length < 3 || all.some(e => ids.includes(e.id) && e.locked)) return all;
+  const start = (u: typeof units[number]) => axis === 'x' ? u.x : u.y;
+  const end = (u: typeof units[number]) => axis === 'x' ? u.right : u.bottom;
+  units.sort((a, b) => start(a) - start(b));
+  const span = end(units.at(-1)!) - start(units[0]);
+  const gap = (span - units.reduce((n, u) => n + end(u) - start(u), 0)) / (units.length - 1);
+  const moves = new Map<string, [number, number]>();
+  let at = start(units[0]);
+  for (const u of units) {
+    const d = at - start(u);
+    for (const id of u.ids) moves.set(id, axis === 'x' ? [d, 0] : [0, d]);
+    at += end(u) - start(u) + gap;
+  }
+  return shift(all, moves);
+}
+
 /** What each live binding shows, in the gabbai's words. One list for the picker and for adding. */
 export const BINDING_LABELS: Record<ElementBinding, string> = {
   zmanim: 'זמני היום', announcements: 'הודעות', prayers: 'תפילות היום', lessons: 'שיעורי היום',
