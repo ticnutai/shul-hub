@@ -19,6 +19,7 @@ import {
   Save,
   Undo2,
   Scaling,
+  Settings2,
 } from "lucide-react";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
@@ -1115,10 +1116,28 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
             <DropdownMenuRadioGroup value={shownOccasion ?? ""} onValueChange={(id) => (id ? previewOccasion(id) : previewAt(null))}>
               <DropdownMenuRadioItem className="cursor-pointer" value="">היום - זמן אמת</DropdownMenuRadioItem>
               {occasionChoices.map((o) => (
-                <DropdownMenuRadioItem key={o.id} className="cursor-pointer" value={o.id}
-                  aria-label={o.id === SHABBAT_ID ? "תצוגת מסך שבת" : `תצוגת ${o.name}`}>
-                  {o.name}{!o.enabled && <span className="ms-1 text-[11px] text-muted-foreground">(כבוי)</span>}
-                </DropdownMenuRadioItem>
+                // The name shows its day; the round ⚙ beside it opens it to edit - its day, its screen, its design.
+                <div key={o.id} className="flex items-center gap-1">
+                  <DropdownMenuRadioItem className="flex-1 cursor-pointer" value={o.id}
+                    aria-label={o.id === SHABBAT_ID ? "תצוגת מסך שבת" : `תצוגת ${o.name}`}>
+                    {o.name}{!o.enabled && <span className="ms-1 text-[11px] text-muted-foreground">(כבוי)</span>}
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuItem
+                    className="size-7 shrink-0 cursor-pointer justify-center rounded-full border p-0 text-muted-foreground focus:text-foreground"
+                    aria-label={`עריכת ${o.name}`}
+                    title={`עריכת ${o.name}: היום שלו, המסך שלו והעיצוב שלו`}
+                    data-testid={`occasion-edit-${o.id}`}
+                    onSelect={() => {
+                      openOccasion(o.id);
+                      setShownOccasion(o.id);
+                      setTab("design");
+                      // Again once the tab has changed: switching it scrolls the page to the tabs.
+                      window.setTimeout(showPreview, 200);
+                    }}
+                  >
+                    <Settings2 className="size-3.5" aria-hidden />
+                  </DropdownMenuItem>
+                </div>
               ))}
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>

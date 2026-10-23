@@ -32,5 +32,12 @@ test("any occasion previewed from one button under the board", async ({ page, is
   await page.getByRole("menuitemradio", { name: "היום - זמן אמת" }).click();
   await expect(menu).toContainText("מועד");
   await expect(page.getByRole("button", { name: /חזרה לזמן אמת/ })).toHaveCount(0);
+
+  // The round ⚙ beside an occasion: straight to editing it - its day, its screen, its design.
+  await menu.click();
+  await page.getByTestId(`occasion-edit-${other.id}`).click();
+  await expect(page.getByTestId("occasion-design-banner")).toBeVisible();
+  await expect(page.getByTestId("occasion-design-banner")).toContainText(other.name);
+  await expect(menu).toContainText(other.name);
   expect(errors).toEqual([]);
 });
