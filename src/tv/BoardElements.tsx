@@ -51,7 +51,7 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
   if((e.kind==='box'||e.kind==='frame')&&e.shape){
     // One path per shape (partShapes.ts), the same the editor's tile draws.
     return <svg data-geometric-shape={e.shape} viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden>
-      <path d={partShapePath(e.shape)} fill={e.kind==='frame'?'none':e.fill} stroke={e.color} strokeWidth={e.kind==='frame'?1.2:.15} />
+      <path d={partShapePath(e.shape)} fill={e.kind==='frame'?'none':e.fill} stroke={e.color} strokeWidth={e.kind==='frame'?1.2*(e.frameWidth??1):.15} />
     </svg>;
   }
   if(e.kind==='image' && e.image && e.sourceMask){
@@ -67,7 +67,7 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
   if (e.kind === 'frame' && e.image) {
     // A ready frame of the gallery ("frame:<id>", as the boxes of an ordinary board wear it): its own edge and thickness.
     const ready = e.image.startsWith(FRAME_PICTURE_PREFIX) ? FRAME_PICTURES.find(f => FRAME_PICTURE_PREFIX + f.id === e.image) : undefined;
-    const src = framePictureUrl(e.image), thick = ready ? `${(ready.width * .87).toFixed(2)}cqh` : '2.6cqh';
+    const src = framePictureUrl(e.image), thick = `${((ready ? ready.width * .87 : 2.6) * (e.frameWidth ?? 1)).toFixed(2)}cqh`;
     return src ? <div data-art-frame style={{ width: '100%', height: '100%', boxSizing: 'border-box', border: `${thick} solid transparent`, borderImage: `url("${src}") ${ready?.slice ?? 20}% / ${thick} stretch`, background: 'transparent' }} /> : null;
   }
   // A symbol laid over an arch (artSymbols.ts) fades into the drawing at its edges.
@@ -89,7 +89,7 @@ export function ElementArt({ element: e }: { element: BoardElement }) {
     <path fill="none" stroke={e.color} strokeWidth="6" d="M30 48C0 70 0 18 24 31C40 38 24 53 19 40M70 48C100 70 100 18 76 31C60 38 76 53 81 40" />
   </svg>;
   if (e.kind === 'ornament') return <svg viewBox="0 0 300 70" width="100%" height="100%" aria-hidden><g fill="none" stroke={e.color} strokeWidth="3"><path d="M10 40H115Q135 40 150 12Q165 40 185 40H290M25 40C55 0 110 0 105 30S65 35 83 18M275 40C245 0 190 0 195 30S235 35 217 18M115 40Q150 80 185 40"/><path d="M150 12L162 30L150 47L138 30Z"/></g></svg>;
-  return <div style={{ width: '100%', height: '100%', border: `${e.kind === 'frame' ? '.6' : '.15'}cqh ${e.kind === 'frame' ? 'double' : 'solid'} ${e.color}`, background: e.fill, borderRadius: e.kind==='box'&&e.archFill?'50% 50% 0 0 / 22% 22% 0 0':'1.5cqh', boxShadow: '0 .3cqh 1cqh #0002', boxSizing: 'border-box' }} />;
+  return <div style={{ width: '100%', height: '100%', border: `${e.kind === 'frame' ? (.6 * (e.frameWidth ?? 1)).toFixed(2) : '.15'}cqh ${e.kind === 'frame' ? 'double' : 'solid'} ${e.color}`, background: e.fill, borderRadius: e.kind==='box'&&e.archFill?'50% 50% 0 0 / 22% 22% 0 0':'1.5cqh', boxShadow: '0 .3cqh 1cqh #0002', boxSizing: 'border-box' }} />;
 }
 export function BoardElements({ elements = [], surface = false, data }: { elements?: BoardElement[]; surface?: boolean; data?: ElementData }) {
   const editor = useElementEditing();
@@ -380,7 +380,7 @@ function ShapedPictureFrame({ e }: { e: BoardElement }) {
   const ready = FRAME_PICTURES.find(f => FRAME_PICTURE_PREFIX + f.id === e.image);
   const src = framePictureUrl(e.image)!;
   const tone = useFrameTone(src, e.color && e.color !== 'transparent' ? e.color : '#c9a24a');
-  const sl = ready?.slice ?? 20, thick = Math.max(3.5, (ready?.width ?? 3) * 2.2), path = partShapePath(e.shape!);
+  const sl = ready?.slice ?? 20, thick = Math.max(3.5, (ready?.width ?? 3) * 2.2) * (e.frameWidth ?? 1), path = partShapePath(e.shape!);
   return <svg data-geometric-shape={e.shape} data-shaped-picture-frame viewBox="0 0 100 100" preserveAspectRatio="none" width="100%" height="100%" aria-hidden overflow="visible">
     <defs><pattern id={id} patternUnits="userSpaceOnUse" width={thick * 3} height={thick * 3}>
       <svg viewBox={`${sl} 0 ${100 - 2 * sl} ${sl}`} width={thick * 3} height={thick * 3} preserveAspectRatio="none"><image href={src} width="100" height="100" preserveAspectRatio="none" /></svg>

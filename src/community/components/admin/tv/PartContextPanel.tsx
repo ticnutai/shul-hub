@@ -18,7 +18,7 @@ import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
 import { addContainer, addInside, addPictureAlone, containerTree, fitIntoContainer, moveChosenLayer, newContainerParts, type InsideKind } from "@/tv/containers";
-import { MAX_ELEMENTS, elementId } from "@/tv/elements";
+import { MAX_ELEMENTS, elementId, setFrameWidth, FRAME_WIDTH_MIN, FRAME_WIDTH_MAX } from "@/tv/elements";
 import type { PartShape } from "@/tv/partShapes";
 import { BoardBackground } from "./TvEditInspector";
 import { wearsPaint } from "@/tv/partPaint";
@@ -546,6 +546,33 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               </button>
             )}
           </div>
+          {frame && frame.kind === "frame" && (() => {
+            const ids = containers.map((c) => c.frame?.id).filter((id): id is string => Boolean(id));
+            const w = frame.frameWidth ?? 1;
+            const set = (v: number) => editEls("frame-width", (all) => setFrameWidth(all, ids, v));
+            return (
+              <div className="space-y-1.5 rounded-md border p-2 text-xs" data-testid="ctx-frame-width">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold">עובי המסגרת{ids.length > 1 ? ` · ${ids.length} מסגרות` : ""}</span>
+                  <label className="flex items-center gap-1">
+                    <input type="number" aria-label="עובי באחוזים" className="h-7 w-16 rounded-md border bg-background px-1 text-center"
+                      min={FRAME_WIDTH_MIN * 100} max={FRAME_WIDTH_MAX * 100} step={5} value={Math.round(w * 100)}
+                      onChange={(ev) => ev.target.value !== "" && set(Number(ev.target.value) / 100)} />%
+                  </label>
+                </div>
+                <input type="range" aria-label="עובי המסגרת" className="w-full accent-primary" min={FRAME_WIDTH_MIN} max={FRAME_WIDTH_MAX} step={0.05}
+                  value={w} onChange={(ev) => set(Number(ev.target.value))} />
+                <div className="flex flex-wrap gap-1">
+                  {([["דק", 0.5], ["רגיל", 1], ["עבה", 1.6], ["עבה מאוד", 2.5]] as const).map(([name, v]) => (
+                    <button key={name} type="button" onClick={() => set(v)}
+                      className={`h-8 min-w-14 rounded-md border px-2 hover:border-primary/50 ${Math.abs(w - v) < 0.01 ? "border-primary bg-primary/10" : ""}`}>{name}</button>
+                  ))}
+                  <button type="button" aria-label="דק יותר" className="h-8 w-8 rounded-md border" onClick={() => set(w - 0.1)}>−</button>
+                  <button type="button" aria-label="עבה יותר" className="h-8 w-8 rounded-md border" onClick={() => set(w + 0.1)}>+</button>
+                </div>
+              </div>
+            );
+          })()}
           <div className="max-h-72 space-y-2 overflow-y-auto p-0.5" data-testid="ctx-frame-gallery">
             <GalleryGrid compact>
               <GalleryTile compact name="קו מצויר" on={Boolean(frame && frame.kind === "frame" && !frame.image)}
