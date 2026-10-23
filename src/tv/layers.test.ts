@@ -78,9 +78,20 @@ describe("the layers: background adjustments and every frame's dress", () => {
 });
 
 describe("ready-made frame pictures", () => {
+  it("are grouped in kits whose every frame exists, each frame in one kit at most", async () => {
+    const { FRAME_KITS, FRAME_PICTURES, framesByKit } = await import("./framePictures");
+    const ids = FRAME_KITS.flatMap((k) => k.ids);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) expect(FRAME_PICTURES.some((f) => f.id === id), id).toBe(true);
+    expect(framesByKit().flatMap((k) => k.frames).length).toBe(FRAME_PICTURES.length);
+  });
   it("are stored by name and resolve to the shipped file", async () => {
     const { FRAME_PICTURES, framePictureRef, framePictureUrl } = await import("./framePictures");
     expect(FRAME_PICTURES.map((f) => f.id)).toEqual([
+      "kit-gold-acanthus",
+      "kit-walnut-bead",
+      "kit-stone-olive",
+      "kit-black-marble",
       "silver-acanthus",
       "walnut-vine",
       "gold-ornate",
@@ -100,13 +111,14 @@ describe("ready-made frame pictures", () => {
       "sapphire-royal",
     ]);
     // The drawn ones are pictures too: an SVG, transparent inside.
-    for (const f of FRAME_PICTURES.slice(4, 13)) {
+    // The four kits' own frames lead the list (FRAME_KITS); the others after them.
+    for (const f of FRAME_PICTURES.slice(8, 17)) {
       expect(f.url).toMatch(/^data:image\/svg\+xml;utf8,/);
       expect(decodeURIComponent(f.url)).toContain('fill="none"');
     }
     // The design frames are pictures this build ships, transparent in the middle.
-    for (const f of FRAME_PICTURES.slice(13)) expect(f.url).toMatch(/^\/new-shul-assets\/[\w-]+\.webp$/);
-    for (const f of FRAME_PICTURES.slice(0,2)) expect(framePictureUrl(framePictureRef(f.id))).toBe(f.url);
+    for (const f of [...FRAME_PICTURES.slice(0, 4), ...FRAME_PICTURES.slice(17)]) expect(f.url).toMatch(/^\/new-shul-assets\/[\w-]+\.webp$/);
+    for (const f of FRAME_PICTURES.slice(0,6)) expect(framePictureUrl(framePictureRef(f.id))).toBe(f.url);
     const ref = framePictureRef("gold-ornate");
     expect(normalizeFrameStyle({ image: ref }).image).toBe(ref);
     expect(framePictureUrl(ref)).toBe(FRAME_PICTURES.find(f=>f.id==='gold-ornate')!.url);
