@@ -134,12 +134,13 @@ const ROOMS: Room[] = [
       { key: 'lessons', name: 'שיעורי תורה', rect: [36, 39, 28, 23], binding: 'lessons', shape: 'rounded', rows: 3, size: 1.9 },
       // The wooden plaque under the medallion.
       { key: 'parasha', name: 'פרשת השבוע', rect: [44.2, 31, 12.6, 6.5], binding: 'parasha', shape: 'pill', bare: true, size: 1.6 },
+      // The dark wooden base: the words on light plaques, or they would not be seen.
+      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [12, 89, 56, 6], binding: 'footer', shape: 'pill', bare: true, size: 1.6 },
+      { key: 'date', name: 'תאריך עברי', rect: [70, 89, 18, 6], binding: 'date', shape: 'pill', bare: true, size: 1.6 },
     ],
     free: [
       { key: 'title', name: 'שם בית הכנסת', rect: [36, 1.5, 28, 6], binding: 'title', size: 3.2, accent: true },
       { key: 'clock', name: 'שעון חי', rect: [45, 13, 10, 15], binding: 'clock', size: 4.6, accent: true },
-      { key: 'footer', name: 'פרשה ולימוד יומי', rect: [20, 89.5, 60, 5], binding: 'footer', size: 1.8 },
-      { key: 'date', name: 'תאריך עברי', rect: [70, 90, 20, 4], binding: 'date', size: 1.7 },
     ],
   },
   {
