@@ -104,7 +104,9 @@ export const CLOCK_CHOICES: Array<{ id: TvConfig["clockStyle"]; name: string }> 
  */
 export const FoldedSections = createContext<{ open: string[]; toggle: (id: string) => void } | null>(null);
 
-export function Section({ title, hint, children, id, hidden }: { title: string; hint?: string; children: ReactNode; id?: string; hidden?: boolean }) {
+export function Section({ title, hint, children, id, hidden, aside }: { title: string; hint?: string; children: ReactNode; id?: string; hidden?: boolean;
+  /** On the title's own line, at its far end: a few controls, not a line of their own under it. */
+  aside?: ReactNode }) {
   const fold = useContext(FoldedSections);
   const folded = Boolean(fold && id);
   const open = !folded || fold!.open.includes(id!);
@@ -113,7 +115,7 @@ export function Section({ title, hint, children, id, hidden }: { title: string; 
     <section id={id} hidden={hidden} data-folded={folded ? (open ? "open" : "closed") : undefined}
       className={`scroll-mt-44 rounded-xl border bg-card shadow-sm ${folded ? "p-0" : "p-4"}`}>
       {/* The explanation behind an ⓘ beside the title: a line of the page less. */}
-      <div className={`flex items-center gap-1.5 ${folded ? "px-4 py-2.5" : ""}`}>
+      <div className={`flex flex-wrap items-center gap-1.5 ${folded ? "px-4 py-2.5" : ""}`}>
         {folded ? (
           <button type="button" aria-expanded={open} onClick={() => fold!.toggle(id!)}
             className="flex flex-1 items-center gap-1.5 text-start">
@@ -124,6 +126,7 @@ export function Section({ title, hint, children, id, hidden }: { title: string; 
           <h3 className="text-base font-semibold">{title}</h3>
         )}
         {hint && <InfoTip>{hint}</InfoTip>}
+        {aside}
       </div>
       <div className={folded ? "space-y-3 px-4 pb-4" : "mt-3 space-y-3"} hidden={!open}>{children}</div>
     </section>

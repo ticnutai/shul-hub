@@ -56,20 +56,20 @@ export function BlankBoardStarter({
       </Notice>
     );
 
+  // Closed: two small buttons, on the line they are put in (the title of "ערכות"); open, a whole line under it.
   if (!open)
     return (
-      <div className="flex flex-wrap items-center gap-2" data-testid="blank-board">
-        <Button type="button" onClick={() => setOpen("blank")}>
-          לוח ריק - בוחרים מה יופיע
+      <span className="flex flex-wrap items-center gap-1.5" data-testid="blank-board">
+        <Button type="button" size="sm" className="h-8" aria-label="לוח ריק - בוחרים מה יופיע" onClick={() => setOpen("blank")}>
+          לוח ריק
         </Button>
-        <Button type="button" variant="ghost" className="text-destructive" onClick={() => setOpen("wipe")}>
-          מחיקה - בוחרים מה למחוק
+        <Button type="button" size="sm" variant="outline" className="h-8 text-destructive hover:text-destructive" aria-label="מחיקה - בוחרים מה למחוק" onClick={() => setOpen("wipe")}>
+          מחיקה
         </Button>
-        <Hint>הכול טיוטה עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר.</Hint>
-      </div>
+      </span>
     );
 
-  if (open === "wipe") return <WipeChooser onWipe={onWipe} onClose={() => setOpen(null)} />;
+  if (open === "wipe") return <div className="basis-full"><WipeChooser onWipe={onWipe} onClose={() => setOpen(null)} /></div>;
 
   const group = (title: string, ids: readonly BlockId[]) => (
     <fieldset className="space-y-1.5">
@@ -92,7 +92,7 @@ export function BlankBoardStarter({
   );
 
   return (
-    <div className="space-y-3 rounded-lg border-2 border-primary/50 p-3" data-testid="blank-board">
+    <div className="basis-full space-y-3 rounded-lg border-2 border-primary/50 p-3" data-testid="blank-board">
       <div className="text-sm font-semibold">לוח חדש - שלב 1: מה יופיע על הלוח?</div>
       <div className="flex flex-wrap gap-1.5">
         <Button type="button" variant="outline" size="sm" className="h-7" onClick={() => setChosen([...STARTER_BLOCKS])}>בחירת הכל</Button>

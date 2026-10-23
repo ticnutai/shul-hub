@@ -137,17 +137,19 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
         hidden={away("design-sets")}
         title="1. ערכות"
         hint="ערכה ממלאת בלחיצה אחת את החלקים שכתובים מתחתיה (רקע, תיבות, מסגרות, טקסט, פריסה); אחר כך כל חלק משתנה לבד למטה. מה ששלכם - עורכים ומוחקים; ערכה מוכנה - מסתירים ב-✕ ומחזירים מתי שרוצים."
-      >
-        <div className="space-y-5">
-          <SubPart title="התחלה מחדש" hint='לוח ריק שבונים צעד אחרי צעד (הבחירה הרגילה מסומנת מראש), או מחיקה של מה שבוחרים. כל לוח חדש בנוי מחלקים - כל תוכן בקונטיינר משלו. (יש גם "איפוס הערכה הנוכחית" - בלשונית פריסה.)'
-            // Not here (a screen or an occasion is being edited): said on the title's line, not in a box of its own under it.
-            aside={wholeBoardOnly && (
-              <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground" data-testid="blank-board">
-                · ללוח כולו בלבד
-                <InfoTip>התחלה מחדש היא ללוח כולו: בחרו למעלה "כל המסכים", וצאו מעיצוב המועד, כדי להשתמש בה.</InfoTip>
-              </span>
-            )}>
-            {!wholeBoardOnly && <BlankBoardStarter
+        // "התחלה מחדש" on the title's own line: its two buttons at the far end, not a part of its own under it.
+        aside={<>
+          <span className="ms-auto flex items-center gap-1 text-xs font-medium text-muted-foreground">
+            התחלה מחדש
+            <InfoTip>{'לוח ריק שבונים צעד אחרי צעד (הבחירה הרגילה מסומנת מראש), או מחיקה של מה שבוחרים. כל לוח חדש בנוי מחלקים - כל תוכן בקונטיינר משלו. הכול טיוטה עד "שמור ושדר", ו"צעד אחורה" (Ctrl+Z) מחזיר. (יש גם "איפוס הערכה הנוכחית" - בלשונית פריסה.)'}</InfoTip>
+          </span>
+          {wholeBoardOnly ? (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground" data-testid="blank-board">
+              ללוח כולו בלבד
+              <InfoTip>התחלה מחדש היא ללוח כולו: בחרו למעלה "כל המסכים", וצאו מעיצוב המועד, כדי להשתמש בה.</InfoTip>
+            </span>
+          ) : (
+            <BlankBoardStarter
               unavailable={null}
               // Straight onto the board, past the scope: starting over is the whole board's.
               onCreate={(blocks) => {
@@ -159,8 +161,11 @@ export function DesignTab({ draft, scoped, view, edit, dispatch, partTarget, set
                 dispatch({ type: "edit", key: `start-over:wipe:${groups.join(",")}`, update: (c) => wipeGroups(c, groups) });
                 toast.success(`נמחקו: ${WIPE_GROUPS.filter((g) => groups.includes(g.id)).map((g) => g.name).join(", ")}. זו טיוטה עד "שמור ושדר".`);
               }}
-            />}
-          </SubPart>
+            />
+          )}
+        </>}
+      >
+        <div className="space-y-5">
           <DesignLibrary
             config={view}
             onEdit={edit}
