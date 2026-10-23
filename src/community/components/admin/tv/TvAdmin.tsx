@@ -1,7 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { PATH_BESIDE_ID } from "../adminPath";
+import { HEADER_BESIDE_ID, PATH_BESIDE_ID } from "../adminPath";
 import { ChevronDown, MonitorX } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useNow } from "@community/lib/realtime";
@@ -93,7 +93,8 @@ function OfflineAlert({ offline, now }: { offline: ReturnType<typeof useTvDevice
   };
   // Beside the steps ("חזרה › ראשי › תצוגות"), on their line, when the tiles show them; else where it stands.
   const [beside, setBeside] = useState<HTMLElement | null>(null);
-  useEffect(() => setBeside(document.getElementById(PATH_BESIDE_ID)), []);
+  // Or, with no steps, on the page's own line of buttons - not a line of its own under it.
+  useEffect(() => setBeside(document.getElementById(PATH_BESIDE_ID) ?? document.getElementById(HEADER_BESIDE_ID)), []);
   const alert = (
     <div role="alert" data-focus-hide data-testid="offline-alert" className={noticeClass("error")}>
       <button type="button" onClick={toggle} aria-expanded={open} className="flex w-full items-center gap-2 px-3 py-2 text-right">

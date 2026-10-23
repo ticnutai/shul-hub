@@ -1090,7 +1090,7 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
         </Button>
       )}
       {/* "תצוגה בתאריך": the one control for the day the preview shows - any date, or the coming Shabbat - and the way back. */}
-      <span className="flex flex-wrap items-center gap-1.5" role="group" aria-label="יום בתצוגה" data-testid="preview-date">
+      <span className="flex flex-wrap items-center gap-1.5" role="group" aria-label="יום בתצוגה" data-testid="preview-date" data-fill-row>
         <label className="flex items-center gap-1.5 text-xs">
           תאריך
           <input
@@ -1704,30 +1704,19 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
     </div>
   );
 
-  /** Everything under the board: the inspector, the actions, the slides, the save bar. */
-  const underPreview = (
+  /**
+   * The buttons of the preview - editing, the day and the occasion shown, the
+   * screens, a kit, the layout, a window: under the board, or in "תצוגה
+   * למעלה" on a wide screen in a column beside it, in the room the board
+   * leaves empty at its side (a row under it cost a line of the screen).
+   */
+  const besideBoard = top && isLarge;
+  const previewButtons = (
     <>
-      {/* The panel of what was chosen, in the page when there is no room beside the board (PartContextPanel). */}
-      <div id={PART_PANEL_SLOT} />
-      {/* A board of parts is edited in the chosen part's panel: this one only for the classic board (or a key clicked on it). */}
-      {editing && (view.screenLayout !== "composition" || selected) && (
-        <div className="mt-3">
-          <TvEditInspector
-            selected={selected}
-            config={view}
-            data={board.data}
-            onEdit={edit}
-            onSelect={setSelected}
-          />
-        </div>
-      )}
-      {/* Choosing by kind: here on the other tabs; on "עיצוב" it is the list of parts' own - one at a time, never two. */}
-      {editing && tab !== "design" && partKinds && <div className="mt-3">{partKinds}</div>}
-      {/* The texts' letters are in the chosen part's panel ("טקסט"), not in a bar here as well. */}
       {/* Under the board, one row that fills as it wraps: editing, the day shown, then the screens, the layout and the
           windows - no group pushed to the far side leaving a hole, the two "separate window" buttons one menu. */}
       {/* data-fill-row: every row of buttons filled to its end (index.css), on a phone as on a wide screen - no row left half empty. */}
-      <div className="mt-3 flex flex-wrap items-center gap-2" data-testid="preview-bottom-row" data-fill-row>
+      <div className={`flex flex-wrap items-center gap-2 ${besideBoard ? "content-start" : "mt-3"}`} data-testid="preview-bottom-row" data-fill-row>
         {previewActions}
         <span id={PREVIEW_TOOLBAR_SLOT} className="contents" />
         <DropdownMenu dir="rtl" modal={false}>
@@ -1748,6 +1737,31 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+    </>
+  );
+
+  /** Everything under the board: the inspector, the actions, the slides, the save bar. */
+  const underPreview = (
+    <>
+      {/* The panel of what was chosen, in the page when there is no room beside the board (PartContextPanel). */}
+      <div id={PART_PANEL_SLOT} />
+      {/* A board of parts is edited in the chosen part's panel: this one only for the classic board (or a key clicked on it). */}
+      {editing && (view.screenLayout !== "composition" || selected) && (
+        <div className="mt-3">
+          <TvEditInspector
+            selected={selected}
+            config={view}
+            data={board.data}
+            onEdit={edit}
+            onSelect={setSelected}
+          />
+        </div>
+      )}
+      {/* Choosing by kind: here on the other tabs; on "עיצוב" it is the list of parts' own - one at a time, never two. */}
+      {editing && tab !== "design" && partKinds && <div className="mt-3">{partKinds}</div>}
+      {/* The texts' letters are in the chosen part's panel ("טקסט"), not in a bar here as well. */}
+      {/* The buttons: under the board - or, in "תצוגה למעלה" on a wide screen, in a column beside it (previewButtons). */}
+      {!(top && isLarge) && previewButtons}
       {view.screenLayout !== "composition" && <div className="mt-2">
         <SlideStrip
           slides={board.slides}
@@ -1775,8 +1789,13 @@ function TvDesignPanelContent({ studio = false }: { studio?: boolean } = {}) {
           style={{ top: headerOffset }}
           data-testid="editor-preview-top"
         >
-          <div className="overflow-hidden pt-1" style={{ height: topHeight }}>
-            {studioView}
+          <div className={`overflow-hidden pt-1 ${besideBoard ? "flex gap-3" : ""}`} style={{ height: topHeight }}>
+            {besideBoard && (
+              <div className="w-56 shrink-0 overflow-y-auto pe-1" data-testid="preview-buttons-beside">
+                {previewButtons}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">{studioView}</div>
           </div>
           <SplitHandle
             orientation="horizontal"

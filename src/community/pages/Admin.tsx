@@ -3,7 +3,7 @@ import { AdminButtonsSettings } from "@community/components/admin/AdminButtonsSe
 import { useQueryClient } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect, useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { PATH_END_ID } from "@/community/components/admin/adminPath";
+import { HEADER_BESIDE_ID, PATH_END_ID } from "@/community/components/admin/adminPath";
 import { Building2, LogOut, ShieldAlert } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { Button } from "@/components/ui/button";
@@ -208,7 +208,11 @@ export function AdminPage() {
         {/* The boards' editor: no title - its buttons stand at the end of the steps' line (AdminTiles), or alone in a line of their own. */}
         {activeTab === "tv" ? (
           pathEnd ? createPortal(controls, pathEnd) : (
-            <div className="flex flex-wrap items-center justify-end gap-3" data-focus-hide>{controls}</div>
+            <div className="flex flex-wrap items-center justify-end gap-3" data-focus-hide>
+              {/* The room beside the buttons: the screens off line stand here (TvAdmin), not in a line of their own. */}
+              <div id={HEADER_BESIDE_ID} className="min-w-0 flex-1 basis-72 empty:hidden" />
+              {controls}
+            </div>
           )
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3" data-focus-hide>
