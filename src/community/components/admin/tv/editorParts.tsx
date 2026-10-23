@@ -190,7 +190,7 @@ export function CopyBoxLook({
  * default): a click swaps the topic shown. Or all down the page: a click
  * jumps to its section, and the one on screen is marked as the page scrolls.
  */
-export function DesignTopics() {
+export function DesignTopics({ withView = true }: { withView?: boolean } = {}) {
   const { view, topic, setTopic, setView } = useDesignTopics();
   useEffect(() => {
     if (view !== "scroll") return;
@@ -236,19 +236,30 @@ export function DesignTopics() {
           </button>
         ))}
       </nav>
-      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-        <span>הצגת הנושאים:</span>
-        <Segments
-          label="הצגת הנושאים"
-          value={view}
-          onChange={(v: DesignView) => setView(v)}
-          options={[
-            { id: "switch", name: "נושא אחד בכל פעם", hint: "לחיצה על נושא מחליפה את מה שמוצג, בלי לגלול" },
-            { id: "scroll", name: "הכול ברצף", hint: "כל הנושאים זה מתחת לזה, ולחיצה גוללת אל הנושא" },
-          ]}
-        />
-      </div>
+      {withView && <TopicsViewToggle />}
     </div>
+  );
+}
+
+/** One topic at a time, or all of them down the page: small, on the one line of how the editor looks. */
+export function TopicsViewToggle() {
+  const { view, setView } = useDesignTopics();
+  const choices = [
+    ["switch", "נושא אחד", "לחיצה על נושא מחליפה את מה שמוצג, בלי לגלול"],
+    ["scroll", "הכול ברצף", "כל הנושאים זה מתחת לזה, ולחיצה גוללת אל הנושא"],
+  ] as const;
+  return (
+    <span className="flex items-center gap-1.5">
+      נושאים:
+      <span className="inline-flex rounded-md border bg-background p-0.5" role="radiogroup" aria-label="הצגת הנושאים">
+        {choices.map(([id, name, hint]) => (
+          <button key={id} type="button" role="radio" aria-checked={view === id} title={hint} onClick={() => setView(id as DesignView)}
+            className={`inline-flex h-6 items-center rounded px-2 text-[11px] font-medium ${view === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+            {name}
+          </button>
+        ))}
+      </span>
+    </span>
   );
 }
 
@@ -596,10 +607,10 @@ export function TileSizeToggle() {
 /** How the editor looks, in one line - the galleries' tiles and the sliders - wherever it stands, once. */
 export function EditorViewBar() {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground" data-testid="editor-view-bar">
+    <span className="inline-flex flex-wrap items-center gap-x-4 gap-y-1" data-testid="editor-view-bar">
       <span className="flex items-center gap-1.5">גלריות: <TileSizeToggle /></span>
       <span className="flex items-center gap-1.5">סליידרים: <SliderLayoutToggle /></span>
-    </div>
+    </span>
   );
 }
 
