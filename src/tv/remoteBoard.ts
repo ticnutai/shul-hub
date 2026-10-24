@@ -29,13 +29,38 @@
  * 25/09. A native request is not subject to CORS.
  */
 
-import { Capacitor, CapacitorHttp } from "@capacitor/core";
+import { Capacitor, CapacitorCookies, CapacitorHttp } from "@capacitor/core";
 
 export const REMOTE_BOARD_URL = "https://shul-hub.lovable.app/index-tv.html";
 const REMOTE_ORIGIN = new URL(REMOTE_BOARD_URL).origin;
 
 /** Present in index-tv.html; a page without it (an error page, a login wall) is not the board. */
 export const BOARD_MARKER = 'name="shul-tv-board"';
+
+/**
+ * The host pins a browser to the version of the site it first saw (a cookie,
+ * "__dpl"), so that a page half loaded never mixes two versions. A board on
+ * the wall is never closed: pinned, it kept the version it first saw for days
+ * after a publish - a kit's picture, new on the site, came back "not found"
+ * and the Shabbat screen stood on a white wall (אפי קפיטל, 23/10). The checks
+ * for a new version ask without it, and the move to a new version forgets it.
+ */
+export const PIN_COOKIE = "__dpl";
+export async function forgetPinnedVersion(): Promise<void> {
+  try {
+    document.cookie = `${PIN_COOKIE}=; Max-Age=0; path=/`;
+  } catch {
+    /* no cookies here: nothing pinned */
+  }
+  // The box's own cookie jar, for the website (the APK's copy runs on another origin).
+  if (Capacitor.isNativePlatform()) {
+    try {
+      await CapacitorCookies.deleteCookie({ url: REMOTE_ORIGIN, key: PIN_COOKIE });
+    } catch {
+      /* an app without the cookies plugin: the pin runs out by itself */
+    }
+  }
+}
 
 /** What moves with the screen: who it is, and which synagogue it last showed. */
 export const HANDOFF_KEYS = ["shul-tv-device", "shul-tv-community"] as const;
@@ -122,7 +147,8 @@ export async function fetchRemoteBoard(fetchImpl?: typeof fetch, timeoutMs = PRO
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await doFetch(url, { cache: "no-store", signal: controller.signal });
+    // Without cookies: the newest version, not the one this page is pinned to.
+    const res = await doFetch(url, { cache: "no-store", credentials: "omit", signal: controller.signal });
     if (!res.ok) return null;
     const html = await res.text();
     return html.includes(BOARD_MARKER) ? html : null;
@@ -144,6 +170,7 @@ export function startRemoteSwitch(): () => void {
     if (stopped) return;
     if (await fetchRemoteBoard()) {
       if (stopped) return;
+      await forgetPinnedVersion();
       const localUrl = `${window.location.origin}/`;
       window.location.replace(`${REMOTE_BOARD_URL}?t=${Date.now()}#${encodeHandoff(localStorage, localUrl)}`);
       return;
@@ -172,12 +199,15 @@ function localUrl(): string | null {
 export function reloadBoard(): void {
   const back = isRemoteBoard() ? localUrl() : null;
   if (!back) {
-    window.location.reload();
+    // The website's copy with nowhere to fall back to, or the APK's own: on the newest version either way.
+    void forgetPinnedVersion().then(() => window.location.reload());
     return;
   }
-  void fetchRemoteBoard().then((html) => {
-    if (html) window.location.replace(`${REMOTE_BOARD_URL}?t=${Date.now()}`);
-    else window.location.replace(back);
+  void fetchRemoteBoard().then(async (html) => {
+    if (html) {
+      await forgetPinnedVersion();
+      window.location.replace(`${REMOTE_BOARD_URL}?t=${Date.now()}`);
+    } else window.location.replace(back);
   });
 }
 

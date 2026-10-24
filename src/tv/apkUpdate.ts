@@ -167,7 +167,7 @@ export function useApkUpdate(log?: (msg: string) => void): { state: UpdateState;
         setState(mine.canInstall ? { phase: "idle" } : { phase: "allow", version: mine.versionName });
         return;
       }
-      const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: "no-store", credentials: "omit" });
       if (!res.ok) return;
       const next = newerVersion(await res.json(), mine.versionCode);
       if (!next) return;

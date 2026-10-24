@@ -6,7 +6,9 @@ import {
   applyHandoff,
   boardScript,
   encodeHandoff,
+  PIN_COOKIE,
   fetchRemoteBoard,
+  forgetPinnedVersion,
   isRemoteBoard,
 } from "./remoteBoard";
 
@@ -70,5 +72,22 @@ describe("the board from the website (remoteBoard)", () => {
       throw new TypeError("Failed to fetch");
     }) as unknown as typeof fetch;
     expect(await fetchRemoteBoard(offline)).toBeNull();
+  });
+
+  it("asks for the newest version without the cookie that pins the page to the old one", async () => {
+    const seen: RequestInit[] = [];
+    const fake = (async (_u: string, init: RequestInit) => {
+      seen.push(init);
+      return new Response(`<meta ${BOARD_MARKER}>`, { status: 200 });
+    }) as unknown as typeof fetch;
+    await fetchRemoteBoard(fake);
+    expect(seen[0].credentials).toBe("omit");
+  });
+
+  it("forgets the pin, so the move to a new version lands on it", async () => {
+    document.cookie = `${PIN_COOKIE}=old-version; path=/`;
+    expect(document.cookie).toContain(PIN_COOKIE);
+    await forgetPinnedVersion();
+    expect(document.cookie).not.toContain(PIN_COOKIE);
   });
 });
