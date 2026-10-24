@@ -84,6 +84,18 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const [folded, setFolded] = useState(false);
   /** The list of every part caught, opened from "נבחר" - to choose one of them alone. */
   const [caughtOpen, setCaughtOpen] = useState(false);
+  // Opened by itself on every choice made on the board, when more than one part was caught - not after a choice made in it.
+  const caughtCount = useRef(0);
+  const choseFromList = useRef(false);
+  const selectionKey = chosen.join(",");
+  useEffect(() => {
+    if (!selectionKey) return setCaughtOpen(false);
+    if (choseFromList.current) {
+      choseFromList.current = false;
+      return;
+    }
+    setCaughtOpen(caughtCount.current > 1);
+  }, [selectionKey]);
   /** Where it was dragged to (the window's corner, in pixels), kept for next time; null - its own place. */
   const [moved, setMoved] = useState<{ x: number; y: number } | null>(() => {
     try {
@@ -271,6 +283,7 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   // Every part caught: those chosen, and the parts of the containers they stand in - topmost first, as seen.
   const caughtIds = new Set([...chosen, ...containers.flatMap((c) => c.ids)]);
   const caught = config.elements.filter((e) => caughtIds.has(e.id)).reverse();
+  caughtCount.current = caught.length;
   const key = chosen.join(",");
   const many = containers.length > 1;
   const board = containers[0]?.board ?? null;
@@ -374,13 +387,15 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
             </button>
           </PopoverTrigger>
           <PopoverContent dir="rtl" align="start" sideOffset={4} collisionPadding={8} className="z-[80] w-52 p-1"
+            // Opened by itself: the keys stay with the board (arrows move the part), not taken by the list.
+            onOpenAutoFocus={(ev) => ev.preventDefault()}
             role="listbox" aria-label="החלקים שנתפסו" data-testid="ctx-caught-list">
             <div className="flex max-h-60 flex-col overflow-y-auto text-xs">
               {caught.map((e) => (
                 <button key={e.id} type="button" role="option" aria-selected={chosen.length === 1 && chosen[0] === e.id}
                   title={`${e.name} - ${e.binding ? BINDING_LABELS[e.binding] : ELEMENT_NAMES[e.kind]}${e.hidden ? " (מוסתר)" : ""}`}
                   className={`truncate rounded px-2 py-1.5 text-start hover:bg-muted ${chosen.length === 1 && chosen[0] === e.id ? "bg-primary/10 font-semibold" : ""} ${e.hidden ? "text-muted-foreground" : ""}`}
-                  onClick={() => { editing.select([e.id]); setCaughtOpen(false); }}>
+                  onClick={() => { choseFromList.current = true; editing.select([e.id]); setCaughtOpen(false); }}>
                   {e.name}
                 </button>
               ))}

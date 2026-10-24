@@ -27,7 +27,7 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   await prayers.click();
   const panel = page.getByTestId("part-context-panel");
   await expect(panel).toBeVisible();
-  await panel.getByTestId("ctx-caught-toggle").click();
+  // Opened by itself, the choice made on the board.
   const list = page.getByTestId("ctx-caught-list");
   await expect(list).toBeVisible();
   await expect(list).toBeInViewport({ ratio: 0.9 });
@@ -36,6 +36,9 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   expect(names.some((n) => n.includes("מסגרת זמני תפילות"))).toBe(true);
   // One of them alone.
   await list.getByRole("option").filter({ hasText: "מסגרת זמני תפילות" }).click();
+  await expect(list).toHaveCount(0);
+  // Not opened again by the choice made in it; the button opens it.
+  await page.waitForTimeout(300);
   await expect(list).toHaveCount(0);
   // Chosen alone: marked so in the list (the panel's title stays its container's name).
   await panel.getByTestId("ctx-caught-toggle").click();
@@ -54,7 +57,7 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   await page.mouse.move(x1, y1, { steps: 5 });
   await page.mouse.up();
   await expect(page.getByTestId("selection-band")).toHaveCount(0);
-  await panel.getByTestId("ctx-caught-toggle").click();
+  await expect(page.getByTestId("ctx-caught-list")).toBeVisible();
   const picked = await page.getByTestId("ctx-caught-list").getByRole("option").allTextContents();
   // The three panels under the arches (parasha, notices, daf yomi) - each with its board and frame.
   for (const n of ["פרשת השבוע", "הודעות", "דף יומי"]) expect(picked.some((p) => p.includes(n)), n).toBe(true);
