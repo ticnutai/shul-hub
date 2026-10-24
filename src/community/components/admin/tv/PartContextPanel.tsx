@@ -18,7 +18,7 @@ import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
 import { addContainer, addInside, addPictureAlone, containerTree, fitIntoContainer, moveChosenLayer, newContainerParts, type InsideKind } from "@/tv/containers";
-import { MAX_ELEMENTS, elementId, setFrameWidth, FRAME_WIDTH_MIN, FRAME_WIDTH_MAX } from "@/tv/elements";
+import { BINDING_LABELS, ELEMENT_NAMES, MAX_ELEMENTS, elementId, setFrameWidth, FRAME_WIDTH_MIN, FRAME_WIDTH_MAX } from "@/tv/elements";
 import type { PartShape } from "@/tv/partShapes";
 import { BoardBackground } from "./TvEditInspector";
 import { wearsPaint } from "@/tv/partPaint";
@@ -81,6 +81,8 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const first = config.elements.find((e) => e.id === chosen[0]);
   const [tabFor, setTabFor] = useState<{ key: string; tab: Tab } | null>(null);
   const [folded, setFolded] = useState(false);
+  /** The list of every part caught, opened from "נבחר" - to choose one of them alone. */
+  const [caughtOpen, setCaughtOpen] = useState(false);
   /** Where it was dragged to (the window's corner, in pixels), kept for next time; null - its own place. */
   const [moved, setMoved] = useState<{ x: number; y: number } | null>(() => {
     try {
@@ -265,6 +267,9 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const role = roleOf(first);
   const containers = role === "backdrop" ? [] : containersOf(config.elements, chosen);
   const own = config.elements.filter((e) => containers[0]?.ids.includes(e.id));
+  // Every part caught: those chosen, and the parts of the containers they stand in - topmost first, as seen.
+  const caughtIds = new Set([...chosen, ...containers.flatMap((c) => c.ids)]);
+  const caught = config.elements.filter((e) => caughtIds.has(e.id)).reverse();
   const key = chosen.join(",");
   const many = containers.length > 1;
   const board = containers[0]?.board ?? null;
@@ -357,7 +362,28 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
       <div className="mb-2 flex cursor-move flex-wrap items-center gap-1.5 select-none" onPointerDown={drag} onDoubleClick={() => { keep(null); keepSize(null); }}
         title="גרירה מזיזה את החלון; לחיצה כפולה מחזירה אותו למקומו" data-testid="part-context-handle">
         <GripVertical className="size-4 text-muted-foreground" aria-hidden />
-        <span className="font-semibold">נבחר: {title}</span>
+        {/* "נבחר": a button - the parts caught (those chosen and their container's), one chosen alone from them. */}
+        <span className="relative">
+          <button type="button" className="inline-flex items-center gap-1 rounded-md px-1 font-semibold hover:bg-muted" aria-expanded={caughtOpen}
+            aria-label={`נבחר: ${title} - רשימת החלקים שנתפסו`} title="כל החלקים שנתפסו - בוחרים אחד מהם" data-testid="ctx-caught-toggle"
+            onPointerDown={(ev) => ev.stopPropagation()} onClick={() => setCaughtOpen((o) => !o)}>
+            נבחר: {title} <ChevronDown className={`size-3.5 transition ${caughtOpen ? "rotate-180" : ""}`} aria-hidden />
+          </button>
+          {caughtOpen && (
+            <span className="absolute start-0 top-8 z-[60] flex max-h-64 w-64 flex-col overflow-y-auto rounded-md border bg-popover p-1 text-xs font-normal shadow-lg"
+              role="listbox" aria-label="החלקים שנתפסו" data-testid="ctx-caught-list" onPointerDown={(ev) => ev.stopPropagation()}
+              onKeyDown={(ev) => ev.key === "Escape" && setCaughtOpen(false)}>
+              {caught.map((e) => (
+                <button key={e.id} type="button" role="option" aria-selected={chosen.length === 1 && chosen[0] === e.id}
+                  className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-start hover:bg-muted ${chosen.length === 1 && chosen[0] === e.id ? "bg-primary/10 font-semibold" : ""}`}
+                  onClick={() => { editing.select([e.id]); setCaughtOpen(false); }}>
+                  <span className="truncate">{e.name}</span>
+                  <span className="shrink-0 text-[10px] text-muted-foreground">{e.binding ? BINDING_LABELS[e.binding] : ELEMENT_NAMES[e.kind]}{e.hidden ? " · מוסתר" : ""}</span>
+                </button>
+              ))}
+            </span>
+          )}
+        </span>
         <span className="text-muted-foreground">←</span>
         {tabs.map((t) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t}
