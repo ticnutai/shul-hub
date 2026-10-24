@@ -34,6 +34,11 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   const names = await list.getByRole("option").allTextContents();
   expect(names.length).toBeGreaterThanOrEqual(3);
   expect(names.some((n) => n.includes("מסגרת זמני תפילות"))).toBe(true);
+  // Each drawn small, its real content: the prayers' tile shows the board's own rows.
+  await list.getByRole("radio", { name: "תמונות קטנות" }).click();
+  const tile = list.getByRole("option", { name: "תוכן זמני תפילות" });
+  await expect(tile.locator('[data-content-binding="prayers"]')).toHaveCount(1);
+  await list.getByRole("radio", { name: "רשימה" }).click();
   // One of them alone.
   await list.getByRole("option").filter({ hasText: "מסגרת זמני תפילות" }).click();
   await expect(list).toHaveCount(0);

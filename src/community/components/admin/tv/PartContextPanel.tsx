@@ -13,7 +13,7 @@ import { Hint } from "@/components/InfoTip";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { PART_PANEL_SLOT } from "../adminPath";
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, GripVertical, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, LayoutGrid, List, ChevronUp, ChevronsDown, ChevronsUp, GripVertical, X } from "lucide-react";
 import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
@@ -28,6 +28,7 @@ import { FRAME_PICTURE_PREFIX, framePictureUrl, framesByKit } from "@/tv/framePi
 import { PART_SHAPES } from "@/tv/partShapes";
 import { setSectionShape } from "@/tv/sectionGeometry";
 import type { BoardElement } from "@/tv/elements";
+import { BoardElements } from "@/tv/BoardElements";
 import { toast } from "sonner";
 import { ColorPick } from "./ColorPick";
 import { BackgroundTile } from "./LayerEditors";
@@ -84,6 +85,22 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
   const [folded, setFolded] = useState(false);
   /** The list of every part caught, opened from "נבחר" - to choose one of them alone. */
   const [caughtOpen, setCaughtOpen] = useState(false);
+  /** The list's look, kept in this browser: names, or each part drawn small. */
+  const [caughtView, setCaughtViewState] = useState<"list" | "pics">(() => {
+    try {
+      return localStorage.getItem(CAUGHT_VIEW_KEY) === "pics" ? "pics" : "list";
+    } catch {
+      return "list";
+    }
+  });
+  const setCaughtView = (v: "list" | "pics") => {
+    setCaughtViewState(v);
+    try {
+      localStorage.setItem(CAUGHT_VIEW_KEY, v);
+    } catch {
+      /* a private window: for this visit only */
+    }
+  };
   // Opened by itself on every choice made on the board, when more than one part was caught - not after a choice made in it.
   const caughtCount = useRef(0);
   const choseFromList = useRef(false);
@@ -386,19 +403,38 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
               נבחר: {title} <ChevronDown className={`size-3.5 transition ${caughtOpen ? "rotate-180" : ""}`} aria-hidden />
             </button>
           </PopoverTrigger>
-          <PopoverContent dir="rtl" align="start" sideOffset={4} collisionPadding={8} className="z-[80] w-52 p-1"
+          <PopoverContent dir="rtl" align="start" sideOffset={4} collisionPadding={8} className={`z-[80] p-1 ${caughtView === "pics" ? "w-[26rem]" : "w-52"}`}
             // Opened by itself: the keys stay with the board (arrows move the part), not taken by the list.
             onOpenAutoFocus={(ev) => ev.preventDefault()}
             role="listbox" aria-label="החלקים שנתפסו" data-testid="ctx-caught-list">
-            <div className="flex max-h-60 flex-col overflow-y-auto text-xs">
-              {caught.map((e) => (
-                <button key={e.id} type="button" role="option" aria-selected={chosen.length === 1 && chosen[0] === e.id}
-                  title={`${e.name} - ${e.binding ? BINDING_LABELS[e.binding] : ELEMENT_NAMES[e.kind]}${e.hidden ? " (מוסתר)" : ""}`}
-                  className={`truncate rounded px-2 py-1.5 text-start hover:bg-muted ${chosen.length === 1 && chosen[0] === e.id ? "bg-primary/10 font-semibold" : ""} ${e.hidden ? "text-muted-foreground" : ""}`}
-                  onClick={() => { choseFromList.current = true; editing.select([e.id]); setCaughtOpen(false); }}>
-                  {e.name}
+            {/* Two ways to see them: names in a list, or each drawn small - a heading as a heading, the times as the times. */}
+            <div className="mb-1 flex items-center justify-end gap-0.5 border-b pb-1" role="radiogroup" aria-label="תצוגת החלקים">
+              {([["list", List, "רשימה"], ["pics", LayoutGrid, "תמונות קטנות"]] as const).map(([id, Icon, label]) => (
+                <button key={id} type="button" role="radio" aria-checked={caughtView === id} aria-label={label} title={label}
+                  onClick={() => setCaughtView(id)}
+                  className={`inline-flex size-6 items-center justify-center rounded ${caughtView === id ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                  <Icon className="size-3.5" aria-hidden />
                 </button>
               ))}
+            </div>
+            <div className={`max-h-72 overflow-y-auto text-xs ${caughtView === "pics" ? "grid grid-cols-2 gap-1.5" : "flex flex-col"}`}>
+              {caught.map((e) => {
+                const on = chosen.length === 1 && chosen[0] === e.id;
+                const pick = () => { choseFromList.current = true; editing.select([e.id]); setCaughtOpen(false); };
+                const kind = `${e.binding ? BINDING_LABELS[e.binding] : ELEMENT_NAMES[e.kind]}${e.hidden ? " (מוסתר)" : ""}`;
+                return caughtView === "pics" ? (
+                  <button key={e.id} type="button" role="option" aria-selected={on} aria-label={e.name} title={`${e.name} - ${kind}`} onClick={pick}
+                    className={`overflow-hidden rounded-md border text-start hover:border-primary ${on ? "border-primary ring-1 ring-primary" : ""} ${e.hidden ? "opacity-60" : ""}`}>
+                    <PartThumb element={e} />
+                    <span className="block truncate px-1 py-0.5 text-[10px]">{e.name}</span>
+                  </button>
+                ) : (
+                  <button key={e.id} type="button" role="option" aria-selected={on} title={`${e.name} - ${kind}`} onClick={pick}
+                    className={`truncate rounded px-2 py-1.5 text-start hover:bg-muted ${on ? "bg-primary/10 font-semibold" : ""} ${e.hidden ? "text-muted-foreground" : ""}`}>
+                    {e.name}
+                  </button>
+                );
+              })}
             </div>
           </PopoverContent>
         </Popover>
@@ -662,4 +698,54 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
     </div>
   );
   return inPage ? createPortal(panel, inPage) : panel;
+}
+
+const CAUGHT_VIEW_KEY = "tv-caught-view";
+
+/**
+ * One part small, as it is on the board right now - its real words and times,
+ * not a sample: a copy of the part as the preview draws it, shrunk to fit its
+ * tile. Where the preview does not show it (another page), the board's own
+ * drawing of it alone.
+ */
+function PartThumb({ element: e }: { element: BoardElement }) {
+  const tile = useRef<HTMLSpanElement>(null);
+  // Where the copy goes: a place of its own, with nothing of React's in it.
+  const host = useRef<HTMLSpanElement>(null);
+  const [copied, setCopied] = useState(false);
+  useLayoutEffect(() => {
+    const box = tile.current;
+    const node = document.querySelector<HTMLElement>(`[data-board-preview] [data-element-id="${CSS.escape(e.id)}"]`);
+    const surface = node?.parentElement;
+    if (!box || !node || !surface) return setCopied(false);
+    const sw = surface.clientWidth, sh = surface.clientHeight;
+    const r = node.getBoundingClientRect(), sr = surface.getBoundingClientRect();
+    if (!sw || !sh || !r.width || !r.height) return setCopied(false);
+    // The part's own place on the board, in the board's pixels (the preview may itself be scaled).
+    const fx = sw / sr.width, fy = sh / sr.height;
+    const x = (r.left - sr.left) * fx, y = (r.top - sr.top) * fy, w = r.width * fx, h = r.height * fy;
+    const tw = box.clientWidth, th = box.clientHeight;
+    const k = Math.min(tw / w, th / h) * 0.92;
+    const stage = document.createElement("div");
+    stage.style.cssText = `position:absolute;left:0;top:0;width:${sw}px;height:${sh}px;container-type:size;transform-origin:0 0;` +
+      `transform:translate(${(tw - w * k) / 2 - x * k}px, ${(th - h * k) / 2 - y * k}px) scale(${k});pointer-events:none;`;
+    const copy = node.cloneNode(true) as HTMLElement;
+    copy.querySelectorAll("[data-edit-ui]").forEach((n) => n.remove());
+    copy.style.display = "flex";
+    stage.appendChild(copy);
+    host.current?.replaceChildren(stage);
+    setCopied(true);
+  }, [e]);
+  const w = Math.max(1, e.width), h = Math.max(1, e.height);
+  const k = Math.min(100 / w, 100 / h) * 0.92;
+  return (
+    <span ref={tile} className="relative isolate block aspect-video overflow-hidden bg-[#0b1628]" aria-hidden>
+      {!copied && (
+        <span className="pointer-events-none absolute block" style={{ width: `${100 * k}%`, height: `${100 * k}%`, left: `${(100 - w * k) / 2 - e.x * k}%`, top: `${(100 - h * k) / 2 - e.y * k}%`, containerType: "size" }}>
+          <BoardElements elements={[{ ...e, hidden: false }]} />
+        </span>
+      )}
+      <span ref={host} className="pointer-events-none absolute inset-0 block" />
+    </span>
+  );
 }
