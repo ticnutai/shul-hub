@@ -30,6 +30,7 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   await panel.getByTestId("ctx-caught-toggle").click();
   const list = panel.getByTestId("ctx-caught-list");
   await expect(list).toBeVisible();
+  await expect(list).toBeInViewport({ ratio: 0.9 });
   const names = await list.getByRole("option").allTextContents();
   expect(names.length).toBeGreaterThanOrEqual(3);
   expect(names.some((n) => n.includes("מסגרת זמני תפילות"))).toBe(true);
