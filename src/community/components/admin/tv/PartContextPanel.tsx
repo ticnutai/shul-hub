@@ -18,6 +18,7 @@ import type { TvConfig } from "@/tv/config";
 import { useElementEditing } from "@/tv/elementEditing";
 import { colourBoards, colourFrames, containersOf, paintBoards, roleOf, wearFrame } from "@/tv/containerParts";
 import { addContainer, addInside, addPictureAlone, containerTree, fitIntoContainer, moveChosenLayer, newContainerParts, type InsideKind } from "@/tv/containers";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { BINDING_LABELS, ELEMENT_NAMES, MAX_ELEMENTS, elementId, setFrameWidth, FRAME_WIDTH_MIN, FRAME_WIDTH_MAX } from "@/tv/elements";
 import type { PartShape } from "@/tv/partShapes";
 import { BoardBackground } from "./TvEditInspector";
@@ -363,13 +364,29 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
         title="גרירה מזיזה את החלון; לחיצה כפולה מחזירה אותו למקומו" data-testid="part-context-handle">
         <GripVertical className="size-4 text-muted-foreground" aria-hidden />
         {/* "נבחר": a button - the parts caught (those chosen and their container's), one chosen alone from them. */}
-        <span className="relative">
-          <button type="button" className="inline-flex items-center gap-1 rounded-md px-1 font-semibold hover:bg-muted" aria-expanded={caughtOpen}
-            aria-label={`נבחר: ${title} - רשימת החלקים שנתפסו`} title="כל החלקים שנתפסו - בוחרים אחד מהם" data-testid="ctx-caught-toggle"
-            onPointerDown={(ev) => ev.stopPropagation()} onClick={() => setCaughtOpen((o) => !o)}>
-            נבחר: {title} <ChevronDown className={`size-3.5 transition ${caughtOpen ? "rotate-180" : ""}`} aria-hidden />
-          </button>
-        </span>
+        {/* A small window beside the button, over the page (never cut off by the panel's edge): the parts, one chosen alone. */}
+        <Popover open={caughtOpen} onOpenChange={setCaughtOpen}>
+          <PopoverTrigger asChild>
+            <button type="button" className="inline-flex items-center gap-1 rounded-md px-1 font-semibold hover:bg-muted" aria-expanded={caughtOpen}
+              aria-label={`נבחר: ${title} - רשימת החלקים שנתפסו`} title="כל החלקים שנתפסו - בוחרים אחד מהם" data-testid="ctx-caught-toggle"
+              onPointerDown={(ev) => ev.stopPropagation()}>
+              נבחר: {title} <ChevronDown className={`size-3.5 transition ${caughtOpen ? "rotate-180" : ""}`} aria-hidden />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent dir="rtl" align="start" sideOffset={4} collisionPadding={8} className="z-[80] w-52 p-1"
+            role="listbox" aria-label="החלקים שנתפסו" data-testid="ctx-caught-list">
+            <div className="flex max-h-60 flex-col overflow-y-auto text-xs">
+              {caught.map((e) => (
+                <button key={e.id} type="button" role="option" aria-selected={chosen.length === 1 && chosen[0] === e.id}
+                  title={`${e.name} - ${e.binding ? BINDING_LABELS[e.binding] : ELEMENT_NAMES[e.kind]}${e.hidden ? " (מוסתר)" : ""}`}
+                  className={`truncate rounded px-2 py-1.5 text-start hover:bg-muted ${chosen.length === 1 && chosen[0] === e.id ? "bg-primary/10 font-semibold" : ""} ${e.hidden ? "text-muted-foreground" : ""}`}
+                  onClick={() => { editing.select([e.id]); setCaughtOpen(false); }}>
+                  {e.name}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
         <span className="text-muted-foreground">←</span>
         {tabs.map((t) => (
           <button key={t} type="button" role="tab" aria-selected={tab === t}
@@ -399,21 +416,6 @@ export function PartContextPanel({ config, onEdit }: { config: TvConfig; onEdit:
           </button>
         </span>
       </div>
-      {/* Opened from "נבחר": in the panel itself, under its header - never cut off by the panel's edge. */}
-          {caughtOpen && (
-        <span className="mb-2 flex max-h-56 w-full flex-col overflow-y-auto rounded-md border bg-popover p-1 text-xs font-normal shadow-sm"
-          role="listbox" aria-label="החלקים שנתפסו" data-testid="ctx-caught-list" onPointerDown={(ev) => ev.stopPropagation()}
-          onKeyDown={(ev) => ev.key === "Escape" && setCaughtOpen(false)}>
-          {caught.map((e) => (
-            <button key={e.id} type="button" role="option" aria-selected={chosen.length === 1 && chosen[0] === e.id}
-              className={`flex items-center justify-between gap-2 rounded px-2 py-1.5 text-start hover:bg-muted ${chosen.length === 1 && chosen[0] === e.id ? "bg-primary/10 font-semibold" : ""}`}
-              onClick={() => { editing.select([e.id]); setCaughtOpen(false); }}>
-              <span className="truncate">{e.name}</span>
-              <span className="shrink-0 text-[10px] text-muted-foreground">{e.binding ? BINDING_LABELS[e.binding] : ELEMENT_NAMES[e.kind]}{e.hidden ? " · מוסתר" : ""}</span>
-            </button>
-          ))}
-        </span>
-      )}
       {!folded && <>
 
       {tab === "background" && (

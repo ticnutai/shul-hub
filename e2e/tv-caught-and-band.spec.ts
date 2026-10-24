@@ -28,7 +28,7 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   const panel = page.getByTestId("part-context-panel");
   await expect(panel).toBeVisible();
   await panel.getByTestId("ctx-caught-toggle").click();
-  const list = panel.getByTestId("ctx-caught-list");
+  const list = page.getByTestId("ctx-caught-list");
   await expect(list).toBeVisible();
   await expect(list).toBeInViewport({ ratio: 0.9 });
   const names = await list.getByRole("option").allTextContents();
@@ -39,7 +39,7 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   await expect(list).toHaveCount(0);
   // Chosen alone: marked so in the list (the panel's title stays its container's name).
   await panel.getByTestId("ctx-caught-toggle").click();
-  await expect(panel.getByTestId("ctx-caught-list").getByRole("option", { selected: true })).toContainText("מסגרת זמני תפילות");
+  await expect(page.getByTestId("ctx-caught-list").getByRole("option", { selected: true })).toContainText("מסגרת זמני תפילות");
   await panel.getByTestId("ctx-caught-toggle").click();
 
   // A box drawn on the floor of the room (the main background), over the three wooden panels.
@@ -55,7 +55,7 @@ test("the parts caught listed under 'נבחר', and a box drawn to choose severa
   await page.mouse.up();
   await expect(page.getByTestId("selection-band")).toHaveCount(0);
   await panel.getByTestId("ctx-caught-toggle").click();
-  const picked = await panel.getByTestId("ctx-caught-list").getByRole("option").allTextContents();
+  const picked = await page.getByTestId("ctx-caught-list").getByRole("option").allTextContents();
   // The three panels under the arches (parasha, notices, daf yomi) - each with its board and frame.
   for (const n of ["פרשת השבוע", "הודעות", "דף יומי"]) expect(picked.some((p) => p.includes(n)), n).toBe(true);
   void board;
