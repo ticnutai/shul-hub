@@ -31,13 +31,20 @@ export function BoundElement({ element }: { element: BoardElement }) {
   if(e.binding==='logos') return <div data-content-binding="logos" style={{...style,display:'flex',justifyContent:'center',gap:'1cqw'}}>{data.logos?.map(l=><img key={l.url} src={l.url} alt={l.name} style={{maxWidth:'100%',height:'100%',objectFit:'contain'}} />)}</div>;
   // One line that shrinks to fit (a name, a date, the parasha); paragraphs wrap.
   // Made smaller to fit, or broken into lines at its own size: the part's "גלישת שורות" (wraps()).
-  // This Shabbat, as a table: every row in full light - nothing over, nothing faded.
-  if (e.binding === 'shabbat') return <div data-content-binding="shabbat" dir="rtl" style={{ ...style, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly' }}>
-    {(data.shabbat ?? []).map(([label, value]) => <div key={label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1.5cqw', lineHeight: 1.2 }}>
-      <span style={{ flexShrink: 0 }}>{label}</span><b dir={/^[\d:—]+$/.test(value) ? 'ltr' : undefined} style={{ textAlign: 'left', minWidth: 0 }}>{value}</b>
-    </div>)}
-    {!data.shabbat?.length && <span style={{ margin: 'auto', fontSize: '.65em' }}>זמני השבת</span>}
-  </div>;
+  // This Shabbat, as a table: every row in full light - nothing over, nothing faded - and always inside its frame:
+  // the letters no larger than its height leaves each row, a long haftarah on a second line rather than out of the side.
+  if (e.binding === 'shabbat') {
+    const rows = data.shabbat ?? [];
+    // Across too: the widest row whose value is a time (a long haftarah may wrap) - a letter about half its height, the board 16:9.
+    const widest = Math.max(8, ...rows.filter(([, v]) => /^[\d:—]+$/.test(v)).map(([l, v]) => l.length + v.length + 2));
+    const fit = Math.min(e.fontSize, (e.height / Math.max(1, rows.length + 0.6)) * 0.6, (e.width * 16 / 9) / (widest * 0.55));
+    return <div data-content-binding="shabbat" dir="rtl" style={{ ...style, fontSize: `${fit}cqh`, display: 'flex', flexDirection: 'column', justifyContent: 'space-evenly', overflow: 'hidden' }}>
+      {rows.map(([label, value]) => <div key={label} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: '1.5cqw', lineHeight: 1.15, minWidth: 0 }}>
+        <span style={{ flexShrink: 0 }}>{label}</span><b dir={/^[\d:—]+$/.test(value) ? 'ltr' : undefined} style={{ textAlign: 'left', minWidth: 0, overflowWrap: 'anywhere' }}>{value}</b>
+      </div>)}
+      {!rows.length && <span style={{ margin: 'auto', fontSize: '.65em' }}>זמני השבת</span>}
+    </div>;
+  }
   if (e.binding === 'shabbatTitle') return wraps(e) ? <WrapText binding={e.binding} text={data.shabbatTitle ?? 'שבת קודש'} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data.shabbatTitle ?? 'שבת קודש'} e={e} />;
   if(e.binding==='title'||e.binding==='date'||e.binding==='occasion'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
   if((e.binding==='footer'||e.binding==='announcements') && e.scroll) return <Scrolling mode={e.scroll}><div data-content-binding={e.binding} dir="rtl" style={{ display: 'grid', alignItems: 'center', justifyItems: justify(e), whiteSpace: 'pre-wrap', lineHeight: 1.4, fontSize: `${e.fontSize}cqh`, ...look }}>{data[e.binding]}</div></Scrolling>;
