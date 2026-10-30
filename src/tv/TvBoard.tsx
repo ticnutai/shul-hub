@@ -293,7 +293,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         {/* Only a board with free elements draws them, or works out their content:
             the zmanim, parasha and daf of every element would otherwise be
             recomputed on each tick of a box that has none. */}
-        {config.elements.length > 0 && (config.screenLayout !== 'composition' || composition) && <BoardElements elements={config.elements} data={elementData(screenSlides, now, {config, name:data.settings?.name ?? 'בית הכנסת', zmanim})} />}
+        {config.elements.length > 0 && (config.screenLayout !== 'composition' || composition) && <BoardElements elements={config.elements} data={elementData(screenSlides, now, {config, name:data.settings?.name ?? 'בית הכנסת', zmanim, zmanimOn})} />}
         {!ownHeader && (bars.header || bars.clock || (bars.logo && config.logos.length > 0)) && (
           <TvHeader
             settings={data.settings}

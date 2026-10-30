@@ -4,9 +4,35 @@ import type { TvConfig } from './config';
 import { formatTime, ZMAN_DISPLAY_LABELS, ZMAN_DISPLAY_KEYS, type Zmanim } from '@/community/lib/zmanim';
 import { HDate } from '@hebcal/core';
 import { amudYomi, dafYomi, weeklyParasha, seasonalPrayers } from './learning';
-import { dayTitleOn } from '@community/lib/specialDays';
-export interface ElementData { now: Date; prayers: [string, string][]; lessons: [string, string][]; title?: string; date?: string; occasion?: string; zmanim?: [string,string][]; zmanKeys?: string[]; hiddenZmanKeys?: string[]; parasha?:string; dafYomi?:string; amudYomi?:string; seasonal?:string; footer?: string; logos?: {url:string;name:string}[]; announcements?: string }
-export function elementData(slides: BoardSlide[], now: Date, context?: {config:TvConfig; name:string; zmanim:Zmanim}): ElementData {
+import { dayTitleOn, holyDayEnd } from '@community/lib/specialDays';
+import { jerusalemWeekday } from '@community/lib/minyan-time';
+import { torahReadingOn } from './torahReading';
+export interface ElementData { now: Date; shabbat?: [string, string][]; shabbatTitle?: string; prayers: [string, string][]; lessons: [string, string][]; title?: string; date?: string; occasion?: string; zmanim?: [string,string][]; zmanKeys?: string[]; hiddenZmanKeys?: string[]; parasha?:string; dafYomi?:string; amudYomi?:string; seasonal?:string; footer?: string; logos?: {url:string;name:string}[]; announcements?: string }
+/**
+ * This Shabbat - today's on Shabbat, else the coming one: its start (Friday's
+ * candle lighting), its end, the last time for the Shema, the parasha and the
+ * haftarah - worked out anew every week, nothing typed.
+ */
+export function shabbatInfo(now: Date, zmanimOn: (d: Date) => Zmanim): { title: string; rows: [string, string][] } {
+  const sat = new Date(now.getTime() + ((6 - jerusalemWeekday(now) + 7) % 7) * 86_400_000);
+  const fri = new Date(sat.getTime() - 86_400_000);
+  const z = zmanimOn(sat);
+  const parasha = weeklyParasha(sat);
+  const haftarah = torahReadingOn(sat)?.haftarah;
+  return {
+    title: ['שבת קודש', parasha].filter(Boolean).join(' · '),
+    rows: [
+      ['כניסת השבת', formatTime(zmanimOn(fri).candle)],
+      ['יציאת השבת', formatTime(holyDayEnd(z))],
+      ['סוף זמן ק״ש מג״א', formatTime(z.sof_zman_shma_mga72)],
+      ['סוף זמן ק״ש גר״א', formatTime(z.sof_zman_shma)],
+      ...(parasha ? [['פרשת השבוע', parasha.replace(/^פרשת\s+/, '')] as [string, string]] : []),
+      ...(haftarah ? [['הפטרה', haftarah] as [string, string]] : []),
+    ],
+  };
+}
+
+export function elementData(slides: BoardSlide[], now: Date, context?: {config:TvConfig; name:string; zmanim:Zmanim; zmanimOn?: (d: Date) => Zmanim}): ElementData {
   const flat = (s: BoardSlide[]): BoardSlide[] => s.flatMap(x => x.kind === 'composed' ? flat(x.parts.flatMap(p => p.slide ? [p.slide] : [])) : [x]);
   const seen = new Set<string>();
   const prayers: [string, string][] = [], lessons: [string, string][] = [];
@@ -34,6 +60,7 @@ export function elementData(slides: BoardSlide[], now: Date, context?: {config:T
       parasha:weeklyParasha(now),dafYomi:`דף יומי: ${dafYomi(now)?.label??'—'}`,amudYomi:`עמוד יומי: ${amudYomi(now).label}`,seasonal:seasonalPrayers(now).text,
       footer:[weeklyParasha(now),`דף יומי: ${dafYomi(now)?.label??''}`,`עמוד יומי: ${amudYomi(now).label}`,seasonalPrayers(now).text].filter(Boolean).join('   ·   '),
       logos:config?.logos.map(l=>({url:l.urlDark||l.url,name:l.name})),
+      ...(context.zmanimOn ? (() => { const s = shabbatInfo(now, context.zmanimOn!); return { shabbat: s.rows, shabbatTitle: s.title }; })() : {}),
       announcements:notices.length?notices.map(a=>[a.title,a.body].filter(Boolean).join('\n')).join('\n\n'):'אין הודעות כרגע',
     }:{}),
   };

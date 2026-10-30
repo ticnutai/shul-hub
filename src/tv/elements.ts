@@ -7,7 +7,7 @@ import { ZMAN_DISPLAY_KEYS } from '@/community/lib/zmanim';
 /** Free elements share the board's config, undo history and renderer. Coordinates are percentages. */
 export const ELEMENT_KINDS = ['column', 'ornament', 'frame', 'box', 'text', 'image'] as const;
 export type ElementKind = typeof ELEMENT_KINDS[number];
-export const ELEMENT_BINDINGS = ['clock', 'analog', 'prayers', 'lessons', 'title', 'date', 'occasion', 'zmanim', 'footer', 'logos', 'announcements', 'parasha', 'dafYomi', 'amudYomi', 'seasonal'] as const;
+export const ELEMENT_BINDINGS = ['clock', 'analog', 'prayers', 'lessons', 'title', 'date', 'occasion', 'zmanim', 'footer', 'logos', 'announcements', 'parasha', 'dafYomi', 'amudYomi', 'seasonal', 'shabbat', 'shabbatTitle'] as const;
 export type ElementBinding = typeof ELEMENT_BINDINGS[number];
 export const ELEMENT_NAMES: Record<ElementKind, string> = { column: 'עמוד קלאסי', ornament: 'עיטור', frame: 'מסגרת', box: 'תיבה', text: 'טקסט', image: 'תמונה' };
 export interface BoardElement {
@@ -265,6 +265,7 @@ export const BINDING_LABELS: Record<ElementBinding, string> = {
   zmanim: 'זמני היום', announcements: 'הודעות', prayers: 'תפילות היום', lessons: 'שיעורי היום',
   seasonal: 'תוספות בתפילה', dafYomi: 'דף יומי', amudYomi: 'עמוד יומי', footer: 'פרשה ולימוד יומי',
   logos: 'לוגואים', parasha: 'פרשת השבוע', date: 'תאריך עברי', occasion: 'המועד היום', title: 'שם בית הכנסת',
+  shabbat: 'זמני השבת וההפטרה', shabbatTitle: 'שבת קודש ופרשת השבוע',
   clock: 'שעון דיגיטלי', analog: 'שעון מחוגים',
 };
 

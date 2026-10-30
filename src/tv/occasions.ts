@@ -182,7 +182,7 @@ const keptFromEve = (def: SpecialDayDef) => YOM_TOV.has(def.key) || def.group ==
 
 const FULL: CardElement[] = ["title", "date", "also", "verse", "items", "times", "zmanim", "prayers", "torah", "haftarah", "pictures"];
 const SHORT: CardElement[] = ["title", "date", "also", "verse", "items", "times", "shma", "pictures"];
-const SHABBAT_ELEMENTS: CardElement[] = ["title", "parasha", "items", "times", "shma", "pictures"];
+const SHABBAT_ELEMENTS: CardElement[] = ["title", "parasha", "items", "times", "shma", "haftarah", "pictures"];
 
 function builtinDefault(def: SpecialDayDef | null): Occasion {
   if (!def)
