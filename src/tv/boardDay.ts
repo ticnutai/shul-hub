@@ -1,12 +1,11 @@
 import { useMemo } from "react";
-import { HDate } from "@hebcal/core";
 import type { Settings } from "@community/lib/data";
-import { jerusalemWeekday, zmanimFor } from "@community/lib/minyan-time";
-import { weeklyParasha } from "./learning";
+import { zmanimFor } from "@community/lib/minyan-time";
 import { nextCandleLighting } from "./shabbat";
 import { specialZmanim } from "@community/lib/specialDays";
 import type { Zmanim } from "@community/lib/zmanim";
 import { SHOWN_ZMANIM } from "./boardEdit";
+import { hebrewDayAt } from "./hebrewDay";
 
 export const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
@@ -18,19 +17,24 @@ export const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "ח
  */
 export function useBoardDay(now: Date, settings: Settings | null, shabbatEndMinutes: number) {
   const dayKey = now.toDateString();
+  // The Hebrew day turns at sunset (hebrewDay.ts): its date, its name and the parasha, checked each minute.
+  const minuteKey = Math.floor(now.getTime() / 60_000);
+  const hebrewDay = useMemo(
+    () => hebrewDayAt(now, zmanimFor(new Date(dayKey), settings), shabbatEndMinutes),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [minuteKey, dayKey, settings, shabbatEndMinutes],
+  );
   const day = useMemo(() => {
     const date = new Date(dayKey);
     const candle = nextCandleLighting(date, settings);
     const saturday = candle ? zmanimFor(new Date(candle.getTime() + 86_400_000), settings) : null;
     const out = saturday?.sunset ? new Date(saturday.sunset.getTime() + shabbatEndMinutes * 60_000) : null;
     return {
-      hebrew: new HDate(date).renderGematriya(true),
-      parasha: weeklyParasha(date),
       candle,
       out,
     };
   }, [dayKey, settings, shabbatEndMinutes]);
-  return { ...day, weekday: `יום ${WEEKDAYS[jerusalemWeekday(now)]}` };
+  return { ...day, hebrew: hebrewDay.hebrew, parasha: hebrewDay.parasha, weekday: hebrewDay.weekday };
 }
 
 /** What a full frame of zmanim gives up first, so dawn, sunrise and nightfall always stay. */

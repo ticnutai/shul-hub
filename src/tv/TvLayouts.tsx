@@ -1,7 +1,6 @@
 import { useContext, useMemo, type CSSProperties } from "react";
 import { ClockContext } from "./clockContext";
 import {useDeadlines, DeadlineCard} from './DeadlineContext';
-import { HDate } from "@hebcal/core";
 import type { Announcement, Shiur } from "@community/lib/data";
 import type { ResolvedMinyan } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
@@ -11,6 +10,7 @@ import { useFitRows } from "./useFitRows";
 import { amudYomi, dafYomi, seasonalPrayers, weeklyParasha } from "./learning";
 import { AnnouncementCard, ZmanimPanel } from "./TvSlides";
 import { jerusalemMinutes, minyanNow, shiurMinutes, type BoardSlide } from "./useBoardData";
+import { hebrewDayAt } from "./hebrewDay";
 
 /**
  * The two screen layouts beside the one-slide-at-a-time board (see
@@ -313,7 +313,11 @@ export function DashboardStage({
   const shiurim: Shiur[] = slides.flatMap((s) => (s.kind === "shiurim" ? s.items : []));
   const featured = announcements.length ? announcements[index % announcements.length] : null;
   const dayKey = now.toDateString();
-  const hebrew = useMemo(() => new HDate(new Date(dayKey)).renderGematriya(true), [dayKey]);
+  // From sunset, tomorrow's date (hebrewDay.ts).
+  const night = Boolean(zmanim.sunset && now.getTime() >= zmanim.sunset.getTime());
+  const hebrew = useMemo(() => hebrewDayAt(now, zmanim).hebrew,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dayKey, night]);
   const gregorian = now.toLocaleDateString("he-IL", {
     day: "numeric",
     month: "long",

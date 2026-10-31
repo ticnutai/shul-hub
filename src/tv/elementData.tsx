@@ -46,7 +46,10 @@ export function BoundElement({ element }: { element: BoardElement }) {
     </div>;
   }
   if (e.binding === 'shabbatTitle') return wraps(e) ? <WrapText binding={e.binding} text={data.shabbatTitle ?? 'שבת קודש'} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data.shabbatTitle ?? 'שבת קודש'} e={e} />;
-  if(e.binding==='title'||e.binding==='date'||e.binding==='occasion'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
+  // The date is one line, always whole: broken, its second half - "אור ליום רביעי" - fell below the frame and was not seen.
+  // It may go a little smaller than other lines: "כ״ד חשון תשפ״ז · אור ליום רביעי" needs 42% in a kit's narrow plate.
+  if(e.binding==='date') return <FitLine binding={e.binding} text={data.date ?? ''} e={e} floor={0.35} />;
+  if(e.binding==='title'||e.binding==='occasion'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
   if((e.binding==='footer'||e.binding==='announcements') && e.scroll) return <Scrolling mode={e.scroll}><div data-content-binding={e.binding} dir="rtl" style={{ display: 'grid', alignItems: 'center', justifyItems: justify(e), whiteSpace: 'pre-wrap', lineHeight: 1.4, fontSize: `${e.fontSize}cqh`, ...look }}>{data[e.binding]}</div></Scrolling>;
   if(e.binding==='footer'||e.binding==='announcements') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.4} /> : <FitBlock binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
   const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jerusalem', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(data.now);
@@ -105,8 +108,8 @@ function Scrolling({ mode, children }: { mode: ElementScroll; children: ReactNod
 const justify = (e: BoardElement) => (e.align && e.align !== 'center' ? e.align : 'center');
 
 /** One line, made smaller until it fits across its box. */
-export function FitLine({ binding, text, e }: { binding?: string; text: string; e: BoardElement }) {
-  const ref = useFitLine<HTMLDivElement>(`${text}|${e.font}|${e.weight}|${e.italic}`);
+export function FitLine({ binding, text, e, floor }: { binding?: string; text: string; e: BoardElement; floor?: number }) {
+  const ref = useFitLine<HTMLDivElement>(`${text}|${e.font}|${e.weight}|${e.italic}`, 1, floor);
   return (
     <div
       ref={ref}

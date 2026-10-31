@@ -24,7 +24,7 @@ const STEP = 0.05;
  * smaller. A line that ends with "..." (FitLabel) is cut by the browser at a
  * single pixel, so it allows none.
  */
-export function useFitLine<T extends HTMLElement>(key: unknown, slack = 1) {
+export function useFitLine<T extends HTMLElement>(key: unknown, slack = 1, floor = FLOOR) {
   const ref = useRef<T>(null);
   useEffect(() => {
     const el = ref.current;
@@ -34,7 +34,7 @@ export function useFitLine<T extends HTMLElement>(key: unknown, slack = 1) {
     const measure = () => {
       el.style.setProperty("--fit", "1");
       let scale = 1;
-      while (scale > FLOOR && el.scrollWidth - el.clientWidth > slack) {
+      while (scale > floor && el.scrollWidth - el.clientWidth > slack) {
         scale = Math.round((scale - STEP) * 100) / 100;
         el.style.setProperty("--fit", String(scale));
       }

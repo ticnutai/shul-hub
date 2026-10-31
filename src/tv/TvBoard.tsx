@@ -4,8 +4,6 @@ import { HolyEndMinutesContext } from "./holyEnd";
 import { useBriefly } from "@/hooks/useBriefly";
 import { IllustratedStage } from "./TvIllustrated";
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { HDate } from "@hebcal/core";
-import { DAYS_HE } from "@community/lib/data";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
 import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { Settings } from "@community/lib/data";
@@ -14,7 +12,7 @@ import { layerVars } from "./layerCss";
 import { MedallionStage } from "./TvMedallion";
 import { BoardPreviewContext } from "./useDayCycle";
 import { BoardEditContext, makeBoardEdit, useBoardEdit } from "./boardEdit";
-import { dafYomi, weeklyParasha } from "./learning";
+import { dafYomi } from "./learning";
 import { backdropUrl } from "./backdrops";
 import { getTheme, themeStyle } from "./themes";
 import { SlideView } from "./TvSlides";
@@ -33,6 +31,7 @@ import { ALERT_ICONS, alertLookVars, currentZmanAlert, stagedZmanAlerts, describ
 import { DeadlineContext } from './DeadlineContext';
 import karovimLogo from "./assets/karovim-logo.png";
 import "./tv.css";
+import { hebrewDayAt } from "./hebrewDay";
 
 /**
  * The board, as a pure function of its props. It owns no timers and no data
@@ -293,7 +292,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
         {/* Only a board with free elements draws them, or works out their content:
             the zmanim, parasha and daf of every element would otherwise be
             recomputed on each tick of a box that has none. */}
-        {config.elements.length > 0 && (config.screenLayout !== 'composition' || composition) && <BoardElements elements={config.elements} data={elementData(screenSlides, now, {config, name:data.settings?.name ?? 'בית הכנסת', zmanim, zmanimOn})} />}
+        {config.elements.length > 0 && (config.screenLayout !== 'composition' || composition) && <BoardElements elements={config.elements} data={elementData(screenSlides, now, {config, name:data.settings?.name ?? 'בית הכנסת', zmanim, zmanimOn, endMinutes})} />}
         {!ownHeader && (bars.header || bars.clock || (bars.logo && config.logos.length > 0)) && (
           <TvHeader
             settings={data.settings}
@@ -519,17 +518,17 @@ function TvHeader({
   // and a wordmark that reads on one is invisible on the other.
   const light = getTheme(config.theme, config.customThemes).light;
   const dayKey = now.toDateString();
+  // The Hebrew day turns at sunset (hebrewDay.ts): worked out again each minute, from the day's zmanim.
+  const minuteKey = Math.floor(now.getTime() / 60_000);
+  const dayZmanim = useMemo(() => zmanimFor(new Date(dayKey), settings), [dayKey, settings]);
   const day = useMemo(() => {
-    const d = new Date(dayKey);
-    return {
-      hebrew: new HDate(d).renderGematriya(true),
-      parasha: weeklyParasha(d),
-      daf: dafYomi(d)?.label ?? null,
-    };
-  }, [dayKey]);
+    const h = hebrewDayAt(now, dayZmanim, settings?.shabbat_end_minutes ?? config.shabbat.endMinutesAfterSunset);
+    return { hebrew: h.hebrew, parasha: h.parasha, weekday: h.weekday, daf: dafYomi(new Date(dayKey))?.label ?? null };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minuteKey, dayKey, dayZmanim, settings?.shabbat_end_minutes, config.shabbat.endMinutesAfterSunset]);
 
   const gregorian = now.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
-  const weekday = DAYS_HE[jerusalemWeekday(now)];
+  const weekday = day.weekday;
   const edit = useBoardEdit();
   const ribbon = [
     config.header.parasha && day.parasha && { key: "header.parasha", text: day.parasha },
@@ -538,7 +537,7 @@ function TvHeader({
   const title = edit.text("header.title", settings?.name ?? "בית הכנסת");
   const address = edit.text("header.address", settings?.address ?? "");
   const subtitle = [
-    !edit.hidden("header.weekday") && weekday && { key: "header.weekday", text: `יום ${weekday}` },
+    !edit.hidden("header.weekday") && weekday && { key: "header.weekday", text: weekday },
     !edit.hidden("header.address") && address && { key: "header.address", text: address },
   ].filter((r): r is { key: string; text: string } => Boolean(r));
 
