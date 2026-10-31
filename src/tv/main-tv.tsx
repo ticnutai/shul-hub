@@ -6,6 +6,7 @@ import { TvApp } from "./TvApp";
 import { BoardCrashGuard } from "./BoardCrashGuard";
 import { applyHandoff, isRemoteBoard, remoteEnabled, startRemoteSwitch, watchForNewVersion } from "./remoteBoard";
 import "./tv-global.css";
+import { setPartBaking } from "./bakedParts";
 
 /**
  * Entry point for the wall display build.
@@ -68,6 +69,9 @@ if ("wakeLock" in navigator) {
     if (document.visibilityState === "visible") void requestWakeLock();
   });
 }
+
+// The screen paints the pieces of a kit as one (bakedParts.ts); the editor does not. "?nobake" draws them piece by piece, to compare.
+setPartBaking(!new URLSearchParams(window.location.search).has("nobake"));
 
 createRoot(document.getElementById("root")!).render(
   // Outside everything, including the provider: a board that throws while it

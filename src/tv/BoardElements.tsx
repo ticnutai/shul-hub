@@ -7,6 +7,7 @@ import {gridDelta,linkedSection} from './sectionGeometry';
 import { ElementDataProvider, BoundElement, PlainText, type ElementData } from './elementData';
 import { partBelow, partSeenAt, partsAt, partsInBox, pressKind, pressSelection, type Press } from './elementHits';
 import { isBackdrop } from './containerParts';
+import { BakedRun, useBakedParts } from './bakedParts';
 import { PartPickMenu } from './PartPickMenu';
 import { MAX_ELEMENTS, RESIZE_HANDLES, boundsOf, textLook, exportElementSet, importElementSet, moveElements, normalizeElements, elementStyle, ratioResize, resizeElements, type BoardElement, type ResizeHandle } from './elements';
 
@@ -103,6 +104,8 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
     if (drag.current) { drag.current = null; setDraft?.(null); }
   }, [elements, enabled, setDraft]);
   const shown = enabled && editor.draft ? editor.draft : elements;
+  // On a screen, the pieces of picture in a row painted as one (bakedParts.ts); the editor keeps them.
+  const baked = useBakedParts(shown, !enabled && !surface);
   const stop = () => { drag.current = null; editor?.setDraft(null); };
   /** A text of the gabbai's being written into, on the board itself (double click). */
   const [writing, setWriting] = useState<string | null>(null);
@@ -308,14 +311,18 @@ export function BoardElements({ elements = [], surface = false, data }: { elemen
     {enabled&&editor.showGrid&&<svg data-testid="measurement-grid" viewBox="0 0 100 100" preserveAspectRatio="none" style={{position:'absolute',inset:0,width:'100%',height:'100%',pointerEvents:'none',zIndex:25}} aria-hidden>
       {Array.from({length:Math.ceil(100/editor.gridStep)},(_,i)=>i*editor.gridStep).map(v=><g key={v}><path d={`M${v} 0V100M0 ${v}H100`} stroke="#639bb9" strokeOpacity=".5" strokeWidth=".12"/>{v%10===0&&<><text x={v+.3} y="2" fill="#2788bb" fontSize="1.5">{v}%</text><text x=".3" y={v+2} fill="#2788bb" fontSize="1.5">{v}%</text></>}</g>)}
     </svg>}
-    {shown.map(e => <div key={e.id} data-element-id={e.id} data-testid={surface ? `element-${e.id}` : undefined}
+    {(() => { const inRow = new Set<string>(); return shown.map(e => {
+      if (inRow.has(e.id)) return null;
+      const row = baked.get(e.id);
+      if (row) { row.run.forEach(x => inRow.add(x.id)); return <BakedRun key={`baked:${e.id}`} run={row.run} source={row.canvas} />; }
+      return <div key={e.id} data-element-id={e.id} data-testid={surface ? `element-${e.id}` : undefined}
       style={{ ...elementStyle(e), pointerEvents: enabled ? 'auto' : 'none', touchAction: enabled ? 'none' : undefined, userSelect: enabled ? 'none' : undefined, cursor: enabled ? e.locked ? 'not-allowed' : 'move' : undefined }}>
       {writing === e.id ? <WriteInPlace element={e} onDone={(text) => {
         setWriting(null);
         if (text !== null && text !== e.text) api.commit(elements.map(x => x.id === e.id ? { ...x, text } : x), `element-write:${e.id}`);
       }} /> : <ElementArt element={e} />}
       {enabled && editor.selected.includes(e.id) && <span data-edit-ui="true" style={{ position: 'absolute', inset: 0, outline: '2px solid #38bdf8', pointerEvents: 'none' }} />}
-    </div>)}
+    </div>; }); })()}
     {enabled && <SelectionHandles elements={shown} ids={editor.selected} />}
     {enabled && band && (() => { const b = bandBox(band); return b.width > .6 || b.height > .6 ? <div data-testid="selection-band" data-edit-ui="true" style={{ position: 'absolute', left: `${b.x}%`, top: `${b.y}%`, width: `${b.width}%`, height: `${b.height}%`, border: '1.5px dashed #38bdf8', background: '#38bdf822', pointerEvents: 'none', zIndex: 30 }} /> : null; })()}
     {enabled && pickMenu && <PartPickMenu x={pickMenu.x} y={pickMenu.y} current={editor.selected[0]}

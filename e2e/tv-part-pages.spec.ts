@@ -75,12 +75,16 @@ test("pages on the TV, taking turns", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("shul-tv-community", JSON.stringify({ id: "community-1", slug: "main", name: "בית הכנסת" })));
   const res = await page.goto("/index-tv.html").catch(() => null);
   test.skip(!res, "the dev server is not running (npm run dev)");
-  const art = () => page.locator("[data-element-id] img").first().getAttribute("src").catch(() => null);
+  // The kit's pieces as they are, or - once painted as one on the screen (bakedParts.ts) - the pictures they were painted from.
+  const art = () => page.locator(".tv-page.is-front").first().evaluate((el) => {
+    const pic = el.querySelector("[data-element-id] img")?.getAttribute("src") ?? el.querySelector("canvas[data-baked-pictures]")?.getAttribute("data-baked-pictures");
+    return pic ?? null;
+  }).catch(() => null);
   await expect.poll(art, { timeout: 30_000 }).toBeTruthy();
   const seen = new Set<string>();
   for (let i = 0; i < 12; i++) { seen.add((await art()) ?? ""); await page.waitForTimeout(1000); }
   // Both pages, each in its own kit, within two turns of five seconds.
-  expect([...seen].map((s) => s.split("/").pop()).sort()).toEqual(["heritage-wood.webp", "jerusalem-stone.webp"]);
+  expect([...new Set([...seen].map((s) => s.split(" ")[0].split("/").pop()))].sort()).toEqual(["heritage-wood.webp", "jerusalem-stone.webp"]);
   expect(errors).toEqual([]);
 });
 
