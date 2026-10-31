@@ -60,3 +60,33 @@ body {
 *:focus-visible {
   outline: none !important;
 }
+
+/*
+ * The board's pages, one over the other (TvApp, pageImages.ts): the one up
+ * now in front; the next drawn behind it until its pictures are painted; the
+ * one that was up fading away over it. Most of the time there is one.
+ */
+.tv-pages {
+  position: relative;
+  height: 100%;
+}
+.tv-page {
+  position: absolute;
+  inset: 0;
+}
+.tv-page.is-front {
+  z-index: 2;
+}
+.tv-page.is-next {
+  z-index: 1;
+}
+.tv-page.is-leaving {
+  z-index: 3;
+  pointer-events: none;
+  animation: tv-page-leave 450ms ease forwards;
+}
+@keyframes tv-page-leave {
+  to {
+    opacity: 0;
+  }
+}

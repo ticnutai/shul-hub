@@ -1,6 +1,6 @@
 import { boardConfig } from "./boardConfig";
 import { inlineVariableImages } from "./snapshotImages";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import { App as CapApp } from "@capacitor/app";
 import { useNow } from "@community/lib/realtime";
@@ -14,6 +14,7 @@ import { lastKnownCommunity, OUTAGE_REASON_LABELS, type DeviceLink } from "./dev
 import { ScreenMenu } from "./ScreenMenu";
 import { remoteLooks } from "./remoteLooks";
 import { TvBoard } from "./TvBoard";
+import { PAGE_FADE_MS, pageImages } from "./pageImages";
 import { applyRecordEdits } from "./records";
 import { buildSlides, useBoardData, useDayZmanim } from "./useBoardData";
 import { useDeviceLink, type TvCommand } from "./useDeviceLink";
@@ -658,23 +659,49 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
   const deviceOffline = device?.online === false;
   // The example shows the reminders as the editor has them, unsaved changes too.
   const shownConfig = useMemo<TvConfig>(() => (demo && demoOn ? { ...drawConfig, alerts: demo.alerts } : drawConfig), [drawConfig, demo, demoOn]);
+  /**
+   * Two pages, one over the other, while the board turns to a page with other
+   * pictures: the one up now stays in front until the next one - drawn behind
+   * it - has its pictures painted, then fades away over it (pageImages.ts).
+   */
+  const target = { config: shownConfig, index, cycle };
+  const [turn, setTurn] = useState<{ front: Turn; leaving: Turn | null }>(() => ({ front: { ...target, key: 0 }, leaving: null }));
+  const samePictures = pageImages(shownConfig) === pageImages(turn.front.config);
+  const front: Turn = samePictures ? { ...target, key: turn.front.key } : turn.front;
+  const next: Turn | null = samePictures ? null : { ...target, key: turn.front.key + 1 };
+  const nextRef = useRef<HTMLDivElement | null>(null);
+  const latest = useRef({ front, next });
+  latest.current = { front, next };
+  const nextKey = next?.key ?? null;
+  useEffect(() => {
+    if (nextKey === null) return;
+    let on = true;
+    const imgs = [...(nextRef.current?.querySelectorAll("img") ?? [])];
+    const painted = Promise.all(imgs.map((i) => i.decode().catch(() => undefined)));
+    const late = new Promise((done) => window.setTimeout(done, 4000));
+    void Promise.race([painted, late]).then(() =>
+      // One frame more, so what was decoded is on the screen before the page in front goes.
+      requestAnimationFrame(() => {
+        const now = latest.current;
+        if (on && now.next?.key === nextKey) setTurn({ front: now.next, leaving: now.front });
+      }),
+    );
+    return () => {
+      on = false;
+    };
+  }, [nextKey]);
+  const leavingKey = turn.leaving?.key ?? null;
+  useEffect(() => {
+    if (leavingKey === null) return;
+    const id = window.setTimeout(() => setTurn((t) => (t.leaving?.key === leavingKey ? { ...t, leaving: null } : t)), PAGE_FADE_MS + 100);
+    return () => window.clearTimeout(id);
+  }, [leavingKey]);
   const boardData = useMemo(
     () => (deviceOffline && data.sync.status === "live" ? { ...data, sync: { ...data.sync, status: "offline" as const } } : data),
     [data, deviceOffline],
   );
 
-  return (
-    <TvBoard
-      data={boardData}
-      config={shownConfig}
-      now={boardNow}
-      zmanim={boardZmanim}
-      slides={slides}
-      index={index}
-      cycle={cycle}
-      progress={progress}
-      paused={paused}
-      overlay={
+  const overlay = (
         <>
           {/* Shabbat and the festivals are screens in the list now (occasions.ts), drawn by TvBoard. */}
           <ScreenMenu
@@ -770,9 +797,41 @@ export function TvApp({ mode = "device", configOverride = null, exitHref }: TvAp
             </div>
           )}
         </>
-      }
-    />
   );
+
+  const pages: [Turn, "leaving" | "front" | "next"][] = [
+    ...(turn.leaving ? [[turn.leaving, "leaving"] as [Turn, "leaving"]] : []),
+    [front, "front"],
+    ...(next ? [[next, "next"] as [Turn, "next"]] : []),
+  ];
+  return (
+    <div className="tv-pages">
+      {pages.map(([t, role]) => (
+        <div key={t.key} ref={role === "next" ? nextRef : undefined} className={`tv-page is-${role}`} aria-hidden={role === "front" ? undefined : true}>
+          <TvBoard
+            data={boardData}
+            config={t.config}
+            now={boardNow}
+            zmanim={boardZmanim}
+            slides={slides}
+            index={Math.min(t.index, Math.max(0, slides.length - 1))}
+            cycle={t.cycle}
+            progress={progress}
+            paused={paused}
+            overlay={role === "front" ? overlay : null}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** A page of the board as it is drawn: its look, its slide, its turn of the rotation. */
+interface Turn {
+  config: TvConfig;
+  index: number;
+  cycle: number;
+  key: number;
 }
 
 /**
