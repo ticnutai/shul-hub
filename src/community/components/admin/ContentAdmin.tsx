@@ -46,6 +46,7 @@ import { useDraftGuard } from "@community/lib/unsavedChanges";
 import { ColorPick } from "./tv/ColorPick";
 import { Collapsible } from "./Collapsible";
 import { AdminError, ChoiceCard, ChoiceGroup, SaveButton, SectionLink, SliderField } from "./adminUi";
+import { shiurDaysLabel } from "@community/lib/shiurDays";
 
 /*
  * Every list here is ordered by dragging its grip (useReorder.ts, the one way
@@ -633,7 +634,7 @@ export function ShiurimAdmin() {
               <p className="break-words text-xs text-muted-foreground sm:truncate">
                 {categories.find((category) => category.id === s.category_id)?.name ??
                   "ללא קטגוריה"}
-                {` · ${s.schedule_type === "daily" ? "בכל יום" : `יום ${DAYS_HE[s.day_of_week]}`} · ${s.time_text} · ${s.teacher}`}
+                {` · ${shiurDaysLabel(s)} · ${s.time_text} · ${s.teacher}`}
               </p>
             </div>
             <Button size="icon" variant="ghost" onClick={() => setDraft(s)} aria-label={`עריכת ${s.title}`}>
@@ -710,6 +711,7 @@ export function ShiurimAdmin() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="daily">בכל יום</SelectItem>
+                  <SelectItem value="weekdays">בימי חול (לא בשבת)</SelectItem>
                   <SelectItem value="weekly">יום קבוע בשבוע</SelectItem>
                 </SelectContent>
               </Select>
@@ -717,7 +719,7 @@ export function ShiurimAdmin() {
             <div className="space-y-2">
               <Label>יום</Label>
               <Select
-                disabled={draft.schedule_type === "daily"}
+                disabled={draft.schedule_type === "daily" || draft.schedule_type === "weekdays"}
                 value={String(draft.day_of_week ?? 0)}
                 onValueChange={(v) => setDraft({ ...draft, day_of_week: Number(v) })}
               >

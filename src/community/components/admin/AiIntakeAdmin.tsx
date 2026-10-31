@@ -78,7 +78,7 @@ type ShiurProposal = {
   teacher: string;
   description: string;
   location: string;
-  schedule_type: "weekly" | "daily";
+  schedule_type: "weekly" | "daily" | "weekdays";
   day_of_week: number;
   time_text: string;
   reason: string;
@@ -678,11 +678,11 @@ export function AiIntakeAdmin() {
                     <Input aria-label="מגיד השיעור" value={s.teacher} onChange={(e) => set({ teacher: e.target.value })} className={`${input} w-32`} />
                     <MiniSelect
                       label="מתי"
-                      value={s.schedule_type === "daily" ? "daily" : String(s.day_of_week)}
+                      value={s.schedule_type === "daily" || s.schedule_type === "weekdays" ? s.schedule_type : String(s.day_of_week)}
                       onChange={(v) =>
-                        v === "daily" ? set({ schedule_type: "daily" }) : set({ schedule_type: "weekly", day_of_week: Number(v) })
+                        v === "daily" || v === "weekdays" ? set({ schedule_type: v }) : set({ schedule_type: "weekly", day_of_week: Number(v) })
                       }
-                      options={[{ value: "daily", label: "כל יום" }, ...DAYS_HE.map((d, n) => ({ value: String(n), label: `יום ${d}` }))]}
+                      options={[{ value: "daily", label: "כל יום" }, { value: "weekdays", label: "בימי חול" }, ...DAYS_HE.map((d, n) => ({ value: String(n), label: `יום ${d}` }))]}
                     />
                     <Input aria-label="שעה" value={s.time_text} onChange={(e) => set({ time_text: e.target.value })} className={`${input} w-24`} />
                   </Row>

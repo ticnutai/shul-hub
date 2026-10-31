@@ -11,6 +11,7 @@ import {
   type ResolvedMinyan,
 } from "./minyan-time";
 import { holyEndMinutesFor, holyWindow, todaysCategories } from "./specialDays";
+import { shiurOn } from "./shiurDays";
 
 /**
  * What a member asked to be reminded of, and how (the bell in the header).
@@ -225,7 +226,7 @@ export function planReminders({
     if (prefs.shiurim) {
       const weekday = jerusalemWeekday(date);
       for (const s of shiurimOffered) {
-        if (s.schedule_type !== "daily" && s.day_of_week !== weekday) continue;
+        if (!shiurOn(s, weekday)) continue;
         const minutes = hhmm(s.time_text);
         if (minutes === null) continue;
         const starts = jerusalemMoment(key, minutes);

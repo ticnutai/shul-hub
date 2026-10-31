@@ -1,9 +1,10 @@
 import { BookOpen, Clock, MapPin, User } from "lucide-react";
 import { CommunityHeader } from "@community/components/CommunityChrome";
 import { CommunityFooter } from "@community/components/CommunityChrome";
-import { DAYS_HE, useShiurCategories, useShiurim } from "@community/lib/data";
+import { useShiurCategories, useShiurim } from "@community/lib/data";
 import { InlineEdit } from "@community/components/InlineEdit";
 import { useEditMode } from "@community/lib/edit-mode";
+import { shiurDaysLabel } from "@community/lib/shiurDays";
 
 export function ShiurimPage() {
   const { editMode } = useEditMode();
@@ -53,9 +54,7 @@ export function ShiurimPage() {
                   <article key={s.id} className="card-elev p-4">
                     <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
                       <BookOpen className="size-4" />
-                      {s.schedule_type === "daily"
-                        ? "בכל יום"
-                        : `יום ${DAYS_HE[s.day_of_week] ?? ""}`}
+                      {shiurDaysLabel(s)}
                     </div>
                     <h2 className="mt-2 text-lg font-semibold">
                       <InlineEdit

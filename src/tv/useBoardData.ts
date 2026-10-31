@@ -27,6 +27,7 @@ import { useOfflineSnapshot } from "./useOfflineSnapshot";
 import { checkClock } from "./clock";
 import { CARD_BLOCK, occasionPagesNow, pageDisplay, SHABBAT_ID, type OccasionPage } from "./occasions";
 import type { DaySchedule } from "./OccasionCard";
+import { shiurOn } from "@community/lib/shiurDays";
 
 /**
  * Data for the board, plus the rules that turn it into slides. Shared by the
@@ -328,7 +329,7 @@ export function buildSlides(data: BoardData, config: TvConfig, now: Date, zmanim
     } else if (sc.kind === "shiurim") {
       const weekday = jerusalemWeekday(now);
       const items = (data.shiurim ?? [])
-        .filter((s) => s.active && !hidden.has(`shiur:${s.id}`) && (s.schedule_type !== "weekly" || s.day_of_week === weekday))
+        .filter((s) => s.active && !hidden.has(`shiur:${s.id}`) && shiurOn(s, weekday))
         // `sort_order` is the website's ordering; on the wall it read as
         // 16:15, 08:45, 14:15, 15:15. A schedule is scanned by time.
         .sort((a, b) => shiurMinutes(a.time_text) - shiurMinutes(b.time_text));

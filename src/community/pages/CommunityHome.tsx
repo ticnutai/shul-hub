@@ -20,7 +20,6 @@ import {
   useSettings,
   useShiurim,
   prayerLabel,
-  DAYS_HE,
   minyanSubcategories,
   useMinyanOverrides,
 } from "@community/lib/data";
@@ -36,6 +35,7 @@ import { DaySchedule } from "@community/components/DaySchedule";
 import { WeekSchedule } from "@community/components/WeekSchedule";
 import { weekSchedule } from "@community/lib/week-schedule";
 import { useAuth } from "@community/lib/use-auth";
+import { shiurDaysLabel } from "@community/lib/shiurDays";
 
 const SHOWN_ZMANIM: SolarEvent[] = [
   "alot",
@@ -347,9 +347,7 @@ export function CommunityHome() {
                       <h3 className="mt-2 font-semibold">{shiur.title}</h3>
                       <p className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
                         <Clock className="size-4 shrink-0" />
-                        {shiur.schedule_type === "daily"
-                          ? "בכל יום"
-                          : `יום ${DAYS_HE[shiur.day_of_week] ?? ""}`}
+                        {shiurDaysLabel(shiur)}
                         {shiur.time_text ? ` · ${shiur.time_text}` : ""}
                       </p>
                       {shiur.teacher && (
