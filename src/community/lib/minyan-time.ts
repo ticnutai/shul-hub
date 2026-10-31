@@ -1,7 +1,8 @@
+import { HDate, months } from "@hebcal/core";
 import type { Minyan, MinyanCategory, Settings } from "./data";
 import { calcZmanim, formatTime, type SolarEvent, type Zmanim } from "./zmanim";
 
-export type DayType = "weekday" | "friday";
+export type DayType = "weekday" | "friday" | "shabbat";
 
 /** מספר היום בשבוע לפי שעון ישראל (0 = ראשון) */
 export function jerusalemWeekday(date: Date): number {
@@ -12,15 +13,22 @@ export function jerusalemWeekday(date: Date): number {
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(name);
 }
 
+/**
+ * The kind of day, for its minyanim. Shabbat is its own: it fell to "weekday",
+ * so a synagogue with no Shabbat minyanim showed its weekday ones on the board
+ * on Shabbat - שחרית א׳ 06:15 on Shabbat morning (אפי קפיטל, 1.11.2026).
+ */
 export function dayTypeFor(date: Date): DayType {
   const d = jerusalemWeekday(date);
   if (d === 5) return "friday";
+  if (d === 6) return "shabbat";
   return "weekday";
 }
 
 export const DAY_TYPE_LABEL: Record<DayType, string> = {
   weekday: "ימות החול",
   friday: "יום שישי",
+  shabbat: "שבת",
 };
 
 export function zmanimFor(date: Date, settings: Settings | null | undefined): Zmanim {
@@ -84,10 +92,31 @@ export function jerusalemDateKey(date: Date): string {
   }).format(date);
 }
 
-/** Held on this day (Israel): inside the minyan's season, when it has one (בין הזמנים...). */
-export function heldOn(m: { active_from?: string | null; active_until?: string | null }, date: Date): boolean {
+/** Held on this day (Israel): inside the minyan's season, when it has one (בין הזמנים...) - and סליחות only in their days. */
+export function heldOn(m: { active_from?: string | null; active_until?: string | null; label?: string | null }, date: Date): boolean {
   const key = jerusalemDateKey(date);
-  return (!m.active_from || m.active_from <= key) && (!m.active_until || m.active_until >= key);
+  if (m.active_from && m.active_from > key) return false;
+  if (m.active_until && m.active_until < key) return false;
+  return !isSelichot(m.label) || selichotDay(key);
+}
+
+/** A minyan of סליחות, by its name. */
+export const isSelichot = (label: string | null | undefined) => /סליחות/.test(label ?? "");
+
+/**
+ * Whether סליחות are said on this day (yyyy-mm-dd, Israel): from ראש חודש אלול
+ * to ערב יום כיפור - never on Shabbat, nor on ראש השנה. A minyan of סליחות left
+ * on all year showed on the board on an ordinary Shabbat in חשון. A synagogue
+ * that begins later (as Ashkenazim do, before ראש השנה) sets its own season
+ * within these days.
+ */
+export function selichotDay(key: string): boolean {
+  const [y, mo, d] = key.split("-").map(Number);
+  const civil = new Date(Date.UTC(y, mo - 1, d, 12));
+  if (civil.getUTCDay() === 6) return false;
+  const h = new HDate(new Date(y, mo - 1, d));
+  if (h.getMonth() === months.ELUL) return true;
+  return h.getMonth() === months.TISHREI && h.getDate() >= 3 && h.getDate() <= 9;
 }
 
 function minutesFromHHMM(t: string): number {

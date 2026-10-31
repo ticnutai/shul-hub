@@ -143,7 +143,7 @@ export function nextDatesOf(key: string, from: Date, count = 1): string[] {
 
 /** The system key of the ordinary day: "shabbat" on Saturday when that tab exists, else what dayTypeFor says. */
 export function ordinaryDayKey(date: Date, categories: Pick<MinyanCategory, "system_key" | "active">[]): string {
-  if (jerusalemWeekday(date) === 6 && categories.some((c) => c.active && c.system_key === "shabbat")) return "shabbat";
+  // Shabbat is Shabbat even with no tab of its own: never the weekday's timetable.
   return dayTypeFor(date);
 }
 

@@ -66,9 +66,11 @@ describe("today's timetable tabs", () => {
     expect(t.preferred?.id).toBe("w");
   });
 
-  it("uses the Shabbat tab on Saturday when there is one, and the weekday one when not", () => {
+  it("uses the Shabbat tab on Saturday, and never the weekday one - not even with no Shabbat tab", () => {
     expect(todaysCategories(all, il("2026-10-24")).preferred?.id).toBe("s");
-    expect(todaysCategories([weekday, friday], il("2026-10-24")).preferred?.id).toBe("w");
+    // A synagogue with no Shabbat minyanim showed its weekday ones on Shabbat (אפי קפיטל).
+    expect(todaysCategories([weekday, friday], il("2026-10-24")).preferred).toBeUndefined();
+    expect(todaysCategories([weekday, friday], il("2026-10-24")).ordinaryKey).toBe("shabbat");
   });
 
   it("ignores a special day whose tab is switched off", () => {
