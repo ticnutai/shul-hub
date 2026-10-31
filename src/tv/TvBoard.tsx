@@ -31,7 +31,7 @@ import { ALERT_ICONS, alertLookVars, currentZmanAlert, stagedZmanAlerts, describ
 import { DeadlineContext } from './DeadlineContext';
 import karovimLogo from "./assets/karovim-logo.png";
 import "./tv.css";
-import { hebrewDayAt } from "./hebrewDay";
+import { HebrewDayContext, hebrewDayAt, useHebrewDay } from "./hebrewDay";
 
 /**
  * The board, as a pure function of its props. It owns no timers and no data
@@ -163,6 +163,12 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   // A line along the bottom of the ordinary screens, for the occasion that asked for one.
   const zmanimOn = useCallback((d: Date) => zmanimFor(d, data.settings), [data.settings]);
   const minuteKey = Math.floor(now.getTime() / 60_000);
+  // The Hebrew day - its date, its name, its parasha, its daf - turning at sunset (hebrewDay.ts), for every part of the board.
+  const hebrewDay = useMemo(
+    () => hebrewDayAt(now, zmanim, holyEndMinutes),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [minuteKey, zmanim, holyEndMinutes],
+  );
   const bannerPage = useMemo(() => {
     if (!checkClock(now).trusted) return null;
     const { pages } = occasionPagesNow(config, data.settings, now, zmanimOn);
@@ -240,6 +246,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
 
   return (
     <HolyEndMinutesContext.Provider value={holyEndMinutes}>
+    <HebrewDayContext.Provider value={hebrewDay}>
     <DeadlineContext.Provider value={shabbatNowOn ? [] : stagedZmanAlerts(now,zmanim,config.alerts,jerusalemWeekday(now)===5)}>
     <BoardEditContext.Provider value={edit}>
     <BoardPreviewContext.Provider value={preview}>
@@ -466,6 +473,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
     </BoardPreviewContext.Provider>
     </BoardEditContext.Provider>
     </DeadlineContext.Provider>
+    </HebrewDayContext.Provider>
     </HolyEndMinutesContext.Provider>
   );
 }
@@ -517,15 +525,13 @@ function TvHeader({
   // Which cut of a logo to use. A board can be parchment or navy,
   // and a wordmark that reads on one is invisible on the other.
   const light = getTheme(config.theme, config.customThemes).light;
-  const dayKey = now.toDateString();
-  // The Hebrew day turns at sunset (hebrewDay.ts): worked out again each minute, from the day's zmanim.
-  const minuteKey = Math.floor(now.getTime() / 60_000);
-  const dayZmanim = useMemo(() => zmanimFor(new Date(dayKey), settings), [dayKey, settings]);
-  const day = useMemo(() => {
-    const h = hebrewDayAt(now, dayZmanim, settings?.shabbat_end_minutes ?? config.shabbat.endMinutesAfterSunset);
-    return { hebrew: h.hebrew, parasha: h.parasha, weekday: h.weekday, daf: dafYomi(new Date(dayKey))?.label ?? null };
+  // The Hebrew day turns at sunset (hebrewDay.ts): the board's, worked out where its zmanim are.
+  const hebrewDay = useHebrewDay(now);
+  const day = useMemo(
+    () => ({ hebrew: hebrewDay.hebrew, parasha: hebrewDay.parasha, weekday: hebrewDay.weekday, daf: dafYomi(hebrewDay.date)?.label ?? null }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [minuteKey, dayKey, dayZmanim, settings?.shabbat_end_minutes, config.shabbat.endMinutesAfterSunset]);
+    [hebrewDay.key],
+  );
 
   const gregorian = now.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
   const weekday = day.weekday;

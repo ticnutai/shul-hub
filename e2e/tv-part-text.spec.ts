@@ -6,6 +6,20 @@ import { PREMIUM_DESIGNS } from "../src/tv/premiumDesigns";
  * of letters (size, font, bold, wrapping) under the preview, writing into a
  * text on the board, and never two bars on the screen at once.
  */
+/**
+ * A press on the board that catches a part with others over it opens the list
+ * of what it caught (PartContextPanel's "נבחר"), over the bar under the
+ * preview; the list is put away, the choice kept, to reach the bar.
+ */
+async function putAwayCaught(page: import("@playwright/test").Page) {
+  const open = page.locator('button[aria-expanded="true"]').filter({ hasText: "נבחר:" });
+  await page.waitForTimeout(400);
+  if (await open.count()) {
+    await open.first().click();
+    await expect(open).toHaveCount(0);
+  }
+}
+
 test("the text of the parts, from the preview", async ({ page, isMobile }) => {
   test.skip(isMobile, "the editor is for a desktop screen");
   test.setTimeout(180_000);
@@ -20,6 +34,7 @@ test("the text of the parts, from the preview", async ({ page, isMobile }) => {
   const board = page.locator(".tv-frame").first();
   const heading = board.locator('[data-element-id]').filter({ hasText: "זמני תפילות" }).last();
   await heading.click();
+  await putAwayCaught(page);
   const tools = page.getByTestId("preview-text-tools");
   await expect(tools).toBeVisible();
   // One bar on screen at a time.
@@ -41,6 +56,7 @@ test("the text of the parts, from the preview", async ({ page, isMobile }) => {
   // A name that would be made smaller: broken into lines instead.
   const title = board.locator('[data-content-binding="title"]').first();
   await title.click();
+  await putAwayCaught(page);
   await tools.getByRole("button", { name: "גלישת שורות" }).click();
   await expect(board.locator('[data-content-binding="title"][data-wrap="true"]')).toHaveCount(1);
   // Broken into lines in a box one line tall: the bar says it is cut, and makes the box tall enough.
@@ -77,6 +93,7 @@ test("a colour chosen while the board is in sight: the page scrolls, the board c
   const board = page.locator(".tv-frame").first();
   const heading = board.locator("[data-element-id]").filter({ hasText: "זמני תפילות" }).last();
   await heading.click();
+  await putAwayCaught(page);
   const tools = page.getByTestId("preview-text-tools");
   await tools.scrollIntoViewIfNeeded();
   await tools.getByRole("button", { name: "צבע הטקסט", exact: true }).click();

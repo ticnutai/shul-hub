@@ -10,12 +10,13 @@ import { SHOWN_ZMANIM, useBoardEdit, type BoardEditApi } from "./boardEdit";
 import { specialZmanim } from "@community/lib/specialDays";
 import type { BlockId, FlipArea } from "./config";
 import type { FrameId } from "./frameLooks";
-import { dafYomi, upcomingDays, weeklyParasha } from "./learning";
+import { dafYomi, upcomingDays } from "./learning";
 import { composedLayout, jerusalemMinutes, minyanNow, shiurMinutes, type BoardSlide } from "./useBoardData";
 import { tracks } from "./grid";
 import { useFitText } from "./useFitText";
 import { useShrinkToFit } from "./useShrinkToFit";
 import { OccasionFrame } from "./OccasionCard";
+import { useHebrewDay } from "./hebrewDay";
 
 /**
  * The slide bodies. Pure presentation: everything they need arrives as props,
@@ -417,10 +418,13 @@ function whenLabel(inDays: number, date: Date): string {
 function LearningSlide({ layout, now, national }: { layout: string; now: Date; national: boolean }) {
   const edit = useBoardEdit();
   const dayKey = now.toDateString();
+  // The parasha and the daf of the Hebrew day - from sunset, tomorrow's (hebrewDay.ts); the coming days by the calendar.
+  const hebrewDay = useHebrewDay(now);
   const facts = useMemo(() => {
     const day = new Date(dayKey);
-    return { parasha: weeklyParasha(day), daf: dafYomi(day), upcoming: upcomingDays(day, 21, 6, { national }) };
-  }, [dayKey, national]);
+    return { parasha: hebrewDay.parasha, daf: dafYomi(hebrewDay.date), upcoming: upcomingDays(day, 21, 6, { national }) };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dayKey, hebrewDay.key, national]);
 
   const parashaName = facts.parasha?.replace(/^פרשת\s+/, "") ?? "—";
   const parashaLabel = edit.text("learning.parasha", "פרשת השבוע");

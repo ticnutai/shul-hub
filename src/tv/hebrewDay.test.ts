@@ -36,6 +36,11 @@ describe("the Hebrew day on the board turns at sunset", () => {
     expect(hebrewDayAt(at("2026-11-02T10:00:00Z"), day("2026-11-02"), 40).weekday).toBe("יום שני");
   });
 
+  it("the day's learning goes with the Hebrew day: from sunset, tomorrow's", () => {
+    expect(hebrewDayAt(at("2026-11-02T10:00:00Z"), day("2026-11-02"), 40).date.getTime()).toBe(at("2026-11-02T10:00:00Z").getTime());
+    expect(hebrewDayAt(at("2026-11-02T17:00:00Z"), day("2026-11-02"), 40).date.getTime()).toBe(at("2026-11-03T17:00:00Z").getTime());
+  });
+
   it("without the day's zmanim: the civil day, as before", () => {
     expect(hebrewDayAt(at("2026-10-31T19:21:00Z"), null).weekday).toBe("יום שבת");
   });

@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react";
 import { HDate } from "@hebcal/core";
 import { holyDayEnd } from "@community/lib/specialDays";
 import { jerusalemWeekday } from "@community/lib/minyan-time";
@@ -15,6 +16,8 @@ const DAYS = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", 
  *   "אור ליום שלישי", Friday "ליל שבת", and on Saturday, once Shabbat is
  *   out, "מוצאי שבת" (until then "יום שבת").
  * - The parasha: once Shabbat is out, the coming week's.
+ * - The day's learning and prayers (the daf, the amud, "משיב הרוח"): from
+ *   sunset, tomorrow's - `date` is a moment of the Hebrew day, to ask them by.
  *
  * `z` is the day's own zmanim (its sunset); without them, the civil day as before.
  */
@@ -36,7 +39,18 @@ export function hebrewDayAt(now: Date, z: { sunset?: Date | null; tzeit: Date | 
     hebrew: (night ? day.next() : day).renderGematriya(true),
     weekday,
     parasha: weeklyParasha(parashaDay),
+    date: night ? new Date(now.getTime() + 86_400_000) : now,
     /** Changes when any of the above does: for what is worked out once a day. */
     key: `${now.toDateString()}|${night ? 1 : 0}|${afterShabbat ? 1 : 0}`,
   };
+}
+
+export type HebrewDay = ReturnType<typeof hebrewDayAt>;
+
+/** The board's Hebrew day, worked out once where its zmanim are (TvBoard), for every part of it. */
+export const HebrewDayContext = createContext<HebrewDay | null>(null);
+
+/** The Hebrew day from the board; outside one, the civil day. */
+export function useHebrewDay(now: Date): HebrewDay {
+  return useContext(HebrewDayContext) ?? hebrewDayAt(now, null);
 }

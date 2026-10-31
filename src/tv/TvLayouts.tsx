@@ -7,10 +7,10 @@ import { formatTime, type Zmanim } from "@community/lib/zmanim";
 import type { ClockStyle } from "./config";
 import { useBoardEdit } from "./boardEdit";
 import { useFitRows } from "./useFitRows";
-import { amudYomi, dafYomi, seasonalPrayers, weeklyParasha } from "./learning";
+import { amudYomi, dafYomi, seasonalPrayers } from "./learning";
 import { AnnouncementCard, ZmanimPanel } from "./TvSlides";
 import { jerusalemMinutes, minyanNow, shiurMinutes, type BoardSlide } from "./useBoardData";
-import { hebrewDayAt } from "./hebrewDay";
+import { hebrewDayAt, useHebrewDay } from "./hebrewDay";
 
 /**
  * The two screen layouts beside the one-slide-at-a-time board (see
@@ -241,9 +241,10 @@ function ShiurimPanel({ items, now }: { items: Shiur[]; now: Date }) {
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
   const nextIndex = items.findIndex((s) => shiurMinutes(s.time_text) >= nowMin);
-  // Recomputed once a day, not once a second: it is the date that moves it.
-  const dayKey = now.toDateString();
-  const amud = useMemo(() => amudYomi(new Date(dayKey)), [dayKey]);
+  // Recomputed once a day, not once a second: it is the Hebrew day that moves it (from sunset, tomorrow's).
+  const hebrewDay = useHebrewDay(now);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const amud = useMemo(() => amudYomi(hebrewDay.date), [hebrewDay.key]);
   return (
     <div className="tv-panel tv-dash-shiurim" {...edit.frame("shiurim")}>
       <h3 className="tv-panel-title" {...edit.attr("dash.shiurim")}>
@@ -395,15 +396,16 @@ export function DashboardStage({
 /** The dashboard's bottom line: parasha, daf yomi, the season's insertions, and the admin's ticker text. */
 export function DashboardStrip({ now, extra }: { now: Date; extra?: string }) {
   const edit = useBoardEdit();
-  const dayKey = now.toDateString();
+  const hebrewDay = useHebrewDay(now);
   const parts = useMemo(() => {
-    const d = new Date(dayKey);
+    const d = hebrewDay.date;
     return {
-      parasha: weeklyParasha(d),
+      parasha: hebrewDay.parasha,
       daf: dafYomi(d)?.label ?? null,
       seasonal: seasonalPrayers(d).text,
     };
-  }, [dayKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hebrewDay.key]);
   if (edit.hidden("dash.strip")) return null;
   const items = [
     parts.parasha,
