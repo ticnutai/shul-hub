@@ -50,7 +50,7 @@ export function elementData(slides: BoardSlide[], now: Date, context?: {config:T
   const config=context?.config;
   const keys=ZMAN_DISPLAY_KEYS;
   const notices=flat(slides).flatMap(s=>s.kind==='announcements'?s.items:[]);
-  // The Hebrew day: from sunset tomorrow's date, from מוצאי שבת the coming week's parasha (hebrewDay.ts).
+  // The date and the day's name turn at midnight; the parasha when Shabbat is out (hebrewDay.ts).
   const day=context?hebrewDayAt(now,context.zmanim,context.endMinutes??config?.shabbat.endMinutesAfterSunset):null;
   return { now, prayers, lessons,
     ...(context ? { title:config?.texts['header.title']??context.name,
@@ -59,8 +59,8 @@ export function elementData(slides: BoardSlide[], now: Date, context?: {config:T
       occasion:dayTitleOn(now),
       zmanim:keys.map(k=>[config?.texts[`zman.${k}`]??ZMAN_DISPLAY_LABELS[k],formatTime(context.zmanim[k])] as [string,string]),
       zmanKeys:[...keys],hiddenZmanKeys:keys.filter(k=>config?.hidden.includes(`zman.${k}`)),
-      parasha:day!.parasha??undefined,dafYomi:`דף יומי: ${dafYomi(day!.date)?.label??'—'}`,amudYomi:`עמוד יומי: ${amudYomi(day!.date).label}`,seasonal:seasonalPrayers(day!.date).text,
-      footer:[day!.parasha,`דף יומי: ${dafYomi(day!.date)?.label??''}`,`עמוד יומי: ${amudYomi(day!.date).label}`,seasonalPrayers(day!.date).text].filter(Boolean).join('   ·   '),
+      parasha:day!.parasha??undefined,dafYomi:`דף יומי: ${dafYomi(now)?.label??'—'}`,amudYomi:`עמוד יומי: ${amudYomi(now).label}`,seasonal:seasonalPrayers(day!.prayerDate).text,
+      footer:[day!.parasha,`דף יומי: ${dafYomi(now)?.label??''}`,`עמוד יומי: ${amudYomi(now).label}`,seasonalPrayers(day!.prayerDate).text].filter(Boolean).join('   ·   '),
       logos:config?.logos.map(l=>({url:l.urlDark||l.url,name:l.name})),
       ...(context.zmanimOn ? (() => { const s = shabbatInfo(now, context.zmanimOn!); return { shabbat: s.rows, shabbatTitle: s.title }; })() : {}),
       announcements:notices.length?notices.map(a=>[a.title,a.body].filter(Boolean).join('\n')).join('\n\n'):'אין הודעות כרגע',

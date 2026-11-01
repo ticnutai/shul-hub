@@ -163,7 +163,7 @@ export function TvBoard({ data, config, now, zmanim, slides, index, cycle, progr
   // A line along the bottom of the ordinary screens, for the occasion that asked for one.
   const zmanimOn = useCallback((d: Date) => zmanimFor(d, data.settings), [data.settings]);
   const minuteKey = Math.floor(now.getTime() / 60_000);
-  // The Hebrew day - its date, its name, its parasha, its daf - turning at sunset (hebrewDay.ts), for every part of the board.
+  // The day's date, name and parasha, each turning at its own time (hebrewDay.ts), for every part of the board.
   const hebrewDay = useMemo(
     () => hebrewDayAt(now, zmanim, holyEndMinutes),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -525,10 +525,10 @@ function TvHeader({
   // Which cut of a logo to use. A board can be parchment or navy,
   // and a wordmark that reads on one is invisible on the other.
   const light = getTheme(config.theme, config.customThemes).light;
-  // The Hebrew day turns at sunset (hebrewDay.ts): the board's, worked out where its zmanim are.
+  // The board's day (hebrewDay.ts), worked out where its zmanim are.
   const hebrewDay = useHebrewDay(now);
   const day = useMemo(
-    () => ({ hebrew: hebrewDay.hebrew, parasha: hebrewDay.parasha, weekday: hebrewDay.weekday, daf: dafYomi(hebrewDay.date)?.label ?? null }),
+    () => ({ hebrew: hebrewDay.hebrew, parasha: hebrewDay.parasha, weekday: hebrewDay.weekday, daf: dafYomi(now)?.label ?? null }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [hebrewDay.key],
   );

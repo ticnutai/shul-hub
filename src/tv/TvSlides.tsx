@@ -418,11 +418,11 @@ function whenLabel(inDays: number, date: Date): string {
 function LearningSlide({ layout, now, national }: { layout: string; now: Date; national: boolean }) {
   const edit = useBoardEdit();
   const dayKey = now.toDateString();
-  // The parasha and the daf of the Hebrew day - from sunset, tomorrow's (hebrewDay.ts); the coming days by the calendar.
+  // The parasha turns when Shabbat is out (hebrewDay.ts); the daf and the coming days by the calendar.
   const hebrewDay = useHebrewDay(now);
   const facts = useMemo(() => {
     const day = new Date(dayKey);
-    return { parasha: hebrewDay.parasha, daf: dafYomi(hebrewDay.date), upcoming: upcomingDays(day, 21, 6, { national }) };
+    return { parasha: hebrewDay.parasha, daf: dafYomi(day), upcoming: upcomingDays(day, 21, 6, { national }) };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dayKey, hebrewDay.key, national]);
 

@@ -17,7 +17,7 @@ export const WEEKDAYS = ["ראשון", "שני", "שלישי", "רביעי", "ח
  */
 export function useBoardDay(now: Date, settings: Settings | null, shabbatEndMinutes: number) {
   const dayKey = now.toDateString();
-  // The Hebrew day turns at sunset (hebrewDay.ts): its date, its name and the parasha, checked each minute.
+  // The day's date, name and parasha, each turning at its own time (hebrewDay.ts), checked each minute.
   const minuteKey = Math.floor(now.getTime() / 60_000);
   const hebrewDay = useMemo(
     () => hebrewDayAt(now, zmanimFor(new Date(dayKey), settings), shabbatEndMinutes),

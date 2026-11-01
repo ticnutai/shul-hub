@@ -10,7 +10,7 @@ import { useFitRows } from "./useFitRows";
 import { amudYomi, dafYomi, seasonalPrayers } from "./learning";
 import { AnnouncementCard, ZmanimPanel } from "./TvSlides";
 import { jerusalemMinutes, minyanNow, shiurMinutes, type BoardSlide } from "./useBoardData";
-import { hebrewDayAt, useHebrewDay } from "./hebrewDay";
+import { useHebrewDay } from "./hebrewDay";
 
 /**
  * The two screen layouts beside the one-slide-at-a-time board (see
@@ -241,10 +241,9 @@ function ShiurimPanel({ items, now }: { items: Shiur[]; now: Date }) {
   const edit = useBoardEdit();
   const nowMin = jerusalemMinutes(now);
   const nextIndex = items.findIndex((s) => shiurMinutes(s.time_text) >= nowMin);
-  // Recomputed once a day, not once a second: it is the Hebrew day that moves it (from sunset, tomorrow's).
-  const hebrewDay = useHebrewDay(now);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const amud = useMemo(() => amudYomi(hebrewDay.date), [hebrewDay.key]);
+  // Recomputed once a day, not once a second: it is the date that moves it.
+  const dayKey = now.toDateString();
+  const amud = useMemo(() => amudYomi(new Date(dayKey)), [dayKey]);
   return (
     <div className="tv-panel tv-dash-shiurim" {...edit.frame("shiurim")}>
       <h3 className="tv-panel-title" {...edit.attr("dash.shiurim")}>
@@ -314,11 +313,7 @@ export function DashboardStage({
   const shiurim: Shiur[] = slides.flatMap((s) => (s.kind === "shiurim" ? s.items : []));
   const featured = announcements.length ? announcements[index % announcements.length] : null;
   const dayKey = now.toDateString();
-  // From sunset, tomorrow's date (hebrewDay.ts).
-  const night = Boolean(zmanim.sunset && now.getTime() >= zmanim.sunset.getTime());
-  const hebrew = useMemo(() => hebrewDayAt(now, zmanim).hebrew,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dayKey, night]);
+  const hebrew = useHebrewDay(now).hebrew;
   const gregorian = now.toLocaleDateString("he-IL", {
     day: "numeric",
     month: "long",
@@ -398,11 +393,10 @@ export function DashboardStrip({ now, extra }: { now: Date; extra?: string }) {
   const edit = useBoardEdit();
   const hebrewDay = useHebrewDay(now);
   const parts = useMemo(() => {
-    const d = hebrewDay.date;
     return {
       parasha: hebrewDay.parasha,
-      daf: dafYomi(d)?.label ?? null,
-      seasonal: seasonalPrayers(d).text,
+      daf: dafYomi(now)?.label ?? null,
+      seasonal: seasonalPrayers(hebrewDay.prayerDate).text,
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hebrewDay.key]);

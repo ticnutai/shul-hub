@@ -46,8 +46,8 @@ export function BoundElement({ element }: { element: BoardElement }) {
     </div>;
   }
   if (e.binding === 'shabbatTitle') return wraps(e) ? <WrapText binding={e.binding} text={data.shabbatTitle ?? 'שבת קודש'} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data.shabbatTitle ?? 'שבת קודש'} e={e} />;
-  // The date is one line, always whole: broken, its second half - "אור ליום רביעי" - fell below the frame and was not seen.
-  // It may go a little smaller than other lines: "כ״ד חשון תשפ״ז · אור ליום רביעי" needs 42% in a kit's narrow plate.
+  // The date is one line, always whole: broken, its second half fell below the frame and was not seen.
+  // It may go a little smaller than other lines, for a long date in a kit's narrow plate.
   if(e.binding==='date') return <FitLine binding={e.binding} text={data.date ?? ''} e={e} floor={0.35} />;
   if(e.binding==='title'||e.binding==='occasion'||e.binding==='parasha'||e.binding==='dafYomi'||e.binding==='amudYomi'||e.binding==='seasonal') return wraps(e) ? <WrapText binding={e.binding} text={data[e.binding] ?? ''} e={e} lineHeight={1.2} /> : <FitLine binding={e.binding} text={data[e.binding] ?? ''} e={e} />;
   if((e.binding==='footer'||e.binding==='announcements') && e.scroll) return <Scrolling mode={e.scroll}><div data-content-binding={e.binding} dir="rtl" style={{ display: 'grid', alignItems: 'center', justifyItems: justify(e), whiteSpace: 'pre-wrap', lineHeight: 1.4, fontSize: `${e.fontSize}cqh`, ...look }}>{data[e.binding]}</div></Scrolling>;
